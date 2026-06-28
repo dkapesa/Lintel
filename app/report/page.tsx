@@ -1,22 +1,30 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { GENERATED_REPORT_STORAGE_KEY } from "../../lib/report-generator";
+import { reportToMarkdown, type ReportSourceLabel } from "../../lib/report-markdown";
 import type { FindingSeverity, Recommendation, Report, ReviewArea, RiskLevel } from "../../lib/mock-report";
 import { report as demoReport } from "../../lib/mock-report";
 
 type GeneratedReportSource = "ai" | "deterministic";
 type ReportSource = GeneratedReportSource | "demo";
+type CopyState = "idle" | "copied" | "failed";
 
 type StoredReport = {
   report: Report;
   source: GeneratedReportSource;
 };
 
-const sourceLabels: Record<ReportSource, string> = {
+const sourceLabels: Record<ReportSource, ReportSourceLabel> = {
   ai: "AI generated",
   deterministic: "Local fallback",
   demo: "Demo report",
+};
+
+const copyLabels: Record<CopyState, string> = {
+  idle: "Copy summary",
+  copied: "Copied",
+  failed: "Copy failed",
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -36,6 +44,42 @@ function isStoredReport(value: unknown): value is StoredReport {
   return isRecord(value)
     && (value.source === "ai" || value.source === "deterministic")
     && isReport(value.report);
+}
+
+async function writeToClipboard(value: string) {
+  let clipboardTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      clipboardTimeout = setTimeout(() => reject(new Error("Clipboard write timed out")), 1_000);
+      navigator.clipboard.writeText(value).then(resolve, reject);
+    });
+    return true;
+  } catch {
+    const activeElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const textarea = document.createElement("textarea");
+    textarea.value = value;
+    textarea.setAttribute("readonly", "");
+    textarea.setAttribute("aria-hidden", "true");
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    textarea.style.pointerEvents = "none";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    textarea.setSelectionRange(0, value.length);
+
+    try {
+      return document.execCommand("copy");
+    } catch {
+      return false;
+    } finally {
+      textarea.remove();
+      activeElement?.focus();
+    }
+  } finally {
+    if (clipboardTimeout) clearTimeout(clipboardTimeout);
+  }
 }
 
 function displayLabel(value: string) {
@@ -87,6 +131,8 @@ export default function ReportPage() {
     report: demoReport,
     source: "demo",
   });
+  const [copyState, setCopyState] = useState<CopyState>("idle");
+  const copyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const storedReport = sessionStorage.getItem(GENERATED_REPORT_STORAGE_KEY);
@@ -112,8 +158,20 @@ export default function ReportPage() {
     }
   }, []);
 
+  useEffect(() => () => {
+    if (copyResetTimer.current) clearTimeout(copyResetTimer.current);
+  }, []);
+
   const { report, source } = displayedReport;
   const { pr, verdict } = report;
+
+  async function handleCopySummary() {
+    const copied = await writeToClipboard(reportToMarkdown(report, sourceLabels[source]));
+    setCopyState(copied ? "copied" : "failed");
+
+    if (copyResetTimer.current) clearTimeout(copyResetTimer.current);
+    copyResetTimer.current = setTimeout(() => setCopyState("idle"), 2_000);
+  }
 
   return (
     <div className="app-shell">
@@ -141,6 +199,14 @@ export default function ReportPage() {
           </nav>
           <div className="topbar-actions">
             <SourceBadge source={source} />
+            <button
+              className={`copy-summary-button copy-summary-button--${copyState}`}
+              type="button"
+              onClick={handleCopySummary}
+              aria-live="polite"
+            >
+              {copyLabels[copyState]}
+            </button>
             <span className="sync-status"><i /> Analysed {pr.updatedAt}</span>
             <button className="icon-button" aria-label="More report actions">•••</button>
           </div>

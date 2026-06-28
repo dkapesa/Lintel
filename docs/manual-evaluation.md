@@ -24,6 +24,17 @@ Run the app with `npm run dev` and use `http://localhost:3000/new`. Use browser 
 - Legacy bare Report objects remain readable and display **Local fallback** because their original source is unknown.
 - Malformed storage is removed and the demo report is shown.
 
+## Copy summary
+
+Use **Copy summary** on `/report` to copy a concise Markdown report. Confirm the copied text includes the PR title, repository, source label, recommendation, risk score and level, executive summary, key findings, suggested tests and merge conditions.
+
+- Finding, test and condition sections show at most five items, followed by `...and N more` when truncated.
+- Empty sections show `None detected`.
+- The button temporarily shows `Copied` only after the browser clipboard or hidden-textarea fallback succeeds.
+- If both copy methods fail, the button shows `Copy failed`.
+- Raw diff markers, submitted patch lines and secret values must not appear in the copied Markdown.
+- Verify all three source labels: `AI generated`, `Local fallback` and `Demo report`.
+
 ## Expected outcome matrix
 
 | Case | Expected source | Recommendation | Expected risk level | Expected finding themes |

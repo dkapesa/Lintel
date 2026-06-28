@@ -150,6 +150,17 @@ function canonicalRecommendationCopy(recommendation: Recommendation) {
   return "Focused human review is required for the findings and conditions identified in this report.";
 }
 
+function canonicalAiSummary(baseline: Report, findings: Report["findings"], missingTests: string[]) {
+  const changedFileCount = baseline.changedFiles.length;
+  const changedFiles = `${changedFileCount} changed file${changedFileCount === 1 ? "" : "s"}`;
+
+  if (findings.length === 0 && missingTests.length === 0) {
+    return `AI-assisted analysis found no unresolved merge-readiness findings or test gaps across ${changedFiles}.`;
+  }
+
+  return `AI-assisted analysis identified ${findings.length} merge-readiness finding${findings.length === 1 ? "" : "s"} and ${missingTests.length} test gap${missingTests.length === 1 ? "" : "s"} across ${changedFiles}.`;
+}
+
 function baselineRiskFloor(baseline: Report) {
   let floor = 0;
   const concreteFindings = baseline.findings.filter((finding) => finding.category !== "Missing tests").length;
@@ -217,9 +228,13 @@ export function normaliseReport(value: unknown, baseline: Report): Report | null
   const finalRecommendation = submittedRecommendation === recommendation
     ? text(value.finalRecommendation, canonicalRecommendationCopy(recommendation), 1000)
     : canonicalRecommendationCopy(recommendation);
+  const fallbackSummary = canonicalAiSummary(baseline, findings, missingTests);
+  const submittedSummary = text(value.verdict.summary, fallbackSummary, 1200);
   const summary = riskScore > submittedRiskScore
-    ? `${findings.length} merge-readiness finding${findings.length === 1 ? "" : "s"} and ${missingTests.length} test gap${missingTests.length === 1 ? "" : "s"} remain. Risk scoring includes deterministic safety signals.`
-    : text(value.verdict.summary, baseline.verdict.summary, 1200);
+    ? `${fallbackSummary} Risk scoring retains deterministic safety guardrails.`
+    : /local prototype rules/i.test(submittedSummary)
+      ? fallbackSummary
+      : submittedSummary;
 
   return {
     pr: baseline.pr,

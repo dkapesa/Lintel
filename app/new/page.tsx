@@ -6,10 +6,18 @@ import { FormEvent, useState } from "react";
 import { generateReport, GENERATED_REPORT_STORAGE_KEY, type ReportInput } from "../../lib/report-generator";
 import type { Report } from "../../lib/mock-report";
 
-function isReportResponse(value: unknown): value is { report: Report } {
-  if (typeof value !== "object" || value === null || !("report" in value)) return false;
+type ReportSource = "ai" | "deterministic";
+
+type StoredReport = {
+  report: Report;
+  source: ReportSource;
+};
+
+function isReportResponse(value: unknown): value is StoredReport {
+  if (typeof value !== "object" || value === null || !("report" in value) || !("source" in value)) return false;
   const report = value.report;
-  return typeof report === "object"
+  return (value.source === "ai" || value.source === "deterministic")
+    && typeof report === "object"
     && report !== null
     && "pr" in report
     && "verdict" in report
@@ -37,6 +45,7 @@ export default function NewReportPage() {
 
     try {
       let generatedReport: Report;
+      let source: ReportSource;
 
       try {
         const response = await fetch("/api/generate-report", {
@@ -55,11 +64,13 @@ export default function NewReportPage() {
         const payload: unknown = await response.json();
         if (!isReportResponse(payload)) throw new Error("Invalid report response");
         generatedReport = payload.report;
+        source = payload.source;
       } catch {
         generatedReport = generateReport(input);
+        source = "deterministic";
       }
 
-      sessionStorage.setItem(GENERATED_REPORT_STORAGE_KEY, JSON.stringify(generatedReport));
+      sessionStorage.setItem(GENERATED_REPORT_STORAGE_KEY, JSON.stringify({ report: generatedReport, source }));
       router.push("/report");
     } catch {
       setError("The report could not be generated locally. Please try again.");

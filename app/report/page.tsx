@@ -5,6 +5,39 @@ import { GENERATED_REPORT_STORAGE_KEY } from "../../lib/report-generator";
 import type { FindingSeverity, Recommendation, Report, ReviewArea, RiskLevel } from "../../lib/mock-report";
 import { report as demoReport } from "../../lib/mock-report";
 
+type GeneratedReportSource = "ai" | "deterministic";
+type ReportSource = GeneratedReportSource | "demo";
+
+type StoredReport = {
+  report: Report;
+  source: GeneratedReportSource;
+};
+
+const sourceLabels: Record<ReportSource, string> = {
+  ai: "AI generated",
+  deterministic: "Local fallback",
+  demo: "Demo report",
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isReport(value: unknown): value is Report {
+  return isRecord(value)
+    && isRecord(value.pr)
+    && typeof value.pr.title === "string"
+    && isRecord(value.verdict)
+    && typeof value.verdict.recommendation === "string"
+    && Array.isArray(value.findings);
+}
+
+function isStoredReport(value: unknown): value is StoredReport {
+  return isRecord(value)
+    && (value.source === "ai" || value.source === "deterministic")
+    && isReport(value.report);
+}
+
 function displayLabel(value: string) {
   return value.replaceAll("_", " ");
 }
@@ -45,8 +78,15 @@ function SeverityTag({ severity }: { severity: FindingSeverity }) {
   return <span className={`severity severity--${severity.toLowerCase()}`}>{severity}</span>;
 }
 
+function SourceBadge({ source }: { source: ReportSource }) {
+  return <span className={`source-badge source-badge--${source}`}>{sourceLabels[source]}</span>;
+}
+
 export default function ReportPage() {
-  const [report, setReport] = useState<Report>(demoReport);
+  const [displayedReport, setDisplayedReport] = useState<{ report: Report; source: ReportSource }>({
+    report: demoReport,
+    source: "demo",
+  });
 
   useEffect(() => {
     const storedReport = sessionStorage.getItem(GENERATED_REPORT_STORAGE_KEY);
@@ -54,16 +94,25 @@ export default function ReportPage() {
     if (!storedReport) return;
 
     try {
-      const parsedReport = JSON.parse(storedReport) as Report;
+      const parsedReport: unknown = JSON.parse(storedReport);
 
-      if (parsedReport?.pr?.title && parsedReport?.verdict?.recommendation) {
-        setReport(parsedReport);
+      if (isStoredReport(parsedReport)) {
+        setDisplayedReport(parsedReport);
+        return;
       }
+
+      if (isReport(parsedReport)) {
+        setDisplayedReport({ report: parsedReport, source: "deterministic" });
+        return;
+      }
+
+      sessionStorage.removeItem(GENERATED_REPORT_STORAGE_KEY);
     } catch {
       sessionStorage.removeItem(GENERATED_REPORT_STORAGE_KEY);
     }
   }, []);
 
+  const { report, source } = displayedReport;
   const { pr, verdict } = report;
 
   return (
@@ -91,6 +140,7 @@ export default function ReportPage() {
             <a href="#repository">{pr.project}</a><span>/</span><a href="#overview">Reports</a><span>/</span><strong>PR #{pr.number}</strong>
           </nav>
           <div className="topbar-actions">
+            <SourceBadge source={source} />
             <span className="sync-status"><i /> Analysed {pr.updatedAt}</span>
             <button className="icon-button" aria-label="More report actions">•••</button>
           </div>
@@ -167,7 +217,9 @@ export default function ReportPage() {
                   {report.missingTests.map((test, index) => <li key={test}><span>{String(index + 1).padStart(2, "0")}</span>{test}</li>)}
                 </ol>
               ) : (
-                <p className="missing-tests-empty">No missing test gaps detected by local rules.</p>
+                <p className="missing-tests-empty">
+                  {source === "ai" ? "No missing test gaps detected." : "No missing test gaps detected by local rules."}
+                </p>
               )}
             </section>
             <section className="section-block section-block--inset">

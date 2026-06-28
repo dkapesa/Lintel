@@ -11,10 +11,18 @@ Lintel helps engineering teams assess whether AI-assisted pull requests are safe
 3. The client sends the input to `POST /api/generate-report`.
 4. The route creates a deterministic baseline, optionally attempts AI generation, and normalises the result.
 5. If AI is unavailable or invalid, the route returns the deterministic report.
-6. The client stores only the returned report under `lintel.generatedReport.v1` in `sessionStorage` and navigates to `/report`.
+6. The client stores the returned report and its `ai` or `deterministic` source under `lintel.generatedReport.v1` in `sessionStorage`, then navigates to `/report`.
 7. `/report` renders the generated report or the demo report when no generated report is available.
 
 Run the app with `npm run dev` and use `http://localhost:3000/new`. Use browser developer tools to inspect the API response and session storage. Never paste a real secret into test evidence, screenshots, or this document.
+
+## Report source visibility
+
+- A successful AI response stores `{ report, source: "ai" }` and shows **AI generated**.
+- An API or client-side deterministic fallback stores `{ report, source: "deterministic" }` and shows **Local fallback**.
+- No generated report shows the bundled demo report with **Demo report**.
+- Legacy bare Report objects remain readable and display **Local fallback** because their original source is unknown.
+- Malformed storage is removed and the demo report is shown.
 
 ## Expected outcome matrix
 
@@ -170,6 +178,7 @@ Expected:
 
 - HTTP status: `200`
 - Response source: `deterministic`
+- Source badge: `Local fallback`
 - A complete `report` object is returned
 - Recommendation: `TESTS_REQUIRED`
 - Risk level: `HIGH`
@@ -195,6 +204,7 @@ Expected:
 
 - HTTP status: `200`
 - Response source: `ai`
+- Source badge: `AI generated`
 - The result matches the existing Report shape
 - Submitted PR metadata and changed files are preserved
 - Recommendation: `TESTS_REQUIRED`
@@ -218,6 +228,6 @@ Expected:
 
 - The unique marker is absent from the API response and session storage
 - The raw diff is absent from the API response and session storage
-- Only the returned Report is stored in `lintel.generatedReport.v1`
+- Only the returned Report and its `ai` or `deterministic` source metadata are stored in `lintel.generatedReport.v1`
 - Changed filenames and concise evidence terms may appear in the report; that is expected and is not raw-diff storage
 - No raw diff or secret value appears in server or browser logs

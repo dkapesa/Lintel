@@ -28,6 +28,8 @@ Run the app with `npm run dev` and use `http://localhost:3000/new`. Use browser 
 
 Risk levels are derived from the final score: `LOW` 0–30, `MEDIUM` 31–60, `HIGH` 61–80, and `CRITICAL` 81–100.
 
+AI reports are normalised against the deterministic baseline. Concrete baseline findings, test gaps, suggested tests and merge conditions remain present even when the AI omits them. A baseline `ATTENTION` review cannot be downgraded to `CLEAR`. Untested changes have a minimum `MEDIUM` score, while a `HIGH` baseline with multiple concrete findings remains `HIGH` and can fall by no more than five points.
+
 ## Clean APPROVE test case
 
 Use:
@@ -57,7 +59,7 @@ diff --git a/tests/test_format_name.py b/tests/test_format_name.py
 Expected:
 
 - Recommendation: `APPROVE`
-- Risk level: `LOW` (the deterministic score is expected to remain 22)
+- Risk level: `LOW` (the deterministic score is 22; a valid AI score may vary within 0–30)
 - Findings: none
 - Missing tests: none
 - Conditions before merge: none
@@ -124,7 +126,7 @@ Submit the shared risky diff without adding a test file.
 Expected:
 
 - Recommendation: `TESTS_REQUIRED`
-- Risk level: `HIGH` (the deterministic score is expected to remain 78)
+- Risk level: `HIGH` (the deterministic score is 78; the current AI guardrail floor is 73)
 - Finding themes:
   - Risk-specific tests are missing
   - Retry behaviour may duplicate redemptions or discount codes
@@ -151,7 +153,7 @@ diff --git a/tests/test_redemption_service.py b/tests/test_redemption_service.py
 Expected:
 
 - Recommendation: `REVIEW_REQUIRED`
-- Risk level: `HIGH` (the deterministic score is expected to remain 64)
+- Risk level: `HIGH` (the deterministic score is 64; the current AI guardrail floor is 61)
 - Findings remain for duplicate side effects, provider failures, API error contracts, and sensitive logging
 - No generic missing-test finding and no missing-tests list
 - Conditions require focused human review rather than a generic instruction to add tests
@@ -219,4 +221,3 @@ Expected:
 - Only the returned Report is stored in `lintel.generatedReport.v1`
 - Changed filenames and concise evidence terms may appear in the report; that is expected and is not raw-diff storage
 - No raw diff or secret value appears in server or browser logs
-

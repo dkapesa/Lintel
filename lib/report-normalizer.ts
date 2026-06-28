@@ -36,6 +36,22 @@ function stringArray(value: unknown, fallback: string[], maxItems = 12, maxLengt
     .map((item) => item.trim().slice(0, maxLength));
 }
 
+function normalisedKey(value: string) {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function mergeStrings(primary: string[], secondary: string[], maxItems = 12, maxLength = 500) {
+  const seen = new Set<string>();
+
+  return [...primary, ...secondary].flatMap((item) => {
+    const trimmed = item.trim().slice(0, maxLength);
+    const key = normalisedKey(trimmed);
+    if (!trimmed || seen.has(key)) return [];
+    seen.add(key);
+    return [trimmed];
+  }).slice(0, maxItems);
+}
+
 function riskLevelFromScore(score: number): RiskLevel {
   if (score >= 81) return "CRITICAL";
   if (score >= 61) return "HIGH";
@@ -45,15 +61,23 @@ function riskLevelFromScore(score: number): RiskLevel {
 
 function normaliseReview(value: unknown, fallback: ReviewArea): ReviewArea {
   if (!isRecord(value)) return fallback;
+
+  const submittedStatus = enumValue(value.status, ["CLEAR", "ATTENTION"], fallback.status);
+  const preserveAttention = fallback.status === "ATTENTION";
+
   return {
-    status: enumValue(value.status, ["CLEAR", "ATTENTION"], fallback.status),
-    summary: text(value.summary, fallback.summary),
-    points: stringArray(value.points, fallback.points, 6, 400),
+    status: preserveAttention ? "ATTENTION" : submittedStatus,
+    summary: preserveAttention && submittedStatus === "CLEAR"
+      ? fallback.summary
+      : text(value.summary, fallback.summary),
+    points: preserveAttention
+      ? mergeStrings(fallback.points, stringArray(value.points, [], 6, 400), 6, 400)
+      : stringArray(value.points, fallback.points, 6, 400),
   };
 }
 
 function normaliseFindings(value: unknown, baseline: Report) {
-  if (!Array.isArray(value)) return baseline.findings;
+  if (!Array.isArray(value)) return [];
   const knownFiles = new Set(baseline.changedFiles.map((file) => file.path));
 
   return value.flatMap((item): Report["findings"] => {
@@ -75,6 +99,17 @@ function normaliseFindings(value: unknown, baseline: Report) {
   }).slice(0, 12);
 }
 
+function mergeFindings(primary: Report["findings"], secondary: Report["findings"]) {
+  const seen = new Set<string>();
+
+  return [...primary, ...secondary].filter((finding) => {
+    const key = `${finding.category}:${normalisedKey(finding.title)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, 12);
+}
+
 function normaliseSuggestedTests(value: unknown, fallback: Report["suggestedTests"]) {
   if (!Array.isArray(value)) return fallback;
   return value.flatMap((item): Report["suggestedTests"] => {
@@ -83,6 +118,20 @@ function normaliseSuggestedTests(value: unknown, fallback: Report["suggestedTest
     if (typeof item.description === "string" && item.description.trim()) test.description = item.description.trim().slice(0, 500);
     if (item.priority === "Required" || item.priority === "Recommended") test.priority = item.priority;
     return [test];
+  }).slice(0, 12);
+}
+
+function mergeSuggestedTests(
+  primary: Report["suggestedTests"],
+  secondary: Report["suggestedTests"],
+) {
+  const seen = new Set<string>();
+
+  return [...primary, ...secondary].filter((test) => {
+    const key = normalisedKey(test.title);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
   }).slice(0, 12);
 }
 
@@ -101,6 +150,27 @@ function canonicalRecommendationCopy(recommendation: Recommendation) {
   return "Focused human review is required for the findings and conditions identified in this report.";
 }
 
+function baselineRiskFloor(baseline: Report) {
+  let floor = 0;
+  const concreteFindings = baseline.findings.filter((finding) => finding.category !== "Missing tests").length;
+
+  if (baseline.verdict.recommendation === "TESTS_REQUIRED" && baseline.missingTests.length > 0) {
+    floor = 31;
+  }
+
+  if (baseline.verdict.riskLevel === "HIGH") {
+    floor = Math.max(floor, baseline.verdict.riskScore - 5);
+    if (concreteFindings >= 2) floor = Math.max(floor, 61);
+  }
+
+  if (baseline.verdict.riskLevel === "CRITICAL") {
+    floor = Math.max(floor, baseline.verdict.riskScore - 5);
+    if (concreteFindings >= 2) floor = Math.max(floor, 81);
+  }
+
+  return Math.round(Math.min(100, Math.max(0, floor)));
+}
+
 export function normaliseReport(value: unknown, baseline: Report): Report | null {
   if (!isRecord(value) || !isRecord(value.verdict) || !isRecord(value.reviews)) return null;
 
@@ -109,15 +179,34 @@ export function normaliseReport(value: unknown, baseline: Report): Report | null
     reliability: normaliseReview(value.reviews.reliability, baseline.reviews.reliability),
     maintainability: normaliseReview(value.reviews.maintainability, baseline.reviews.maintainability),
   };
-  const findings = normaliseFindings(value.findings, baseline);
-  const missingTests = stringArray(value.missingTests, baseline.missingTests, 12, 500);
-  const conditionsBeforeMerge = stringArray(value.conditionsBeforeMerge, baseline.conditionsBeforeMerge, 12, 500);
-  const suggestedTests = normaliseSuggestedTests(value.suggestedTests, baseline.suggestedTests);
+  const submittedFindings = normaliseFindings(value.findings, baseline);
+  const baselineHasMissingTestFinding = baseline.findings.some((finding) => finding.category === "Missing tests");
+  const findings = mergeFindings(
+    baseline.findings,
+    baselineHasMissingTestFinding
+      ? submittedFindings
+      : submittedFindings.filter((finding) => finding.category !== "Missing tests"),
+  );
+  const submittedMissingTests = stringArray(value.missingTests, [], 12, 500);
+  const missingTests = baseline.missingTests.length > 0
+    ? mergeStrings(baseline.missingTests, submittedMissingTests, 12, 500)
+    : [];
+  const conditionsBeforeMerge = mergeStrings(
+    baseline.conditionsBeforeMerge,
+    stringArray(value.conditionsBeforeMerge, [], 12, 500),
+    12,
+    500,
+  );
+  const suggestedTests = mergeSuggestedTests(
+    baseline.suggestedTests,
+    normaliseSuggestedTests(value.suggestedTests, []),
+  );
   const reviewerChecklist = normaliseChecklist(value.reviewerChecklist, baseline.reviewerChecklist);
   const rawScore = typeof value.verdict.riskScore === "number" && Number.isFinite(value.verdict.riskScore)
     ? value.verdict.riskScore
     : baseline.verdict.riskScore;
-  const riskScore = Math.round(Math.min(100, Math.max(0, rawScore)));
+  const submittedRiskScore = Math.round(Math.min(100, Math.max(0, rawScore)));
+  const riskScore = Math.max(submittedRiskScore, baselineRiskFloor(baseline));
 
   const recommendation: Recommendation = missingTests.length > 0
     ? "TESTS_REQUIRED"
@@ -128,6 +217,9 @@ export function normaliseReport(value: unknown, baseline: Report): Report | null
   const finalRecommendation = submittedRecommendation === recommendation
     ? text(value.finalRecommendation, canonicalRecommendationCopy(recommendation), 1000)
     : canonicalRecommendationCopy(recommendation);
+  const summary = riskScore > submittedRiskScore
+    ? `${findings.length} merge-readiness finding${findings.length === 1 ? "" : "s"} and ${missingTests.length} test gap${missingTests.length === 1 ? "" : "s"} remain. Risk scoring includes deterministic safety signals.`
+    : text(value.verdict.summary, baseline.verdict.summary, 1200);
 
   return {
     pr: baseline.pr,
@@ -136,7 +228,7 @@ export function normaliseReport(value: unknown, baseline: Report): Report | null
       riskScore,
       riskLevel: riskLevelFromScore(riskScore),
       confidence: enumValue(value.verdict.confidence, CONFIDENCE_LEVELS, baseline.verdict.confidence),
-      summary: text(value.verdict.summary, baseline.verdict.summary, 1200),
+      summary,
     },
     changedFiles: baseline.changedFiles,
     findings,

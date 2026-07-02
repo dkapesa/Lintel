@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { generateReport, GENERATED_REPORT_STORAGE_KEY, type ReportInput } from "../../lib/report-generator";
 import type { Report } from "../../lib/mock-report";
-import { CLEAN_APPROVE_SAMPLE, RISKY_TESTS_REQUIRED_SAMPLE } from "../../lib/sample-pr-input";
+import { PR_SAMPLES } from "../../lib/sample-pr-input";
 
 type ReportSource = "ai" | "deterministic";
 
@@ -169,14 +169,23 @@ export default function NewReportPage() {
         <section className="new-intro">
           <div className="new-intro-actions">
             <span className="eyebrow">NEW REPORT</span>
-            <div className="sample-buttons" role="group" aria-label="Load sample pull request">
-              <button className="sample-diff-button" type="button" onClick={() => useSample(CLEAN_APPROVE_SAMPLE)}>
-                Clean sample
-              </button>
-              <button className="sample-diff-button" type="button" onClick={() => useSample(RISKY_TESTS_REQUIRED_SAMPLE)}>
-                Risky sample
-              </button>
-            </div>
+            <label className="sample-picker">
+              <span>Load sample</span>
+              <select
+                aria-label="Load sample pull request"
+                defaultValue=""
+                onChange={(event) => {
+                  const sample = PR_SAMPLES.find((item) => item.id === event.target.value);
+                  if (sample) useSample(sample.input);
+                  event.target.value = "";
+                }}
+              >
+                <option value="">Choose scenario</option>
+                {PR_SAMPLES.map((sample) => (
+                  <option key={sample.id} value={sample.id}>{sample.name}</option>
+                ))}
+              </select>
+            </label>
           </div>
           <h1>Check merge readiness</h1>
           <p>Paste the PR context and diff. Lintel will analyse the change and produce a merge-readiness report.</p>

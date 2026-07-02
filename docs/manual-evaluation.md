@@ -279,7 +279,7 @@ Fetching a diff must not submit the report, navigate away from `/new`, or call `
 - Import a valid public PR and confirm repository, diff and available title metadata are populated.
 - Confirm all populated fields remain editable.
 - Confirm **Fetch diff** has compact loading, success and error states.
-- Confirm **Clean sample**, **Risky sample** and manual paste still work after importing.
+- Confirm the built-in sample picker and manual paste still work after importing.
 - Generate an imported PR and confirm `/report`, source badges and **Copy summary** still work.
 - Confirm an imported diff larger than `MAX_DIFF_CHARS` returns HTTP `413`.
 - Confirm an empty or non-diff GitHub response is rejected.
@@ -314,7 +314,7 @@ Operational readiness rules:
 
 ### Clean operational readiness test
 
-Generate the Clean sample.
+Generate the **Clean utility change** sample.
 
 Expected:
 
@@ -326,7 +326,7 @@ Expected:
 
 ### Risky operational readiness test
 
-Generate the Risky sample without a test file.
+Generate the **Provider failure / retry risk** sample without a test file.
 
 Expected:
 
@@ -377,7 +377,7 @@ Deterministic review areas:
 
 ### Reviewer focus sample tests
 
-Generate the Clean sample.
+Generate the **Clean utility change** sample.
 
 Expected:
 
@@ -385,7 +385,7 @@ Expected:
 - The UI shows neutral copy when no specialist focus is detected
 - No person, owner or team is invented
 
-Generate the Risky sample without tests.
+Generate the **Provider failure / retry risk** sample without tests.
 
 Expected:
 
@@ -413,3 +413,20 @@ Append the documented test file and generate again. Specific focus areas should 
 - Empty new-report focus should copy as `None detected`.
 - Legacy focus should copy as not assessed.
 - Raw diff markers, patch fragments and secrets must remain absent from copied markdown and session storage.
+
+## Built-in sample library
+
+Use the **Load sample** picker on `/new`. Loading a sample must populate all four report fields without submitting, navigating or calling an API. Every field remains editable before **Generate Report** is selected.
+
+| Sample | Expected broad outcome |
+| --- | --- |
+| Clean utility change | `APPROVE`, `LOW`, operational `CLEAR` |
+| Provider failure / retry risk | `TESTS_REQUIRED` or `REVIEW_REQUIRED`, `HIGH`, operational `ATTENTION` |
+| Auth/session change | `TESTS_REQUIRED` or `REVIEW_REQUIRED`; security/privacy review expected |
+| Database migration | `TESTS_REQUIRED` or `REVIEW_REQUIRED`; data/migration review expected |
+| Payment/refund side effect | `TESTS_REQUIRED`; payments/domain and reliability review expected |
+| API contract change | `REVIEW_REQUIRED` or `TESTS_REQUIRED`; API contract review expected |
+| Logging/privacy risk | `REVIEW_REQUIRED` or `TESTS_REQUIRED`; security/privacy review expected |
+| Frontend analytics/type change | `TESTS_REQUIRED` when no test file is present; frontend and docs review expected |
+
+For each sample, confirm the selected input can be edited, generation still stores only `{ report, source }`, and no raw diff appears in session storage or copied markdown. AI wording and exact scores may vary, but the broad recommendation and review themes should remain consistent with the deterministic baseline.

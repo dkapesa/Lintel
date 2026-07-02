@@ -47,10 +47,10 @@ button { font:inherit; }
 .new-content { width:min(100%, 1040px); margin:0 auto; padding:64px 28px 88px; }
 .new-intro { max-width:660px; margin-bottom:30px; }
 .new-intro-actions { display:flex; align-items:center; justify-content:space-between; gap:16px; }
-.sample-buttons { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:6px; }
-.sample-diff-button { padding:6px 9px; border:1px solid #d8dfdb; border-radius:7px; background:rgba(255,255,255,.72); color:#66716c; font-size:10px; font-weight:700; cursor:pointer; transition:border-color .15s ease, background-color .15s ease, color .15s ease; }
-.sample-diff-button:hover { border-color:#b9c7c0; background:#fff; color:#33443d; }
-.sample-diff-button:focus-visible { outline:2px solid #6fa98f; outline-offset:2px; }
+.sample-picker { display:grid; gap:4px; width:min(240px, 100%); color:#89928e; font-size:8px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+.sample-picker select { width:100%; padding:7px 30px 7px 9px; border:1px solid #d8dfdb; border-radius:7px; background:#fff; color:#4f5d57; font-family:inherit; font-size:10px; font-weight:700; line-height:1.2; letter-spacing:0; text-transform:none; cursor:pointer; }
+.sample-picker select:hover { border-color:#b9c7c0; }
+.sample-picker select:focus-visible { outline:2px solid #6fa98f; outline-offset:2px; }
 .new-intro h1 { margin:10px 0 12px; font-size:clamp(32px, 5vw, 46px); line-height:1.1; letter-spacing:-.06em; }
 .new-intro p { margin:0; color:#65706b; font-size:13px; line-height:1.7; }
 .report-form { padding:30px; border:1px solid var(--line); border-radius:16px; background:#fff; box-shadow:0 14px 35px rgba(28,45,38,.05); }
@@ -90,7 +90,7 @@ button { font:inherit; }
   .new-content { padding:42px 20px 60px; }
   .new-intro { margin-bottom:24px; }
   .new-intro-actions { align-items:flex-start; flex-wrap:wrap; }
-  .sample-buttons { max-width:210px; }
+  .sample-picker { width:100%; max-width:260px; }
   .new-intro h1 { font-size:34px; }
   .report-form { padding:20px; border-radius:13px; }
   .github-import { margin-bottom:20px; padding-bottom:20px; }

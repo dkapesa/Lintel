@@ -430,3 +430,27 @@ Use the **Load sample** picker on `/new`. Loading a sample must populate all fou
 | Frontend analytics/type change | `TESTS_REQUIRED` when no test file is present; frontend and docs review expected |
 
 For each sample, confirm the selected input can be edited, generation still stores only `{ report, source }`, and no raw diff appears in session storage or copied markdown. AI wording and exact scores may vary, but the broad recommendation and review themes should remain consistent with the deterministic baseline.
+
+## Report quality evaluation
+
+New deterministic and AI-normalised reports include a **Report quality** section. The overall status is `PASS` only when every check passes; otherwise it is `WARNING` and the UI lists the failed checks. Legacy reports without `reportQuality` show **Not assessed — regenerate this report**.
+
+Checks:
+
+1. Risk level matches the configured score thresholds.
+2. `TESTS_REQUIRED` includes missing tests or suggested tests.
+3. `APPROVE` has no findings, missing tests, suggested tests or merge conditions.
+4. Operational `ATTENTION` does not result in `APPROVE`.
+5. Reviewer focus areas are supported by report evidence.
+6. Payment, refund, authentication or logging paths do not remain `LOW` risk.
+7. Security `CLEAR` does not conflict with security, privacy or sensitive-logging findings.
+8. Shareable report fields contain no raw patch markers.
+
+Manual tests:
+
+- Generate **Clean utility change** and expect `PASS` with **Checks passed** and no suggested tests.
+- Generate each risky sample and confirm its risk level, recommendation, operational status and reviewer focus remain internally consistent.
+- Construct a legacy stored report without `reportQuality` and confirm the neutral not-assessed state renders without crashing.
+- Temporarily inspect a malformed report fixture with a mismatched score/level, inconsistent approval, unsupported reviewer focus or sensitive path at `LOW` risk and confirm `WARNING` details identify the conflict.
+- Copy a report and confirm markdown includes report quality status and warning items only, never raw diff content.
+- Confirm `lintel.generatedReport.v1` still stores only `{ report, source }` and never the submitted raw diff.

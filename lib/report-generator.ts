@@ -1,4 +1,5 @@
 import type { FindingSeverity, Report, RiskLevel } from "./mock-report";
+import { assessReportQuality } from "./report-quality";
 
 export const GENERATED_REPORT_STORAGE_KEY = "lintel.generatedReport.v1";
 
@@ -791,7 +792,7 @@ export function generateReport(input: ReportInput): Report {
     ? `signals in ${formatList(attentionCategories)}`
     : "the remaining findings";
 
-  return {
+  const generatedReport: Report = {
     pr: {
       number: 1,
       title: input.title.trim(),
@@ -856,7 +857,7 @@ export function generateReport(input: ReportInput): Report {
     operationalReadiness: operational,
     reviewerFocus: focusItems,
     missingTests,
-    suggestedTests: suggestedTestTitles.map((title) => ({ title })),
+    suggestedTests: recommendation === "APPROVE" ? [] : suggestedTestTitles.map((title) => ({ title })),
     reviewerChecklist,
     finalRecommendation: recommendation === "APPROVE"
       ? "No unresolved test, reliability, security or maintainability signals remain. Complete normal human review before approval."
@@ -866,5 +867,10 @@ export function generateReport(input: ReportInput): Report {
           ? "Do not approve until the risk-specific tests cover the changed behaviour and detected failure paths."
           : "Do not merge until all blocking findings have been resolved.",
     conditionsBeforeMerge: conditions,
+  };
+
+  return {
+    ...generatedReport,
+    reportQuality: assessReportQuality(generatedReport),
   };
 }

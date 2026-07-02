@@ -1,4 +1,5 @@
 import type { Confidence, FindingSeverity, OperationalReadiness, Recommendation, Report, ReviewArea, RiskLevel } from "./mock-report";
+import { assessReportQuality } from "./report-quality";
 
 const RECOMMENDATIONS: Recommendation[] = ["APPROVE", "REVIEW_REQUIRED", "TESTS_REQUIRED"];
 const RISK_LEVELS: RiskLevel[] = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
@@ -387,6 +388,7 @@ export function normaliseReport(value: unknown, baseline: Report): Report | null
       || operationalReadiness.status === "ATTENTION"
       ? "REVIEW_REQUIRED"
       : "APPROVE";
+  const recommendationSuggestedTests = recommendation === "APPROVE" ? [] : suggestedTests;
   const submittedRecommendation = enumValue(value.verdict.recommendation, RECOMMENDATIONS, baseline.verdict.recommendation);
   const finalRecommendation = submittedRecommendation === recommendation
     ? text(value.finalRecommendation, canonicalRecommendationCopy(recommendation), 1000)
@@ -399,7 +401,7 @@ export function normaliseReport(value: unknown, baseline: Report): Report | null
       ? fallbackSummary
       : submittedSummary;
 
-  return {
+  const normalisedReport: Report = {
     pr: baseline.pr,
     verdict: {
       recommendation,
@@ -414,10 +416,15 @@ export function normaliseReport(value: unknown, baseline: Report): Report | null
     operationalReadiness,
     reviewerFocus,
     missingTests,
-    suggestedTests,
+    suggestedTests: recommendationSuggestedTests,
     reviewerChecklist,
     finalRecommendation,
     conditionsBeforeMerge: recommendation === "APPROVE" ? [] : conditionsBeforeMerge,
+  };
+
+  return {
+    ...normalisedReport,
+    reportQuality: assessReportQuality(normalisedReport),
   };
 }
 

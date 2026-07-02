@@ -5,7 +5,7 @@ export type ReportSourceLabel = "AI generated" | "Local fallback" | "Demo report
 const MAX_SECTION_ITEMS = 5;
 
 function safeMarkdownText(value: string) {
-  const withoutRawDiff = /(?:^|\n)(?:diff --git|@@|--- a\/|\+\+\+ b\/)/m.test(value)
+  const withoutRawDiff = /diff --git|@@|(?:^|\n)(?:--- a\/|\+\+\+ b\/)/m.test(value)
     ? "[Raw diff omitted]"
     : value;
 
@@ -68,6 +68,18 @@ export function reportToMarkdown(report: Report, source: ReportSourceLabel) {
       )
     : "Reviewer focus was not assessed — regenerate this report";
 
+  const reportQuality = report.reportQuality
+    ? [
+        `**Status:** ${report.reportQuality.status}`,
+        report.reportQuality.status === "PASS"
+          ? "Checks passed"
+          : limitedList(
+              report.reportQuality.checks.filter((check) => check.status === "WARNING"),
+              (check) => `${safeMarkdownText(check.label)}: ${safeMarkdownText(check.detail)}`,
+            ),
+      ].join("\n")
+    : "**Status:** NOT ASSESSED\nNot assessed — regenerate this report";
+
   return [
     "# Lintel merge-readiness report",
     "",
@@ -88,6 +100,9 @@ export function reportToMarkdown(report: Report, source: ReportSourceLabel) {
     "",
     "## Reviewer focus",
     reviewerFocus,
+    "",
+    "## Report quality",
+    reportQuality,
     "",
     "## Suggested tests",
     suggestedTests,

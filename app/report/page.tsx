@@ -339,6 +339,26 @@ export default function ReportPage() {
             )}
           </section>
 
+          <section className="section-block">
+            <div className="section-heading">
+              <div><span className="card-kicker">INTEGRITY</span><h2>Report quality</h2></div>
+              {report.reportQuality && <span className={`quality-status quality-status--${report.reportQuality.status.toLowerCase()}`}>{report.reportQuality.status === "PASS" ? "Checks passed" : "Review warnings"}</span>}
+            </div>
+            {report.reportQuality ? (
+              report.reportQuality.status === "PASS" ? (
+                <p className="quality-pass">Checks passed. The report is internally consistent and ready to share.</p>
+              ) : (
+                <div className="quality-warnings">
+                  {report.reportQuality.checks.filter((check) => check.status === "WARNING").map((check) => (
+                    <article key={check.label}><strong>{check.label}</strong><p>{check.detail}</p></article>
+                  ))}
+                </div>
+              )
+            ) : (
+              <p className="quality-legacy">Not assessed — regenerate this report</p>
+            )}
+          </section>
+
           <div className="two-column-section">
             <section className="section-block section-block--inset">
               <div className="section-heading"><div><span className="card-kicker">GAPS</span><h2>Missing tests</h2></div></div>

@@ -26,6 +26,17 @@ export type ReviewerFocusItem = {
   reason: string;
 };
 
+export type ReportQualityCheck = {
+  label: string;
+  status: "PASS" | "WARNING";
+  detail: string;
+};
+
+export type ReportQuality = {
+  status: "PASS" | "WARNING";
+  checks: ReportQualityCheck[];
+};
+
 export type Report = {
   pr: {
     number: number;
@@ -66,6 +77,7 @@ export type Report = {
   };
   operationalReadiness?: OperationalReadiness;
   reviewerFocus?: ReviewerFocusItem[];
+  reportQuality?: ReportQuality;
   missingTests: string[];
   suggestedTests: Array<{
     title: string;
@@ -195,6 +207,19 @@ export const report: Report = {
       reason: "Confirm provider failures and repeated attempts have useful detection and recovery signals.",
     },
   ],
+  reportQuality: {
+    status: "PASS",
+    checks: [
+      { label: "Risk level matches risk score", status: "PASS", detail: "Risk level matches the configured score thresholds." },
+      { label: "Tests-required evidence", status: "PASS", detail: "The test-required recommendation includes concrete test gaps." },
+      { label: "Approve consistency", status: "PASS", detail: "The recommendation is consistent with unresolved findings and conditions." },
+      { label: "Operational recommendation consistency", status: "PASS", detail: "Operational attention does not result in approval." },
+      { label: "Reviewer focus evidence", status: "PASS", detail: "Reviewer focus areas are supported by report evidence." },
+      { label: "Sensitive-path risk floor", status: "PASS", detail: "Sensitive changed paths are not classified as low risk." },
+      { label: "Security review consistency", status: "PASS", detail: "The security review does not conflict with security or privacy findings." },
+      { label: "Shareable fields exclude patch markers", status: "PASS", detail: "No raw patch markers appear in shareable report fields." },
+    ],
+  },
   missingTests: [
     "Repeated retry after provider timeout does not issue duplicate discount codes",
     "Provider returns malformed response body",

@@ -26,6 +26,9 @@ type Signals = {
   providerFailure: RiskSignal;
   apiContract: RiskSignal;
   sensitiveLogging: RiskSignal;
+  detectionControls: RiskSignal;
+  recoveryControls: RiskSignal;
+  impactSignals: RiskSignal;
   changedLines: number;
 };
 
@@ -183,6 +186,51 @@ function detectSignals(diff: string, paths: string[]): Signals {
     paths: loggingPaths,
   };
 
+  const detectionControls: RiskSignal = {
+    detected: false,
+    terms: matchTerms(text, [
+      { label: "logging", pattern: /\blogger\b|\blogging\b|\blog\.(?:debug|info|warning|error|exception)\b/ },
+      { label: "structured events", pattern: /\bstructured (?:log|event)s?\b|\bextra\s*[=:]/ },
+      { label: "metrics", pattern: /\bmetrics?\b|\bcounter\b|\bhistogram\b|\bgauge\b/ },
+      { label: "alerts", pattern: /\balerts?|paging|pagerduty\b/ },
+      { label: "tracing", pattern: /\btraces?|tracing|spans?\b/ },
+      { label: "monitoring", pattern: /\bmonitor(?:ing|ed)?\b/ },
+      { label: "health checks", pattern: /\bhealth[ _-]?checks?\b|\breadiness\b|\bliveness\b/ },
+      { label: "status or error codes", pattern: /\bstatus[_ ]code\b|\berror[_ ]code\b/ },
+    ]),
+    paths: matchingPaths(productionPaths, /observ|monitor|metric|health|telemetry|tracing|logging/i),
+  };
+  detectionControls.detected = detectionControls.terms.length > 0;
+
+  const recoveryControls: RiskSignal = {
+    detected: false,
+    terms: matchTerms(text, [
+      { label: "idempotency", pattern: /\bidempoten(?:t|cy)\b/ },
+      { label: "rollback", pattern: /\broll[ _-]?back\b|\brevert\b/ },
+      { label: "feature flag", pattern: /\bfeature[ _-]?flags?\b/ },
+      { label: "kill switch", pattern: /\bkill[ _-]?switch\b/ },
+      { label: "restore", pattern: /\brestore\b|\brecovery\b/ },
+      { label: "compensation", pattern: /\bcompensat(?:e|ed|ing|ion|ory)\b/ },
+      { label: "circuit breaker", pattern: /\bcircuit[ _-]?breaker\b/ },
+      { label: "backoff", pattern: /\bback[ _-]?off\b/ },
+    ]),
+    paths: matchingPaths(productionPaths, /rollback|recovery|restore|feature|migration/i),
+  };
+  recoveryControls.detected = recoveryControls.terms.length > 0;
+
+  const impactSignals: RiskSignal = {
+    detected: false,
+    terms: matchTerms(text, [
+      { label: "customer or user data", pattern: /\bcustomer_id\b|\buser_id\b|\baccount_id\b|\btenant_id\b/ },
+      { label: "payments or transactions", pattern: /\bpayments?\b|\btransactions?\b|\bbilling\b/ },
+      { label: "redemptions or discount codes", pattern: /\bredemptions?\b|\bdiscount[_ -]?codes?\b/ },
+      { label: "database or migration data", pattern: /\bdatabases?\b|\bmigrations?\b|\bdelete\b|\bupdate\b|\binsert\b/ },
+      { label: "access or permissions", pattern: /\bauth(?:entication|orisation|orization)?\b|\bpermissions?\b/ },
+    ]),
+    paths: matchingPaths(productionPaths, /customer|user|account|payment|billing|redempt|database|migration|permission|auth/i),
+  };
+  impactSignals.detected = impactSignals.terms.length > 0 || impactSignals.paths.length > 0;
+
   return {
     hasChangedBehavior: diff.trim().length > 0,
     hasTests: testPaths.length > 0,
@@ -194,6 +242,9 @@ function detectSignals(diff: string, paths: string[]): Signals {
     providerFailure,
     apiContract,
     sensitiveLogging,
+    detectionControls,
+    recoveryControls,
+    impactSignals,
     changedLines,
   };
 }
@@ -358,12 +409,118 @@ function suggestedTests(signals: Signals) {
   ]);
 }
 
+function operationalReadiness(signals: Signals): NonNullable<Report["operationalReadiness"]> {
+  const failureModes = unique([
+    ...(signals.duplicateSideEffect.detected
+      ? ["Retries or repeated requests may create duplicate redemptions or issue duplicate discount codes."]
+      : []),
+    ...(signals.providerFailure.detected
+      ? ["External provider timeout, 5xx, malformed, empty or unavailable responses may interrupt the changed operation."]
+      : []),
+    ...(signals.apiContract.detected
+      ? ["Unstable status codes or retryable error fields may cause clients to handle failures incorrectly."]
+      : []),
+    ...(signals.sensitiveLogging.detected
+      ? ["Failure-path logging may expose identifiers, discount codes or detected sensitive values."]
+      : []),
+    ...(signals.hasOtherSensitiveTerms || signals.hasRiskyPath
+      ? ["Authentication, payment, transaction or data-path changes may create unintended access or data side effects."]
+      : []),
+    ...(signals.hasConfigTerms
+      ? ["Configuration or feature-flag changes may introduce unsafe rollout defaults."]
+      : []),
+  ]);
+
+  const detectionCopy: Record<string, string> = {
+    logging: "Logging is present in the changed failure path.",
+    "structured events": "Structured event context is present in the changed code.",
+    metrics: "Metric instrumentation is present in the changed code.",
+    alerts: "Alerting behavior is referenced in the changed code.",
+    tracing: "Tracing or span instrumentation is present in the changed code.",
+    monitoring: "Monitoring behavior is referenced in the changed code.",
+    "health checks": "Health or readiness checks are referenced in the changed code.",
+    "status or error codes": "Status or error codes provide a client-visible failure signal.",
+  };
+  const detectionSignals = failureModes.length > 0
+    ? signals.detectionControls.terms.map((term) => detectionCopy[term]).filter(Boolean)
+    : [];
+  const strongDetection = signals.detectionControls.terms.some((term) => ["metrics", "alerts", "tracing", "monitoring", "health checks"].includes(term));
+  const observabilityGaps = unique([
+    ...(failureModes.length > 0 && !signals.detectionControls.detected
+      ? ["No explicit log, metric, alert, trace or health signal is visible for the detected failure modes."]
+      : []),
+    ...((signals.duplicateSideEffect.detected || signals.providerFailure.detected) && !strongDetection
+      ? ["No metric, alert, trace or monitor is visible for provider failures or repeated side-effect attempts."]
+      : []),
+  ]);
+
+  const recoveryOrRollback = unique([
+    ...(failureModes.length > 0
+      ? signals.recoveryControls.terms.map((term) => `The changed code includes evidence of ${term}.`)
+      : []),
+    ...(signals.duplicateSideEffect.detected && !signals.recoveryControls.terms.some((term) => ["idempotency", "compensation"].includes(term))
+      ? ["No idempotency or compensation control is visible for repeated side effects."]
+      : []),
+    ...(failureModes.length > 0 && !signals.recoveryControls.detected
+      ? ["No explicit rollback, feature-flag, restore or compensation path is visible."]
+      : []),
+  ]);
+
+  const customerOrDataImpact = unique([
+    ...(signals.duplicateSideEffect.detected
+      ? ["Repeated attempts may create duplicate redemption records or issue duplicate discount codes."]
+      : []),
+    ...(signals.providerFailure.detected || signals.apiContract.detected
+      ? ["Callers may receive unavailable or ambiguous retry behavior during provider failures."]
+      : []),
+    ...(signals.sensitiveLogging.detected
+      ? ["Identifiers or sensitive values may be exposed through failure-path logs."]
+      : []),
+    ...((signals.hasOtherSensitiveTerms || signals.hasRiskyPath) && signals.impactSignals.detected
+      ? [`Potential impact involves ${formatList(signals.impactSignals.terms.length > 0 ? signals.impactSignals.terms : ["sensitive data or access paths"])}.`]
+      : []),
+  ]);
+
+  const ownerOrReviewerFocus = unique([
+    ...(signals.duplicateSideEffect.detected || signals.providerFailure.detected
+      ? ["Reliability review should verify bounded retries, detection and safe recovery."]
+      : []),
+    ...(signals.apiContract.detected
+      ? ["API review should confirm stable status codes and retry semantics."]
+      : []),
+    ...(signals.sensitiveLogging.detected
+      ? ["Security review should confirm sensitive fields are omitted or redacted."]
+      : []),
+    ...(signals.hasOtherSensitiveTerms || signals.hasRiskyPath
+      ? ["The reviewer responsible for the affected access, payment or data path should confirm impact and rollback expectations."]
+      : []),
+    ...(signals.hasConfigTerms
+      ? ["The rollout reviewer should confirm safe defaults and a disable or rollback path."]
+      : []),
+  ]);
+
+  const status = failureModes.length > 0 ? "ATTENTION" : "CLEAR";
+  return {
+    status,
+    summary: status === "ATTENTION"
+      ? `${failureModes.length} operational failure mode${failureModes.length === 1 ? "" : "s"} need detection, recovery and impact review before merge.`
+      : "No explicit operational failure mode was detected by the prototype rules.",
+    failureModes,
+    detectionSignals,
+    observabilityGaps,
+    recoveryOrRollback,
+    customerOrDataImpact,
+    ownerOrReviewerFocus,
+  };
+}
+
 export function generateReport(input: ReportInput): Report {
   const paths = parseChangedFiles(input.diff);
   const signals = detectSignals(input.diff, paths);
   const riskScore = calculateRiskScore(signals);
   const riskLevel = riskLevelForScore(riskScore);
   const technology = parseTechnology(input.technology);
+  const operational = operationalReadiness(signals);
   const findings: Report["findings"] = [];
 
   if (!signals.hasTests && signals.hasChangedBehavior) {
@@ -457,7 +614,8 @@ export function generateReport(input: ReportInput): Report {
     || signals.hasOtherSensitiveTerms
     || signals.hasRiskyPath
     || signals.hasConfigTerms
-    || signals.changedLines > 200;
+    || signals.changedLines > 200
+    || operational.status === "ATTENTION";
 
   const reviewConditions = unique([
     ...(signals.duplicateSideEffect.detected
@@ -473,6 +631,12 @@ export function generateReport(input: ReportInput): Report {
       : []),
     ...(signals.hasConfigTerms ? ["Review configuration behaviour and safe defaults"] : []),
     ...(signals.changedLines > 200 ? ["Confirm the change scope is cohesive and reviewable"] : []),
+    ...(operational.observabilityGaps.length > 0
+      ? ["Confirm operational detection signals for the identified failure modes"]
+      : []),
+    ...(operational.status === "ATTENTION" && !signals.recoveryControls.detected
+      ? ["Document a safe recovery or rollback path for the identified operational risks"]
+      : []),
   ]);
 
   const recommendation: Report["verdict"]["recommendation"] = missingTests.length > 0
@@ -562,6 +726,7 @@ export function generateReport(input: ReportInput): Report {
             : "Confirm responsibilities remain clear and the implementation stays easy to review."],
       },
     },
+    operationalReadiness: operational,
     missingTests,
     suggestedTests: suggestedTestTitles.map((title) => ({ title })),
     reviewerChecklist: [
@@ -570,6 +735,7 @@ export function generateReport(input: ReportInput): Report {
       { label: "Review provider failures and duplicate side effects", status: signals.duplicateSideEffect.detected || signals.providerFailure.detected ? "ATTENTION" : "COMPLETE" },
       { label: "Review client-facing error contracts", status: signals.apiContract.detected ? "ATTENTION" : "COMPLETE" },
       { label: "Review sensitive logging fields", status: signals.sensitiveLogging.detected ? "ATTENTION" : "COMPLETE" },
+      { label: "Review operational detection, recovery and impact", status: operational.status === "ATTENTION" ? "ATTENTION" : "COMPLETE" },
     ],
     finalRecommendation: recommendation === "APPROVE"
       ? "No unresolved test, reliability, security or maintainability signals remain. Complete normal human review before approval."

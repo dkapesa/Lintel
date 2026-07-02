@@ -14,6 +14,17 @@ type StoredReport = {
   source: ReportSource;
 };
 
+type GitHubImportResponse = {
+  repository: string;
+  diff: string;
+  title?: string;
+};
+
+type ImportStatus = {
+  type: "loading" | "success" | "error";
+  message: string;
+};
+
 function isReportResponse(value: unknown): value is StoredReport {
   if (typeof value !== "object" || value === null || !("report" in value) || !("source" in value)) return false;
   const report = value.report;
@@ -26,10 +37,25 @@ function isReportResponse(value: unknown): value is StoredReport {
     && Array.isArray(report.findings);
 }
 
+function isGitHubImportResponse(value: unknown): value is GitHubImportResponse {
+  if (typeof value !== "object" || value === null) return false;
+  if (!("repository" in value) || typeof value.repository !== "string" || !value.repository.trim()) return false;
+  if (!("diff" in value) || typeof value.diff !== "string" || !value.diff.trim()) return false;
+  return !("title" in value) || value.title === undefined || typeof value.title === "string";
+}
+
+function importErrorMessage(value: unknown) {
+  if (typeof value !== "object" || value === null || !("error" in value)) return null;
+  return typeof value.error === "string" ? value.error : null;
+}
+
 export default function NewReportPage() {
   const router = useRouter();
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isFetchingDiff, setIsFetchingDiff] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [importStatus, setImportStatus] = useState<ImportStatus | null>(null);
+  const [githubUrl, setGitHubUrl] = useState("");
   const [title, setTitle] = useState("");
   const [repository, setRepository] = useState("");
   const [technology, setTechnology] = useState("");
@@ -40,6 +66,45 @@ export default function NewReportPage() {
     setRepository(sample.repository);
     setTechnology(sample.technology);
     setDiff(sample.diff);
+    setImportStatus(null);
+  }
+
+  async function handleFetchDiff() {
+    if (!githubUrl.trim()) {
+      setImportStatus({ type: "error", message: "Enter a public GitHub pull request URL first." });
+      return;
+    }
+
+    setIsFetchingDiff(true);
+    setImportStatus({ type: "loading", message: "Fetching the public pull request diff..." });
+
+    try {
+      const response = await fetch("/api/fetch-pr-diff", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: githubUrl.trim() }),
+      });
+      const payload: unknown = await response.json();
+
+      if (!response.ok) {
+        throw new Error(importErrorMessage(payload) ?? "The pull request could not be imported.");
+      }
+      if (!isGitHubImportResponse(payload)) throw new Error("GitHub returned an invalid import response.");
+
+      setRepository(payload.repository);
+      setDiff(payload.diff);
+      if (payload.title?.trim()) setTitle(payload.title.trim());
+      setError(null);
+      setImportStatus({
+        type: "success",
+        message: "Diff imported. Review the fields and confirm the language or framework before generating.",
+      });
+    } catch (fetchError) {
+      const message = fetchError instanceof Error ? fetchError.message : "The pull request could not be imported.";
+      setImportStatus({ type: "error", message });
+    } finally {
+      setIsFetchingDiff(false);
+    }
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -118,6 +183,44 @@ export default function NewReportPage() {
         </section>
 
         <form className="report-form" onSubmit={handleSubmit}>
+          <div className="github-import">
+            <div className="github-import-row">
+              <label className="form-field" htmlFor="github-pr-url">
+                <span>Public GitHub PR URL <small>Optional</small></span>
+                <input
+                  id="github-pr-url"
+                  type="url"
+                  inputMode="url"
+                  autoComplete="url"
+                  value={githubUrl}
+                  onChange={(event) => {
+                    setGitHubUrl(event.target.value);
+                    setImportStatus(null);
+                  }}
+                  placeholder="https://github.com/owner/repository/pull/123"
+                  aria-describedby="github-import-help"
+                />
+              </label>
+              <button
+                className="fetch-diff-button"
+                type="button"
+                onClick={handleFetchDiff}
+                disabled={isFetchingDiff || isGenerating}
+              >
+                {isFetchingDiff ? "Fetching..." : "Fetch diff"}
+              </button>
+            </div>
+            <p id="github-import-help" className="github-import-help">Public pull requests only. Nothing is generated until you select Generate Report.</p>
+            {importStatus && (
+              <p
+                className={`github-import-status github-import-status--${importStatus.type}`}
+                role={importStatus.type === "error" ? "alert" : "status"}
+              >
+                {importStatus.message}
+              </p>
+            )}
+          </div>
+
           <div className="form-grid">
             <label className="form-field form-field--wide">
               <span>PR title</span>
@@ -141,7 +244,7 @@ export default function NewReportPage() {
 
           <div className="form-footer">
             <p>Your diff is sent for analysis when AI generation is enabled. Lintel does not store the raw diff.</p>
-            <button className="generate-button" type="submit" disabled={isGenerating}>
+            <button className="generate-button" type="submit" disabled={isGenerating || isFetchingDiff}>
               {isGenerating ? "Generating…" : "Generate Report"}<span aria-hidden="true">→</span>
             </button>
           </div>

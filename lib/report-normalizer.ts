@@ -1,4 +1,4 @@
-import type { Confidence, FindingSeverity, Recommendation, Report, ReviewArea, RiskLevel } from "./mock-report";
+import type { Confidence, FindingSeverity, OperationalReadiness, Recommendation, Report, ReviewArea, RiskLevel } from "./mock-report";
 
 const RECOMMENDATIONS: Recommendation[] = ["APPROVE", "REVIEW_REQUIRED", "TESTS_REQUIRED"];
 const RISK_LEVELS: RiskLevel[] = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
@@ -73,6 +73,32 @@ function normaliseReview(value: unknown, fallback: ReviewArea): ReviewArea {
     points: preserveAttention
       ? mergeStrings(fallback.points, stringArray(value.points, [], 6, 400), 6, 400)
       : stringArray(value.points, fallback.points, 6, 400),
+  };
+}
+
+function normaliseOperationalReadiness(value: unknown, fallback: OperationalReadiness): OperationalReadiness {
+  if (!isRecord(value)) return fallback;
+
+  const submittedStatus = enumValue(value.status, ["CLEAR", "ATTENTION"], fallback.status);
+  const preserveAttention = fallback.status === "ATTENTION";
+  const operationalArray = (field: keyof Pick<
+    OperationalReadiness,
+    "failureModes" | "detectionSignals" | "observabilityGaps" | "recoveryOrRollback" | "customerOrDataImpact" | "ownerOrReviewerFocus"
+  >) => preserveAttention
+    ? mergeStrings(fallback[field], stringArray(value[field], [], 6, 400), 6, 400)
+    : stringArray(value[field], fallback[field], 6, 400);
+
+  return {
+    status: preserveAttention ? "ATTENTION" : submittedStatus,
+    summary: preserveAttention && submittedStatus === "CLEAR"
+      ? fallback.summary
+      : text(value.summary, fallback.summary, 800),
+    failureModes: operationalArray("failureModes"),
+    detectionSignals: operationalArray("detectionSignals"),
+    observabilityGaps: operationalArray("observabilityGaps"),
+    recoveryOrRollback: operationalArray("recoveryOrRollback"),
+    customerOrDataImpact: operationalArray("customerOrDataImpact"),
+    ownerOrReviewerFocus: operationalArray("ownerOrReviewerFocus"),
   };
 }
 
@@ -183,13 +209,24 @@ function baselineRiskFloor(baseline: Report) {
 }
 
 export function normaliseReport(value: unknown, baseline: Report): Report | null {
-  if (!isRecord(value) || !isRecord(value.verdict) || !isRecord(value.reviews)) return null;
+  if (!isRecord(value) || !isRecord(value.verdict) || !isRecord(value.reviews) || !isRecord(value.operationalReadiness)) return null;
 
   const reviews = {
     security: normaliseReview(value.reviews.security, baseline.reviews.security),
     reliability: normaliseReview(value.reviews.reliability, baseline.reviews.reliability),
     maintainability: normaliseReview(value.reviews.maintainability, baseline.reviews.maintainability),
   };
+  const baselineOperationalReadiness = baseline.operationalReadiness ?? {
+    status: "CLEAR",
+    summary: "No deterministic operational readiness signal was available.",
+    failureModes: [],
+    detectionSignals: [],
+    observabilityGaps: [],
+    recoveryOrRollback: [],
+    customerOrDataImpact: [],
+    ownerOrReviewerFocus: [],
+  } satisfies OperationalReadiness;
+  const operationalReadiness = normaliseOperationalReadiness(value.operationalReadiness, baselineOperationalReadiness);
   const submittedFindings = normaliseFindings(value.findings, baseline);
   const baselineHasMissingTestFinding = baseline.findings.some((finding) => finding.category === "Missing tests");
   const findings = mergeFindings(
@@ -221,7 +258,10 @@ export function normaliseReport(value: unknown, baseline: Report): Report | null
 
   const recommendation: Recommendation = missingTests.length > 0
     ? "TESTS_REQUIRED"
-    : findings.length > 0 || conditionsBeforeMerge.length > 0 || Object.values(reviews).some((review) => review.status === "ATTENTION")
+    : findings.length > 0
+      || conditionsBeforeMerge.length > 0
+      || Object.values(reviews).some((review) => review.status === "ATTENTION")
+      || operationalReadiness.status === "ATTENTION"
       ? "REVIEW_REQUIRED"
       : "APPROVE";
   const submittedRecommendation = enumValue(value.verdict.recommendation, RECOMMENDATIONS, baseline.verdict.recommendation);
@@ -248,6 +288,7 @@ export function normaliseReport(value: unknown, baseline: Report): Report | null
     changedFiles: baseline.changedFiles,
     findings,
     reviews,
+    operationalReadiness,
     missingTests,
     suggestedTests,
     reviewerChecklist,
@@ -328,6 +369,30 @@ export const REPORT_JSON_SCHEMA = {
       required: ["security", "reliability", "maintainability"],
       additionalProperties: false,
     },
+    operationalReadiness: {
+      type: "object",
+      properties: {
+        status: { type: "string", enum: ["CLEAR", "ATTENTION"] },
+        summary: { type: "string" },
+        failureModes: { type: "array", items: { type: "string" } },
+        detectionSignals: { type: "array", items: { type: "string" } },
+        observabilityGaps: { type: "array", items: { type: "string" } },
+        recoveryOrRollback: { type: "array", items: { type: "string" } },
+        customerOrDataImpact: { type: "array", items: { type: "string" } },
+        ownerOrReviewerFocus: { type: "array", items: { type: "string" } },
+      },
+      required: [
+        "status",
+        "summary",
+        "failureModes",
+        "detectionSignals",
+        "observabilityGaps",
+        "recoveryOrRollback",
+        "customerOrDataImpact",
+        "ownerOrReviewerFocus",
+      ],
+      additionalProperties: false,
+    },
     missingTests: { type: "array", items: { type: "string" } },
     suggestedTests: {
       type: "array",
@@ -356,6 +421,7 @@ export const REPORT_JSON_SCHEMA = {
     "changedFiles",
     "findings",
     "reviews",
+    "operationalReadiness",
     "missingTests",
     "suggestedTests",
     "reviewerChecklist",

@@ -118,6 +118,19 @@ function ReviewCard({ title, review }: { title: string; review: ReviewArea }) {
   );
 }
 
+function OperationalArea({ title, items, emptyCopy }: { title: string; items: string[]; emptyCopy: string }) {
+  return (
+    <article className="operational-area">
+      <h3>{title}</h3>
+      {items.length > 0 ? (
+        <ul>{items.map((item) => <li key={item}>{item}</li>)}</ul>
+      ) : (
+        <p>{emptyCopy}</p>
+      )}
+    </article>
+  );
+}
+
 function SeverityTag({ severity }: { severity: FindingSeverity }) {
   return <span className={`severity severity--${severity.toLowerCase()}`}>{severity}</span>;
 }
@@ -273,6 +286,31 @@ export default function ReportPage() {
               <ReviewCard title="Reliability review" review={report.reviews.reliability} />
               <ReviewCard title="Maintainability review" review={report.reviews.maintainability} />
             </div>
+          </section>
+
+          <section className="section-block">
+            <div className="section-heading"><div><span className="card-kicker">OPERATIONS</span><h2>Operational readiness</h2></div></div>
+            {report.operationalReadiness ? (
+              <div className="operational-panel">
+                <div className="operational-overview">
+                  <p>{report.operationalReadiness.summary}</p>
+                  <span className={`review-status review-status--${report.operationalReadiness.status.toLowerCase()}`}>{report.operationalReadiness.status}</span>
+                </div>
+                <div className="operational-grid">
+                  <OperationalArea title="Failure modes" items={report.operationalReadiness.failureModes} emptyCopy="No explicit failure mode detected." />
+                  <OperationalArea title="Detection signals" items={report.operationalReadiness.detectionSignals} emptyCopy="No explicit detection signal required by detected rules." />
+                  <OperationalArea title="Observability gaps" items={report.operationalReadiness.observabilityGaps} emptyCopy="No observability gap detected." />
+                  <OperationalArea title="Recovery or rollback" items={report.operationalReadiness.recoveryOrRollback} emptyCopy="No recovery or rollback gap detected." />
+                  <OperationalArea title="Customer or data impact" items={report.operationalReadiness.customerOrDataImpact} emptyCopy="No customer or data impact detected." />
+                  <OperationalArea title="Owner or reviewer focus" items={report.operationalReadiness.ownerOrReviewerFocus} emptyCopy="No additional operational reviewer focus detected." />
+                </div>
+              </div>
+            ) : (
+              <div className="operational-legacy">
+                <span className="operational-status-legacy">NOT ASSESSED</span>
+                <p>Not assessed — regenerate this report</p>
+              </div>
+            )}
           </section>
 
           <div className="two-column-section">

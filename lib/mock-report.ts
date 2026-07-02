@@ -9,6 +9,17 @@ export type ReviewArea = {
   points: string[];
 };
 
+export type OperationalReadiness = {
+  status: "CLEAR" | "ATTENTION";
+  summary: string;
+  failureModes: string[];
+  detectionSignals: string[];
+  observabilityGaps: string[];
+  recoveryOrRollback: string[];
+  customerOrDataImpact: string[];
+  ownerOrReviewerFocus: string[];
+};
+
 export type Report = {
   pr: {
     number: number;
@@ -47,6 +58,7 @@ export type Report = {
     reliability: ReviewArea;
     maintainability: ReviewArea;
   };
+  operationalReadiness?: OperationalReadiness;
   missingTests: string[];
   suggestedTests: Array<{
     title: string;
@@ -127,6 +139,32 @@ export const report: Report = {
       summary: "Fallback logic should remain explicit inside the redemption service.",
       points: ["Provider-specific error handling should be isolated from API response formatting."],
     },
+  },
+  operationalReadiness: {
+    status: "ATTENTION",
+    summary: "Provider failures and retries need explicit detection, recovery and impact review before merge.",
+    failureModes: [
+      "A provider timeout can trigger a second discount-code fetch and duplicate redemption side effects.",
+      "Provider 5xx, malformed or empty responses can make redemption unavailable.",
+    ],
+    detectionSignals: [
+      "Warning logs capture provider timeout context.",
+      "The API exposes provider unavailability through a retryable 503 response.",
+    ],
+    observabilityGaps: [
+      "No metric, alert or trace is visible for provider failures or repeated redemption attempts.",
+    ],
+    recoveryOrRollback: [
+      "No confirmed idempotency, compensation or duplicate-code recovery path is visible.",
+    ],
+    customerOrDataImpact: [
+      "Repeated attempts may issue duplicate discount codes or create duplicate redemption records.",
+    ],
+    ownerOrReviewerFocus: [
+      "Reliability review should verify idempotency and provider failure handling.",
+      "API review should confirm retryable error semantics.",
+      "Security review should confirm identifiers and discount codes are redacted from logs.",
+    ],
   },
   missingTests: [
     "Repeated retry after provider timeout does not issue duplicate discount codes",

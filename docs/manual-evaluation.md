@@ -242,3 +242,120 @@ Expected:
 - Only the returned Report and its `ai` or `deterministic` source metadata are stored in `lintel.generatedReport.v1`
 - Changed filenames and concise evidence terms may appear in the report; that is expected and is not raw-diff storage
 - No raw diff or secret value appears in server or browser logs
+
+## Public GitHub PR URL import
+
+Lintel can import the diff for a public GitHub pull request before report generation. The supported format is:
+
+```text
+https://github.com/<owner>/<repository>/pull/<positive-number>
+```
+
+`www.github.com` is also accepted. Private repositories, GitHub authentication, query-dependent URLs, fragments, custom ports and additional path segments are not supported.
+
+### Import flow
+
+1. Open `/new`.
+2. Paste a supported public pull request URL into **Public GitHub PR URL**.
+3. Select **Fetch diff**.
+4. Confirm the repository and diff fields are populated.
+5. Confirm the title is populated when unauthenticated GitHub metadata is available. Metadata failure must not block a successful diff import.
+6. Add or confirm the language/framework and edit any imported field if needed.
+7. Select **Generate Report** and confirm the existing report flow works normally.
+
+Fetching a diff must not submit the report, navigate away from `/new`, or call `/api/generate-report`.
+
+### Import privacy and storage expectations
+
+- The server fetches only reconstructed `github.com` and `api.github.com` URLs derived from validated PR coordinates.
+- The raw diff is returned to the current form so the user can review and edit it.
+- The import response must use `Cache-Control: no-store`.
+- Raw diffs and secret values must not be written to server or browser logs.
+- Importing alone must not write the raw diff to session storage.
+- After generation, `lintel.generatedReport.v1` must still contain only `{ report, source }`, without the raw diff.
+
+### Manual import tests
+
+- Import a valid public PR and confirm repository, diff and available title metadata are populated.
+- Confirm all populated fields remain editable.
+- Confirm **Fetch diff** has compact loading, success and error states.
+- Confirm **Clean sample**, **Risky sample** and manual paste still work after importing.
+- Generate an imported PR and confirm `/report`, source badges and **Copy summary** still work.
+- Confirm an imported diff larger than `MAX_DIFF_CHARS` returns HTTP `413`.
+- Confirm an empty or non-diff GitHub response is rejected.
+- Confirm keyboard access, mobile layout and no console errors.
+
+### Import failure cases
+
+Expect a safe inline error without clearing existing form values for:
+
+- Non-HTTPS URLs or non-GitHub hosts
+- GitHub URLs containing credentials, custom ports, query parameters or fragments
+- Malformed PR paths, zero or negative PR numbers, and additional path segments
+- Missing, private or inaccessible pull requests
+- GitHub rate limits
+- Oversized diffs
+- Upstream timeout, network failure or invalid diff content
+
+## Operational readiness evaluation
+
+Every newly generated report should include an **Operational readiness** section after Engineering Review. It covers failure modes, detection signals, observability gaps, recovery or rollback, customer or data impact, and owner or reviewer focus.
+
+Operational readiness rules:
+
+- Detection and recovery controls must be tied to evidence in the submitted diff.
+- Gaps should appear only when risky behavior exists without a matching control.
+- Reports must not invent dashboards, alerts, owners, rollback mechanisms, incidents or customer impact.
+- Deterministic `ATTENTION` cannot be downgraded to `CLEAR` by AI output.
+- Missing tests continue to produce `TESTS_REQUIRED`.
+- Tests present with operational `ATTENTION` produce `REVIEW_REQUIRED`.
+- `APPROVE` requires operational readiness to be `CLEAR`.
+- Operational rules do not produce `BLOCK`.
+
+### Clean operational readiness test
+
+Generate the Clean sample.
+
+Expected:
+
+- Recommendation: `APPROVE`
+- Operational readiness: `CLEAR`
+- No failure modes, observability gaps, recovery gaps, customer/data impact or additional owner focus
+- Neutral empty-state copy is shown for empty operational areas
+- The clean change is not penalized for lacking metrics, alerts or rollback controls when no risky operational behavior is detected
+
+### Risky operational readiness test
+
+Generate the Risky sample without a test file.
+
+Expected:
+
+- Recommendation: `TESTS_REQUIRED`
+- Operational readiness: `ATTENTION`
+- Failure modes cover repeated side effects, provider failure behavior, API error semantics and sensitive logging where detected
+- Detection signals include only evidenced logging, structured context, status codes or other controls
+- Observability gaps identify missing metrics, alerts, traces or monitoring for the risky behavior
+- Recovery or rollback identifies missing idempotency, compensation or rollback evidence without inventing a control
+- Customer/data impact is expressed as potential impact, not an incident claim
+- Owner or reviewer focus uses roles such as reliability, API or security review and does not invent people or teams
+
+Append the documented test-file change and generate again. The recommendation should become `REVIEW_REQUIRED`; specific operational attention should remain.
+
+### Evidenced controls test
+
+Add harmless diff lines that explicitly introduce a metric or alert plus an idempotency guard, feature flag, rollback, restore or compensation path.
+
+Expected:
+
+- Only the controls present in the diff appear as detection or recovery evidence
+- Matching observability or recovery gaps are reduced or removed
+- Unrelated dashboards, alerts and rollback mechanisms are not invented
+
+### Operational compatibility and privacy
+
+- Load a legacy bare Report or stored report envelope without `operationalReadiness`; `/report` should render **Not assessed — regenerate this report** without an error.
+- Copy summaries for new reports should include a concise Operational readiness section.
+- Legacy copied summaries should state that operational readiness was not assessed.
+- Copied markdown must not include raw diff markers, patch fragments or secret values.
+- `lintel.generatedReport.v1` must continue to contain only `{ report, source }`; the raw diff must remain absent.
+- Paste, samples, public GitHub import, source badges and Copy summary should continue to work.

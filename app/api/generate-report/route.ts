@@ -57,6 +57,7 @@ function baselineSummary(baseline: ReturnType<typeof generateReport>) {
       reliability: baseline.reviews.reliability.status,
       maintainability: baseline.reviews.maintainability.status,
     },
+    operationalReadiness: baseline.operationalReadiness,
   };
 }
 
@@ -111,6 +112,10 @@ async function generateWithOpenAI(
               "The deterministic baseline contains trusted local safety signals. Improve its wording and add useful nuance, but do not omit a concrete baseline risk unless the diff contains clear contradictory evidence.",
               "Preserve the submitted PR metadata and changed files exactly.",
               "When present, explicitly assess missing risk-specific tests, duplicate side effects, external provider failures, client-facing API error contracts and sensitive logging.",
+              "Assess operational readiness across failure modes, detection signals, observability gaps, recovery or rollback, customer or data impact, and owner or reviewer focus.",
+              "Do not invent dashboards, alerts, owners, rollback mechanisms, incidents or customer impact. Detection and recovery controls must be directly evidenced by the diff.",
+              "Only identify an operational gap when risky behavior exists without a matching evidenced control. Use role-based reviewer focus and never invent a person or team.",
+              "Never downgrade deterministic operational ATTENTION to CLEAR, and treat operational ATTENTION as requiring review before merge.",
               "Each finding must have a specific title, diff-grounded evidence, a focused reviewer action and the most relevant category.",
               "Suggested tests and conditions before merge must be concrete and tied to detected behaviour, not generic requests for more testing or review.",
               "Use TESTS_REQUIRED when required tests are missing. Use REVIEW_REQUIRED when tests exist but findings, conditions or attention states remain. Use APPROVE only when all of those are clear. Do not use BLOCK.",

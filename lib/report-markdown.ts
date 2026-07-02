@@ -28,6 +28,13 @@ function limitedList<T>(items: T[], formatItem: (item: T) => string) {
   return lines.join("\n");
 }
 
+function limitedInlineList(items: string[]) {
+  if (items.length === 0) return "None detected";
+  const values = items.slice(0, 3).map(safeMarkdownText);
+  if (items.length > 3) values.push(`...and ${items.length - 3} more`);
+  return values.join("; ");
+}
+
 export function reportToMarkdown(report: Report, source: ReportSourceLabel) {
   const recommendation = report.verdict.recommendation.replaceAll("_", " ");
   const findings = limitedList(
@@ -42,6 +49,18 @@ export function reportToMarkdown(report: Report, source: ReportSourceLabel) {
     report.conditionsBeforeMerge,
     (condition) => safeMarkdownText(condition),
   );
+  const operationalReadiness = report.operationalReadiness
+    ? [
+        `**Status:** ${report.operationalReadiness.status}`,
+        safeMarkdownText(report.operationalReadiness.summary),
+        `- **Failure modes:** ${limitedInlineList(report.operationalReadiness.failureModes)}`,
+        `- **Detection signals:** ${limitedInlineList(report.operationalReadiness.detectionSignals)}`,
+        `- **Observability gaps:** ${limitedInlineList(report.operationalReadiness.observabilityGaps)}`,
+        `- **Recovery or rollback:** ${limitedInlineList(report.operationalReadiness.recoveryOrRollback)}`,
+        `- **Customer or data impact:** ${limitedInlineList(report.operationalReadiness.customerOrDataImpact)}`,
+        `- **Owner or reviewer focus:** ${limitedInlineList(report.operationalReadiness.ownerOrReviewerFocus)}`,
+      ].join("\n")
+    : "**Status:** NOT ASSESSED\nNot assessed — regenerate this report";
 
   return [
     "# Lintel merge-readiness report",
@@ -57,6 +76,9 @@ export function reportToMarkdown(report: Report, source: ReportSourceLabel) {
     "",
     "## Key findings",
     findings,
+    "",
+    "## Operational readiness",
+    operationalReadiness,
     "",
     "## Suggested tests",
     suggestedTests,

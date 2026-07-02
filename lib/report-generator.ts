@@ -22,6 +22,13 @@ type Signals = {
   hasRiskyPath: boolean;
   hasOtherSensitiveTerms: boolean;
   hasConfigTerms: boolean;
+  hasDataMigrationTerms: boolean;
+  hasPaymentDomainTerms: boolean;
+  hasProviderReviewTerms: boolean;
+  hasApiReviewTerms: boolean;
+  hasSensitiveReviewTerms: boolean;
+  hasFrontendTerms: boolean;
+  hasDocsTerms: boolean;
   duplicateSideEffect: RiskSignal;
   providerFailure: RiskSignal;
   apiContract: RiskSignal;
@@ -238,6 +245,20 @@ function detectSignals(diff: string, paths: string[]): Signals {
     hasRiskyPath: productionPaths.some((path) => RISKY_PATH.test(path)),
     hasOtherSensitiveTerms: /\bauth(?:entication|orisation|orization)?\b|\bpermission\b|\bpayment\b|\bbilling\b|\bdatabase\b|\bmigration\b|\btransaction\b/.test(text),
     hasConfigTerms: /\bconfig(?:uration)?\b|\benvironment\b|\bfeature flag\b/.test(text),
+    hasDataMigrationTerms: productionPaths.some((path) => /(^|\/)(database|db|migrations?|schemas?|models?)(\/|\.|$)/i.test(path))
+      || /\bdatabases?\b|\bmigrations?\b|\bschemas?\b|\bdata[ _-]?(?:write|update|delete|insert)\b/.test(text),
+    hasPaymentDomainTerms: productionPaths.some((path) => /(^|[\/_-])(payments?|billing|refunds?|redemptions?|discounts?|checkout|invoices?|subscriptions?|orders?|charges?|purchases?)([\/_.-]|$)/i.test(path))
+      || /\bpayments?\b|\bbilling\b|\brefunds?\b|\bredemptions?\b|\bdiscount(?:[_ -]?codes?)?\b|\bcheckout\b|\binvoices?\b|\bsubscriptions?\b|\border[_ -]?(?:id|items?|status|total)\b|\b(?:create|place|cancel|fulfill|update)[_ -]?orders?\b|\bcharges?\b|\bpurchases?\b/.test(text),
+    hasProviderReviewTerms: productionPaths.some((path) => /(^|[\/_-])(providers?|partners?|external[ _-]?services?|redemptions?)([\/_.-]|$)/i.test(path))
+      || /\bproviders?\b|\bpartner[ _-]?services?\b|\bexternal[ _-]?services?\b|\bretr(?:y|ies|ied|ying)\b|\btime[ _-]?outs?\b|\bduplicates?\b|\bidempoten(?:t|cy)\b|\bredemptions?\b|\bdiscount[_ -]?codes?\b/.test(text),
+    hasApiReviewTerms: productionPaths.some((path) => /(^|\/)(api|routes?|endpoints?|openapi|swagger)(\/|\.|$)/i.test(path))
+      || /\bapi\b|\bstatus[_ ]code\b|\berror[ _-]?contracts?\b|\bresponse[ _-]?shapes?\b|\bendpoints?\b|\bopenapi\b|\bswagger\b|\broutes?\b/.test(text),
+    hasSensitiveReviewTerms: productionPaths.some((path) => /(^|\/)(auth|security|permissions?|tokens?|privacy|pii|logging?)(\/|\.|$)/i.test(path))
+      || /\blogger\b|\blogging\b|\blog\.(?:debug|info|warning|error|exception)\b|\b(?:user|partner|customer|account|tenant)_id\b|\bauth(?:entication|orisation|orization)?\b|\bpermissions?\b|\btokens?\b|\bsecrets?\b|\bcredentials?\b|\bpii\b|\bsensitive[ _-]?data\b/.test(text),
+    hasFrontendTerms: productionPaths.some((path) => /(^|\/)(frontend|ui|components?|browser|web|analytics)(\/|\.|$)|\.(?:tsx|jsx|css|scss)$/i.test(path))
+      || /\bfrontend\b|\bbrowser\b|\banalytics\b|\bui component\b/.test(text),
+    hasDocsTerms: paths.some((path) => /(^|\/)(docs?|api-docs)(\/|\.|$)|(^|\/)(readme|openapi|swagger)(\.|$)/i.test(path))
+      || /\bpublic api docs?\b|\bopenapi\b|\bswagger\b/.test(text),
     duplicateSideEffect,
     providerFailure,
     apiContract,
@@ -514,6 +535,86 @@ function operationalReadiness(signals: Signals): NonNullable<Report["operational
   };
 }
 
+function reviewerFocus(
+  signals: Signals,
+  missingTests: string[],
+  operational: NonNullable<Report["operationalReadiness"]>,
+): NonNullable<Report["reviewerFocus"]> {
+  const items: NonNullable<Report["reviewerFocus"]> = [];
+
+  if (missingTests.length > 0 || signals.duplicateSideEffect.detected || signals.providerFailure.detected) {
+    items.push({
+      area: "Backend reliability",
+      priority: "PRIMARY",
+      reason: signals.duplicateSideEffect.detected || signals.providerFailure.detected
+        ? "Review retry behavior, provider failures, bounded execution and safe repeated side effects."
+        : "Missing focused test coverage requires reliability review of the changed behavior.",
+    });
+  }
+
+  if (signals.apiContract.detected || signals.hasApiReviewTerms) {
+    items.push({
+      area: "API contract",
+      priority: signals.apiContract.detected ? "PRIMARY" : "SECONDARY",
+      reason: "Confirm status codes, error fields, retry semantics and client-facing response stability.",
+    });
+  }
+
+  if (signals.sensitiveLogging.detected || signals.hasSensitiveReviewTerms) {
+    items.push({
+      area: "Security/privacy",
+      priority: signals.sensitiveLogging.detected ? "PRIMARY" : "SECONDARY",
+      reason: "Review identifiers, logging, access controls, permissions and sensitive-data handling where detected.",
+    });
+  }
+
+  if (signals.hasDataMigrationTerms) {
+    items.push({
+      area: "Data/migration",
+      priority: "PRIMARY",
+      reason: "Review schema compatibility, data writes, migration safety and recovery expectations.",
+    });
+  }
+
+  if (signals.hasPaymentDomainTerms || signals.duplicateSideEffect.detected) {
+    items.push({
+      area: "Payments/domain logic",
+      priority: signals.duplicateSideEffect.detected ? "PRIMARY" : "SECONDARY",
+      reason: "Confirm payment, redemption, billing, refund or other domain side effects remain correct and repeat-safe.",
+    });
+  }
+
+  if (
+    operational.observabilityGaps.length > 0
+    || operational.recoveryOrRollback.length > 0
+    || operational.detectionSignals.length > 0
+  ) {
+    items.push({
+      area: "Platform/observability",
+      priority: operational.observabilityGaps.length > 0 ? "PRIMARY" : "SECONDARY",
+      reason: "Review operational detection, logs, metrics, alerts, traces and recovery or rollback expectations.",
+    });
+  }
+
+  if (signals.hasFrontendTerms) {
+    items.push({
+      area: "Frontend integration",
+      priority: "SECONDARY",
+      reason: "Review UI, browser, frontend contract or analytics behavior affected by the change.",
+    });
+  }
+
+  if (signals.hasDocsTerms) {
+    items.push({
+      area: "Docs/API consumer review",
+      priority: "SECONDARY",
+      reason: "Confirm public documentation and API consumer guidance match the changed behavior.",
+    });
+  }
+
+  return items;
+}
+
 export function generateReport(input: ReportInput): Report {
   const paths = parseChangedFiles(input.diff);
   const signals = detectSignals(input.diff, paths);
@@ -606,6 +707,32 @@ export function generateReport(input: ReportInput): Report {
   }
 
   const missingTests = !signals.hasTests && signals.hasChangedBehavior ? specificMissingTests(signals) : [];
+  const focusItems = reviewerFocus(signals, missingTests, operational);
+  const reviewerChecklist: Report["reviewerChecklist"] = [
+    { label: "Confirm the change matches the stated PR intent", status: "ATTENTION" },
+    { label: "Verify changed behaviour has focused test coverage", status: signals.hasTests ? "COMPLETE" : "ATTENTION" },
+    ...(signals.hasProviderReviewTerms || signals.duplicateSideEffect.detected || signals.providerFailure.detected
+      ? [{
+          label: "Review provider failures and duplicate side effects",
+          status: signals.duplicateSideEffect.detected || signals.providerFailure.detected ? "ATTENTION" as const : "COMPLETE" as const,
+        }]
+      : []),
+    ...(signals.hasApiReviewTerms || signals.apiContract.detected
+      ? [{
+          label: "Review client-facing error contracts",
+          status: signals.apiContract.detected ? "ATTENTION" as const : "COMPLETE" as const,
+        }]
+      : []),
+    ...(signals.hasSensitiveReviewTerms || signals.sensitiveLogging.detected
+      ? [{
+          label: "Review sensitive logging fields",
+          status: signals.sensitiveLogging.detected ? "ATTENTION" as const : "COMPLETE" as const,
+        }]
+      : []),
+    ...(operational.status === "ATTENTION"
+      ? [{ label: "Review operational detection, recovery and impact", status: "ATTENTION" as const }]
+      : []),
+  ];
   const suggestedTestTitles = suggestedTests(signals);
   const hasAttentionSignals = signals.duplicateSideEffect.detected
     || signals.providerFailure.detected
@@ -727,16 +854,10 @@ export function generateReport(input: ReportInput): Report {
       },
     },
     operationalReadiness: operational,
+    reviewerFocus: focusItems,
     missingTests,
     suggestedTests: suggestedTestTitles.map((title) => ({ title })),
-    reviewerChecklist: [
-      { label: "Confirm the change matches the stated PR intent", status: "ATTENTION" },
-      { label: "Verify changed behaviour has focused test coverage", status: signals.hasTests ? "COMPLETE" : "ATTENTION" },
-      { label: "Review provider failures and duplicate side effects", status: signals.duplicateSideEffect.detected || signals.providerFailure.detected ? "ATTENTION" : "COMPLETE" },
-      { label: "Review client-facing error contracts", status: signals.apiContract.detected ? "ATTENTION" : "COMPLETE" },
-      { label: "Review sensitive logging fields", status: signals.sensitiveLogging.detected ? "ATTENTION" : "COMPLETE" },
-      { label: "Review operational detection, recovery and impact", status: operational.status === "ATTENTION" ? "ATTENTION" : "COMPLETE" },
-    ],
+    reviewerChecklist,
     finalRecommendation: recommendation === "APPROVE"
       ? "No unresolved test, reliability, security or maintainability signals remain. Complete normal human review before approval."
       : recommendation === "REVIEW_REQUIRED"

@@ -11,6 +11,17 @@ const FINDING_CATEGORIES: Report["findings"][number]["category"][] = [
   "Missing tests",
   "API contract",
 ];
+const REVIEWER_FOCUS_AREAS = [
+  "Backend reliability",
+  "API contract",
+  "Security/privacy",
+  "Data/migration",
+  "Payments/domain logic",
+  "Platform/observability",
+  "Frontend integration",
+  "Docs/API consumer review",
+] as const;
+type ReviewerFocusArea = typeof REVIEWER_FOCUS_AREAS[number];
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -170,6 +181,107 @@ function normaliseChecklist(value: unknown, fallback: Report["reviewerChecklist"
   }).slice(0, 12);
 }
 
+function reviewerFocusSupport(baseline: Report) {
+  const supported = new Set<ReviewerFocusArea>();
+  const baselineAreas = baseline.reviewerFocus ?? [];
+  const baselineOperationalReadiness = baseline.operationalReadiness;
+
+  baselineAreas.forEach((item) => {
+    if (
+      item.area !== "Payments/domain logic"
+      && REVIEWER_FOCUS_AREAS.includes(item.area as ReviewerFocusArea)
+    ) {
+      supported.add(item.area as ReviewerFocusArea);
+    }
+  });
+
+  const evidence = [
+    ...baseline.changedFiles.map((file) => file.path),
+    ...baseline.findings.flatMap((finding) => [finding.title, finding.category, finding.evidence, finding.action, finding.file ?? ""]),
+    ...(baselineOperationalReadiness?.status === "ATTENTION"
+      ? [
+          baselineOperationalReadiness.summary,
+          ...baselineOperationalReadiness.failureModes,
+          ...baselineOperationalReadiness.detectionSignals,
+          ...baselineOperationalReadiness.observabilityGaps,
+          ...baselineOperationalReadiness.recoveryOrRollback,
+          ...baselineOperationalReadiness.customerOrDataImpact,
+          ...baselineOperationalReadiness.ownerOrReviewerFocus,
+        ]
+      : []),
+  ].join("\n").toLowerCase();
+
+  if (baseline.missingTests.length > 0 || /\bproviders?\b|\bretr(?:y|ies|ied|ying)\b|\btime[ _-]?outs?\b|\bduplicates?\b|\bidempoten(?:t|cy)\b|\bfailure(?: mode)?s?\b/.test(evidence)) {
+    supported.add("Backend reliability");
+  }
+  if (/\bapi\b|\bendpoints?\b|\broutes?\b|\bresponse[ _-]?shapes?\b|\bstatus[_ ]codes?\b|\berror[ _-]?contracts?\b|\bopenapi\b|\bpublic[ _-]?(?:api|contract)\b/.test(evidence)) {
+    supported.add("API contract");
+  }
+  if (/\bauth(?:entication|orisation|orization)?\b|\bpermissions?\b|\btokens?\b|\bsecrets?\b|\bcredentials?\b|\bidentifiers?\b|\b(?:user|partner|customer|account|tenant)_id\b|\bpii\b|\bsensitive[ _-]?data\b|\blogg(?:er|ing)\b|\bexpos(?:e|ed|ure)\b/.test(evidence)) {
+    supported.add("Security/privacy");
+  }
+  if (/\bdatabases?\b|\bmigrations?\b|\bschemas?\b|\bdata[ _-]?(?:write|update|delete|insert)\b/.test(evidence)) {
+    supported.add("Data/migration");
+  }
+  if (/\bpayments?\b|\bbilling\b|\brefunds?\b|\bredemptions?\b|\bdiscount(?:[_ -]?codes?)?\b|\bcheckout\b|\binvoices?\b|\bsubscriptions?\b|\borders?\b|\bcharges?\b/.test(evidence)) {
+    supported.add("Payments/domain logic");
+  }
+  if (baselineOperationalReadiness?.status === "ATTENTION" || /\blogs?\b|\bmetrics?\b|\balerts?\b|\btraces?\b|\bmonitor(?:ing|ed)?\b|\broll[ _-]?back\b|\brecovery\b|\boperational[ _-]?gaps?\b|\bdetection[ _-]?signals?\b/.test(evidence)) {
+    supported.add("Platform/observability");
+  }
+  if (/\bfrontend\b|\bbrowser\b|\banalytics\b|\bui\b|\.(?:tsx|jsx|css|scss)(?:\b|$)/.test(evidence)) {
+    supported.add("Frontend integration");
+  }
+  if (/(?:^|\/)docs?(?:\/|\.|$)|(?:^|\/)(?:readme|openapi|swagger)(?:\.|$)|\bpublic[ _-]?api[ _-]?docs?\b/m.test(evidence)) {
+    supported.add("Docs/API consumer review");
+  }
+
+  return supported;
+}
+
+function normaliseReviewerFocus(
+  value: unknown,
+  supportedAreas: Set<ReviewerFocusArea>,
+): NonNullable<Report["reviewerFocus"]> {
+  if (!Array.isArray(value)) return [];
+
+  return value.flatMap((item): NonNullable<Report["reviewerFocus"]> => {
+    if (!isRecord(item) || typeof item.area !== "string" || typeof item.reason !== "string") return [];
+    if (!REVIEWER_FOCUS_AREAS.includes(item.area as ReviewerFocusArea)) return [];
+    if (!supportedAreas.has(item.area as ReviewerFocusArea)) return [];
+    if (item.priority !== "PRIMARY" && item.priority !== "SECONDARY") return [];
+
+    const reason = item.reason.trim().slice(0, 500);
+    if (!reason || /\b(?:assigned to|owner is|team is|reviewer is)\b|@[a-z0-9_-]+/i.test(reason)) return [];
+
+    return [{ area: item.area, priority: item.priority, reason }];
+  }).slice(0, REVIEWER_FOCUS_AREAS.length);
+}
+
+function mergeReviewerFocus(
+  primary: NonNullable<Report["reviewerFocus"]>,
+  secondary: NonNullable<Report["reviewerFocus"]>,
+) {
+  const merged = new Map<string, NonNullable<Report["reviewerFocus"]>[number]>();
+
+  [...primary, ...secondary].forEach((item) => {
+    const key = normalisedKey(item.area);
+    const existing = merged.get(key);
+    if (!existing) {
+      merged.set(key, item);
+      return;
+    }
+
+    merged.set(key, {
+      area: existing.area,
+      priority: existing.priority === "PRIMARY" || item.priority === "PRIMARY" ? "PRIMARY" : "SECONDARY",
+      reason: mergeStrings([existing.reason], [item.reason], 2, 500).join(" "),
+    });
+  });
+
+  return [...merged.values()].slice(0, REVIEWER_FOCUS_AREAS.length);
+}
+
 function canonicalRecommendationCopy(recommendation: Recommendation) {
   if (recommendation === "APPROVE") return "No unresolved findings or merge conditions remain. Complete normal human review before approval.";
   if (recommendation === "TESTS_REQUIRED") return "Do not approve until the identified test gaps have been addressed.";
@@ -209,7 +321,13 @@ function baselineRiskFloor(baseline: Report) {
 }
 
 export function normaliseReport(value: unknown, baseline: Report): Report | null {
-  if (!isRecord(value) || !isRecord(value.verdict) || !isRecord(value.reviews) || !isRecord(value.operationalReadiness)) return null;
+  if (
+    !isRecord(value)
+    || !isRecord(value.verdict)
+    || !isRecord(value.reviews)
+    || !isRecord(value.operationalReadiness)
+    || !Array.isArray(value.reviewerFocus)
+  ) return null;
 
   const reviews = {
     security: normaliseReview(value.reviews.security, baseline.reviews.security),
@@ -250,6 +368,11 @@ export function normaliseReport(value: unknown, baseline: Report): Report | null
     normaliseSuggestedTests(value.suggestedTests, []),
   );
   const reviewerChecklist = normaliseChecklist(value.reviewerChecklist, baseline.reviewerChecklist);
+  const supportedReviewerFocus = reviewerFocusSupport(baseline);
+  const reviewerFocus = mergeReviewerFocus(
+    baseline.reviewerFocus ?? [],
+    normaliseReviewerFocus(value.reviewerFocus, supportedReviewerFocus),
+  ).filter((item) => supportedReviewerFocus.has(item.area as ReviewerFocusArea));
   const rawScore = typeof value.verdict.riskScore === "number" && Number.isFinite(value.verdict.riskScore)
     ? value.verdict.riskScore
     : baseline.verdict.riskScore;
@@ -289,6 +412,7 @@ export function normaliseReport(value: unknown, baseline: Report): Report | null
     findings,
     reviews,
     operationalReadiness,
+    reviewerFocus,
     missingTests,
     suggestedTests,
     reviewerChecklist,
@@ -393,6 +517,19 @@ export const REPORT_JSON_SCHEMA = {
       ],
       additionalProperties: false,
     },
+    reviewerFocus: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          area: { type: "string", enum: REVIEWER_FOCUS_AREAS },
+          priority: { type: "string", enum: ["PRIMARY", "SECONDARY"] },
+          reason: { type: "string" },
+        },
+        required: ["area", "priority", "reason"],
+        additionalProperties: false,
+      },
+    },
     missingTests: { type: "array", items: { type: "string" } },
     suggestedTests: {
       type: "array",
@@ -422,6 +559,7 @@ export const REPORT_JSON_SCHEMA = {
     "findings",
     "reviews",
     "operationalReadiness",
+    "reviewerFocus",
     "missingTests",
     "suggestedTests",
     "reviewerChecklist",

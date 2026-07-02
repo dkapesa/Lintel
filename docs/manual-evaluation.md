@@ -359,3 +359,57 @@ Expected:
 - Copied markdown must not include raw diff markers, patch fragments or secret values.
 - `lintel.generatedReport.v1` must continue to contain only `{ report, source }`; the raw diff must remain absent.
 - Paste, samples, public GitHub import, source badges and Copy summary should continue to work.
+
+## Reviewer focus evaluation
+
+Every newly generated report should include a **Reviewer focus** section after Operational readiness and before Gaps. Focus items contain an engineering review area, `PRIMARY` or `SECONDARY` priority, and an evidence-based reason. They must not assign or invent people, usernames, owners or teams.
+
+Deterministic review areas:
+
+- Missing tests or risky backend, provider or retry behavior: **Backend reliability**
+- API routes, status codes or error contracts: **API contract**
+- Identifiers, logging, authentication, permissions or sensitive data: **Security/privacy**
+- Database, migration, schema or data-write behavior: **Data/migration**
+- Payments, redemptions, billing, refunds or side effects: **Payments/domain logic**
+- Metrics, logs, alerts, traces, rollback controls or operational gaps: **Platform/observability**
+- Frontend, UI, browser or analytics behavior: **Frontend integration**
+- Documentation, OpenAPI, Swagger or public API documentation: **Docs/API consumer review**
+
+### Reviewer focus sample tests
+
+Generate the Clean sample.
+
+Expected:
+
+- `reviewerFocus` is present, even when empty
+- The UI shows neutral copy when no specialist focus is detected
+- No person, owner or team is invented
+
+Generate the Risky sample without tests.
+
+Expected:
+
+- **Backend reliability** is `PRIMARY`
+- **API contract** is `PRIMARY`
+- **Security/privacy** appears for structured identifier or sensitive-value logging
+- **Payments/domain logic** appears for redemption or discount-code side effects
+- **Platform/observability** appears for detection, recovery or operational gaps
+- Reasons refer to findings, changed behavior or operational readiness rather than generic assignments
+
+Append the documented test file and generate again. Specific focus areas should remain where risks remain, even though the recommendation becomes `REVIEW_REQUIRED`.
+
+### Reviewer focus targeted cases
+
+- Add a database migration or schema change and confirm **Data/migration** appears.
+- Add a frontend component, browser integration or analytics change and confirm **Frontend integration** appears.
+- Add OpenAPI, Swagger, README or public API documentation changes and confirm **Docs/API consumer review** appears.
+- Submit AI reviewer focus with a duplicate area and confirm deterministic and AI items are merged and deduplicated.
+- Submit an unknown area or a reason containing an explicit owner, team assignment or username and confirm it is dropped by normalisation.
+
+### Reviewer focus compatibility and copy
+
+- Load a legacy report without `reviewerFocus`; `/report` should show a neutral not-assessed message without crashing.
+- Copy summary should include Reviewer focus, capped consistently with other summary sections.
+- Empty new-report focus should copy as `None detected`.
+- Legacy focus should copy as not assessed.
+- Raw diff markers, patch fragments and secrets must remain absent from copied markdown and session storage.

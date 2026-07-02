@@ -58,6 +58,7 @@ function baselineSummary(baseline: ReturnType<typeof generateReport>) {
       maintainability: baseline.reviews.maintainability.status,
     },
     operationalReadiness: baseline.operationalReadiness,
+    reviewerFocus: baseline.reviewerFocus,
   };
 }
 
@@ -116,6 +117,10 @@ async function generateWithOpenAI(
               "Do not invent dashboards, alerts, owners, rollback mechanisms, incidents or customer impact. Detection and recovery controls must be directly evidenced by the diff.",
               "Only identify an operational gap when risky behavior exists without a matching evidenced control. Use role-based reviewer focus and never invent a person or team.",
               "Never downgrade deterministic operational ATTENTION to CLEAR, and treat operational ATTENTION as requiring review before merge.",
+              "Return reviewer focus using only the allowed engineering review categories, and include an area only when changed files, diff-grounded findings or operational readiness provide direct evidence for it.",
+              "Do not add reviewer-focus areas as general precautions: payments/domain requires payment, billing, refund, redemption, discount, checkout, invoice, subscription, order or charge evidence; security/privacy requires auth, permissions, tokens, secrets, identifiers, PII, sensitive data, logging or exposure evidence; API contract requires API, endpoint, route, response shape, status code, error contract, OpenAPI or public-contract evidence; platform/observability requires logs, metrics, alerts, traces, monitoring, rollback, recovery or an operational gap.",
+              "Backend reliability requires missing tests or backend failure evidence; data/migration requires database, schema, migration or data-write evidence; frontend integration requires frontend, browser, UI or analytics evidence; docs/API consumer review requires documentation or public API documentation evidence.",
+              "Reviewer focus may identify review disciplines, but must never invent or assign people, usernames, owners or teams.",
               "Each finding must have a specific title, diff-grounded evidence, a focused reviewer action and the most relevant category.",
               "Suggested tests and conditions before merge must be concrete and tied to detected behaviour, not generic requests for more testing or review.",
               "Use TESTS_REQUIRED when required tests are missing. Use REVIEW_REQUIRED when tests exist but findings, conditions or attention states remain. Use APPROVE only when all of those are clear. Do not use BLOCK.",

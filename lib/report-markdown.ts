@@ -61,6 +61,12 @@ export function reportToMarkdown(report: Report, source: ReportSourceLabel) {
         `- **Owner or reviewer focus:** ${limitedInlineList(report.operationalReadiness.ownerOrReviewerFocus)}`,
       ].join("\n")
     : "**Status:** NOT ASSESSED\nNot assessed — regenerate this report";
+  const reviewerFocus = report.reviewerFocus
+    ? limitedList(
+        report.reviewerFocus,
+        (item) => `${item.priority} · ${safeMarkdownText(item.area)}: ${safeMarkdownText(item.reason)}`,
+      )
+    : "Reviewer focus was not assessed — regenerate this report";
 
   return [
     "# Lintel merge-readiness report",
@@ -79,6 +85,9 @@ export function reportToMarkdown(report: Report, source: ReportSourceLabel) {
     "",
     "## Operational readiness",
     operationalReadiness,
+    "",
+    "## Reviewer focus",
+    reviewerFocus,
     "",
     "## Suggested tests",
     suggestedTests,

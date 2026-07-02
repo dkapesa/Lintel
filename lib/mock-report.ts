@@ -20,6 +20,12 @@ export type OperationalReadiness = {
   ownerOrReviewerFocus: string[];
 };
 
+export type ReviewerFocusItem = {
+  area: string;
+  priority: "PRIMARY" | "SECONDARY";
+  reason: string;
+};
+
 export type Report = {
   pr: {
     number: number;
@@ -59,6 +65,7 @@ export type Report = {
     maintainability: ReviewArea;
   };
   operationalReadiness?: OperationalReadiness;
+  reviewerFocus?: ReviewerFocusItem[];
   missingTests: string[];
   suggestedTests: Array<{
     title: string;
@@ -166,6 +173,28 @@ export const report: Report = {
       "Security review should confirm identifiers and discount codes are redacted from logs.",
     ],
   },
+  reviewerFocus: [
+    {
+      area: "Backend reliability",
+      priority: "PRIMARY",
+      reason: "Verify retry behavior, provider failure handling and idempotency around redemption side effects.",
+    },
+    {
+      area: "API contract",
+      priority: "PRIMARY",
+      reason: "Confirm stable 503 responses, error codes and retryable semantics for clients.",
+    },
+    {
+      area: "Security/privacy",
+      priority: "SECONDARY",
+      reason: "Review identifier and discount-code handling in structured failure logs.",
+    },
+    {
+      area: "Platform/observability",
+      priority: "SECONDARY",
+      reason: "Confirm provider failures and repeated attempts have useful detection and recovery signals.",
+    },
+  ],
   missingTests: [
     "Repeated retry after provider timeout does not issue duplicate discount codes",
     "Provider returns malformed response body",

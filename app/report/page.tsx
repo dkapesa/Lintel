@@ -313,6 +313,32 @@ export default function ReportPage() {
             )}
           </section>
 
+          <section className="section-block">
+            <div className="section-heading">
+              <div><span className="card-kicker">REVIEW ROUTING</span><h2>Reviewer focus</h2></div>
+              {report.reviewerFocus && <span className="section-count">{report.reviewerFocus.length} areas</span>}
+            </div>
+            {report.reviewerFocus ? (
+              report.reviewerFocus.length > 0 ? (
+                <div className="reviewer-focus-list">
+                  {report.reviewerFocus.map((item) => (
+                    <article className="reviewer-focus-item" key={item.area}>
+                      <div>
+                        <h3>{item.area}</h3>
+                        <p>{item.reason}</p>
+                      </div>
+                      <span className={`reviewer-priority reviewer-priority--${item.priority.toLowerCase()}`}>{item.priority}</span>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p className="reviewer-focus-empty">No specialist reviewer focus detected by current rules.</p>
+              )
+            ) : (
+              <p className="reviewer-focus-legacy">Reviewer focus was not assessed — regenerate this report.</p>
+            )}
+          </section>
+
           <div className="two-column-section">
             <section className="section-block section-block--inset">
               <div className="section-heading"><div><span className="card-kicker">GAPS</span><h2>Missing tests</h2></div></div>

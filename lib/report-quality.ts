@@ -27,6 +27,13 @@ function reportEvidence(report: Report) {
   ].join("\n").toLowerCase();
 }
 
+function paymentDomainSupported(report: Report, evidence: string) {
+  const changedPaths = report.changedFiles.map((file) => file.path).join("\n");
+  const paymentPath = /(^|[\/_-])(payments?|billing|refunds?|redemptions?|discounts?|checkout|invoices?|subscriptions?|orders?|charges?)([\/_.-]|$)/i.test(changedPaths);
+  const explicitPaymentTerms = /\bpayments?\b|\bbilling\b|\brefunds?\b|\bredemptions?\b|\bdiscount(?:[_ -]?codes?)?\b|\bcheckout\b|\binvoices?\b|\bsubscriptions?\b|\border[_ -]?(?:id|items?|status|total)\b|\b(?:create|place|cancel|fulfil|fulfill|update)[_ -]?orders?\b|\bcharges?\b/.test(evidence);
+  return paymentPath || explicitPaymentTerms;
+}
+
 function reviewerAreaSupported(area: string, evidence: string, report: Report) {
   if (area === "Backend reliability") {
     return report.missingTests.length > 0 || /\bproviders?\b|\bretr(?:y|ies|ied|ying)\b|\btime[ _-]?outs?\b|\bduplicates?\b|\bidempoten(?:t|cy)\b|\bfailures?\b/.test(evidence);
@@ -41,7 +48,7 @@ function reviewerAreaSupported(area: string, evidence: string, report: Report) {
     return /\bdatabases?\b|\bmigrations?\b|\bschemas?\b|\bdata[ _-]?(?:write|update|delete|insert)\b/.test(evidence);
   }
   if (area === "Payments/domain logic") {
-    return /\bpayments?\b|\bbilling\b|\brefunds?\b|\bredemptions?\b|\bdiscount(?:[_ -]?codes?)?\b|\bcheckout\b|\binvoices?\b|\bsubscriptions?\b|\borders?\b|\bcharges?\b/.test(evidence);
+    return paymentDomainSupported(report, evidence);
   }
   if (area === "Platform/observability") {
     return report.operationalReadiness?.status === "ATTENTION" || /\blogs?\b|\bmetrics?\b|\balerts?\b|\btraces?\b|\bmonitor(?:ing|ed)?\b|\broll[ _-]?back\b|\brecovery\b|\boperational[ _-]?gaps?\b/.test(evidence);
@@ -53,6 +60,12 @@ function reviewerAreaSupported(area: string, evidence: string, report: Report) {
     return /(?:^|\/)docs?(?:\/|\.|$)|(?:^|\/)(?:readme|openapi|swagger)(?:\.|$)|\bpublic[ _-]?api[ _-]?docs?\b/m.test(evidence);
   }
   return false;
+}
+
+export function pruneUnsupportedReviewerFocus(report: Report): Report["reviewerFocus"] {
+  if (!report.reviewerFocus) return undefined;
+  const evidence = reportEvidence(report);
+  return report.reviewerFocus.filter((item) => reviewerAreaSupported(item.area, evidence, report));
 }
 
 function check(label: string, passes: boolean, passDetail: string, warningDetail: string): ReportQualityCheck {

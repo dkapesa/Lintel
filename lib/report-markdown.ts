@@ -1,4 +1,5 @@
 import type { Report } from "./mock-report";
+import { pruneUnsupportedReviewerFocus } from "./report-quality";
 
 export type ReportSourceLabel = "AI generated" | "Local fallback" | "Demo report";
 
@@ -35,6 +36,18 @@ function limitedInlineList(items: string[]) {
   return values.join("; ");
 }
 
+function inputSourceLabel(value: string) {
+  if (value === "github-pr") return "GitHub PR import";
+  if (value === "sample") return "Sample";
+  if (value === "pasted-diff") return "Pasted diff";
+  return value;
+}
+
+function inputSourceMarkdown(value: string) {
+  const knownInputSource = value === "github-pr" || value === "sample" || value === "pasted-diff";
+  return `**${knownInputSource ? "Input source" : "Branch"}:** ${safeMarkdownText(inputSourceLabel(value))}`;
+}
+
 export function reportToMarkdown(report: Report, source: ReportSourceLabel) {
   const recommendation = report.verdict.recommendation.replaceAll("_", " ");
   const findings = limitedList(
@@ -61,9 +74,10 @@ export function reportToMarkdown(report: Report, source: ReportSourceLabel) {
         `- **Owner or reviewer focus:** ${limitedInlineList(report.operationalReadiness.ownerOrReviewerFocus)}`,
       ].join("\n")
     : "**Status:** NOT ASSESSED\nNot assessed — regenerate this report";
-  const reviewerFocus = report.reviewerFocus
+  const supportedReviewerFocus = pruneUnsupportedReviewerFocus(report);
+  const reviewerFocus = supportedReviewerFocus
     ? limitedList(
-        report.reviewerFocus,
+        supportedReviewerFocus,
         (item) => `${item.priority} · ${safeMarkdownText(item.area)}: ${safeMarkdownText(item.reason)}`,
       )
     : "Reviewer focus was not assessed — regenerate this report";
@@ -86,6 +100,7 @@ export function reportToMarkdown(report: Report, source: ReportSourceLabel) {
     `**PR:** ${safeMarkdownText(report.pr.title)}`,
     `**Repository:** ${safeMarkdownText(report.pr.repository)}`,
     `**Source:** ${source}`,
+    inputSourceMarkdown(report.pr.branch),
     `**Recommendation:** ${recommendation}`,
     `**Risk:** ${report.verdict.riskScore}/100 — ${report.verdict.riskLevel}`,
     "",

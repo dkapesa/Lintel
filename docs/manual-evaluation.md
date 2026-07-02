@@ -454,3 +454,27 @@ Manual tests:
 - Temporarily inspect a malformed report fixture with a mismatched score/level, inconsistent approval, unsupported reviewer focus or sensitive path at `LOW` risk and confirm `WARNING` details identify the conflict.
 - Copy a report and confirm markdown includes report quality status and warning items only, never raw diff content.
 - Confirm `lintel.generatedReport.v1` still stores only `{ report, source }` and never the submitted raw diff.
+
+## Pilot-ready report polish
+
+- Final recommendation headings use **Ready to merge** for `APPROVE`, **Needs focused review** for `REVIEW_REQUIRED`, and **What needs attention** for `TESTS_REQUIRED`.
+- Empty suggested tests render **No additional tests suggested.**
+- Empty reviewer checklists render **No reviewer checklist items required.**
+- Reports generated from the sample picker show **Sample** as the input source.
+- Reports generated after a successful public GitHub PR import show **GitHub PR import** as the input source.
+- Manually pasted diffs show **Pasted diff** as the input source.
+- Legacy reports retain their existing branch or source text safely.
+- Copied markdown includes the clean input-source label and continues to omit raw diff markers and secret values.
+- Executive summary headings match the recommendation: **Ready to merge**, **Needs focused review**, or **What needs attention**.
+- Unsupported reviewer-focus items are pruned before display and copying; report quality still warns if malformed or legacy data retains one.
+
+Manual tests:
+
+1. Generate the clean sample and confirm **Ready to merge**, **Sample**, and the suggested-tests empty state.
+2. Generate a risky sample and confirm **What needs attention** or **Needs focused review** as appropriate.
+3. Import a public GitHub PR, generate its report, and confirm **GitHub PR import** in the report and copied markdown.
+4. Manually paste a diff and confirm **Pasted diff** in the report and copied markdown.
+5. Load a legacy report with a real branch name and confirm the branch remains readable.
+6. Confirm an empty reviewer checklist renders its positive empty state without a blank list.
+7. Confirm session storage still contains only `{ report, source }` and no raw diff.
+8. Generate the frontend analytics sample or import a docs/analytics/type-only PR and confirm **Payments/domain logic** is absent from both the page and copied markdown.

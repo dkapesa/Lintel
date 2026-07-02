@@ -5,6 +5,7 @@ import { GENERATED_REPORT_STORAGE_KEY } from "../../lib/report-generator";
 import { reportToMarkdown, type ReportSourceLabel } from "../../lib/report-markdown";
 import type { FindingSeverity, Recommendation, Report, ReviewArea, RiskLevel } from "../../lib/mock-report";
 import { report as demoReport } from "../../lib/mock-report";
+import { pruneUnsupportedReviewerFocus } from "../../lib/report-quality";
 
 type GeneratedReportSource = "ai" | "deterministic";
 type ReportSource = GeneratedReportSource | "demo";
@@ -87,11 +88,18 @@ function displayLabel(value: string) {
 }
 
 const recommendationHeadings: Record<Recommendation, string> = {
-  APPROVE: "Ready for final review",
-  REVIEW_REQUIRED: "Review required before merge",
-  TESTS_REQUIRED: "Tests required before merge",
+  APPROVE: "Ready to merge",
+  REVIEW_REQUIRED: "Needs focused review",
+  TESTS_REQUIRED: "What needs attention",
   BLOCK: "Do not merge",
 };
+
+function inputSourceLabel(value: string) {
+  if (value === "github-pr") return "GitHub PR import";
+  if (value === "sample") return "Sample";
+  if (value === "pasted-diff") return "Pasted diff";
+  return value;
+}
 
 function RecommendationBadge({ recommendation }: { recommendation: Recommendation }) {
   return <span className={`recommendation recommendation--${recommendation.toLowerCase()}`}>{displayLabel(recommendation)}</span>;
@@ -177,6 +185,7 @@ export default function ReportPage() {
 
   const { report, source } = displayedReport;
   const { pr, verdict } = report;
+  const supportedReviewerFocus = pruneUnsupportedReviewerFocus(report);
 
   async function handleCopySummary() {
     const copied = await writeToClipboard(reportToMarkdown(report, sourceLabels[source]));
@@ -231,7 +240,7 @@ export default function ReportPage() {
               <div className="header-overline"><span className="pull-request-mark">↗</span> PULL REQUEST #{pr.number}</div>
               <h1>{pr.title}</h1>
               <div className="report-meta">
-                <span>{pr.repository}</span><span className="meta-separator">•</span><span>{pr.branch}</span><span className="meta-separator">•</span><span>{pr.language}</span><span className="meta-separator">•</span><span>{pr.framework}</span>
+                <span>{pr.repository}</span><span className="meta-separator">•</span><span>{inputSourceLabel(pr.branch)}</span><span className="meta-separator">•</span><span>{pr.language}</span><span className="meta-separator">•</span><span>{pr.framework}</span>
               </div>
             </div>
             <div className="header-verdict">
@@ -250,7 +259,7 @@ export default function ReportPage() {
               <div className="score-gauge" aria-label={`Risk score ${verdict.riskScore} out of 100`}><span>{verdict.riskScore}</span></div>
             </article>
             <article className="summary-card">
-              <div className="section-heading"><div><span className="card-kicker">EXECUTIVE SUMMARY</span><h2>What needs attention</h2></div><span className="confidence">Confidence: {verdict.confidence}</span></div>
+              <div className="section-heading"><div><span className="card-kicker">EXECUTIVE SUMMARY</span><h2>{recommendationHeadings[verdict.recommendation]}</h2></div><span className="confidence">Confidence: {verdict.confidence}</span></div>
               <p>{verdict.summary}</p>
             </article>
           </section>
@@ -316,12 +325,12 @@ export default function ReportPage() {
           <section className="section-block">
             <div className="section-heading">
               <div><span className="card-kicker">REVIEW ROUTING</span><h2>Reviewer focus</h2></div>
-              {report.reviewerFocus && <span className="section-count">{report.reviewerFocus.length} areas</span>}
+              {supportedReviewerFocus && <span className="section-count">{supportedReviewerFocus.length} areas</span>}
             </div>
-            {report.reviewerFocus ? (
-              report.reviewerFocus.length > 0 ? (
+            {supportedReviewerFocus ? (
+              supportedReviewerFocus.length > 0 ? (
                 <div className="reviewer-focus-list">
-                  {report.reviewerFocus.map((item) => (
+                  {supportedReviewerFocus.map((item) => (
                     <article className="reviewer-focus-item" key={item.area}>
                       <div>
                         <h3>{item.area}</h3>
@@ -374,17 +383,21 @@ export default function ReportPage() {
             </section>
             <section className="section-block section-block--inset">
               <div className="section-heading"><div><span className="card-kicker">REVIEW PROGRESS</span><h2>Reviewer checklist</h2></div></div>
-              <ul className="checklist">
-                {report.reviewerChecklist.map((item) => <li key={item.label}><span className={`check-icon check-icon--${item.status.toLowerCase()}`}>{item.status === "COMPLETE" ? "✓" : "!"}</span><span>{item.label}</span></li>)}
-              </ul>
+              {report.reviewerChecklist.length > 0 ? (
+                <ul className="checklist">
+                  {report.reviewerChecklist.map((item) => <li key={item.label}><span className={`check-icon check-icon--${item.status.toLowerCase()}`}>{item.status === "COMPLETE" ? "✓" : "!"}</span><span>{item.label}</span></li>)}
+                </ul>
+              ) : <p className="section-empty">No reviewer checklist items required.</p>}
             </section>
           </div>
 
           <section className="section-block">
             <div className="section-heading"><div><span className="card-kicker">TEST PLAN</span><h2>Suggested tests</h2></div></div>
-            <div className="suggested-tests">
-              {report.suggestedTests.map((test) => <article className="suggested-test" key={test.title}>{test.priority && <span className={`test-priority test-priority--${test.priority.toLowerCase()}`}>{test.priority}</span>}<h3>{test.title}</h3>{test.description && <p>{test.description}</p>}</article>)}
-            </div>
+            {report.suggestedTests.length > 0 ? (
+              <div className="suggested-tests">
+                {report.suggestedTests.map((test) => <article className="suggested-test" key={test.title}>{test.priority && <span className={`test-priority test-priority--${test.priority.toLowerCase()}`}>{test.priority}</span>}<h3>{test.title}</h3>{test.description && <p>{test.description}</p>}</article>)}
+              </div>
+            ) : <p className="section-empty">No additional tests suggested.</p>}
           </section>
 
           <section className={`final-recommendation${report.conditionsBeforeMerge.length === 0 ? " final-recommendation--single" : ""}`}>

@@ -1,4 +1,4 @@
-import { generateReport, type ReportInput } from "../../../lib/report-generator";
+import { generateReport, type ReportInput, type ReportInputSource } from "../../../lib/report-generator";
 import { normaliseReport, REPORT_JSON_SCHEMA } from "../../../lib/report-normalizer";
 
 export const runtime = "nodejs";
@@ -180,6 +180,9 @@ export async function POST(request: Request) {
   const repository = requiredString(body.repository, 300);
   const technology = requiredString(body.technology, 200);
   const diff = typeof body.diff === "string" ? body.diff : null;
+  const inputSource: ReportInputSource = body.inputSource === "github-pr" || body.inputSource === "sample"
+    ? body.inputSource
+    : "pasted-diff";
 
   if (!title || !repository || !technology || !diff?.trim()) {
     return Response.json({ error: "Title, repository, technology and diff are required." }, { status: 400 });
@@ -188,7 +191,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "The submitted diff is too large." }, { status: 413 });
   }
 
-  const input: ReportInput = { title, repository, technology, diff };
+  const input: ReportInput = { title, repository, technology, diff, inputSource };
   const baseline = generateReport(input);
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   const model = process.env.OPENAI_MODEL?.trim();

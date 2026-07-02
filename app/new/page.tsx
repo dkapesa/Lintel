@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
-import { generateReport, GENERATED_REPORT_STORAGE_KEY, type ReportInput } from "../../lib/report-generator";
+import { generateReport, GENERATED_REPORT_STORAGE_KEY, type ReportInput, type ReportInputSource } from "../../lib/report-generator";
 import type { Report } from "../../lib/mock-report";
 import { PR_SAMPLES } from "../../lib/sample-pr-input";
 
@@ -60,12 +60,14 @@ export default function NewReportPage() {
   const [repository, setRepository] = useState("");
   const [technology, setTechnology] = useState("");
   const [diff, setDiff] = useState("");
+  const [inputSource, setInputSource] = useState<ReportInputSource>("pasted-diff");
 
   function useSample(sample: ReportInput) {
     setTitle(sample.title);
     setRepository(sample.repository);
     setTechnology(sample.technology);
     setDiff(sample.diff);
+    setInputSource("sample");
     setImportStatus(null);
   }
 
@@ -93,6 +95,7 @@ export default function NewReportPage() {
 
       setRepository(payload.repository);
       setDiff(payload.diff);
+      setInputSource("github-pr");
       if (payload.title?.trim()) setTitle(payload.title.trim());
       setError(null);
       setImportStatus({
@@ -118,6 +121,7 @@ export default function NewReportPage() {
       repository: String(formData.get("repository") ?? ""),
       technology: String(formData.get("technology") ?? ""),
       diff: String(formData.get("diff") ?? ""),
+      inputSource,
     };
 
     try {

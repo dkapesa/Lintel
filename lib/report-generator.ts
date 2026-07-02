@@ -1,13 +1,16 @@
 import type { FindingSeverity, Report, RiskLevel } from "./mock-report";
-import { assessReportQuality } from "./report-quality";
+import { assessReportQuality, pruneUnsupportedReviewerFocus } from "./report-quality";
 
 export const GENERATED_REPORT_STORAGE_KEY = "lintel.generatedReport.v1";
+
+export type ReportInputSource = "pasted-diff" | "github-pr" | "sample";
 
 export type ReportInput = {
   title: string;
   repository: string;
   technology: string;
   diff: string;
+  inputSource?: ReportInputSource;
 };
 
 type RiskSignal = {
@@ -798,7 +801,7 @@ export function generateReport(input: ReportInput): Report {
       title: input.title.trim(),
       repository: input.repository.trim(),
       project: input.repository.trim(),
-      branch: "pasted-diff",
+      branch: input.inputSource ?? "pasted-diff",
       language: technology.language,
       framework: technology.framework,
       author: "Local prototype",
@@ -869,8 +872,13 @@ export function generateReport(input: ReportInput): Report {
     conditionsBeforeMerge: conditions,
   };
 
-  return {
+  const prunedReport: Report = {
     ...generatedReport,
-    reportQuality: assessReportQuality(generatedReport),
+    reviewerFocus: pruneUnsupportedReviewerFocus(generatedReport),
+  };
+
+  return {
+    ...prunedReport,
+    reportQuality: assessReportQuality(prunedReport),
   };
 }

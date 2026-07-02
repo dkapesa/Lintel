@@ -1,5 +1,5 @@
 import type { Confidence, FindingSeverity, OperationalReadiness, Recommendation, Report, ReviewArea, RiskLevel } from "./mock-report";
-import { assessReportQuality } from "./report-quality";
+import { assessReportQuality, pruneUnsupportedReviewerFocus } from "./report-quality";
 
 const RECOMMENDATIONS: Recommendation[] = ["APPROVE", "REVIEW_REQUIRED", "TESTS_REQUIRED"];
 const RISK_LEVELS: RiskLevel[] = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
@@ -422,9 +422,14 @@ export function normaliseReport(value: unknown, baseline: Report): Report | null
     conditionsBeforeMerge: recommendation === "APPROVE" ? [] : conditionsBeforeMerge,
   };
 
-  return {
+  const prunedReport: Report = {
     ...normalisedReport,
-    reportQuality: assessReportQuality(normalisedReport),
+    reviewerFocus: pruneUnsupportedReviewerFocus(normalisedReport),
+  };
+
+  return {
+    ...prunedReport,
+    reportQuality: assessReportQuality(prunedReport),
   };
 }
 

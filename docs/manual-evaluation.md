@@ -504,3 +504,29 @@ Manual tests:
 7. Search `localStorage` for a unique raw-diff marker and confirm it is absent.
 8. Load a legacy bare current report in `sessionStorage` and confirm `/report` still renders it safely.
 9. Corrupt the history JSON and confirm `/new` clears it without crashing.
+
+## Download Markdown
+
+`/report` provides **Download Markdown** beside **Copy summary**. Both actions use the same sanitized report formatter; downloading creates a client-side `.md` file and does not send another request or store new report data.
+
+Expected Markdown sections:
+
+- PR title and repository;
+- generation source and input source or legacy branch;
+- recommendation and risk score/level;
+- executive summary and findings;
+- operational readiness and reviewer focus;
+- report quality status and warnings;
+- missing and suggested tests;
+- conditions before merge.
+
+Manual tests:
+
+1. Download clean, risky, AI, deterministic, demo, and history-opened reports.
+2. Confirm filenames follow `lintel-report-{repository}-{pr-title}.md` using safe lowercase characters.
+3. Confirm the button briefly shows **Downloaded** only after the client-side download action succeeds.
+4. Confirm download failure shows **Download failed** without affecting the report.
+5. Open the file and verify every expected section and source label.
+6. Confirm empty sections use neutral `None detected` copy.
+7. Search the downloaded file for unique diff markers, `diff --git`, `@@`, exact patch lines, credentials, and secrets; none should be present.
+8. Confirm keyboard access and narrow-screen topbar spacing.

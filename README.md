@@ -33,6 +33,7 @@ Lintel is designed around that decision.
 - Browser-local history for the 10 most recent generated reports
 - Source visibility for AI output, deterministic fallback, and demo reports
 - Copyable Markdown summaries with raw-diff and secret redaction safeguards
+- Client-side Markdown downloads with safe, readable filenames
 
 ## Architecture
 

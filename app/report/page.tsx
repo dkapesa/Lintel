@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { GENERATED_REPORT_STORAGE_KEY } from "../../lib/report-generator";
-import { reportToMarkdown, type ReportSourceLabel } from "../../lib/report-markdown";
+import { reportMarkdownFilename, reportToMarkdown, type ReportSourceLabel } from "../../lib/report-markdown";
 import type { FindingSeverity, Recommendation, Report, ReviewArea, RiskLevel } from "../../lib/mock-report";
 import { report as demoReport } from "../../lib/mock-report";
 import { pruneUnsupportedReviewerFocus } from "../../lib/report-quality";
@@ -10,6 +10,7 @@ import { pruneUnsupportedReviewerFocus } from "../../lib/report-quality";
 type GeneratedReportSource = "ai" | "deterministic";
 type ReportSource = GeneratedReportSource | "demo";
 type CopyState = "idle" | "copied" | "failed";
+type DownloadState = "idle" | "downloaded" | "failed";
 
 type StoredReport = {
   report: Report;
@@ -26,6 +27,12 @@ const copyLabels: Record<CopyState, string> = {
   idle: "Copy summary",
   copied: "Copied",
   failed: "Copy failed",
+};
+
+const downloadLabels: Record<DownloadState, string> = {
+  idle: "Download Markdown",
+  downloaded: "Downloaded",
+  failed: "Download failed",
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -80,6 +87,28 @@ async function writeToClipboard(value: string) {
     }
   } finally {
     if (clipboardTimeout) clearTimeout(clipboardTimeout);
+  }
+}
+
+function downloadMarkdown(value: string, filename: string) {
+  let url: string | null = null;
+  let link: HTMLAnchorElement | null = null;
+
+  try {
+    const blob = new Blob([value], { type: "text/markdown;charset=utf-8" });
+    url = URL.createObjectURL(blob);
+    link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.hidden = true;
+    document.body.appendChild(link);
+    link.click();
+    return true;
+  } catch {
+    return false;
+  } finally {
+    link?.remove();
+    if (url) window.setTimeout(() => URL.revokeObjectURL(url), 0);
   }
 }
 
@@ -153,7 +182,9 @@ export default function ReportPage() {
     source: "demo",
   });
   const [copyState, setCopyState] = useState<CopyState>("idle");
+  const [downloadState, setDownloadState] = useState<DownloadState>("idle");
   const copyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const downloadResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const storedReport = sessionStorage.getItem(GENERATED_REPORT_STORAGE_KEY);
@@ -181,6 +212,7 @@ export default function ReportPage() {
 
   useEffect(() => () => {
     if (copyResetTimer.current) clearTimeout(copyResetTimer.current);
+    if (downloadResetTimer.current) clearTimeout(downloadResetTimer.current);
   }, []);
 
   const { report, source } = displayedReport;
@@ -193,6 +225,15 @@ export default function ReportPage() {
 
     if (copyResetTimer.current) clearTimeout(copyResetTimer.current);
     copyResetTimer.current = setTimeout(() => setCopyState("idle"), 2_000);
+  }
+
+  function handleDownloadMarkdown() {
+    const markdown = reportToMarkdown(report, sourceLabels[source]);
+    const downloaded = downloadMarkdown(markdown, reportMarkdownFilename(report));
+    setDownloadState(downloaded ? "downloaded" : "failed");
+
+    if (downloadResetTimer.current) clearTimeout(downloadResetTimer.current);
+    downloadResetTimer.current = setTimeout(() => setDownloadState("idle"), 2_000);
   }
 
   return (
@@ -228,6 +269,14 @@ export default function ReportPage() {
               aria-live="polite"
             >
               {copyLabels[copyState]}
+            </button>
+            <button
+              className={`download-markdown-button download-markdown-button--${downloadState}`}
+              type="button"
+              onClick={handleDownloadMarkdown}
+              aria-live="polite"
+            >
+              {downloadLabels[downloadState]}
             </button>
             <span className="sync-status"><i /> Analysed {pr.updatedAt}</span>
             <button className="icon-button" aria-label="More report actions">•••</button>

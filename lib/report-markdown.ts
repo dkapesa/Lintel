@@ -48,6 +48,24 @@ function inputSourceMarkdown(value: string) {
   return `**${knownInputSource ? "Input source" : "Branch"}:** ${safeMarkdownText(inputSourceLabel(value))}`;
 }
 
+function filenameSlug(value: string, fallback: string, maxLength: number) {
+  const slug = value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, maxLength)
+    .replace(/-+$/g, "");
+  return slug || fallback;
+}
+
+export function reportMarkdownFilename(report: Report) {
+  const repository = filenameSlug(report.pr.repository, "repository", 50);
+  const title = filenameSlug(report.pr.title, "pull-request", 80);
+  return `lintel-report-${repository}-${title}.md`;
+}
+
 export function reportToMarkdown(report: Report, source: ReportSourceLabel) {
   const recommendation = report.verdict.recommendation.replaceAll("_", " ");
   const findings = limitedList(
@@ -57,6 +75,10 @@ export function reportToMarkdown(report: Report, source: ReportSourceLabel) {
   const suggestedTests = limitedList(
     report.suggestedTests,
     (test) => safeMarkdownText(test.title),
+  );
+  const missingTests = limitedList(
+    report.missingTests,
+    (test) => safeMarkdownText(test),
   );
   const conditions = limitedList(
     report.conditionsBeforeMerge,
@@ -118,6 +140,9 @@ export function reportToMarkdown(report: Report, source: ReportSourceLabel) {
     "",
     "## Report quality",
     reportQuality,
+    "",
+    "## Missing tests",
+    missingTests,
     "",
     "## Suggested tests",
     suggestedTests,

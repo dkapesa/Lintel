@@ -30,6 +30,7 @@ Lintel is designed around that decision.
 - Internal report-quality checks for recommendation and evidence consistency
 - Public GitHub PR diff import with strict URL validation and size limits
 - Eight built-in evaluation samples covering clean and risky changes
+- Browser-local history for the 10 most recent generated reports
 - Source visibility for AI output, deterministic fallback, and demo reports
 - Copyable Markdown summaries with raw-diff and secret redaction safeguards
 
@@ -45,7 +46,8 @@ Lintel uses a small Next.js App Router architecture with TypeScript and plain CS
        -> optional OpenAI request via native fetch
        -> normalization and safety guardrails
        -> report-quality assessment
-  -> sessionStorage stores { report, source }
+  -> sessionStorage stores the current { report, source }
+  -> localStorage keeps up to 10 raw-diff-free report history entries
   -> /report renders and copies the result
 ```
 
@@ -77,7 +79,9 @@ The server validates the host and path, reconstructs trusted GitHub URLs, fetche
 ## Privacy and storage
 
 - Raw diffs are used for generation but are not stored in `sessionStorage` or returned inside the report.
-- Browser storage contains only `{ report, source }` under `lintel.generatedReport.v1`.
+- Current-session storage contains `{ report, source }` under `lintel.generatedReport.v1`.
+- Local history contains generated reports, source/input labels, creation time, and minimal display metadata under `lintel.reportHistory.v1`.
+- Neither browser entry stores the submitted raw diff.
 - API responses use no-store behavior where appropriate.
 - When AI generation is enabled, the submitted diff is sent to the configured model provider for analysis.
 - Lintel does not claim that the model provider does not retain submitted data.
@@ -87,7 +91,7 @@ The server validates the host and path, reconstructs trusted GitHub URLs, fetche
 
 - Prototype heuristics and AI output can miss or misclassify risk.
 - No private repository access, GitHub App, webhooks, or automated PR comments.
-- No authentication, teams, persistent report history, billing, or audit log.
+- No authentication, teams, server-side or shared report history, billing, or audit log.
 - No repository-wide context, dependency graph, test execution, or static-analysis engine.
 - Public GitHub imports are subject to unauthenticated rate limits.
 - Reports support engineering judgment; they are not a security or compliance guarantee.

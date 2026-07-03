@@ -478,3 +478,29 @@ Manual tests:
 6. Confirm an empty reviewer checklist renders its positive empty state without a blank list.
 7. Confirm session storage still contains only `{ report, source }` and no raw diff.
 8. Generate the frontend analytics sample or import a docs/analytics/type-only PR and confirm **Payments/domain logic** is absent from both the page and copied markdown.
+
+## Local report history
+
+`/new` stores up to 10 recently generated reports under `lintel.reportHistory.v1` in browser `localStorage`. The existing `lintel.generatedReport.v1` session entry remains the source for the report currently shown on `/report`.
+
+Each history entry contains only:
+
+- the generated report;
+- `ai` or `deterministic` generation source;
+- the derived input label;
+- creation time;
+- minimal title, repository, recommendation, and risk-score metadata.
+
+Raw diffs are never stored in history. Entries containing raw patch markers are rejected. Malformed local history is removed safely, and persistent-storage failures must not prevent report generation.
+
+Manual tests:
+
+1. Generate 11 reports and confirm only the newest 10 remain.
+2. Confirm the newest generated report still opens automatically on `/report`.
+3. Return to `/new`, open an older history item, and confirm `/report` renders that report with its original generation source.
+4. Delete one entry and confirm the remaining entries persist after reload.
+5. Select **Clear all** and confirm the history becomes empty without removing the current session report.
+6. Confirm each item shows title, repository, recommendation, risk score, generation source, input label, and created time.
+7. Search `localStorage` for a unique raw-diff marker and confirm it is absent.
+8. Load a legacy bare current report in `sessionStorage` and confirm `/report` still renders it safely.
+9. Corrupt the history JSON and confirm `/new` clears it without crashing.

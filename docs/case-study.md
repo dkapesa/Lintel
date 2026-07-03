@@ -29,6 +29,7 @@ These are review and readiness problems, not merely code-explanation problems. L
 | V0.10 | Eight built-in samples for repeatable demos and evaluation |
 | V0.11 | Internal report-quality checks and safe copy validation |
 | V0.12–V1.0 | Pilot-ready copy, input-source labels, empty states, documentation, and portfolio workflow |
+| V1.1 | Raw-diff-free browser-local history for the 10 most recent reports |
 
 ## Technical decisions
 
@@ -46,7 +47,7 @@ The normalizer clamps scores, derives risk levels, recomputes recommendations, r
 
 ### Privacy-conscious prototype storage
 
-The raw diff exists only in the form and generation request. The browser stores the final report and generation source, not the submitted patch. Copyable Markdown is capped, redacted, and checked for raw patch markers.
+The raw diff exists only in the form and generation request. The browser stores the current report plus a bounded local report history, never the submitted patch. Copyable Markdown is capped, redacted, and checked for raw patch markers.
 
 ### Small dependency surface
 
@@ -88,7 +89,7 @@ The next meaningful product steps would be:
 3. Repository context and test-result ingestion without storing unnecessary source data.
 4. Authenticated GitHub App support for private repositories and opt-in PR checks.
 5. Team policy configuration for risk thresholds and required reviewers.
-6. Persistent report history, auditability, and feedback loops.
+6. Server-side or team-shared report history, auditability, and feedback loops.
 7. Production privacy controls, retention policy, access control, and provider governance.
 
 Lintel should only expand into these areas after validating that teams find the report useful during real merge decisions.

@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { generateReport, GENERATED_REPORT_STORAGE_KEY, type ReportInput, type ReportInputSource } from "../../lib/report-generator";
+import { addReportToHistory, clearReportHistory, deleteReportFromHistory, readReportHistory, type ReportHistoryEntry } from "../../lib/report-history";
 import type { Report } from "../../lib/mock-report";
 import { PR_SAMPLES } from "../../lib/sample-pr-input";
 
@@ -49,6 +50,17 @@ function importErrorMessage(value: unknown) {
   return typeof value.error === "string" ? value.error : null;
 }
 
+function historySourceLabel(source: ReportHistoryEntry["source"]) {
+  return source === "ai" ? "AI generated" : "Local fallback";
+}
+
+function historyTime(value: string) {
+  return new Date(value).toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
+
 export default function NewReportPage() {
   const router = useRouter();
   const [isGenerating, setIsGenerating] = useState(false);
@@ -61,6 +73,15 @@ export default function NewReportPage() {
   const [technology, setTechnology] = useState("");
   const [diff, setDiff] = useState("");
   const [inputSource, setInputSource] = useState<ReportInputSource>("pasted-diff");
+  const [history, setHistory] = useState<ReportHistoryEntry[]>([]);
+
+  useEffect(() => {
+    try {
+      setHistory(readReportHistory(window.localStorage));
+    } catch {
+      setHistory([]);
+    }
+  }, []);
 
   function useSample(sample: ReportInput) {
     setTitle(sample.title);
@@ -152,10 +173,40 @@ export default function NewReportPage() {
       }
 
       sessionStorage.setItem(GENERATED_REPORT_STORAGE_KEY, JSON.stringify({ report: generatedReport, source }));
+      try {
+        setHistory(addReportToHistory(window.localStorage, generatedReport, source));
+      } catch {
+        // Report generation remains usable when persistent browser storage is unavailable.
+      }
       router.push("/report");
     } catch {
       setError("The report could not be generated locally. Please try again.");
       setIsGenerating(false);
+    }
+  }
+
+  function openHistoryReport(entry: ReportHistoryEntry) {
+    try {
+      sessionStorage.setItem(GENERATED_REPORT_STORAGE_KEY, JSON.stringify({ report: entry.report, source: entry.source }));
+      router.push("/report");
+    } catch {
+      setError("This saved report could not be opened. Please try again.");
+    }
+  }
+
+  function deleteHistoryReport(createdAt: string) {
+    try {
+      setHistory(deleteReportFromHistory(window.localStorage, createdAt));
+    } catch {
+      setError("This saved report could not be deleted.");
+    }
+  }
+
+  function clearHistory() {
+    try {
+      setHistory(clearReportHistory(window.localStorage));
+    } catch {
+      setError("Report history could not be cleared.");
     }
   }
 
@@ -262,6 +313,39 @@ export default function NewReportPage() {
             </button>
           </div>
         </form>
+
+        <section className="report-history" aria-labelledby="report-history-title">
+          <div className="report-history-heading">
+            <div>
+              <span className="eyebrow">LOCAL HISTORY</span>
+              <h2 id="report-history-title">Recent reports</h2>
+            </div>
+            {history.length > 0 && <button type="button" onClick={clearHistory}>Clear all</button>}
+          </div>
+
+          {history.length > 0 ? (
+            <ul className="report-history-list">
+              {history.map((entry) => (
+                <li key={entry.createdAt}>
+                  <button className="history-open" type="button" onClick={() => openHistoryReport(entry)}>
+                    <span className="history-title">{entry.metadata.title}</span>
+                    <span className="history-repository">{entry.metadata.repository}</span>
+                    <span className="history-meta">
+                      <strong>{entry.metadata.recommendation.replaceAll("_", " ")}</strong>
+                      <span>{entry.metadata.riskScore}/100</span>
+                      <span>{historySourceLabel(entry.source)}</span>
+                      <span>{entry.inputLabel}</span>
+                      <time dateTime={entry.createdAt}>{historyTime(entry.createdAt)}</time>
+                    </span>
+                  </button>
+                  <button className="history-delete" type="button" onClick={() => deleteHistoryReport(entry.createdAt)} aria-label={`Delete ${entry.metadata.title} from report history`}>Delete</button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="report-history-empty">Generated reports will appear here on this browser.</p>
+          )}
+        </section>
       </div>
     </main>
   );

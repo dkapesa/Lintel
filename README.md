@@ -324,13 +324,3 @@ Lintel is not a coding agent and not a generic AI code review tool.
 Coding agents help teams create code faster.
 
 Lintel helps teams decide what is ready to merge.
-
-```
-
-Before editing locally, because you updated evaluation results directly on GitHub, run:
-
-```powershell id="9wkr4b"
-git status
-git pull
-git status
-```

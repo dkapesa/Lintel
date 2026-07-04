@@ -192,6 +192,8 @@ export default function ReportPage() {
   const downloadResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("demo") === "1") return;
+
     const storedReport = sessionStorage.getItem(GENERATED_REPORT_STORAGE_KEY);
 
     if (!storedReport) return;
@@ -249,9 +251,9 @@ export default function ReportPage() {
           <span>Lintel</span>
         </a>
         <nav className="side-nav" aria-label="Primary navigation">
-          <a className="nav-item" href="/new"><span aria-hidden="true">⌘</span>New report</a>
-          <a className="nav-item nav-item--active" href="#report"><span aria-hidden="true">◈</span>Reports</a>
-          <a className="nav-item" href="#repository"><span aria-hidden="true">□</span>Repositories</a>
+          <a className="nav-item" href="/new"><span aria-hidden="true">＋</span>New report</a>
+          <a className={`nav-item${source !== "demo" ? " nav-item--active" : ""}`} href="/workspace"><span aria-hidden="true">▦</span>Reports workspace</a>
+          <a className={`nav-item${source === "demo" ? " nav-item--active" : ""}`} href="/report?demo=1"><span aria-hidden="true">◇</span>Demo report</a>
         </nav>
         <div className="sidebar-footer">
           <div className="workspace-avatar">N</div>

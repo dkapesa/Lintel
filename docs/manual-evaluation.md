@@ -582,3 +582,22 @@ Manual tests:
 10. Open reports from local history and verify profile labels persist.
 11. Confirm Copy summary and Download Markdown contain the profile and no raw diff.
 12. Load a legacy report without `reviewProfile` and confirm it renders and copies safely as **Standard**.
+
+## Local reports workspace
+
+`/workspace` provides a browser-local view of the same 10-report history used by `/new`. It does not introduce a server-side workspace, account, database, or additional report storage.
+
+Each row shows the PR title, repository, recommendation, score and risk level, operational readiness, evidence-supported reviewer focus, report quality, review profile, generation and input sources, and creation time. Opening a row copies only its existing `{ report, source }` envelope into the current session report key before navigating to `/report`.
+
+Manual tests:
+
+1. Open `/workspace` with no local history and confirm the empty state links to `/new`.
+2. Generate reports from a sample, pasted diff, and public GitHub PR; confirm each appears with the expected profile and source labels.
+3. Open an older report and confirm `/report` renders it with its original source, input label, operational readiness, reviewer focus, and report quality.
+4. Delete one report and confirm the other entries remain after reload.
+5. Select **Clear history** and confirm the workspace becomes empty without deleting the current session report.
+6. Load legacy history without operational readiness, reviewer focus, report quality, or review profile and confirm neutral **Not assessed** or **Standard** values render without crashing.
+7. Confirm unsupported reviewer-focus areas are pruned from the workspace summary.
+8. Confirm `/report?demo=1` shows the demo report even when a generated report exists in session storage.
+9. Inspect local and session storage and confirm no raw diff, diff markers, secrets, or patch lines were added.
+10. Verify keyboard navigation and the mobile card layout at a narrow viewport.

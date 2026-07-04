@@ -233,7 +233,10 @@ export default function NewReportPage() {
           <span className="brand-mark" aria-hidden="true">◢</span>
           <span>Lintel</span>
         </Link>
-        <span>Local prototype</span>
+        <nav className="new-topbar-links" aria-label="Workspace navigation">
+          <Link href="/workspace">Reports workspace</Link>
+          <span>Local prototype</span>
+        </nav>
       </header>
 
       <div className="new-content">

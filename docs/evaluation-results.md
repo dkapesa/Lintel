@@ -1,91 +1,208 @@
-# Lintel evaluation results
+# Lintel Evaluation Results
 
-**Evaluation date:** `YYYY-MM-DD`  
-**Evaluator:** `Name or initials`  
-**Commit/version:** `Commit hash or release`  
-**Environment:** `Browser, operating system, model configuration if applicable`
+Evaluation date: 2026-07-04  
+Evaluation mode: Manual product smoke test  
+Application version: V1.8 local reports workspace  
+Evaluator: Denis Kapesa
 
-This document records observed results for the workflow defined in [evaluation.md](evaluation.md). Do not mark a case as passed until it has been generated and inspected through the current application flow.
+## Summary
 
-## Deterministic fallback pass
+Lintel was evaluated against representative pull request scenarios covering clean utility changes, risky provider failure handling, public GitHub PR import, frontend/API consumer changes and manual pasted diffs.
 
-**Status:** `PENDING`  
-**Configuration:** `OPENAI_API_KEY and OPENAI_MODEL unset; Review profile: Standard`  
-**Source expected:** `Local fallback`
+| Metric | Result |
+| --- | --- |
+| Scenarios evaluated | 4 |
+| Passed | 4 |
+| Failed | 0 |
+| Report quality checks passed | 4 / 4 |
+| Raw diff leakage observed | No |
+| GitHub import tested | Yes |
+| Manual pasted diff tested | Yes |
+| Review profiles tested | Standard, Frontend/API consumer |
 
-| Sample | Expected recommendation | Observed recommendation | Expected risk | Observed risk | Operational readiness | Reviewer focus | Report quality | Result | Notes |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Clean utility change | `APPROVE` | `Not recorded` | `LOW` | `Not recorded` | Expected `CLEAR`; observed `Not recorded` | Expected none; observed `Not recorded` | Expected `PASS`; observed `Not recorded` | `PENDING` | Confirm no findings, suggested tests or merge conditions. |
-| Provider failure / retry risk | `TESTS_REQUIRED` | `Not recorded` | `HIGH` | `Not recorded` | Expected `ATTENTION`; observed `Not recorded` | Backend reliability, API contract, Security/privacy, Payments/domain logic, Platform/observability | Expected `PASS`; observed `Not recorded` | `PENDING` | Confirm specific provider, retry, API, logging and test-gap evidence. |
-| Auth/session change | `TESTS_REQUIRED` | `Not recorded` | `MEDIUM` | `Not recorded` | Expected `ATTENTION`; observed `Not recorded` | Backend reliability, Security/privacy, Platform/observability | Expected `PASS`; observed `Not recorded` | `PENDING` | Payments/domain logic must not appear without payment evidence. |
-| Database migration | `TESTS_REQUIRED` | `Not recorded` | `MEDIUM` | `Not recorded` | Expected `ATTENTION`; observed `Not recorded` | Backend reliability, Data/migration, Platform/observability | Expected `PASS`; observed `Not recorded` | `PENDING` | Confirm migration compatibility, rollback and recovery themes. |
-| Payment/refund side effect | `TESTS_REQUIRED` | `Not recorded` | `MEDIUM` | `Not recorded` | Expected `ATTENTION`; observed `Not recorded` | Backend reliability, Payments/domain logic, Platform/observability | Expected `PASS`; observed `Not recorded` | `PENDING` | Confirm payment/refund repeat-safety and recovery evidence. |
-| API contract change | `REVIEW_REQUIRED` | `Not recorded` | `LOW` | `Not recorded` | Expected `ATTENTION`; observed `Not recorded` | API contract, Platform/observability | Expected `PASS`; observed `Not recorded` | `PENDING` | Confirm stable status, response and retry semantics. |
-| Logging/privacy risk | `REVIEW_REQUIRED` | `Not recorded` | `MEDIUM` | `Not recorded` | Expected `ATTENTION`; observed `Not recorded` | Security/privacy, Platform/observability | Expected `PASS`; observed `Not recorded` | `PENDING` | Confirm sensitive fields and identifiers are handled precisely. |
-| Frontend analytics/type change | `TESTS_REQUIRED` | `Not recorded` | `MEDIUM` | `Not recorded` | Expected `CLEAR`; observed `Not recorded` | Backend reliability, Frontend integration, Docs/API consumer review | Expected `PASS`; observed `Not recorded` | `PENDING` | **Payments/domain logic must not appear.** |
+## Scenario Results
 
-### Deterministic pass summary
+| ID | Scenario | Input source | Review profile | Expected | Observed | Result |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | Clean utility change | Sample | Standard | APPROVE / LOW / CLEAR | APPROVE / 22 LOW / CLEAR | PASS |
+| 2 | Provider retry and duplicate redemption risk | Sample | Standard | TESTS_REQUIRED / HIGH / ATTENTION | TESTS_REQUIRED / 78 HIGH / ATTENTION | PASS |
+| 3 | Next.js sendGAEvent public PR import | GitHub PR import | Frontend/API consumer | No payment false positive, TypeScript / Next.js inferred, test gaps detected | TESTS_REQUIRED / 52 MEDIUM / CLEAR, TypeScript / Next.js inferred, no Payments/domain logic | PASS |
+| 4 | Clean manual pasted diff | Pasted diff | Standard | APPROVE / LOW / CLEAR | APPROVE / 22 LOW / CLEAR | PASS |
 
-- Passed: `0 / 8`
-- Failed: `0 / 8`
-- Pending: `8 / 8`
-- Blocking regressions: `None recorded`
-- Raw-diff privacy check: `Not recorded`
-- Copy and download parity: `Not recorded`
-- Local-history parity: `Not recorded`
+## Detailed Results
 
-## Optional AI comparison pass
+### 1. Clean utility change
 
-**Status:** `NOT RUN`  
-**Model:** `OPENAI_MODEL value without credentials`  
-**Source expected:** `AI generated`
+**PR:** Format display names consistently  
+**Repository:** acme/profile-api  
+**Input source:** Sample  
+**Review profile:** Standard  
+**Stack:** Python / FastAPI  
 
-Repeat the same eight cases after the deterministic pass succeeds. Record recommendation, risk, operational status, reviewer focus, report quality and false-positive differences. AI wording and scores may vary, but deterministic findings, recommendation constraints, profile evidence gates, protected risk floors and privacy rules must remain intact.
+Observed result:
 
-| Sample | AI result | Material difference from deterministic | Guardrails preserved | Notes |
-| --- | --- | --- | --- | --- |
-| Clean utility change | `Not recorded` | `Not recorded` | `PENDING` | |
-| Provider failure / retry risk | `Not recorded` | `Not recorded` | `PENDING` | |
-| Auth/session change | `Not recorded` | `Not recorded` | `PENDING` | |
-| Database migration | `Not recorded` | `Not recorded` | `PENDING` | |
-| Payment/refund side effect | `Not recorded` | `Not recorded` | `PENDING` | |
-| API contract change | `Not recorded` | `Not recorded` | `PENDING` | |
-| Logging/privacy risk | `Not recorded` | `Not recorded` | `PENDING` | |
-| Frontend analytics/type change | `Not recorded` | `Not recorded` | `PENDING` | Payments/domain logic remains forbidden without evidence. |
+- Recommendation: APPROVE
+- Risk score: 22 / 100
+- Risk level: LOW
+- Operational readiness: CLEAR
+- Findings: 0
+- Reviewer focus areas: 0
+- Missing tests: none
+- Suggested tests: none
+- Report quality: PASS
 
-## Dedicated regression notes
+Result: PASS
 
-### Frontend analytics/type change
+Notes:
 
-- Must not show **Payments/domain logic** on the page, in copied Markdown, or in downloaded Markdown.
-- Generic terms such as event, side effect, behavior, domain or execution order are not payment evidence.
-- Expected focus: Backend reliability, Frontend integration and Docs/API consumer review.
+Lintel correctly recognised a low-risk utility change with matching tests. The report did not create unnecessary findings, missing tests, reviewer focus areas or suggested tests.
 
-### Clean utility change
+### 2. Provider retry and duplicate redemption risk
 
-- Must remain `APPROVE` / `LOW` / operational `CLEAR` under the Standard profile.
-- Must have no findings, missing tests, suggested tests or merge conditions.
-- Report quality must be `PASS`.
+**PR:** Add fallback handling for failed discount-code retrieval  
+**Repository:** acme/redemption-api  
+**Input source:** Sample  
+**Review profile:** Standard  
+**Stack:** Python / FastAPI  
 
-### Provider failure / retry risk
+Observed result:
 
-- Must remain `TESTS_REQUIRED` / `HIGH` / operational `ATTENTION` under the Standard profile.
-- Findings must remain specific to retry/duplicate side effects, provider failures, API contracts, sensitive logging and missing tests.
-- Report quality must be `PASS`.
+- Recommendation: TESTS_REQUIRED
+- Risk score: 78 / 100
+- Risk level: HIGH
+- Operational readiness: ATTENTION
+- Findings: 5
+- Reviewer focus areas: 5
+- Report quality: PASS
 
-## Known limitations
+Detected focus areas:
 
-- This is a manual regression record; results are not generated automatically.
-- Built-in samples cover targeted risk themes but not repository-wide context or real CI execution.
-- AI output is variable and requires a separate comparison pass.
-- The evaluation does not prove complete security, reliability or false-negative coverage.
-- Public GitHub behavior can vary because of upstream availability and unauthenticated rate limits.
+- Backend reliability
+- API contract
+- Security/privacy
+- Payments/domain logic
+- Platform/observability
 
-## Future evaluation improvements
+Result: PASS
 
-1. Add a dependency-free executable deterministic fixture runner when the TypeScript runtime strategy is settled.
-2. Store machine-readable expected outcomes beside sample definitions without duplicating generator logic.
-3. Track false positives, false negatives, recommendation agreement and score drift across releases.
-4. Add anonymized real-world PR fixtures with reviewer feedback.
-5. Add automated checks for copy/download parity, raw-diff absence and history round trips.
-6. Compare AI models and prompt versions against the same deterministic baseline.
+Notes:
+
+Lintel correctly escalated a risky provider and retry change. The report identified missing risk-specific tests, duplicate redemption risk, provider failure handling, API contract stability, logging/privacy concerns and operational readiness gaps.
+
+This is one of the strongest demonstrations of Lintel's core value because it moves beyond code review and evaluates merge readiness, operational risk and conditions before merge.
+
+### 3. GitHub PR import / Next.js sendGAEvent
+
+**PR:** Fix sendGAEvent function params and type clearly  
+**Repository:** vercel/next.js  
+**Input source:** GitHub PR import  
+**Review profile:** Frontend/API consumer  
+**Stack:** TypeScript / Next.js  
+
+Observed result:
+
+- Recommendation: TESTS_REQUIRED
+- Risk score: 52 / 100
+- Risk level: MEDIUM
+- Operational readiness: CLEAR
+- Findings: 3
+- Reviewer focus areas: 3
+- Report quality: PASS
+- Stack inference: TypeScript / Next.js
+- Payments/domain logic: not present
+
+Detected focus areas:
+
+- Backend reliability
+- Frontend integration
+- Docs/API consumer review
+
+Result: PASS
+
+Notes:
+
+Lintel successfully imported a public GitHub PR and inferred the correct stack context as TypeScript / Next.js. The selected Frontend/API consumer profile correctly surfaced documentation, browser/API consumer and frontend integration concerns.
+
+Dedicated regression passed: the report did not show Payments/domain logic for a frontend analytics/type change.
+
+Follow-up polish:
+
+The Backend reliability reviewer focus appears because missing test coverage triggers reliability review. This is acceptable for the current prototype, but a future reviewer-routing refinement could phrase this as frontend/API test coverage when the change is primarily frontend, documentation or public consumer API related.
+
+### 4. Manual pasted diff
+
+**PR:** Normalize display titles before rendering  
+**Repository:** acme/content-service  
+**Input source:** Pasted diff  
+**Review profile:** Standard  
+**Stack:** Python / FastAPI  
+
+Observed result:
+
+- Recommendation: APPROVE
+- Risk score: 22 / 100
+- Risk level: LOW
+- Operational readiness: CLEAR
+- Findings: 0
+- Reviewer focus areas: 0
+- Missing tests: none
+- Suggested tests: none
+- Report quality: PASS
+
+Result: PASS
+
+Notes:
+
+Lintel correctly handled the manual pasted diff flow. The change was recognised as a safe, well-tested utility update and did not generate unnecessary findings or test suggestions.
+
+## Dedicated Regression Tests
+
+| Regression | Expected | Observed | Result |
+| --- | --- | --- | --- |
+| Clean utility change remains low risk | APPROVE / LOW / CLEAR | APPROVE / 22 LOW / CLEAR | PASS |
+| Clean APPROVE report does not show suggested tests | No suggested tests | No additional tests suggested | PASS |
+| Provider failure and retry risk escalates | TESTS_REQUIRED / HIGH / ATTENTION | TESTS_REQUIRED / 78 HIGH / ATTENTION | PASS |
+| Provider retry report includes operational readiness concerns | ATTENTION with failure modes, detection, rollback/recovery and customer impact | ATTENTION with detailed operational readiness | PASS |
+| Frontend/API consumer GitHub PR does not show Payments/domain logic | Payments/domain logic absent | Payments/domain logic absent | PASS |
+| GitHub import infers stack context | TypeScript / Next.js | TypeScript / Next.js | PASS |
+| Manual pasted diff flow works | Report generates from pasted diff | APPROVE report generated | PASS |
+| Report quality checks remain present | PASS or explainable warnings | PASS across all four scenarios | PASS |
+| Raw diff should not appear in generated report UI | No `diff --git` or `@@` markers in report UI | No raw diff markers observed in shown reports | PASS |
+
+## Current Limitations
+
+- Evaluation is currently manual.
+- Only four scenarios have been recorded in this pass.
+- Private repository import is not supported.
+- GitHub App integration is not implemented.
+- CI integration is not implemented.
+- Automatic PR comments are not implemented.
+- Team dashboards, shared reports, authentication and billing are not implemented.
+- Model output quality still depends on the configured AI provider when AI mode is enabled.
+
+## Follow-up Evaluation Work
+
+- Record results for all eight built-in sample scenarios.
+- Repeat the same scenarios with deterministic fallback only.
+- Repeat the same scenarios with AI enabled.
+- Add more real public GitHub PR imports across frontend, backend, database, auth, security and infrastructure changes.
+- Add regression coverage for review policy profiles:
+  - High assurance
+  - Payments/refunds
+  - Auth/security
+  - Data/migrations
+  - Frontend/API consumer
+- Track false positives and false negatives over time.
+- Consider adding automated snapshot-style report checks once the report schema stabilises.
+
+## Overall Conclusion
+
+Lintel successfully generated structured merge-readiness reports across clean, risky, imported and manually pasted pull request scenarios.
+
+The evaluated reports correctly surfaced recommendation, risk, missing tests, operational readiness, reviewer focus, report quality and conditions before merge.
+
+The strongest validated product wedge is:
+
+> Lintel helps engineering teams decide whether a pull request is safe, tested, operationally ready and ready to merge.
+
+This evaluation pass supports Lintel's current positioning as a local-first merge-readiness workspace for engineering teams.

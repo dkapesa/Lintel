@@ -72,7 +72,7 @@ Each case has an expected recommendation range, risk level, finding themes, oper
 
 The report-quality layer also checks internal invariants: score/level agreement, recommendation consistency, operational attention, reviewer-focus evidence, sensitive-path risk floors, security-review conflicts, and raw patch markers.
 
-The current regression matrix and recording template are documented in [evaluation.md](evaluation.md). The primary pass uses deterministic fallback for repeatability, followed by an optional AI comparison pass.
+The current regression matrix is documented in [evaluation.md](evaluation.md), with observed runs recorded in [evaluation-results.md](evaluation-results.md). The primary pass uses deterministic fallback for repeatability, followed by an optional AI comparison pass.
 
 ## How Lintel differs from generic AI code review
 

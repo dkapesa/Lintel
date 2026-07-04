@@ -121,5 +121,6 @@ Useful documentation:
 - [Case study](docs/case-study.md)
 - [Demo script](docs/demo-script.md)
 - [Sample evaluation workflow](docs/evaluation.md)
+- [Evaluation results](docs/evaluation-results.md)
 - [Manual evaluation](docs/manual-evaluation.md)
 - [Screenshot checklist](docs/screenshot-checklist.md)

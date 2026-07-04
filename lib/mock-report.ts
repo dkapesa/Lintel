@@ -1,3 +1,5 @@
+import type { ReviewProfile } from "./review-profiles";
+
 export type Recommendation = "APPROVE" | "REVIEW_REQUIRED" | "TESTS_REQUIRED" | "BLOCK";
 export type RiskLevel = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 export type Confidence = "LOW" | "MEDIUM" | "HIGH";
@@ -48,6 +50,7 @@ export type Report = {
     framework: string;
     author: string;
     updatedAt: string;
+    reviewProfile?: ReviewProfile;
   };
   verdict: {
     recommendation: Recommendation;
@@ -103,6 +106,7 @@ export const report: Report = {
     framework: "FastAPI",
     author: "Maya Chen",
     updatedAt: "Today, 10:42",
+    reviewProfile: "standard",
   },
   verdict: {
     recommendation: "TESTS_REQUIRED",

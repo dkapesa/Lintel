@@ -6,6 +6,7 @@ import { reportMarkdownFilename, reportToMarkdown, type ReportSourceLabel } from
 import type { FindingSeverity, Recommendation, Report, ReviewArea, RiskLevel } from "../../lib/mock-report";
 import { report as demoReport } from "../../lib/mock-report";
 import { pruneUnsupportedReviewerFocus } from "../../lib/report-quality";
+import { reviewProfileLabel } from "../../lib/review-profiles";
 
 type GeneratedReportSource = "ai" | "deterministic";
 type ReportSource = GeneratedReportSource | "demo";
@@ -108,7 +109,11 @@ function downloadMarkdown(value: string, filename: string) {
     return false;
   } finally {
     link?.remove();
-    if (url) window.setTimeout(() => URL.revokeObjectURL(url), 0);
+
+    if (url) {
+      const objectUrl = url;
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
+    }
   }
 }
 
@@ -289,7 +294,7 @@ export default function ReportPage() {
               <div className="header-overline"><span className="pull-request-mark">↗</span> PULL REQUEST #{pr.number}</div>
               <h1>{pr.title}</h1>
               <div className="report-meta">
-                <span>{pr.repository}</span><span className="meta-separator">•</span><span>{inputSourceLabel(pr.branch)}</span><span className="meta-separator">•</span><span>{pr.language}</span><span className="meta-separator">•</span><span>{pr.framework}</span>
+                <span>{pr.repository}</span><span className="meta-separator">•</span><span>{inputSourceLabel(pr.branch)}</span><span className="meta-separator">•</span><span>Profile: {reviewProfileLabel(pr.reviewProfile)}</span><span className="meta-separator">•</span><span>{pr.language}</span><span className="meta-separator">•</span><span>{pr.framework}</span>
               </div>
             </div>
             <div className="header-verdict">

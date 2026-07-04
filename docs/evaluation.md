@@ -9,8 +9,9 @@ Run the primary regression pass with deterministic fallback so results are repea
 1. Leave `OPENAI_API_KEY` and `OPENAI_MODEL` unset or empty.
 2. Restart the development server with `npm run dev` after environment changes.
 3. Open `http://localhost:3000/new`.
-4. For each case below, select the sample, choose **Generate Report**, and record the result.
-5. Confirm the source badge is **Local fallback** and input source is **Sample**.
+4. Keep **Review profile** set to **Standard**.
+5. For each case below, select the sample, choose **Generate Report**, and record the result.
+6. Confirm the source badge is **Local fallback** and input source is **Sample**.
 
 An optional second pass may enable AI. AI wording and scores can vary, but normalization must preserve the expected recommendation constraints, important focus areas, report quality, and false-positive exclusions.
 

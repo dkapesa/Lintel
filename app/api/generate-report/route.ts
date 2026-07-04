@@ -1,5 +1,6 @@
 import { generateReport, type ReportInput, type ReportInputSource } from "../../../lib/report-generator";
 import { normaliseReport, REPORT_JSON_SCHEMA } from "../../../lib/report-normalizer";
+import { isReviewProfile, reviewProfileLabel } from "../../../lib/review-profiles";
 
 export const runtime = "nodejs";
 
@@ -59,6 +60,7 @@ function baselineSummary(baseline: ReturnType<typeof generateReport>) {
     },
     operationalReadiness: baseline.operationalReadiness,
     reviewerFocus: baseline.reviewerFocus,
+    reviewProfile: baseline.pr.reviewProfile,
   };
 }
 
@@ -69,6 +71,8 @@ function buildPrompt(input: ReportInput, baseline: ReturnType<typeof generateRep
       title: input.title,
       repository: input.repository,
       technology: input.technology,
+      reviewProfile: input.reviewProfile ?? "standard",
+      reviewProfileLabel: reviewProfileLabel(input.reviewProfile),
     }, null, 2),
     "</submitted_metadata>",
     "",
@@ -120,6 +124,7 @@ async function generateWithOpenAI(
               "Return reviewer focus using only the allowed engineering review categories, and include an area only when changed files, diff-grounded findings or operational readiness provide direct evidence for it.",
               "Do not add reviewer-focus areas as general precautions: payments/domain requires payment, billing, refund, redemption, discount, checkout, invoice, subscription, order or charge evidence; security/privacy requires auth, permissions, tokens, secrets, identifiers, PII, sensitive data, logging or exposure evidence; API contract requires API, endpoint, route, response shape, status code, error contract, OpenAPI or public-contract evidence; platform/observability requires logs, metrics, alerts, traces, monitoring, rollback, recovery or an operational gap.",
               "Backend reliability requires missing tests or backend failure evidence; data/migration requires database, schema, migration or data-write evidence; frontend integration requires frontend, browser, UI or analytics evidence; docs/API consumer review requires documentation or public API documentation evidence.",
+              "Apply the selected review profile as an additional risk lens only where the changed files or diff provide supporting evidence. Never invent a profile-specific concern when its evidence is absent, and never weaken the deterministic baseline.",
               "Reviewer focus may identify review disciplines, but must never invent or assign people, usernames, owners or teams.",
               "Each finding must have a specific title, diff-grounded evidence, a focused reviewer action and the most relevant category.",
               "Suggested tests and conditions before merge must be concrete and tied to detected behaviour, not generic requests for more testing or review.",
@@ -183,6 +188,7 @@ export async function POST(request: Request) {
   const inputSource: ReportInputSource = body.inputSource === "github-pr" || body.inputSource === "sample"
     ? body.inputSource
     : "pasted-diff";
+  const reviewProfile = isReviewProfile(body.reviewProfile) ? body.reviewProfile : "standard";
 
   if (!title || !repository || !technology || !diff?.trim()) {
     return Response.json({ error: "Title, repository, technology and diff are required." }, { status: 400 });
@@ -191,7 +197,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "The submitted diff is too large." }, { status: 413 });
   }
 
-  const input: ReportInput = { title, repository, technology, diff, inputSource };
+  const input: ReportInput = { title, repository, technology, diff, inputSource, reviewProfile };
   const baseline = generateReport(input);
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   const model = process.env.OPENAI_MODEL?.trim();

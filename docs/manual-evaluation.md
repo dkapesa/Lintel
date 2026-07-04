@@ -530,3 +530,55 @@ Manual tests:
 6. Confirm empty sections use neutral `None detected` copy.
 7. Search the downloaded file for unique diff markers, `diff --git`, `@@`, exact patch lines, credentials, and secrets; none should be present.
 8. Confirm keyboard access and narrow-screen topbar spacing.
+
+## Stack and context inference
+
+After a successful public GitHub PR import, Lintel attempts to populate **Language / framework** from changed file paths and diff signals. Inference runs only when that field is empty or has not been manually edited. The inferred value remains fully editable.
+
+Current inference targets:
+
+- `.ts` or `.tsx` plus Next.js configuration, imports, package paths, or app/page route structure → `TypeScript / Next.js`;
+- `.tsx` or `.jsx` plus React imports or hooks without Next.js signals → `TypeScript / React`;
+- `.py` plus FastAPI, `APIRouter`, API route, or endpoint signals → `Python / FastAPI`;
+- TypeScript service, server, worker, job, client, API, Express, Fastify, Node import, or `process.env` signals → `TypeScript / Node.js`;
+- SQL, Prisma, migration, or database schema paths and SQL migration statements → `SQL / Database migration`;
+- documentation-only paths and Markdown-like files → `Markdown / Documentation`.
+
+Manual tests:
+
+1. Import a public Next.js PR containing TypeScript changes and confirm `TypeScript / Next.js` is populated.
+2. Test React-only TSX/JSX, FastAPI Python, Node service, database migration, and docs-only public diffs against the expected values above.
+3. Enter a custom technology value before selecting **Fetch diff** and confirm a completed import does not overwrite it.
+4. Clear the field before importing and confirm a recognized stack is populated.
+5. Start an import, manually edit the field while the request is running, and confirm the late response does not overwrite the edit.
+6. Edit an inferred value and confirm report generation preserves the edited text.
+7. Confirm failed imports do not change the field.
+8. Confirm stack inference does not write the raw diff to session storage, local history, copied Markdown, or downloaded Markdown.
+
+## Review policy profiles
+
+`/new` includes an optional **Review profile** selector. New reports store the selected profile in report metadata and show it in the report header, copied Markdown, downloaded Markdown, and local history. Legacy reports without profile metadata safely use the `Standard` label.
+
+Profiles:
+
+- **Standard** preserves the existing deterministic behavior.
+- **High assurance** increases the deterministic score and adds stronger test or operational conditions when missing tests or operational `ATTENTION` already exist.
+- **Payments/refunds** strengthens idempotency, retry, side-effect and recovery review only when payment, refund, billing, redemption, discount, checkout, invoice, subscription, order or charge evidence exists.
+- **Auth/security** strengthens access, permission, session, token, logging, identifier and sensitive-data review only when corresponding evidence exists.
+- **Data/migrations** strengthens schema, migration, data-write, rollback and recovery review only when corresponding evidence exists.
+- **Frontend/API consumer** strengthens browser, frontend, analytics, documentation and public-contract review only when corresponding evidence exists.
+
+Manual tests:
+
+1. Run the eight-sample evaluation suite with **Standard** and confirm existing expectations remain unchanged.
+2. Generate **Clean utility change** under every specialist profile and confirm no unsupported finding, reviewer focus, merge condition or risk increase appears.
+3. Generate **Provider failure / retry risk** with **High assurance** and confirm the higher score plus stricter test and operational conditions.
+4. Generate **Payment/refund side effect** with **Payments/refunds** and confirm focused idempotency, retry and recovery output.
+5. Generate **Auth/session change** with **Auth/security** and confirm focused access, session, token or sensitive-data output.
+6. Generate **Database migration** with **Data/migrations** and confirm compatibility, rollback and recovery output.
+7. Generate **Frontend analytics/type change** with **Frontend/API consumer** and confirm browser, documentation and consumer-contract output while **Payments/domain logic** remains absent.
+8. Apply each specialist profile to an unrelated clean change and confirm it does not manufacture its domain risk.
+9. Confirm AI-generated output uses the selected profile without removing deterministic findings or lowering protected risk floors.
+10. Open reports from local history and verify profile labels persist.
+11. Confirm Copy summary and Download Markdown contain the profile and no raw diff.
+12. Load a legacy report without `reviewProfile` and confirm it renders and copies safely as **Standard**.

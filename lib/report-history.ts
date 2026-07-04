@@ -1,4 +1,5 @@
 import type { Report } from "./mock-report";
+import { reviewProfileLabel } from "./review-profiles";
 
 export const REPORT_HISTORY_STORAGE_KEY = "lintel.reportHistory.v1";
 export const MAX_REPORT_HISTORY = 10;
@@ -15,6 +16,7 @@ export type ReportHistoryEntry = {
     repository: string;
     recommendation: Report["verdict"]["recommendation"];
     riskScore: number;
+    reviewProfile: string;
   };
 };
 
@@ -63,6 +65,7 @@ function historyEntry(value: unknown): ReportHistoryEntry | null {
       repository: value.report.pr.repository,
       recommendation: value.report.verdict.recommendation,
       riskScore: value.report.verdict.riskScore,
+      reviewProfile: reviewProfileLabel(value.report.pr.reviewProfile),
     },
   };
 }
@@ -114,6 +117,7 @@ export function addReportToHistory(
       repository: report.pr.repository,
       recommendation: report.verdict.recommendation,
       riskScore: report.verdict.riskScore,
+      reviewProfile: reviewProfileLabel(report.pr.reviewProfile),
     },
   };
 

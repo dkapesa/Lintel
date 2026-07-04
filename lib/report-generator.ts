@@ -1,5 +1,6 @@
 import type { FindingSeverity, Report, RiskLevel } from "./mock-report";
 import { assessReportQuality, pruneUnsupportedReviewerFocus } from "./report-quality";
+import type { ReviewProfile } from "./review-profiles";
 
 export const GENERATED_REPORT_STORAGE_KEY = "lintel.generatedReport.v1";
 
@@ -11,6 +12,7 @@ export type ReportInput = {
   technology: string;
   diff: string;
   inputSource?: ReportInputSource;
+  reviewProfile?: ReviewProfile;
 };
 
 type RiskSignal = {
@@ -288,6 +290,25 @@ function calculateRiskScore(signals: Signals) {
   else if (signals.changedLines > 80) score += 5;
 
   return Math.min(score, 92);
+}
+
+function profileRiskAdjustment(profile: ReviewProfile, signals: Signals) {
+  const operationalAttention = signals.duplicateSideEffect.detected
+    || signals.providerFailure.detected
+    || signals.apiContract.detected
+    || signals.sensitiveLogging.detected
+    || signals.hasOtherSensitiveTerms
+    || signals.hasRiskyPath
+    || signals.hasConfigTerms;
+
+  if (profile === "high-assurance") {
+    return (!signals.hasTests ? 8 : 0) + (operationalAttention ? 6 : 0);
+  }
+  if (profile === "payments-refunds" && signals.hasPaymentDomainTerms) return 6;
+  if (profile === "auth-security" && signals.hasSensitiveReviewTerms) return 6;
+  if (profile === "data-migrations" && signals.hasDataMigrationTerms) return 6;
+  if (profile === "frontend-api-consumer" && (signals.hasFrontendTerms || signals.hasDocsTerms || signals.apiContract.detected)) return 6;
+  return 0;
 }
 
 function riskLevelForScore(score: number): RiskLevel {
@@ -622,7 +643,13 @@ function reviewerFocus(
 export function generateReport(input: ReportInput): Report {
   const paths = parseChangedFiles(input.diff);
   const signals = detectSignals(input.diff, paths);
-  const riskScore = calculateRiskScore(signals);
+  const reviewProfile = input.reviewProfile ?? "standard";
+  const paymentProfileAttention = reviewProfile === "payments-refunds" && signals.hasPaymentDomainTerms;
+  const authProfileAttention = reviewProfile === "auth-security" && signals.hasSensitiveReviewTerms;
+  const dataProfileAttention = reviewProfile === "data-migrations" && signals.hasDataMigrationTerms;
+  const frontendProfileAttention = reviewProfile === "frontend-api-consumer"
+    && (signals.hasFrontendTerms || signals.hasDocsTerms || signals.apiContract.detected);
+  const riskScore = Math.min(100, calculateRiskScore(signals) + profileRiskAdjustment(reviewProfile, signals));
   const riskLevel = riskLevelForScore(riskScore);
   const technology = parseTechnology(input.technology);
   const operational = operationalReadiness(signals);
@@ -700,6 +727,46 @@ export function generateReport(input: ReportInput): Report {
     ));
   }
 
+  if (paymentProfileAttention && !signals.duplicateSideEffect.detected) {
+    findings.push(makeFinding(
+      "MEDIUM",
+      "Payment or refund side effects need repeat-safety review.",
+      "The selected Payments/refunds profile is supported by payment, refund, billing or transaction evidence in the change.",
+      "Confirm idempotency, retry boundaries and recovery behavior before merge.",
+      "Reliability",
+    ));
+  }
+
+  if (authProfileAttention && !signals.sensitiveLogging.detected) {
+    findings.push(makeFinding(
+      "MEDIUM",
+      "Authentication or sensitive-data behavior needs focused review.",
+      "The selected Auth/security profile is supported by authentication, session, permission, token, identifier or logging evidence.",
+      "Verify access controls, session handling, redaction and failure behavior.",
+      "Security",
+    ));
+  }
+
+  if (dataProfileAttention) {
+    findings.push(makeFinding(
+      "MEDIUM",
+      "Migration or data-write safety needs focused review.",
+      "The selected Data/migrations profile is supported by migration, schema, database or data-write evidence.",
+      "Confirm compatibility, forward execution, rollback and recovery expectations.",
+      "Maintainability",
+    ));
+  }
+
+  if (frontendProfileAttention && !signals.apiContract.detected) {
+    findings.push(makeFinding(
+      "MEDIUM",
+      "Consumer-facing behavior needs compatibility review.",
+      "The selected Frontend/API consumer profile is supported by frontend, browser, analytics or documentation evidence.",
+      "Confirm browser behavior, public guidance and consumer compatibility remain intentional.",
+      "Maintainability",
+    ));
+  }
+
   if (signals.changedLines > 200) {
     findings.push(makeFinding(
       "MEDIUM",
@@ -737,7 +804,15 @@ export function generateReport(input: ReportInput): Report {
       ? [{ label: "Review operational detection, recovery and impact", status: "ATTENTION" as const }]
       : []),
   ];
-  const suggestedTestTitles = suggestedTests(signals);
+  const suggestedTestTitles = unique([
+    ...suggestedTests(signals),
+    ...(reviewProfile === "high-assurance" && !signals.hasTests ? ["test_all_changed_behaviour_paths_have_focused_coverage"] : []),
+    ...(reviewProfile === "high-assurance" && operational.status === "ATTENTION" ? ["test_operational_failure_paths_are_detectable_and_recoverable"] : []),
+    ...(paymentProfileAttention ? ["test_payment_or_refund_retries_are_idempotent"] : []),
+    ...(authProfileAttention ? ["test_session_access_and_sensitive_fields_are_protected"] : []),
+    ...(dataProfileAttention ? ["test_migration_forward_and_rollback_paths"] : []),
+    ...(frontendProfileAttention ? ["test_public_contract_and_browser_behavior_remain_compatible"] : []),
+  ]);
   const hasAttentionSignals = signals.duplicateSideEffect.detected
     || signals.providerFailure.detected
     || signals.apiContract.detected
@@ -768,6 +843,16 @@ export function generateReport(input: ReportInput): Report {
     ...(operational.status === "ATTENTION" && !signals.recoveryControls.detected
       ? ["Document a safe recovery or rollback path for the identified operational risks"]
       : []),
+    ...(reviewProfile === "high-assurance" && missingTests.length > 0
+      ? ["Provide focused test evidence for every changed behavior path"]
+      : []),
+    ...(reviewProfile === "high-assurance" && operational.status === "ATTENTION"
+      ? ["Resolve or explicitly accept each operational readiness gap"]
+      : []),
+    ...(paymentProfileAttention ? ["Confirm payment or refund retries are idempotent and recoverable"] : []),
+    ...(authProfileAttention ? ["Confirm access, session, token and sensitive-data controls"] : []),
+    ...(dataProfileAttention ? ["Confirm migration compatibility, rollback and recovery"] : []),
+    ...(frontendProfileAttention ? ["Confirm browser behavior and public consumer contracts"] : []),
   ]);
 
   const recommendation: Report["verdict"]["recommendation"] = missingTests.length > 0
@@ -806,6 +891,7 @@ export function generateReport(input: ReportInput): Report {
       framework: technology.framework,
       author: "Local prototype",
       updatedAt: "Just now",
+      reviewProfile,
     },
     verdict: {
       recommendation,
@@ -818,41 +904,47 @@ export function generateReport(input: ReportInput): Report {
     findings,
     reviews: {
       security: {
-        status: signals.sensitiveLogging.detected || signals.hasOtherSensitiveTerms ? "ATTENTION" : "CLEAR",
+        status: signals.sensitiveLogging.detected || signals.hasOtherSensitiveTerms || authProfileAttention ? "ATTENTION" : "CLEAR",
         summary: signals.sensitiveLogging.detected
           ? "Logging statements and sensitive fields appear together in the changed code."
-          : signals.hasOtherSensitiveTerms
+            : signals.hasOtherSensitiveTerms || authProfileAttention
             ? "Authentication, payment or data-sensitive behaviour needs human review."
             : "No direct security signal was detected by the prototype rules.",
         points: [signals.sensitiveLogging.detected
           ? sensitiveLoggingAction(signals.sensitiveLogging)
-          : signals.hasOtherSensitiveTerms
+          : signals.hasOtherSensitiveTerms || authProfileAttention
             ? "Confirm access control and sensitive data handling remain intentional."
             : "Confirm the change does not expose sensitive data through logs, errors or responses."],
       },
       reliability: {
-        status: signals.duplicateSideEffect.detected || signals.providerFailure.detected ? "ATTENTION" : "CLEAR",
+        status: signals.duplicateSideEffect.detected || signals.providerFailure.detected || paymentProfileAttention ? "ATTENTION" : "CLEAR",
         summary: signals.duplicateSideEffect.detected
           ? "Retry behaviour and a redemption side effect appear together in the diff."
           : signals.providerFailure.detected
             ? "External provider failure states need focused review."
+            : paymentProfileAttention
+              ? "Payment or refund side effects need repeat-safety and recovery review."
             : "No explicit failure-handling, provider or duplicate-side-effect signal was detected.",
-        points: [signals.duplicateSideEffect.detected || signals.providerFailure.detected
+        points: [signals.duplicateSideEffect.detected || signals.providerFailure.detected || paymentProfileAttention
           ? "Verify failure paths are bounded, observable, idempotent and safe to repeat."
           : "Confirm the changed behaviour is covered by focused tests."],
       },
       maintainability: {
-        status: signals.apiContract.detected || signals.hasConfigTerms || signals.changedLines > 200 ? "ATTENTION" : "CLEAR",
+        status: signals.apiContract.detected || signals.hasConfigTerms || signals.changedLines > 200 || dataProfileAttention || frontendProfileAttention ? "ATTENTION" : "CLEAR",
         summary: signals.apiContract.detected
           ? "Client-facing response construction needs focused review."
-          : signals.changedLines > 200
+          : dataProfileAttention
+            ? "Migration, schema or data-write behavior needs compatibility and rollback review."
+            : frontendProfileAttention
+              ? "Frontend or API-consumer behavior needs compatibility review."
+              : signals.changedLines > 200
             ? "The diff size increases review and maintenance risk."
             : signals.hasConfigTerms
               ? "Configuration behaviour and defaults need focused review."
               : "The change is within the prototype’s normal maintenance signals.",
         points: [signals.apiContract.detected
           ? "Confirm provider-specific logic remains isolated from API response formatting."
-          : signals.hasConfigTerms || signals.changedLines > 200
+          : signals.hasConfigTerms || signals.changedLines > 200 || dataProfileAttention || frontendProfileAttention
             ? "Confirm the change scope remains cohesive and responsibilities stay clear."
             : "Confirm responsibilities remain clear and the implementation stays easy to review."],
       },

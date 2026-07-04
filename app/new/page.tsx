@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { generateReport, GENERATED_REPORT_STORAGE_KEY, type ReportInput, type ReportInputSource } from "../../lib/report-generator";
 import { addReportToHistory, clearReportHistory, deleteReportFromHistory, readReportHistory, type ReportHistoryEntry } from "../../lib/report-history";
 import type { Report } from "../../lib/mock-report";
 import { PR_SAMPLES } from "../../lib/sample-pr-input";
+import { inferStack } from "../../lib/stack-inference";
+import { REVIEW_PROFILES, type ReviewProfile } from "../../lib/review-profiles";
 
 type ReportSource = "ai" | "deterministic";
 
@@ -73,7 +75,16 @@ export default function NewReportPage() {
   const [technology, setTechnology] = useState("");
   const [diff, setDiff] = useState("");
   const [inputSource, setInputSource] = useState<ReportInputSource>("pasted-diff");
+  const [reviewProfile, setReviewProfile] = useState<ReviewProfile>("standard");
   const [history, setHistory] = useState<ReportHistoryEntry[]>([]);
+  const technologyValueRef = useRef("");
+  const technologyEditedRef = useRef(false);
+
+  function updateTechnology(value: string, manuallyEdited: boolean) {
+    technologyValueRef.current = value;
+    technologyEditedRef.current = manuallyEdited;
+    setTechnology(value);
+  }
 
   useEffect(() => {
     try {
@@ -86,7 +97,7 @@ export default function NewReportPage() {
   function useSample(sample: ReportInput) {
     setTitle(sample.title);
     setRepository(sample.repository);
-    setTechnology(sample.technology);
+    updateTechnology(sample.technology, false);
     setDiff(sample.diff);
     setInputSource("sample");
     setImportStatus(null);
@@ -117,6 +128,10 @@ export default function NewReportPage() {
       setRepository(payload.repository);
       setDiff(payload.diff);
       setInputSource("github-pr");
+      const inferredTechnology = inferStack(payload.diff);
+      if (inferredTechnology && (!technologyEditedRef.current || !technologyValueRef.current.trim())) {
+        updateTechnology(inferredTechnology, false);
+      }
       if (payload.title?.trim()) setTitle(payload.title.trim());
       setError(null);
       setImportStatus({
@@ -143,6 +158,7 @@ export default function NewReportPage() {
       technology: String(formData.get("technology") ?? ""),
       diff: String(formData.get("diff") ?? ""),
       inputSource,
+      reviewProfile,
     };
 
     try {
@@ -296,7 +312,13 @@ export default function NewReportPage() {
             </label>
             <label className="form-field">
               <span>Language / framework</span>
-              <input name="technology" required value={technology} onChange={(event) => setTechnology(event.target.value)} placeholder="Python / FastAPI" />
+              <input name="technology" required value={technology} onChange={(event) => updateTechnology(event.target.value, true)} placeholder="Python / FastAPI" />
+            </label>
+            <label className="form-field form-field--wide review-profile-field">
+              <span>Review profile <small>Optional</small></span>
+              <select name="reviewProfile" value={reviewProfile} onChange={(event) => setReviewProfile(event.target.value as ReviewProfile)}>
+                {REVIEW_PROFILES.map((profile) => <option key={profile.id} value={profile.id}>{profile.label}</option>)}
+              </select>
             </label>
             <label className="form-field form-field--wide">
               <span>PR diff</span>
@@ -335,6 +357,7 @@ export default function NewReportPage() {
                       <span>{entry.metadata.riskScore}/100</span>
                       <span>{historySourceLabel(entry.source)}</span>
                       <span>{entry.inputLabel}</span>
+                      <span>Profile: {entry.metadata.reviewProfile}</span>
                       <time dateTime={entry.createdAt}>{historyTime(entry.createdAt)}</time>
                     </span>
                   </button>

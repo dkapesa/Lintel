@@ -1,5 +1,6 @@
 import type { Report } from "./mock-report";
 import { pruneUnsupportedReviewerFocus } from "./report-quality";
+import { reviewProfileLabel } from "./review-profiles";
 
 export type ReportSourceLabel = "AI generated" | "Local fallback" | "Demo report";
 
@@ -123,6 +124,7 @@ export function reportToMarkdown(report: Report, source: ReportSourceLabel) {
     `**Repository:** ${safeMarkdownText(report.pr.repository)}`,
     `**Source:** ${source}`,
     inputSourceMarkdown(report.pr.branch),
+    `**Review profile:** ${safeMarkdownText(reviewProfileLabel(report.pr.reviewProfile))}`,
     `**Recommendation:** ${recommendation}`,
     `**Risk:** ${report.verdict.riskScore}/100 — ${report.verdict.riskLevel}`,
     "",

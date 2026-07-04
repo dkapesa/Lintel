@@ -31,6 +31,7 @@ These are review and readiness problems, not merely code-explanation problems. L
 | V0.12–V1.0 | Pilot-ready copy, input-source labels, empty states, documentation, and portfolio workflow |
 | V1.1 | Raw-diff-free browser-local history for the 10 most recent reports |
 | V1.2 | Client-side Markdown report downloads using the existing safe summary formatter |
+| V1.6 | Evidence-gated review policy profiles carried through reports, history and exports |
 
 ## Technical decisions
 

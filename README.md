@@ -31,6 +31,7 @@ Lintel is designed around that decision.
 - Public GitHub PR diff import with strict URL validation and size limits
 - Eight built-in evaluation samples covering clean and risky changes
 - Browser-local history for the 10 most recent generated reports
+- Evidence-gated review profiles for high-assurance and domain-specific risk lenses
 - Source visibility for AI output, deterministic fallback, and demo reports
 - Copyable Markdown summaries with raw-diff and secret redaction safeguards
 - Client-side Markdown downloads with safe, readable filenames

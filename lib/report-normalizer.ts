@@ -1,5 +1,6 @@
 import type { Confidence, FindingSeverity, OperationalReadiness, Recommendation, Report, ReviewArea, RiskLevel } from "./mock-report";
 import { assessReportQuality, pruneUnsupportedReviewerFocus } from "./report-quality";
+import { REVIEW_PROFILES } from "./review-profiles";
 
 const RECOMMENDATIONS: Recommendation[] = ["APPROVE", "REVIEW_REQUIRED", "TESTS_REQUIRED"];
 const RISK_LEVELS: RiskLevel[] = ["LOW", "MEDIUM", "HIGH", "CRITICAL"];
@@ -22,6 +23,7 @@ const REVIEWER_FOCUS_AREAS = [
   "Frontend integration",
   "Docs/API consumer review",
 ] as const;
+const REVIEW_PROFILE_IDS = REVIEW_PROFILES.map((profile) => profile.id);
 type ReviewerFocusArea = typeof REVIEWER_FOCUS_AREAS[number];
 
 type UnknownRecord = Record<string, unknown>;
@@ -318,6 +320,15 @@ function baselineRiskFloor(baseline: Report) {
     if (concreteFindings >= 2) floor = Math.max(floor, 81);
   }
 
+  const profileAttention = baseline.pr.reviewProfile
+    && baseline.pr.reviewProfile !== "standard"
+    && (
+      baseline.findings.length > 0
+      || Object.values(baseline.reviews).some((review) => review.status === "ATTENTION")
+      || baseline.operationalReadiness?.status === "ATTENTION"
+    );
+  if (profileAttention) floor = Math.max(floor, baseline.verdict.riskScore - 5);
+
   return Math.round(Math.min(100, Math.max(0, floor)));
 }
 
@@ -459,8 +470,9 @@ export const REPORT_JSON_SCHEMA = {
         framework: { type: "string" },
         author: { type: "string" },
         updatedAt: { type: "string" },
+        reviewProfile: { type: "string", enum: REVIEW_PROFILE_IDS },
       },
-      required: ["number", "title", "repository", "project", "branch", "language", "framework", "author", "updatedAt"],
+      required: ["number", "title", "repository", "project", "branch", "language", "framework", "author", "updatedAt", "reviewProfile"],
       additionalProperties: false,
     },
     verdict: {

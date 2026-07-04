@@ -1,126 +1,127 @@
 # Lintel
 
-Lintel is a merge-readiness verification prototype for AI-assisted pull requests. It turns a pasted diff or public GitHub pull request into a structured report covering risk, test gaps, operational readiness, reviewer focus, and conditions before merge.
+**Lintel is a local-first merge-readiness workspace for engineering teams.**
 
-Lintel does not replace human review. Its purpose is to make the review decision more explicit, evidence-grounded, and easier to share.
+It turns public GitHub pull requests, pasted diffs, and built-in evaluation scenarios into structured reports that help reviewers decide whether a change is safe, tested, operationally ready, and ready to merge.
 
-## The problem
+Lintel does not replace human review, CI, security review, or tests. It makes the merge decision more explicit, evidence-grounded, and easier to share.
 
-AI can produce code faster than teams can confidently verify it. A plausible diff may still hide missing tests, unsafe retries, unclear API contracts, sensitive logging, migration risk, or weak recovery paths. Generic code-review summaries often describe the code without answering the operational question: **is this change ready to merge?**
+## Why Lintel exists
+
+Modern engineering teams can create code faster than they can confidently verify it.
+
+A pull request may look reasonable while still hiding missing tests, unsafe retries, unstable API contracts, sensitive logging, migration risk, poor observability, or unclear recovery paths. Reviewers are often left answering the most important question manually:
+
+> Is this change actually ready to merge?
 
 Lintel is designed around that decision.
 
-## Core flow
+Instead of producing a generic code summary, Lintel generates a merge-readiness report covering:
+
+- risk and recommendation
+- missing tests
+- operational readiness
+- reviewer focus
+- report quality
+- conditions before merge
+
+## What Lintel does
+
+Lintel evaluates a pull request and produces a structured report with:
+
+- `APPROVE`, `REVIEW_REQUIRED`, or `TESTS_REQUIRED` recommendation
+- risk score, risk level, confidence, and evidence-backed findings
+- missing-test detection and suggested tests
+- security, reliability, and maintainability review states
+- operational readiness analysis covering failure modes, detection, observability, recovery, rollback, and customer or data impact
+- reviewer-focus guidance for areas such as backend reliability, API contracts, security/privacy, data/migrations, frontend integration, platform/observability, and domain logic
+- report-quality checks that validate internal consistency before the result is shared
+- copyable and downloadable Markdown summaries
+- browser-local report history
+- a local reports workspace for browsing recent reports
+
+## Product flow
 
 1. Open `/new`.
-2. Paste PR metadata and a unified diff, load a built-in sample, or import a public GitHub PR URL.
-3. Select **Generate Report**.
-4. The server creates a deterministic baseline and optionally asks an AI model to enrich it.
-5. The AI response is normalized against deterministic guardrails; failures return the deterministic report.
-6. `/report` renders the final result and can copy a concise Markdown summary.
+2. Load a built-in scenario, import a public GitHub PR, or paste a unified diff.
+3. Choose a review profile.
+4. Generate a report.
+5. Review the result on `/report`.
+6. Browse previous local reports in `/workspace`.
+7. Copy or download the Markdown summary for sharing.
 
-## Key features
+## Core features
 
-- `APPROVE`, `REVIEW_REQUIRED`, and `TESTS_REQUIRED` merge recommendations
-- Risk score, derived risk level, confidence, and evidence-backed findings
-- Missing-test detection and focused suggested tests
-- Security, reliability, and maintainability review states
-- Operational readiness: failure modes, detection, observability, recovery, and impact
-- Evidence-based reviewer focus without assigning people or teams
-- Internal report-quality checks for recommendation and evidence consistency
-- Public GitHub PR diff import with strict URL validation and size limits
-- Eight built-in evaluation samples covering clean and risky changes
-- Browser-local history for the 10 most recent generated reports
-- Evidence-gated review profiles for high-assurance and domain-specific risk lenses
-- Source visibility for AI output, deterministic fallback, and demo reports
-- Copyable Markdown summaries with raw-diff and secret redaction safeguards
-- Client-side Markdown downloads with safe, readable filenames
+### PR input
+
+- Public GitHub PR import with strict URL validation
+- Manual pasted diff workflow
+- Eight built-in evaluation samples
+- Stack/context inference for imported PRs
+- Editable PR title, repository, language, framework, and review profile
+
+### Review profiles
+
+Lintel supports lightweight review policy profiles:
+
+- Standard
+- High assurance
+- Payments/refunds
+- Auth/security
+- Data/migrations
+- Frontend/API consumer
+
+Profiles act as risk lenses. They strengthen relevant checks when supporting evidence exists, without creating unsupported findings.
+
+### Merge-readiness reports
+
+Each report includes:
+
+- final merge recommendation
+- risk score and risk level
+- executive summary
+- changed files
+- risk findings
+- engineering review states
+- operational readiness
+- reviewer focus
+- report quality checks
+- missing tests
+- suggested tests
+- conditions before merge
+
+### Local workspace
+
+The `/workspace` page provides a local report workspace backed by browser storage.
+
+It shows recent reports with:
+
+- PR title
+- repository
+- recommendation
+- risk
+- operational status
+- reviewer focus
+- report quality
+- input source
+- review profile
+- creation time
+
+Reports can be opened, deleted, or cleared locally.
 
 ## Architecture
 
-Lintel uses a small Next.js App Router architecture with TypeScript and plain CSS:
+Lintel is built with Next.js App Router, TypeScript, and plain CSS.
 
 ```text
 /new
   -> optional POST /api/fetch-pr-diff
   -> POST /api/generate-report
        -> deterministic baseline
-       -> optional OpenAI request via native fetch
-       -> normalization and safety guardrails
+       -> optional model-assisted analysis
+       -> normalization and guardrails
        -> report-quality assessment
   -> sessionStorage stores the current { report, source }
-  -> localStorage keeps up to 10 raw-diff-free report history entries
-  -> /report renders and copies the result
-```
-
-There is no database, authentication layer, background worker, or GitHub App.
-
-## AI guardrails and fallback
-
-AI generation is optional. Before any AI call, Lintel creates a deterministic report from changed files and diff signals. The normalizer then:
-
-- preserves submitted metadata and changed files;
-- merges concrete baseline findings, tests, and merge conditions;
-- clamps risk scores and derives risk levels from the final score;
-- prevents unsafe recommendation upgrades and operational downgrades;
-- prunes unsupported reviewer-focus areas;
-- checks the final report for internal consistency and raw patch markers.
-
-Missing credentials, provider timeouts, non-success responses, malformed JSON, or unsafe output all fall back to the deterministic report.
-
-## Public GitHub PR import
-
-`/new` accepts public URLs in this form:
-
-```text
-https://github.com/<owner>/<repository>/pull/<number>
-```
-
-The server validates the host and path, reconstructs trusted GitHub URLs, fetches the public `.diff`, and attempts an unauthenticated metadata lookup for the title. Private repositories and authenticated GitHub access are not supported.
-
-## Privacy and storage
-
-- Raw diffs are used for generation but are not stored in `sessionStorage` or returned inside the report.
-- Current-session storage contains `{ report, source }` under `lintel.generatedReport.v1`.
-- Local history contains generated reports, source/input labels, creation time, and minimal display metadata under `lintel.reportHistory.v1`.
-- Neither browser entry stores the submitted raw diff.
-- API responses use no-store behavior where appropriate.
-- When AI generation is enabled, the submitted diff is sent to the configured model provider for analysis.
-- Lintel does not claim that the model provider does not retain submitted data.
-- Do not submit secrets, private source code, or sensitive production data to this prototype.
-
-## Current limitations
-
-- Prototype heuristics and AI output can miss or misclassify risk.
-- No private repository access, GitHub App, webhooks, or automated PR comments.
-- No authentication, teams, server-side or shared report history, billing, or audit log.
-- No repository-wide context, dependency graph, test execution, or static-analysis engine.
-- Public GitHub imports are subject to unauthenticated rate limits.
-- Reports support engineering judgment; they are not a security or compliance guarantee.
-
-## Run locally
-
-```bash
-npm install
-npm run dev
-```
-
-Open [http://localhost:3000/new](http://localhost:3000/new).
-
-AI generation is optional. Copy `.env.example` to `.env.local` and set evaluator-owned values when required:
-
-```text
-OPENAI_API_KEY=
-OPENAI_MODEL=
-```
-
-Leave both values empty to exercise deterministic fallback. Never commit `.env.local` or real credentials.
-
-Useful documentation:
-
-- [Case study](docs/case-study.md)
-- [Demo script](docs/demo-script.md)
-- [Sample evaluation workflow](docs/evaluation.md)
-- [Evaluation results](docs/evaluation-results.md)
-- [Manual evaluation](docs/manual-evaluation.md)
-- [Screenshot checklist](docs/screenshot-checklist.md)
+  -> localStorage stores up to 10 raw-diff-free report history entries
+  -> /report renders the selected report
+  -> /workspace lists recent local reports

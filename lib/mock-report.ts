@@ -71,6 +71,7 @@ export type Report = {
     evidence: string;
     action: string;
     file?: string;
+    provenance?: "Rule detected" | "Model assisted" | "Baseline preserved";
     category: "Security" | "Reliability" | "Maintainability" | "Missing tests" | "API contract";
   }>;
   reviews: {
@@ -129,6 +130,7 @@ export const report: Report = {
       evidence:
         "The redemption flow retries after failed discount-code retrieval, but there is no confirmed idempotency guard around repeated redemption attempts.",
       action: "Add idempotency checks and tests proving retries cannot issue duplicate codes.",
+      provenance: "Rule detected",
       category: "Reliability",
     },
     {
@@ -136,6 +138,7 @@ export const report: Report = {
       title: "External provider failure states need fuller coverage.",
       evidence: "Timeout, 5xx, malformed response and empty response cases need explicit tests.",
       action: "Add provider failure tests for these cases.",
+      provenance: "Rule detected",
       category: "Missing tests",
     },
     {
@@ -143,6 +146,7 @@ export const report: Report = {
       title: "API error contract may be unclear for clients.",
       evidence: "Failed discount-code retrieval needs a stable client-facing error shape.",
       action: "Define retryable and non-retryable error responses and add tests.",
+      provenance: "Rule detected",
       category: "API contract",
     },
   ],

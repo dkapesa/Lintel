@@ -155,10 +155,11 @@ function reviewTextKey(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
-function ReviewCard({ title, review, findingTitles }: { title: string; review: ReviewArea; findingTitles: string[] }) {
+function ReviewCard({ title, review, findingTitles, calmSummary }: { title: string; review: ReviewArea; findingTitles: string[]; calmSummary?: string }) {
   const findingKeys = new Set(findingTitles.map(reviewTextKey));
-  const showSummary = !findingKeys.has(reviewTextKey(review.summary));
-  const points = deduplicateReportItems(review.points)
+  const summary = calmSummary ?? review.summary;
+  const showSummary = !findingKeys.has(reviewTextKey(summary));
+  const points = calmSummary ? [] : deduplicateReportItems(review.points)
     .filter((point) => !findingKeys.has(reviewTextKey(point)))
     .slice(0, 2);
 
@@ -168,7 +169,7 @@ function ReviewCard({ title, review, findingTitles }: { title: string; review: R
         <h3>{title}</h3>
         <span className={`review-status review-status--${review.status.toLowerCase()}`}>{review.status}</span>
       </div>
-      {showSummary && <p>{review.summary}</p>}
+      {showSummary && <p>{summary}</p>}
       {points.length > 0 && <ul className="review-points">
         {points.map((point) => (
           <li key={point}>{point}</li>
@@ -245,6 +246,12 @@ export default function ReportPage() {
   const supportedReviewerFocus = pruneUnsupportedReviewerFocus(report);
   const displayedConditions = decisionConditions(report.conditionsBeforeMerge);
   const findingTitles = report.findings.map((finding) => finding.title);
+  const cleanApprove = verdict.recommendation === "APPROVE"
+    && report.findings.length === 0
+    && report.missingTests.length === 0
+    && report.suggestedTests.length === 0
+    && report.operationalReadiness?.status === "CLEAR";
+  const displayedReviewerChecklist = cleanApprove ? [] : report.reviewerChecklist;
 
   async function handleCopySummary() {
     const copied = await writeToClipboard(reportToMarkdown(report, sourceLabels[source]));
@@ -355,7 +362,7 @@ export default function ReportPage() {
               {report.findings.map((finding, index) => (
                 <article className="finding" key={finding.title}>
                   <div className="finding-index">{String(index + 1).padStart(2, "0")}</div>
-                  <div className="finding-content"><div className="finding-title"><SeverityTag severity={finding.severity} /><h3>{finding.title}</h3></div><p><strong>Evidence:</strong> {finding.evidence}</p><p><strong>Action:</strong> {finding.action}</p>{finding.file && <code>{finding.file}</code>}</div>
+                  <div className="finding-content"><div className="finding-title"><SeverityTag severity={finding.severity} /><h3>{finding.title}</h3>{finding.provenance && <span className={`finding-provenance finding-provenance--${finding.provenance.toLowerCase().replaceAll(" ", "-")}`}>{finding.provenance}</span>}</div><p><strong>Evidence:</strong> {finding.evidence}</p><p><strong>Action:</strong> {finding.action}</p>{finding.file && <code>{finding.file}</code>}</div>
                   <span className="finding-category">{finding.category}</span>
                 </article>
               ))}
@@ -371,7 +378,7 @@ export default function ReportPage() {
                   <ol className="numbered-list">
                     {report.missingTests.map((test, index) => <li key={test}><span>{String(index + 1).padStart(2, "0")}</span>{test}</li>)}
                   </ol>
-                ) : <p className="missing-tests-empty">{source === "ai" ? "No missing test gaps detected." : "No missing test gaps detected by local rules."}</p>}
+                ) : <p className="missing-tests-empty">{cleanApprove || source === "ai" ? "No missing test gaps detected." : "No missing test gaps detected by local rules."}</p>}
               </article>
               <article className="test-plan-panel">
                 <h3>Suggested tests</h3>
@@ -381,11 +388,16 @@ export default function ReportPage() {
                   </div>
                 ) : <p className="section-empty">No additional tests suggested.</p>}
               </article>
-              {report.reviewerChecklist.length > 0 && (
+              {cleanApprove ? (
+                <article className="test-plan-panel test-plan-panel--checklist">
+                  <h3>Reviewer checklist</h3>
+                  <p className="section-empty">No reviewer checklist items required.</p>
+                </article>
+              ) : displayedReviewerChecklist.length > 0 && (
                 <article className="test-plan-panel test-plan-panel--checklist">
                   <h3>Reviewer checklist</h3>
                   <ul className="checklist">
-                    {report.reviewerChecklist.map((item) => <li key={item.label}><span className={`check-icon check-icon--${item.status.toLowerCase()}`}>{item.status === "COMPLETE" ? "✓" : "!"}</span><span>{item.label}</span></li>)}
+                    {displayedReviewerChecklist.map((item) => <li key={item.label}><span className={`check-icon check-icon--${item.status.toLowerCase()}`}>{item.status === "COMPLETE" ? "✓" : "!"}</span><span>{item.label}</span></li>)}
                   </ul>
                 </article>
               )}
@@ -457,9 +469,9 @@ export default function ReportPage() {
           <section className="section-block report-engineering-review">
             <div className="section-heading"><div><span className="card-kicker">ENGINEERING REVIEW</span><h2>Change quality</h2></div></div>
             <div className="review-grid">
-              <ReviewCard title="Security review" review={report.reviews.security} findingTitles={findingTitles} />
-              <ReviewCard title="Reliability review" review={report.reviews.reliability} findingTitles={findingTitles} />
-              <ReviewCard title="Maintainability review" review={report.reviews.maintainability} findingTitles={findingTitles} />
+              <ReviewCard title="Security review" review={report.reviews.security} findingTitles={findingTitles} calmSummary={cleanApprove ? "No security attention signal detected." : undefined} />
+              <ReviewCard title="Reliability review" review={report.reviews.reliability} findingTitles={findingTitles} calmSummary={cleanApprove ? "No reliability attention signal detected." : undefined} />
+              <ReviewCard title="Maintainability review" review={report.reviews.maintainability} findingTitles={findingTitles} calmSummary={cleanApprove ? "No maintainability attention signal detected." : undefined} />
             </div>
           </section>
 

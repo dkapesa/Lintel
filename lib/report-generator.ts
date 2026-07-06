@@ -324,13 +324,25 @@ function formatList(values: string[]) {
   return `${values.slice(0, -1).join(", ")}, and ${values.at(-1)}`;
 }
 
-function describeEvidence(signal: RiskSignal) {
-  const evidence: string[] = [];
+function describeEvidence(signal: RiskSignal, theme: "duplicate" | "provider" | "api" | "logging") {
+  const location = signal.paths.length > 0 ? ` in ${formatList(signal.paths)}` : " in the submitted change";
 
-  if (signal.terms.length > 0) evidence.push(`Matched ${formatList(signal.terms.map((term) => `“${term}”`))}`);
-  if (signal.paths.length > 0) evidence.push(`Relevant files: ${signal.paths.join(", ")}`);
+  if (theme === "duplicate") {
+    const sideEffect = signal.terms.some((term) => /discount|redeem|redemption/.test(term))
+      ? "retry and discount-code or redemption side-effect signals"
+      : "retry and repeated side-effect signals";
+    return `Detected ${sideEffect}${location}.`;
+  }
+  if (theme === "provider") return `Detected external provider failure-handling signals${location}.`;
+  if (theme === "api") return `Detected client-facing response and error-contract changes${location}.`;
 
-  return `${evidence.join(". ")}.`;
+  const contexts = unique(signal.terms.filter((term) => (
+    LOG_IDENTIFIER_TERMS.includes(term)
+    || LOG_SECRET_TERMS.includes(term)
+    || term === "discount code"
+  )).map((term) => term.replaceAll("_", " ")));
+  const context = contexts.length > 0 ? ` near ${formatList(contexts)} context` : " near potentially sensitive context";
+  return `Detected structured logging${context}${location}.`;
 }
 
 const LOG_IDENTIFIER_TERMS = ["user_id", "partner_id", "customer_id", "account_id", "tenant_id"];
@@ -397,8 +409,9 @@ function makeFinding(
   evidence: string,
   action: string,
   category: Report["findings"][number]["category"],
+  file?: string,
 ): Report["findings"][number] {
-  return { severity, title, evidence, action, category };
+  return { severity, title, evidence, action, category, provenance: "Rule detected", ...(file ? { file } : {}) };
 }
 
 function specificMissingTests(signals: Signals) {
@@ -678,9 +691,10 @@ export function generateReport(input: ReportInput): Report {
     findings.push(makeFinding(
       "HIGH",
       "Retry behaviour may create duplicate redemptions or discount codes.",
-      describeEvidence(signals.duplicateSideEffect),
+      describeEvidence(signals.duplicateSideEffect, "duplicate"),
       "Confirm an idempotency boundary exists around redemption and code issuance, then prove repeated attempts cannot duplicate the side effect.",
       "Reliability",
+      signals.duplicateSideEffect.paths[0],
     ));
   }
 
@@ -688,9 +702,10 @@ export function generateReport(input: ReportInput): Report {
     findings.push(makeFinding(
       "MEDIUM",
       "External provider failure states need explicit handling.",
-      describeEvidence(signals.providerFailure),
+      describeEvidence(signals.providerFailure, "provider"),
       "Verify timeout, 5xx, malformed, empty and unavailable provider responses fail safely and produce intentional retry behaviour.",
       "Reliability",
+      signals.providerFailure.paths[0],
     ));
   }
 
@@ -698,9 +713,10 @@ export function generateReport(input: ReportInput): Report {
     findings.push(makeFinding(
       "MEDIUM",
       "The client-facing API error contract may be unstable.",
-      describeEvidence(signals.apiContract),
+      describeEvidence(signals.apiContract, "api"),
       "Define stable status codes, response fields and retryable semantics for frontend and partner clients.",
       "API contract",
+      signals.apiContract.paths[0],
     ));
   }
 
@@ -708,9 +724,10 @@ export function generateReport(input: ReportInput): Report {
     findings.push(makeFinding(
       signals.sensitiveLogging.terms.some((term) => ["token", "credential", "secret"].includes(term)) ? "HIGH" : "MEDIUM",
       sensitiveLoggingTitle(signals.sensitiveLogging),
-      describeEvidence(signals.sensitiveLogging),
+      describeEvidence(signals.sensitiveLogging, "logging"),
       sensitiveLoggingAction(signals.sensitiveLogging),
       "Security",
+      signals.sensitiveLogging.paths[0],
     ));
   }
 
@@ -953,7 +970,7 @@ export function generateReport(input: ReportInput): Report {
     reviewerFocus: focusItems,
     missingTests,
     suggestedTests: recommendation === "APPROVE" ? [] : suggestedTestTitles.map((title) => ({ title })),
-    reviewerChecklist,
+    reviewerChecklist: recommendation === "APPROVE" ? [] : reviewerChecklist,
     finalRecommendation: recommendation === "APPROVE"
       ? "No unresolved test, reliability, security or maintainability signals remain. Complete normal human review before approval."
       : recommendation === "REVIEW_REQUIRED"

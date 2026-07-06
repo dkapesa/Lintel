@@ -626,3 +626,21 @@ Manual tests:
 3. Confirm broad test, review, or operational conditions are omitted when a more specific equivalent is already present.
 4. Confirm Engineering Review keeps all three states while omitting points that exactly repeat finding titles.
 5. Confirm the closing summary is one short recommendation statement and does not repeat the Decision Gate conditions.
+
+## V2.1 finding provenance
+
+New findings show a concise provenance label: **Rule detected** for deterministic reports, **Baseline preserved** for deterministic findings retained in an AI-normalised report, and **Model assisted** for additional model findings. Legacy findings without provenance continue to render without failure or an invented source label.
+
+Manual tests:
+
+1. Force deterministic fallback and confirm every new finding shows **Rule detected**.
+2. Generate a risky AI report and confirm retained baseline findings show **Baseline preserved** while genuinely additional findings show **Model assisted**.
+3. Confirm finding evidence starts with concise detected-behaviour wording rather than a raw **Matched ...** keyword list.
+4. Confirm relevant source file paths remain visible when the report has safe path evidence.
+5. Load a legacy report without finding provenance and confirm it renders, copies, and downloads without crashing.
+6. Confirm copied and downloaded Markdown includes provenance only when available.
+7. Search the report UI, Markdown, session storage, and local history for `diff --git`, `@@`, raw hunks, line-level snippets, or unique diff markers; none should appear.
+
+### Clean APPROVE restraint
+
+Generate the **Clean utility change** sample and confirm it remains `APPROVE`, `LOW`, and operationally `CLEAR`. The Test plan should show `0 gaps · 0 tests`, the two positive empty-test messages, and **No reviewer checklist items required.** Engineering Review should show only short `CLEAR` summaries without generic follow-up advice. Risky samples must retain their focused checklist and review content.

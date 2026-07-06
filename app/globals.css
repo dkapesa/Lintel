@@ -192,3 +192,13 @@ button { font:inherit; }
   .report-quality-compact { grid-template-columns:1fr auto; gap:10px 16px; }.report-quality-compact > p, .report-quality-compact > ul { grid-column:1 / -1; grid-row:2; }
   .final-recommendation.final-recommendation--compact { align-items:flex-start; flex-direction:column; gap:15px; }
 }
+
+.finding-provenance { flex:0 0 auto; margin-left:auto; padding:4px 6px; border:1px solid #dce2de; border-radius:999px; background:#f7f8f6; color:#6d7772; font-size:8px; font-weight:750; letter-spacing:.03em; white-space:nowrap; }
+.finding-provenance--rule-detected { border-color:#cee2d8; background:#f1f8f4; color:#39765d; }
+.finding-provenance--model-assisted { border-color:#d8dce7; background:#f4f5fa; color:#596a8a; }
+.finding-provenance--baseline-preserved { color:#756e5b; background:#faf8f1; }
+
+@media (max-width:680px) {
+  .finding-title { align-items:flex-start; flex-wrap:wrap; }
+  .finding-provenance { margin-left:0; }
+}

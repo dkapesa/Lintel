@@ -38,6 +38,16 @@ function text(value: unknown, fallback: string, maxLength = 800) {
   return trimmed ? trimmed.slice(0, maxLength) : fallback;
 }
 
+function evidenceText(value: unknown, fallback: string) {
+  const evidence = text(value, fallback, 900);
+  if (!/^matched\b/i.test(evidence)) return evidence;
+
+  const files = evidence.match(/relevant files?:\s*([^.;]+)/i)?.[1]?.trim();
+  return files
+    ? `Detected relevant change signals in ${files}.`
+    : "Detected relevant change signals in the submitted change.";
+}
+
 function enumValue<T extends string>(value: unknown, allowed: T[], fallback: T): T {
   return typeof value === "string" && allowed.includes(value as T) ? value as T : fallback;
 }
@@ -130,8 +140,9 @@ function normaliseFindings(value: unknown, baseline: Report) {
       severity: item.severity as FindingSeverity,
       category: item.category as Report["findings"][number]["category"],
       title: text(item.title, "Review finding", 180),
-      evidence: text(item.evidence, "Evidence requires reviewer confirmation.", 900),
+      evidence: evidenceText(item.evidence, "Evidence requires reviewer confirmation."),
       action: text(item.action, "Complete focused human review.", 700),
+      provenance: "Model assisted",
     };
 
     if (typeof item.file === "string" && knownFiles.has(item.file.trim())) finding.file = item.file.trim();
@@ -362,7 +373,7 @@ export function normaliseReport(value: unknown, baseline: Report): Report | null
   const submittedFindings = normaliseFindings(value.findings, baseline);
   const baselineHasMissingTestFinding = baseline.findings.some((finding) => finding.category === "Missing tests");
   const findings = mergeFindings(
-    baseline.findings,
+    baseline.findings.map((finding) => ({ ...finding, provenance: "Baseline preserved" as const })),
     baselineHasMissingTestFinding
       ? submittedFindings
       : submittedFindings.filter((finding) => finding.category !== "Missing tests"),
@@ -430,7 +441,7 @@ export function normaliseReport(value: unknown, baseline: Report): Report | null
     reviewerFocus,
     missingTests,
     suggestedTests: recommendationSuggestedTests,
-    reviewerChecklist,
+    reviewerChecklist: recommendation === "APPROVE" ? [] : reviewerChecklist,
     finalRecommendation,
     conditionsBeforeMerge: recommendation === "APPROVE" ? [] : conditionsBeforeMerge,
   };

@@ -71,7 +71,7 @@ export function reportToMarkdown(report: Report, source: ReportSourceLabel) {
   const recommendation = report.verdict.recommendation.replaceAll("_", " ");
   const findings = limitedList(
     report.findings,
-    (finding) => `${finding.severity} · ${safeMarkdownText(finding.category)}: ${safeMarkdownText(finding.title)} — ${safeMarkdownText(finding.action)}`,
+    (finding) => `${finding.severity} · ${safeMarkdownText(finding.category)}${finding.provenance ? ` · ${safeMarkdownText(finding.provenance)}` : ""}: ${safeMarkdownText(finding.title)} — ${safeMarkdownText(finding.action)}`,
   );
   const suggestedTests = limitedList(
     report.suggestedTests,

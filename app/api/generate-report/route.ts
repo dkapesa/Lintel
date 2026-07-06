@@ -127,6 +127,7 @@ async function generateWithOpenAI(
               "Apply the selected review profile as an additional risk lens only where the changed files or diff provide supporting evidence. Never invent a profile-specific concern when its evidence is absent, and never weaken the deterministic baseline.",
               "Reviewer focus may identify review disciplines, but must never invent or assign people, usernames, owners or teams.",
               "Each finding must have a specific title, diff-grounded evidence, a focused reviewer action and the most relevant category.",
+              "Write evidence as a concise description of detected behavior and relevant changed files. Do not lead with 'Matched', list raw keyword matches, invent line numbers, or quote patch text.",
               "Suggested tests and conditions before merge must be concrete and tied to detected behaviour, not generic requests for more testing or review.",
               "Use TESTS_REQUIRED when required tests are missing. Use REVIEW_REQUIRED when tests exist but findings, conditions or attention states remain. Use APPROVE only when all of those are clear. Do not use BLOCK.",
               "Calibrate risk conservatively: an untested change with multiple concrete reliability, API or security themes should normally be HIGH risk; it must not be LOW risk.",

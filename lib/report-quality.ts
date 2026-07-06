@@ -65,7 +65,71 @@ function reviewerAreaSupported(area: string, evidence: string, report: Report) {
 export function pruneUnsupportedReviewerFocus(report: Report): Report["reviewerFocus"] {
   if (!report.reviewerFocus) return undefined;
   const evidence = reportEvidence(report);
-  return report.reviewerFocus.filter((item) => reviewerAreaSupported(item.area, evidence, report));
+  const seen = new Set<string>();
+  const supported = report.reviewerFocus.filter((item) => {
+    const key = item.area.trim().toLowerCase();
+    if (seen.has(key) || !reviewerAreaSupported(item.area, evidence, report)) return false;
+    seen.add(key);
+    return true;
+  });
+  const primaryIndex = supported.findIndex((item) => item.priority === "PRIMARY");
+  const ordered = primaryIndex > 0
+    ? [supported[primaryIndex], ...supported.filter((_, index) => index !== primaryIndex)]
+    : supported;
+
+  return ordered.map((item, index) => ({
+    ...item,
+    priority: index === 0 ? "PRIMARY" : "SECONDARY",
+  }));
+}
+
+export function deduplicateReportItems(items: string[]) {
+  const seen = new Set<string>();
+
+  return items.filter((item) => {
+    const key = item.trim().toLowerCase().replace(/\s+/g, " ");
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+export function decisionConditions(items: string[]) {
+  const conditions = deduplicateReportItems(items);
+
+  return conditions.filter((condition, index) => {
+    const normalized = condition.toLowerCase();
+    const alternatives = conditions.filter((_, alternativeIndex) => alternativeIndex !== index);
+    const hasSpecificTestCondition = alternatives.some((item) => (
+      /\b(?:test|coverage|prove|verify)\b/i.test(item)
+      && !/risk-specific tests listed|focused test evidence for every changed behavio(?:u)?r path/i.test(item)
+    ));
+    const hasSpecificDetectionCondition = alternatives.some((item) => (
+      /\b(?:detection|observability|logging|monitoring|alert)\b/i.test(item)
+      && !/operational readiness gap/i.test(item)
+    ));
+    const hasSpecificOperationalCondition = hasSpecificDetectionCondition || alternatives.some((item) => (
+      /\b(?:recovery|rollback)\b/i.test(item)
+      && !/operational readiness gap/i.test(item)
+    ));
+    const hasSpecificCondition = alternatives.some((item) => !(
+      /complete focused review of the detected sensitive change area|resolve or explicitly accept each operational readiness gap/i.test(item)
+    ));
+
+    if (/risk-specific tests listed|focused test evidence for every changed behavio(?:u)?r path/.test(normalized)) {
+      return !hasSpecificTestCondition;
+    }
+    if (/complete focused review of the detected sensitive change area/.test(normalized)) {
+      return !hasSpecificCondition;
+    }
+    if (/confirm operational detection signals/.test(normalized)) {
+      return !hasSpecificDetectionCondition;
+    }
+    if (/resolve or explicitly accept each operational readiness gap/.test(normalized)) {
+      return !hasSpecificOperationalCondition;
+    }
+    return true;
+  });
 }
 
 function check(label: string, passes: boolean, passDetail: string, warningDetail: string): ReportQualityCheck {

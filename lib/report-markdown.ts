@@ -1,5 +1,5 @@
 import type { Report } from "./mock-report";
-import { pruneUnsupportedReviewerFocus } from "./report-quality";
+import { decisionConditions, deduplicateReportItems, pruneUnsupportedReviewerFocus } from "./report-quality";
 import { reviewProfileLabel } from "./review-profiles";
 
 export type ReportSourceLabel = "AI generated" | "Local fallback" | "Demo report";
@@ -82,19 +82,19 @@ export function reportToMarkdown(report: Report, source: ReportSourceLabel) {
     (test) => safeMarkdownText(test),
   );
   const conditions = limitedList(
-    report.conditionsBeforeMerge,
+    decisionConditions(report.conditionsBeforeMerge),
     (condition) => safeMarkdownText(condition),
   );
   const operationalReadiness = report.operationalReadiness
     ? [
         `**Status:** ${report.operationalReadiness.status}`,
         safeMarkdownText(report.operationalReadiness.summary),
-        `- **Failure modes:** ${limitedInlineList(report.operationalReadiness.failureModes)}`,
-        `- **Detection signals:** ${limitedInlineList(report.operationalReadiness.detectionSignals)}`,
-        `- **Observability gaps:** ${limitedInlineList(report.operationalReadiness.observabilityGaps)}`,
-        `- **Recovery or rollback:** ${limitedInlineList(report.operationalReadiness.recoveryOrRollback)}`,
-        `- **Customer or data impact:** ${limitedInlineList(report.operationalReadiness.customerOrDataImpact)}`,
-        `- **Owner or reviewer focus:** ${limitedInlineList(report.operationalReadiness.ownerOrReviewerFocus)}`,
+        `- **Failure modes:** ${limitedInlineList(deduplicateReportItems(report.operationalReadiness.failureModes))}`,
+        `- **Detection signals:** ${limitedInlineList(deduplicateReportItems(report.operationalReadiness.detectionSignals))}`,
+        `- **Observability gaps:** ${limitedInlineList(deduplicateReportItems(report.operationalReadiness.observabilityGaps))}`,
+        `- **Recovery or rollback:** ${limitedInlineList(deduplicateReportItems(report.operationalReadiness.recoveryOrRollback))}`,
+        `- **Customer or data impact:** ${limitedInlineList(deduplicateReportItems(report.operationalReadiness.customerOrDataImpact))}`,
+        `- **Owner or reviewer focus:** ${limitedInlineList(deduplicateReportItems(report.operationalReadiness.ownerOrReviewerFocus))}`,
       ].join("\n")
     : "**Status:** NOT ASSESSED\nNot assessed — regenerate this report";
   const supportedReviewerFocus = pruneUnsupportedReviewerFocus(report);

@@ -601,3 +601,28 @@ Manual tests:
 8. Confirm `/report?demo=1` shows the demo report even when a generated report exists in session storage.
 9. Inspect local and session storage and confirm no raw diff, diff markers, secrets, or patch lines were added.
 10. Verify keyboard navigation and the mobile card layout at a narrow viewport.
+
+## V2 merge-readiness report structure
+
+The report prioritises the merge decision over exhaustive review prose. The visible order is recommendation and risk, merge conditions, findings, the combined test plan, operational readiness, reviewer focus, changed files, engineering review, report quality, and a compact final recommendation.
+
+Manual tests:
+
+1. Generate a risky report and confirm merge conditions appear immediately below the recommendation overview.
+2. Generate the clean sample and confirm **No merge conditions detected.** appears in a calm positive state.
+3. Confirm missing coverage, suggested test names, and present checklist items render inside one **Test plan** section; absent checklist items should not create an empty heading.
+4. Confirm report quality renders as a compact check near the bottom and still exposes warning details when present.
+5. Load a report containing duplicate operational items and confirm each exact item is rendered and exported once.
+6. Load a report with several supported reviewer-focus areas and confirm only the highest-priority area is `PRIMARY`; remaining areas are `SECONDARY`.
+7. Confirm legacy reports without operational readiness, reviewer focus, or report quality still render neutral fallback states.
+8. Copy and download the report and confirm source, findings, tests, conditions, operations, reviewer focus, and quality remain present.
+9. Attempt to load or normalise a report containing `diff --git`, `@@`, or raw patch headers and confirm it is rejected in favour of a safe fallback.
+10. Inspect the UI, copied Markdown, downloaded Markdown, session storage, and local history for raw diff markers and confirm none appear.
+
+### Decision polish checks
+
+1. Confirm the overview leads with the risk band, such as **HIGH RISK**, and presents the numeric score as secondary model detail.
+2. Confirm exact duplicate merge conditions are removed in both the page and exported Markdown.
+3. Confirm broad test, review, or operational conditions are omitted when a more specific equivalent is already present.
+4. Confirm Engineering Review keeps all three states while omitting points that exactly repeat finding titles.
+5. Confirm the closing summary is one short recommendation statement and does not repeat the Decision Gate conditions.

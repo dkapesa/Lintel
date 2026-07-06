@@ -333,6 +333,8 @@ function baselineRiskFloor(baseline: Report) {
 }
 
 export function normaliseReport(value: unknown, baseline: Report): Report | null {
+  if (/diff --git|@@|(?:^|\\n)(?:--- a\/|\+\+\+ b\/)/m.test(JSON.stringify(value))) return null;
+
   if (
     !isRecord(value)
     || !isRecord(value.verdict)

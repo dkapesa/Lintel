@@ -644,3 +644,17 @@ Manual tests:
 ### Clean APPROVE restraint
 
 Generate the **Clean utility change** sample and confirm it remains `APPROVE`, `LOW`, and operationally `CLEAR`. The Test plan should show `0 gaps · 0 tests`, the two positive empty-test messages, and **No reviewer checklist items required.** Engineering Review should show only short `CLEAR` summaries without generic follow-up advice. Risky samples must retain their focused checklist and review content.
+
+## V2.4 Markdown export alignment
+
+Copy and download clean, risky, AI, deterministic, demo, legacy, and history-opened reports. Confirm the Markdown follows the report hierarchy: metadata, recommendation and risk band, executive summary, merge conditions, risk findings, combined test plan, operational readiness, reviewer focus, report quality, and closing summary.
+
+Checks:
+
+1. Risk band appears before the numeric score detail.
+2. APPROVE exports show **No merge conditions detected.** and the three calm Test plan empty states.
+3. Risky exports show deduplicated conditions once, near the top.
+4. Findings retain severity, category, title, available provenance, evidence, action, and safe file paths.
+5. Missing coverage, suggested tests, and reviewer checklist appear under one **Test plan** heading.
+6. Report quality remains compact and the closing summary does not repeat conditions.
+7. Search copied and downloaded Markdown for `diff --git`, `@@`, raw hunks, unique diff markers, and secrets; none should appear.

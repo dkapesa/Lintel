@@ -69,22 +69,45 @@ export function reportMarkdownFilename(report: Report) {
 
 export function reportToMarkdown(report: Report, source: ReportSourceLabel) {
   const recommendation = report.verdict.recommendation.replaceAll("_", " ");
-  const findings = limitedList(
-    report.findings,
-    (finding) => `${finding.severity} · ${safeMarkdownText(finding.category)}${finding.provenance ? ` · ${safeMarkdownText(finding.provenance)}` : ""}: ${safeMarkdownText(finding.title)} — ${safeMarkdownText(finding.action)}`,
-  );
+  const findings = report.findings.length > 0
+    ? [
+        ...report.findings.slice(0, MAX_SECTION_ITEMS).map((finding, index) => [
+          `**${index + 1}. ${safeMarkdownText(finding.title)}**`,
+          `- **Severity:** ${finding.severity}`,
+          `- **Category:** ${safeMarkdownText(finding.category)}`,
+          ...(finding.provenance ? [`- **Provenance:** ${safeMarkdownText(finding.provenance)}`] : []),
+          `- **Evidence:** ${safeMarkdownText(finding.evidence)}`,
+          `- **Action:** ${safeMarkdownText(finding.action)}`,
+          ...(finding.file ? [`- **File:** ${safeMarkdownText(finding.file)}`] : []),
+        ].join("\n")),
+        ...(report.findings.length > MAX_SECTION_ITEMS ? [`...and ${report.findings.length - MAX_SECTION_ITEMS} more`] : []),
+      ].join("\n\n")
+    : "None detected";
   const suggestedTests = limitedList(
     report.suggestedTests,
-    (test) => safeMarkdownText(test.title),
+    (test) => `${safeMarkdownText(test.title)}${test.priority ? ` (${safeMarkdownText(test.priority)})` : ""}${test.description ? ` — ${safeMarkdownText(test.description)}` : ""}`,
   );
   const missingTests = limitedList(
     report.missingTests,
     (test) => safeMarkdownText(test),
   );
-  const conditions = limitedList(
-    decisionConditions(report.conditionsBeforeMerge),
-    (condition) => safeMarkdownText(condition),
-  );
+  const displayedConditions = report.verdict.recommendation === "APPROVE"
+    ? []
+    : decisionConditions(report.conditionsBeforeMerge);
+  const conditions = displayedConditions.length > 0
+    ? limitedList(displayedConditions, (condition) => safeMarkdownText(condition))
+    : "No merge conditions detected.";
+  const cleanApprove = report.verdict.recommendation === "APPROVE"
+    && report.findings.length === 0
+    && report.missingTests.length === 0
+    && report.suggestedTests.length === 0
+    && report.operationalReadiness?.status === "CLEAR";
+  const reviewerChecklist = cleanApprove ? [] : report.reviewerChecklist;
+  const checklist = reviewerChecklist.length > 0
+    ? limitedList(reviewerChecklist, (item) => `${item.status} · ${safeMarkdownText(item.label)}`)
+    : "No reviewer checklist items required.";
+  const missingCoverage = report.missingTests.length > 0 ? missingTests : "No missing test gaps detected.";
+  const suggestedTestPlan = report.suggestedTests.length > 0 ? suggestedTests : "No additional tests suggested.";
   const operationalReadiness = report.operationalReadiness
     ? [
         `**Status:** ${report.operationalReadiness.status}`,
@@ -117,6 +140,12 @@ export function reportToMarkdown(report: Report, source: ReportSourceLabel) {
       ].join("\n")
     : "**Status:** NOT ASSESSED\nNot assessed — regenerate this report";
 
+  const closingSummary = report.verdict.recommendation === "APPROVE"
+    ? "No merge blockers remain in this report. Complete normal human review and CI checks."
+    : report.verdict.recommendation === "REVIEW_REQUIRED" || report.verdict.recommendation === "TESTS_REQUIRED"
+      ? "Resolve the conditions above and verify the focused test plan before merge."
+      : "Do not merge until the blocking risks above are resolved.";
+
   return [
     "# Lintel merge-readiness report",
     "",
@@ -126,13 +155,27 @@ export function reportToMarkdown(report: Report, source: ReportSourceLabel) {
     inputSourceMarkdown(report.pr.branch),
     `**Review profile:** ${safeMarkdownText(reviewProfileLabel(report.pr.reviewProfile))}`,
     `**Recommendation:** ${recommendation}`,
-    `**Risk:** ${report.verdict.riskScore}/100 — ${report.verdict.riskLevel}`,
+    `**Risk band:** ${report.verdict.riskLevel}`,
+    `**Score detail:** ${report.verdict.riskScore}/100`,
     "",
     "## Executive summary",
     safeMarkdownText(report.verdict.summary),
     "",
-    "## Key findings",
+    "## Conditions before merge",
+    conditions,
+    "",
+    "## Risk findings",
     findings,
+    "",
+    "## Test plan",
+    "### Missing coverage",
+    missingCoverage,
+    "",
+    "### Suggested tests",
+    suggestedTestPlan,
+    "",
+    "### Reviewer checklist",
+    checklist,
     "",
     "## Operational readiness",
     operationalReadiness,
@@ -143,13 +186,7 @@ export function reportToMarkdown(report: Report, source: ReportSourceLabel) {
     "## Report quality",
     reportQuality,
     "",
-    "## Missing tests",
-    missingTests,
-    "",
-    "## Suggested tests",
-    suggestedTests,
-    "",
-    "## Conditions before merge",
-    conditions,
+    "## Closing summary",
+    closingSummary,
   ].join("\n");
 }

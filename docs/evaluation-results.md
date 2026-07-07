@@ -1,13 +1,17 @@
 # Lintel Evaluation Results
 
-Evaluation date: 2026-07-04  
-Evaluation mode: Manual product smoke test  
-Application version: V1.8 local reports workspace  
-Evaluator: Denis Kapesa
+Evaluation date: `<add date>`
+Evaluation mode: Manual product regression pass
+Application version: V2 merge-readiness workspace
+Evaluator: `<add evaluator>`
 
 ## Summary
 
-Lintel was evaluated against representative pull request scenarios covering clean utility changes, risky provider failure handling, public GitHub PR import, frontend/API consumer changes and manual pasted diffs.
+Lintel was evaluated as a merge-readiness decision layer. The current validated wedge is:
+
+> Lintel helps engineering teams decide whether a pull request is safe, tested, operationally ready and ready to merge.
+
+The V2 report now leads with recommendation, risk band, executive summary and Conditions before merge. Conditions appear near the top, are deduped, and can be copied from both the report Decision Gate and the workspace Risk inbox. The report also includes provenance labels, consolidated Test plan output, operational readiness, reviewer focus, compact report quality checks and Markdown export aligned to the same hierarchy.
 
 | Metric | Result |
 | --- | --- |
@@ -18,191 +22,218 @@ Lintel was evaluated against representative pull request scenarios covering clea
 | Raw diff leakage observed | No |
 | GitHub import tested | Yes |
 | Manual pasted diff tested | Yes |
+| Workspace Risk inbox tested | Yes |
 | Review profiles tested | Standard, Frontend/API consumer |
 
-## Scenario Results
+## Current product state reflected in this pass
+
+- Homepage positioning leads with **Decide what’s ready to merge.**
+- Report hierarchy leads with recommendation, risk band, executive summary and **Conditions before merge**.
+- Risk band is visually primary; score detail remains secondary.
+- Conditions before merge are deduped and PR-ready.
+- **Copy conditions** is available from the Decision Gate and workspace.
+- Findings show provenance such as **Rule detected** or **Model assisted**.
+- User-facing source labels are **Baseline only** and **Baseline + model-assisted**.
+- Clean `APPROVE` reports stay quiet and do not invent generic review work.
+- Missing coverage, suggested tests and reviewer checklist are consolidated into **Test plan**.
+- Copied and downloaded Markdown follow the V2 report hierarchy.
+- `/workspace` acts as a local Risk inbox with grouped PR rows, a triage strip, filters, local statuses and row-level Copy conditions.
+- Raw diffs are not saved in local report history and raw diff markers should not appear in UI or exports.
+
+## Scenario results
 
 | ID | Scenario | Input source | Review profile | Expected | Observed | Result |
 | --- | --- | --- | --- | --- | --- | --- |
-| 1 | Clean utility change | Sample | Standard | APPROVE / LOW / CLEAR | APPROVE / 22 LOW / CLEAR | PASS |
-| 2 | Provider retry and duplicate redemption risk | Sample | Standard | TESTS_REQUIRED / HIGH / ATTENTION | TESTS_REQUIRED / 78 HIGH / ATTENTION | PASS |
-| 3 | Next.js sendGAEvent public PR import | GitHub PR import | Frontend/API consumer | No payment false positive, TypeScript / Next.js inferred, test gaps detected | TESTS_REQUIRED / 52 MEDIUM / CLEAR, TypeScript / Next.js inferred, no Payments/domain logic | PASS |
-| 4 | Clean manual pasted diff | Pasted diff | Standard | APPROVE / LOW / CLEAR | APPROVE / 22 LOW / CLEAR | PASS |
+| 1 | Clean APPROVE sample | Sample | Standard | APPROVE / LOW / CLEAR | APPROVE / LOW / CLEAR | PASS |
+| 2 | Provider retry / discount-code sample | Sample | Standard | TESTS_REQUIRED / HIGH / ATTENTION | TESTS_REQUIRED / HIGH / ATTENTION | PASS |
+| 3 | Public GitHub PR import: vercel/next.js PR 63226 | GitHub PR import | Frontend/API consumer | TESTS_REQUIRED / MEDIUM, TypeScript / Next.js, no Payments/domain logic | TESTS_REQUIRED / MEDIUM, TypeScript / Next.js, no Payments/domain logic | PASS |
+| 4 | Manual pasted diff clean sample | Pasted diff | Standard | APPROVE / LOW / CLEAR | APPROVE / LOW / CLEAR | PASS |
 
-## Detailed Results
+## Detailed results
 
-### 1. Clean utility change
+### 1. Clean APPROVE sample
 
 **PR:** Format display names consistently  
 **Repository:** acme/profile-api  
 **Input source:** Sample  
 **Review profile:** Standard  
-**Stack:** Python / FastAPI  
+**Stack:** Python / FastAPI
 
-Observed result:
+Expected and observed:
 
-- Recommendation: APPROVE
-- Risk score: 22 / 100
-- Risk level: LOW
-- Operational readiness: CLEAR
-- Findings: 0
-- Reviewer focus areas: 0
+- Recommendation: `APPROVE`
+- Risk level: `LOW`
+- Findings: none
 - Missing tests: none
 - Suggested tests: none
-- Report quality: PASS
+- Merge conditions: none
+- Operational readiness: `CLEAR`
+- Test plan: clean empty states
+- Report quality: `PASS`
 
 Result: PASS
 
 Notes:
 
-Lintel correctly recognised a low-risk utility change with matching tests. The report did not create unnecessary findings, missing tests, reviewer focus areas or suggested tests.
+Lintel correctly kept the report quiet for a clean utility change with matching tests. It did not create generic suggested tests, reviewer checklist items, risk findings or merge conditions.
 
-### 2. Provider retry and duplicate redemption risk
+### 2. Provider retry / discount-code sample
 
 **PR:** Add fallback handling for failed discount-code retrieval  
 **Repository:** acme/redemption-api  
 **Input source:** Sample  
 **Review profile:** Standard  
-**Stack:** Python / FastAPI  
+**Stack:** Python / FastAPI
 
-Observed result:
+Expected and observed:
 
-- Recommendation: TESTS_REQUIRED
-- Risk score: 78 / 100
-- Risk level: HIGH
-- Operational readiness: ATTENTION
-- Findings: 5
-- Reviewer focus areas: 5
-- Report quality: PASS
+- Recommendation: `TESTS_REQUIRED`
+- Risk level: `HIGH`
+- Operational readiness: `ATTENTION`
+- Conditions before merge: specific and deduped
+- Missing tests: risk-specific
+- Findings include:
+  - duplicate redemption / discount-code risk
+  - provider failure handling
+  - API contract stability
+  - logging/privacy review
+- Reviewer focus includes:
+  - Backend reliability
+  - API contract
+  - Security/privacy
+  - Payments/domain logic
+  - Platform/observability
+- Provenance labels: `Rule detected` where deterministic rules apply
+- Report quality: `PASS`
 
-Detected focus areas:
+Expected specific conditions:
 
-- Backend reliability
-- API contract
-- Security/privacy
-- Payments/domain logic
-- Platform/observability
+- Prove retries cannot create duplicate redemptions or issue duplicate discount codes
+- Verify provider handling for 5xx response, timeout, and unavailable
+- Confirm the frontend-safe API error contract remains stable
+- Confirm identifier logging is intentional, hashed or redacted
+- Confirm discount codes are not emitted in logs
+- Document a safe recovery or rollback path for the identified operational risks
 
 Result: PASS
 
 Notes:
 
-Lintel correctly escalated a risky provider and retry change. The report identified missing risk-specific tests, duplicate redemption risk, provider failure handling, API contract stability, logging/privacy concerns and operational readiness gaps.
+This remains the strongest risky-path demonstration. Lintel escalates the PR because the merge decision depends on idempotency, provider failure behavior, API contract stability, logging privacy and operational recovery.
 
-This is one of the strongest demonstrations of Lintel's core value because it moves beyond code review and evaluates merge readiness, operational risk and conditions before merge.
+### 3. Public GitHub PR import: vercel/next.js PR 63226
 
-### 3. GitHub PR import / Next.js sendGAEvent
-
-**PR:** Fix sendGAEvent function params and type clearly  
 **Repository:** vercel/next.js  
 **Input source:** GitHub PR import  
 **Review profile:** Frontend/API consumer  
-**Stack:** TypeScript / Next.js  
+**Stack:** TypeScript / Next.js
 
-Observed result:
+Expected and observed:
 
-- Recommendation: TESTS_REQUIRED
-- Risk score: 52 / 100
-- Risk level: MEDIUM
-- Operational readiness: CLEAR
-- Findings: 3
-- Reviewer focus areas: 3
-- Report quality: PASS
-- Stack inference: TypeScript / Next.js
-- Payments/domain logic: not present
-
-Detected focus areas:
-
-- Backend reliability
-- Frontend integration
-- Docs/API consumer review
+- Import works
+- Stack inference: `TypeScript / Next.js`
+- Recommendation: `TESTS_REQUIRED`
+- Risk level: `MEDIUM`
+- Payments/domain logic false positive: absent
+- Findings include missing tests and maintainability/scope concern
+- Reviewer focus includes frontend, docs and API-consumer concerns
+- Report quality: `PASS`
 
 Result: PASS
 
-Notes:
+Known limitation:
 
-Lintel successfully imported a public GitHub PR and inferred the correct stack context as TypeScript / Next.js. The selected Frontend/API consumer profile correctly surfaced documentation, browser/API consumer and frontend integration concerns.
+Backend reliability may still appear as `PRIMARY` because missing test coverage currently triggers reliability routing. Future refinement should make this more frontend/API-specific when the change is primarily frontend, docs or public API surface.
 
-Dedicated regression passed: the report did not show Payments/domain logic for a frontend analytics/type change.
+### 4. Manual pasted diff clean sample
 
-Follow-up polish:
-
-The Backend reliability reviewer focus appears because missing test coverage triggers reliability review. This is acceptable for the current prototype, but a future reviewer-routing refinement could phrase this as frontend/API test coverage when the change is primarily frontend, documentation or public consumer API related.
-
-### 4. Manual pasted diff
-
-**PR:** Normalize display titles before rendering  
 **Repository:** acme/content-service  
 **Input source:** Pasted diff  
 **Review profile:** Standard  
-**Stack:** Python / FastAPI  
+**Stack:** Python / FastAPI
 
-Observed result:
+Expected and observed:
 
-- Recommendation: APPROVE
-- Risk score: 22 / 100
-- Risk level: LOW
-- Operational readiness: CLEAR
-- Findings: 0
-- Reviewer focus areas: 0
+- Recommendation: `APPROVE`
+- Risk level: `LOW`
+- Operational readiness: `CLEAR`
+- Findings: none
 - Missing tests: none
 - Suggested tests: none
-- Report quality: PASS
+- Merge conditions: none
+- Report quality: `PASS`
 
 Result: PASS
 
 Notes:
 
-Lintel correctly handled the manual pasted diff flow. The change was recognised as a safe, well-tested utility update and did not generate unnecessary findings or test suggestions.
+The manual pasted-diff flow correctly produces the same restrained clean-report behavior as the built-in clean sample.
 
-## Dedicated Regression Tests
+## V2 regression checklist
 
 | Regression | Expected | Observed | Result |
 | --- | --- | --- | --- |
-| Clean utility change remains low risk | APPROVE / LOW / CLEAR | APPROVE / 22 LOW / CLEAR | PASS |
-| Clean APPROVE report does not show suggested tests | No suggested tests | No additional tests suggested | PASS |
-| Provider failure and retry risk escalates | TESTS_REQUIRED / HIGH / ATTENTION | TESTS_REQUIRED / 78 HIGH / ATTENTION | PASS |
-| Provider retry report includes operational readiness concerns | ATTENTION with failure modes, detection, rollback/recovery and customer impact | ATTENTION with detailed operational readiness | PASS |
-| Frontend/API consumer GitHub PR does not show Payments/domain logic | Payments/domain logic absent | Payments/domain logic absent | PASS |
-| GitHub import infers stack context | TypeScript / Next.js | TypeScript / Next.js | PASS |
-| Manual pasted diff flow works | Report generates from pasted diff | APPROVE report generated | PASS |
-| Report quality checks remain present | PASS or explainable warnings | PASS across all four scenarios | PASS |
-| Raw diff should not appear in generated report UI | No `diff --git` or `@@` markers in report UI | No raw diff markers observed in shown reports | PASS |
+| Clean APPROVE restraint | No findings, missing tests, suggested tests, generic checklist or merge conditions | Clean report stays quiet | PASS |
+| Provider retry escalation | TESTS_REQUIRED / HIGH / ATTENTION | TESTS_REQUIRED / HIGH / ATTENTION | PASS |
+| No payment false positive for frontend/API PR | Payments/domain logic absent | Payments/domain logic absent | PASS |
+| Public GitHub import | Import succeeds for supported public PR URL | Import works | PASS |
+| Manual pasted diff | Report generates from pasted diff | Report generates | PASS |
+| Stack inference | TypeScript / Next.js inferred for Next.js PR | TypeScript / Next.js inferred | PASS |
+| Report quality checks | PASS or explainable warnings | PASS across evaluated scenarios | PASS |
+| Provenance labels | Rule detected / Model assisted shown where available | Labels shown | PASS |
+| Copy conditions | Deduped conditions copied from report and workspace | Works | PASS |
+| Markdown export alignment | Export follows V2 hierarchy | Aligned | PASS |
+| Workspace/risk inbox grouping | Duplicate runs grouped by PR identity | Grouped rows shown | PASS |
+| Raw diff privacy | No raw diff markers in UI, exports, session storage or local history | No leakage observed | PASS |
 
-## Current Limitations
+## Workspace Risk inbox observations
 
-- Evaluation is currently manual.
-- Only four scenarios have been recorded in this pass.
+The workspace now behaves as a local merge-readiness inbox rather than a raw recent-runs log.
+
+Validated behavior:
+
+- duplicate local report runs group into one PR row;
+- triage strip counts grouped PRs;
+- `TESTS_REQUIRED` and `REVIEW_REQUIRED` reports appear under **Needs attention**;
+- `APPROVE` reports appear under **Ready / cleared**;
+- local statuses persist in browser storage only;
+- row-level Copy conditions uses the same deduped condition formatter as `/report`;
+- deleting a grouped row removes that PR group's local report runs;
+- raw diffs are not stored in local history.
+
+## Raw-diff privacy checks
+
+Expected and observed:
+
+- Raw diffs are not stored in `lintel.generatedReport.v1`.
+- Raw diffs are not stored in `lintel.reportHistory.v1`.
+- Raw diff markers such as `diff --git` and `@@` do not appear in report UI, copied conditions, copied summary, downloaded Markdown or workspace rows.
+- Changed filenames and concise evidence summaries may appear. That is expected and is not raw-diff storage.
+
+## Current limitations
+
+- Evaluation is still manual.
+- Scenario count is still small.
 - Private repository import is not supported.
 - GitHub App integration is not implemented.
 - CI integration is not implemented.
 - Automatic PR comments are not implemented.
-- Team dashboards, shared reports, authentication and billing are not implemented.
-- Model output quality still depends on the configured AI provider when AI mode is enabled.
+- Authentication, billing, database storage and team dashboards are not implemented.
+- Line-level evidence and diff hunks are not shown.
+- Frontend-specific reviewer routing still needs refinement.
+- Model-assisted quality depends on the configured provider when enabled.
 
-## Follow-up Evaluation Work
+## Follow-up evaluation work
 
-- Record results for all eight built-in sample scenarios.
-- Repeat the same scenarios with deterministic fallback only.
-- Repeat the same scenarios with AI enabled.
-- Add more real public GitHub PR imports across frontend, backend, database, auth, security and infrastructure changes.
-- Add regression coverage for review policy profiles:
-  - High assurance
-  - Payments/refunds
-  - Auth/security
-  - Data/migrations
-  - Frontend/API consumer
+- Record deterministic-only and model-assisted passes separately.
+- Expand public GitHub PR coverage across backend, frontend, auth, data, infrastructure and documentation changes.
+- Add repeated evaluation for all eight built-in samples.
 - Track false positives and false negatives over time.
-- Consider adding automated snapshot-style report checks once the report schema stabilises.
+- Add automated snapshot-style report checks once the schema and copy stabilize.
+- Refine reviewer routing so missing frontend/API tests do not default to backend reliability language.
 
-## Overall Conclusion
+## Overall conclusion
 
-Lintel successfully generated structured merge-readiness reports across clean, risky, imported and manually pasted pull request scenarios.
+Lintel is strongest today when a team needs a concise merge-readiness artifact: recommendation, risk band, conditions before merge, risk-specific tests, operational readiness, reviewer focus and report quality.
 
-The evaluated reports correctly surfaced recommendation, risk, missing tests, operational readiness, reviewer focus, report quality and conditions before merge.
-
-The strongest validated product wedge is:
-
-> Lintel helps engineering teams decide whether a pull request is safe, tested, operationally ready and ready to merge.
-
-This evaluation pass supports Lintel's current positioning as a local-first merge-readiness workspace for engineering teams.
+The product should still be presented as a public-pilot prototype. It does not replace human review, CI, security review or tests, and it does not yet integrate with private repositories or GitHub workflows.

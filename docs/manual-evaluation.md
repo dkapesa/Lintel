@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Lintel helps engineering teams assess whether AI-assisted pull requests are safe, tested, maintainable, and ready to merge. This prototype combines deterministic local rules with an optional server-side AI analysis route and always returns the existing typed report shape.
+Lintel helps engineering teams decide whether pull requests are safe, tested, operationally ready and ready to merge. This prototype combines deterministic local rules with an optional server-side model-assisted analysis route and always returns the existing typed report shape.
 
 ## Current prototype flow
 
@@ -26,9 +26,10 @@ Run the app with `npm run dev` and use `http://localhost:3000/new`. Use browser 
 
 ## Copy summary
 
-Use **Copy summary** on `/report` to copy a concise Markdown report. Confirm the copied text includes the PR title, repository, source label, recommendation, risk score and level, executive summary, key findings, suggested tests and merge conditions.
+Use **Copy summary** on `/report` to copy a concise Markdown report. Confirm the copied text follows the V2 hierarchy: PR metadata, source label, recommendation, risk band before score detail, executive summary, Conditions before merge, findings, Test plan, operational readiness, reviewer focus, report quality and closing summary.
 
-- Finding, test and condition sections show at most five items, followed by `...and N more` when truncated.
+- Finding and test sections show at most five items, followed by `...and N more` when truncated.
+- Conditions before merge are deduped and exported in full; they should not be truncated.
 - Empty sections show `None detected`.
 - The button temporarily shows `Copied` only after the browser clipboard or hidden-textarea fallback succeeds.
 - If both copy methods fail, the button shows `Copy failed`.
@@ -513,12 +514,14 @@ Expected Markdown sections:
 
 - PR title and repository;
 - generation source and input source or legacy branch;
-- recommendation and risk score/level;
-- executive summary and findings;
+- recommendation, risk band and score detail;
+- executive summary;
+- deduped Conditions before merge near the top;
+- risk findings with available provenance;
+- consolidated Test plan with missing coverage, suggested tests and reviewer checklist;
 - operational readiness and reviewer focus;
 - report quality status and warnings;
-- missing and suggested tests;
-- conditions before merge.
+- closing summary.
 
 Manual tests:
 
@@ -527,9 +530,10 @@ Manual tests:
 3. Confirm the button briefly shows **Downloaded** only after the client-side download action succeeds.
 4. Confirm download failure shows **Download failed** without affecting the report.
 5. Open the file and verify every expected section and source label.
-6. Confirm empty sections use neutral `None detected` copy.
-7. Search the downloaded file for unique diff markers, `diff --git`, `@@`, exact patch lines, credentials, and secrets; none should be present.
-8. Confirm keyboard access and narrow-screen topbar spacing.
+6. Confirm Conditions before merge are deduped, shown in full and not truncated with `...and N more`.
+7. Confirm empty clean-report sections use calm copy, including **No merge conditions detected.**
+8. Search the downloaded file for unique diff markers, `diff --git`, `@@`, exact patch lines, credentials, and secrets; none should be present.
+9. Confirm keyboard access and narrow-screen topbar spacing.
 
 ## Stack and context inference
 
@@ -583,24 +587,38 @@ Manual tests:
 11. Confirm Copy summary and Download Markdown contain the profile and no raw diff.
 12. Load a legacy report without `reviewProfile` and confirm it renders and copies safely as **Standard**.
 
-## Local reports workspace
+## Local Risk inbox
 
-`/workspace` provides a browser-local view of the same 10-report history used by `/new`. It does not introduce a server-side workspace, account, database, or additional report storage.
+`/workspace` provides a browser-local Risk inbox over the same 10-report history used by `/new`. It does not introduce a server-side workspace, account, database, or additional report storage.
 
-Each row shows the PR title, repository, recommendation, score and risk level, operational readiness, evidence-supported reviewer focus, report quality, review profile, generation and input sources, and creation time. Opening a row copies only its existing `{ report, source }` envelope into the current session report key before navigating to `/report`.
+Reports are grouped by PR identity where possible, using repository, title and input source. The latest report in each group is the visible row. Duplicate runs show a run count. The triage strip counts grouped PRs, not raw report runs.
+
+Each grouped row shows PR title, repository, recommendation, risk band and score detail, source/input/profile context, latest run date, local status, run count where applicable, and the top condition or first risk. Opening a row copies only its existing `{ report, source }` envelope into the current session report key before navigating to `/report`.
+
+Local status values are stored only in browser `localStorage`:
+
+- Needs work
+- Conditions met
+- Merged
+- Dismissed
 
 Manual tests:
 
-1. Open `/workspace` with no local history and confirm the empty state links to `/new`.
-2. Generate reports from a sample, pasted diff, and public GitHub PR; confirm each appears with the expected profile and source labels.
-3. Open an older report and confirm `/report` renders it with its original source, input label, operational readiness, reviewer focus, and report quality.
-4. Delete one report and confirm the other entries remain after reload.
-5. Select **Clear history** and confirm the workspace becomes empty without deleting the current session report.
-6. Load legacy history without operational readiness, reviewer focus, report quality, or review profile and confirm neutral **Not assessed** or **Standard** values render without crashing.
-7. Confirm unsupported reviewer-focus areas are pruned from the workspace summary.
-8. Confirm `/report?demo=1` shows the demo report even when a generated report exists in session storage.
-9. Inspect local and session storage and confirm no raw diff, diff markers, secrets, or patch lines were added.
-10. Verify keyboard navigation and the mobile card layout at a narrow viewport.
+1. Open `/workspace` with no local history and confirm the empty state links to **Check a pull request** and the demo report.
+2. Generate duplicate reports from the same sample and confirm they appear as one grouped PR row with a run count.
+3. Generate reports from a sample, pasted diff and public GitHub PR; confirm each appears with expected profile, input and source labels.
+4. Confirm `TESTS_REQUIRED` and `REVIEW_REQUIRED` groups appear under **Needs attention**, while `APPROVE` groups appear under **Ready / cleared**.
+5. Confirm the triage strip counts grouped PRs for blocked/needs-attention, tests required, ready and tracked PRs.
+6. Use the filters: All, Needs attention, Tests required, Review required and Ready.
+7. Change a row's local status, reload and confirm it persists locally without calling an API.
+8. Use workspace **Copy conditions** and confirm the copied Markdown matches the report Decision Gate.
+9. Open a grouped row and confirm `/report` renders the latest report with original source, input label, operational readiness, reviewer focus and report quality.
+10. Select **Delete reports** for one group and confirm only that grouped PR is removed. Select **Clear history** and confirm the workspace becomes empty without deleting the current session report.
+11. Load legacy history without operational readiness, reviewer focus, report quality or review profile and confirm neutral **Not assessed** or **Standard** values render without crashing.
+12. Confirm unsupported reviewer-focus areas are pruned from the workspace summary.
+13. Confirm `/report?demo=1` shows the demo report even when a generated report exists in session storage.
+14. Inspect local and session storage and confirm no raw diff, diff markers, secrets or patch lines were added.
+15. Verify keyboard navigation and the mobile card layout at a narrow viewport.
 
 ## V2 merge-readiness report structure
 
@@ -680,7 +698,41 @@ Manual tests:
 4. Use the filters: All, Needs attention, Tests required, Review required, and Ready.
 5. Change a row's local status and reload; confirm the status persists locally and is not sent to an API.
 6. Use **Copy conditions** from a workspace row and confirm it matches the deduped Decision Gate conditions from `/report`.
-7. Confirm **Delete group** removes only that grouped PR's local report runs, and **Clear history** clears all local history.
+7. Confirm **Delete reports** removes only that grouped PR's local report runs, and **Clear history** clears all local history.
 8. Open a grouped row and confirm `/report` renders the latest report in that group.
 9. Confirm the empty state explains the workflow and links to **Check a pull request** and the demo report.
 10. Search the workspace UI, copied conditions, session storage and local history for `diff --git`, `@@`, raw hunks, unique diff markers, and secrets; none should appear.
+
+## V2.7 evaluation documentation refresh
+
+Current strongest validated wedge:
+
+> Lintel helps engineering teams decide whether a pull request is safe, tested, operationally ready and ready to merge.
+
+Current V2 regression checklist:
+
+- Clean `APPROVE` restraint: clean reports stay quiet, with no findings, missing tests, suggested tests, merge conditions or generic reviewer work.
+- Provider retry escalation: provider retry / discount-code risk produces `TESTS_REQUIRED`, `HIGH` risk, operational `ATTENTION`, specific Conditions before merge and risk-specific tests.
+- No payment false positive for frontend/API PRs: public frontend/docs/type changes must not show **Payments/domain logic** without explicit payment, billing, refund, redemption, discount, checkout, invoice, subscription, order or charge evidence.
+- Public GitHub import: supported public PR URLs import, populate repository/diff, infer stack where possible and keep raw diffs out of storage after generation.
+- Manual pasted diff: pasted clean diffs can produce `APPROVE`, `LOW`, `CLEAR` without invented work.
+- Stack inference: Next.js public PRs infer `TypeScript / Next.js` when the field is empty or untouched.
+- Report quality checks: reports show `PASS` or explicit warnings and continue to flag unsupported reviewer focus.
+- Provenance labels: findings show **Rule detected** or **Model assisted** where available.
+- Copy conditions: Decision Gate and workspace copy the full deduped condition list, or **No merge conditions detected.** for `APPROVE`.
+- Markdown export alignment: copied and downloaded Markdown follow the V2 hierarchy.
+- Workspace/risk inbox grouping: duplicate local runs group into one PR row with triage counts, filters and local statuses.
+- Raw diff privacy: raw diffs and patch markers do not appear in UI, copied conditions, copied summary, downloaded Markdown, session storage or local history.
+
+Current limitations to keep visible:
+
+- Evaluation is still manual.
+- Scenario count is still small.
+- Private repository import is not supported.
+- GitHub App integration is not implemented.
+- CI integration is not implemented.
+- Automatic PR comments are not implemented.
+- Authentication, billing, database and team dashboards are not implemented.
+- Line-level evidence and raw diff hunks are not shown.
+- Frontend-specific reviewer routing still needs refinement.
+- Model-assisted quality depends on the configured provider when enabled.

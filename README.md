@@ -1,117 +1,85 @@
 # Lintel
 
-**Lintel is a local-first merge-readiness workspace for engineering teams.**
+Lintel is a merge-readiness system for pull requests.
 
-It turns public GitHub pull requests, pasted diffs, and built-in evaluation scenarios into structured reports that help reviewers decide whether a change is safe, tested, operationally ready, and ready to merge.
+It helps engineering teams decide whether PRs are safe, tested, operationally ready and ready to merge.
 
-Lintel does not replace human review, CI, security review, or tests. It makes the merge decision more explicit, evidence-grounded, and easier to share.
+Coding agents help teams create code faster. Lintel helps teams decide what is ready to merge.
+
+Lintel is not a generic code review tool and does not replace human review, CI, security review or tests. It creates a decision artifact: recommendation, risk band, evidence, missing tests and Conditions before merge.
 
 ## Why Lintel exists
 
-Modern engineering teams can create code faster than they can confidently verify it.
+Modern teams can generate and modify code faster than they can confidently verify it.
 
-A pull request may look reasonable while still hiding missing tests, unsafe retries, unstable API contracts, sensitive logging, migration risk, poor observability, or unclear recovery paths. Reviewers are often left answering the most important question manually:
+A PR can look reasonable while still hiding:
 
-> Is this change actually ready to merge?
+- missing tests for new behavior;
+- retry paths that duplicate customer-facing side effects;
+- provider failure handling gaps;
+- unstable API contracts;
+- sensitive logging;
+- migration or data-write risk;
+- weak observability or unclear recovery paths.
 
-Lintel is designed around that decision.
+The bottleneck shifts from creating code to deciding whether the change is ready to merge.
 
-Instead of producing a generic code summary, Lintel generates a merge-readiness report covering:
+Lintel is built around that decision.
 
-- risk and recommendation
-- missing tests
-- operational readiness
-- reviewer focus
-- report quality
-- conditions before merge
+## What it does today
 
-## What Lintel does
+Current capabilities:
 
-Lintel evaluates a pull request and produces a structured report with:
+- Public GitHub PR import.
+- Pasted diff analysis.
+- Built-in sample reports.
+- Review policy profiles.
+- Stack/context inference.
+- `APPROVE`, `REVIEW_REQUIRED` and `TESTS_REQUIRED` recommendations.
+- Risk band and score detail.
+- Conditions before merge.
+- Copy conditions.
+- Evidence-backed findings.
+- Provenance labels such as `Rule detected` and `Model assisted`.
+- Test plan with missing coverage, suggested tests and reviewer checklist.
+- Operational readiness.
+- Reviewer focus.
+- Report quality checks.
+- Copy summary.
+- Download Markdown.
+- Local workspace / Risk inbox.
+- Grouped PR rows.
+- Triage strip.
+- Local status.
+- Local-first report history.
+- Raw diffs are not saved in local report history.
 
-- `APPROVE`, `REVIEW_REQUIRED`, or `TESTS_REQUIRED` recommendation
-- risk score, risk level, confidence, and evidence-backed findings
-- missing-test detection and suggested tests
-- security, reliability, and maintainability review states
-- operational readiness analysis covering failure modes, detection, observability, recovery, rollback, and customer or data impact
-- reviewer-focus guidance for areas such as backend reliability, API contracts, security/privacy, data/migrations, frontend integration, platform/observability, and domain logic
-- report-quality checks that validate internal consistency before the result is shared
-- copyable and downloadable Markdown summaries
-- browser-local report history
-- a local reports workspace for browsing recent reports
+## Current workflow
 
-## Product flow
+1. Import a public GitHub PR, paste a diff or load a sample.
+2. Generate a merge-readiness report.
+3. Review Conditions before merge.
+4. Copy conditions or export Markdown.
+5. Track reports in the local Risk inbox.
 
-1. Open `/new`.
-2. Load a built-in scenario, import a public GitHub PR, or paste a unified diff.
-3. Choose a review profile.
-4. Generate a report.
-5. Review the result on `/report`.
-6. Browse previous local reports in `/workspace`.
-7. Copy or download the Markdown summary for sharing.
+## Trust and safety
 
-## Core features
+Lintel is intentionally conservative about trust.
 
-### PR input
+- Clean `APPROVE` reports stay quiet and do not invent generic review work.
+- Findings can show provenance labels such as `Rule detected` and `Model assisted`.
+- Report quality checks look for internal inconsistencies before sharing.
+- Raw diffs are not stored in local report history.
+- Raw diff markers are blocked from shareable report outputs.
+- Current limitations are documented and visible.
 
-- Public GitHub PR import with strict URL validation
-- Manual pasted diff workflow
-- Eight built-in evaluation samples
-- Stack/context inference for imported PRs
-- Editable PR title, repository, language, framework, and review profile
+When model-assisted analysis is enabled, the submitted diff is sent to the configured provider for analysis. This prototype does not claim that the provider does not retain submitted data.
 
-### Review profiles
-
-Lintel supports lightweight review policy profiles:
-
-- Standard
-- High assurance
-- Payments/refunds
-- Auth/security
-- Data/migrations
-- Frontend/API consumer
-
-Profiles act as risk lenses. They strengthen relevant checks when supporting evidence exists, without creating unsupported findings.
-
-### Merge-readiness reports
-
-Each report includes:
-
-- final merge recommendation
-- risk score and risk level
-- executive summary
-- changed files
-- risk findings
-- engineering review states
-- operational readiness
-- reviewer focus
-- report quality checks
-- missing tests
-- suggested tests
-- conditions before merge
-
-### Local workspace
-
-The `/workspace` page provides a local report workspace backed by browser storage.
-
-It shows recent reports with:
-
-- PR title
-- repository
-- recommendation
-- risk
-- operational status
-- reviewer focus
-- report quality
-- input source
-- review profile
-- creation time
-
-Reports can be opened, deleted, or cleared locally.
+Do not submit secrets, private source code, credentials or sensitive production data to this prototype.
 
 ## Architecture
 
-Lintel is built with Next.js App Router, TypeScript, and plain CSS.
+Lintel is built with Next.js App Router, TypeScript and plain CSS.
 
 ```text
 /new
@@ -122,128 +90,74 @@ Lintel is built with Next.js App Router, TypeScript, and plain CSS.
        -> normalization and guardrails
        -> report-quality assessment
   -> sessionStorage stores the current { report, source }
-  -> localStorage stores up to 10 raw-diff-free report history entries
+  -> localStorage stores raw-diff-free report history
   -> /report renders the selected report
-  -> /workspace lists recent local reports
+  -> /workspace groups reports into a local Risk inbox
 ```
 
-There is currently no database, authentication layer, background worker, billing system, GitHub App, or private repository access.
+There is currently no database, authentication layer, billing system, GitHub App, private repository access or CI integration.
 
-## Guardrails and fallback
+## Public pilot status
 
-Lintel creates a deterministic baseline before any optional model call.
+Lintel is in public pilot preparation.
 
-The normalizer then:
+The current pilot is best suited for:
 
-- preserves submitted PR metadata and changed files
-- merges concrete baseline findings, tests, and merge conditions
-- derives risk level from the final risk score
-- prevents unsafe recommendation upgrades
-- prevents operational-readiness downgrades
-- prunes unsupported reviewer-focus areas
-- checks report consistency before rendering or export
-- blocks raw patch markers from shareable outputs
+- tech leads and staff engineers at small AI-heavy startups;
+- agency technical directors shipping client work with coding agents;
+- technical founders using coding agents heavily;
+- senior engineers who are the review bottleneck.
 
-If credentials are missing, a provider request fails, JSON is malformed, or output does not meet the expected structure, Lintel falls back to the deterministic report.
+Useful pilot docs:
 
-## Public GitHub PR import
-
-`/new` accepts public GitHub pull request URLs in this format:
-
-```
-https://github.com/<owner>/<repository>/pull/<number>
-```
-
-The server validates the host and path, reconstructs trusted GitHub URLs, fetches the public `.diff`, and attempts an unauthenticated metadata lookup for the PR title.
-
-Private repositories and authenticated GitHub access are not currently supported.
-
-## Privacy and storage
-
-Lintel is local-first in its current form.
-
-- Raw diffs are used during report generation.
-- Raw diffs are not stored in `sessionStorage`.
-- Raw diffs are not stored in local report history.
-- Raw diffs are not included in copied Markdown summaries.
-- Raw diffs are not included in downloaded Markdown reports.
-- Current report storage uses `lintel.generatedReport.v1`.
-- Local report history uses `lintel.reportHistory.v1`.
-- Local history stores generated reports, source/input labels, timestamps, and minimal display metadata.
-
-When model-assisted analysis is enabled, the submitted diff is sent to the configured model provider for analysis. This prototype does not claim that the provider does not retain submitted data.
-
-Do not submit secrets, private source code, credentials, or sensitive production data to this prototype.
-
-## Evaluation
-
-Lintel includes a manual evaluation workflow and observed evaluation results.
-
-Current documented scenarios cover:
-
-- clean utility changes
-- provider failure and retry risk
-- duplicate side-effect risk
-- public GitHub PR import
-- frontend/API consumer changes
-- manual pasted diffs
-- operational-readiness checks
-- reviewer-focus regressions
-- report-quality checks
-- raw-diff privacy checks
-
-Useful evaluation documents:
-
-- Evaluation workflow
-- Evaluation results
-- Manual evaluation
-
-## Public pilot
-
-The public pilot package is documented in [docs/public-pilot.md](docs/public-pilot.md). It covers pilot positioning, target users, current capabilities, limitations, pilot offers, outreach notes and a 30-day pilot plan.
+- [Evaluation results](docs/evaluation-results.md)
+- [Public pilot package](docs/public-pilot.md)
+- [Distribution assets](docs/distribution-assets.md)
 
 ## Current limitations
 
-Lintel is a prototype and has important limitations:
+Lintel is still a prototype.
 
 - Heuristics and model output can miss or misclassify risk.
-- No private repository access.
+- No private repository import.
 - No GitHub App.
-- No webhooks.
+- No CI integration.
 - No automatic PR comments.
-- No authentication or team accounts.
-- No server-side saved report history.
+- No authentication.
 - No billing.
-- No audit log.
-- No repository-wide dependency graph.
+- No database-backed team workspace.
+- No team dashboard.
+- No line-level diff hunk evidence.
 - No test execution.
 - No static-analysis engine.
+- Frontend-specific reviewer routing still needs refinement.
 - Public GitHub imports are subject to unauthenticated rate limits.
-- Reports support engineering judgment but are not a security, compliance, or production-readiness guarantee.
+
+Reports support engineering judgment. They are not a security, compliance or production-readiness guarantee.
 
 ## Run locally
 
 Install dependencies:
 
-```
+```text
 npm install
 ```
 
 Start the development server:
 
-```
+```text
 npm run dev
 ```
 
 Open:
 
-```
+```text
 http://localhost:3000/new
 ```
 
 Run a production build:
 
-```
+```text
 npm run build
 ```
 
@@ -253,7 +167,7 @@ Model-assisted report generation is optional.
 
 Copy `.env.example` to `.env.local` and provide evaluator-owned values:
 
-```
+```text
 OPENAI_API_KEY=
 OPENAI_MODEL=
 ```
@@ -264,7 +178,7 @@ Never commit `.env.local` or real credentials.
 
 ## Project structure
 
-```
+```text
 app/
   api/
     fetch-pr-diff/
@@ -283,6 +197,7 @@ lib/
 docs/
   case-study.md
   demo-script.md
+  distribution-assets.md
   evaluation.md
   evaluation-results.md
   manual-evaluation.md
@@ -292,41 +207,33 @@ docs/
 
 ## Documentation
 
-- Case study
-- Demo script
-- Evaluation workflow
-- Evaluation results
-- Manual evaluation
-- Public pilot package
-- Screenshot checklist
+- [Case study](docs/case-study.md)
+- [Demo script](docs/demo-script.md)
+- [Evaluation workflow](docs/evaluation.md)
+- [Evaluation results](docs/evaluation-results.md)
+- [Manual evaluation](docs/manual-evaluation.md)
+- [Public pilot package](docs/public-pilot.md)
+- [Distribution assets](docs/distribution-assets.md)
+- [Screenshot checklist](docs/screenshot-checklist.md)
 
 ## Roadmap
 
 Near-term:
 
-- complete evaluation results for all built-in scenarios
-- improve reviewer-focus routing for frontend/API consumer changes
-- polish workspace and report UI
-- refine product copy and positioning
-- prepare deployment-ready screenshots and case study
+- GitHub Action planning.
+- Minimal PR comment workflow.
+- Before/after verification.
+- More public and anonymized real-world PR evaluations.
+- Frontend/API reviewer routing refinement.
 
-Future:
+Later:
 
-- shared reports
-- authentication
-- database-backed report history
-- private repository support
-- GitHub App integration
-- automatic PR comments
-- CI integration
-- team policy settings
-- model/provider configuration
-- organization-level risk and quality analytics
+- Private repo support.
+- GitHub App.
+- Team workflow.
+- Database-backed report history.
+- Authentication.
+- Billing.
+- Model modes and provider configuration.
 
-## Positioning
-
-Lintel is not a coding agent and not a generic AI code review tool.
-
-Coding agents help teams create code faster.
-
-Lintel helps teams decide what is ready to merge.
+Lintel should only expand into heavier SaaS infrastructure after validating that teams use the report artifact during real merge decisions.

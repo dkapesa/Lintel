@@ -140,6 +140,8 @@ This order leads with the merge decision, then shows that the product can be bot
 
 ## Founder-led outreach plan
 
+Reusable posts, DMs, call scripts and first-user workflow are in [distribution-assets.md](distribution-assets.md).
+
 Approach:
 
 - run Lintel on a real public PR before messaging where possible;

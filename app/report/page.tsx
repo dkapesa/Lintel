@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { GENERATED_REPORT_STORAGE_KEY } from "../../lib/report-generator";
-import { reportMarkdownFilename, reportToMarkdown, type ReportSourceLabel } from "../../lib/report-markdown";
+import { conditionsToMarkdown, findingProvenanceLabel, reportMarkdownFilename, reportToMarkdown, type ReportSourceLabel } from "../../lib/report-markdown";
 import type { FindingSeverity, Recommendation, Report, ReviewArea, RiskLevel } from "../../lib/mock-report";
 import { report as demoReport } from "../../lib/mock-report";
 import { decisionConditions, deduplicateReportItems, pruneUnsupportedReviewerFocus } from "../../lib/report-quality";
@@ -19,8 +19,8 @@ type StoredReport = {
 };
 
 const sourceLabels: Record<ReportSource, ReportSourceLabel> = {
-  ai: "AI generated",
-  deterministic: "Local fallback",
+  ai: "Baseline + model-assisted",
+  deterministic: "Baseline only",
   demo: "Demo report",
 };
 
@@ -34,6 +34,12 @@ const downloadLabels: Record<DownloadState, string> = {
   idle: "Download Markdown",
   downloaded: "Downloaded",
   failed: "Download failed",
+};
+
+const copyConditionsLabels: Record<CopyState, string> = {
+  idle: "Copy conditions",
+  copied: "Conditions copied",
+  failed: "Copy failed",
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -206,8 +212,10 @@ export default function ReportPage() {
     source: "demo",
   });
   const [copyState, setCopyState] = useState<CopyState>("idle");
+  const [conditionsCopyState, setConditionsCopyState] = useState<CopyState>("idle");
   const [downloadState, setDownloadState] = useState<DownloadState>("idle");
   const copyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const conditionsCopyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const downloadResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -238,13 +246,16 @@ export default function ReportPage() {
 
   useEffect(() => () => {
     if (copyResetTimer.current) clearTimeout(copyResetTimer.current);
+    if (conditionsCopyResetTimer.current) clearTimeout(conditionsCopyResetTimer.current);
     if (downloadResetTimer.current) clearTimeout(downloadResetTimer.current);
   }, []);
 
   const { report, source } = displayedReport;
   const { pr, verdict } = report;
   const supportedReviewerFocus = pruneUnsupportedReviewerFocus(report);
-  const displayedConditions = decisionConditions(report.conditionsBeforeMerge);
+  const displayedConditions = verdict.recommendation === "APPROVE"
+    ? []
+    : decisionConditions(report.conditionsBeforeMerge);
   const findingTitles = report.findings.map((finding) => finding.title);
   const cleanApprove = verdict.recommendation === "APPROVE"
     && report.findings.length === 0
@@ -259,6 +270,14 @@ export default function ReportPage() {
 
     if (copyResetTimer.current) clearTimeout(copyResetTimer.current);
     copyResetTimer.current = setTimeout(() => setCopyState("idle"), 2_000);
+  }
+
+  async function handleCopyConditions() {
+    const copied = await writeToClipboard(conditionsToMarkdown(report));
+    setConditionsCopyState(copied ? "copied" : "failed");
+
+    if (conditionsCopyResetTimer.current) clearTimeout(conditionsCopyResetTimer.current);
+    conditionsCopyResetTimer.current = setTimeout(() => setConditionsCopyState("idle"), 2_000);
   }
 
   function handleDownloadMarkdown() {
@@ -349,7 +368,17 @@ export default function ReportPage() {
           <section className="merge-conditions" aria-labelledby="merge-conditions-title">
             <div className="section-heading">
               <div><span className="card-kicker">DECISION GATE</span><h2 id="merge-conditions-title">Conditions before merge</h2></div>
-              <RecommendationBadge recommendation={verdict.recommendation} />
+              <div className="merge-conditions-actions">
+                <RecommendationBadge recommendation={verdict.recommendation} />
+                <button
+                  className={`copy-conditions-button copy-conditions-button--${conditionsCopyState}`}
+                  type="button"
+                  onClick={handleCopyConditions}
+                  aria-live="polite"
+                >
+                  {copyConditionsLabels[conditionsCopyState]}
+                </button>
+              </div>
             </div>
             {displayedConditions.length > 0 ? (
               <ol>{displayedConditions.map((condition) => <li key={condition}>{condition}</li>)}</ol>
@@ -362,7 +391,7 @@ export default function ReportPage() {
               {report.findings.map((finding, index) => (
                 <article className="finding" key={finding.title}>
                   <div className="finding-index">{String(index + 1).padStart(2, "0")}</div>
-                  <div className="finding-content"><div className="finding-title"><SeverityTag severity={finding.severity} /><h3>{finding.title}</h3>{finding.provenance && <span className={`finding-provenance finding-provenance--${finding.provenance.toLowerCase().replaceAll(" ", "-")}`}>{finding.provenance}</span>}</div><p><strong>Evidence:</strong> {finding.evidence}</p><p><strong>Action:</strong> {finding.action}</p>{finding.file && <code>{finding.file}</code>}</div>
+                  <div className="finding-content"><div className="finding-title"><SeverityTag severity={finding.severity} /><h3>{finding.title}</h3>{finding.provenance && <span className={`finding-provenance finding-provenance--${findingProvenanceLabel(finding.provenance).toLowerCase().replaceAll(" ", "-")}`}>{findingProvenanceLabel(finding.provenance)}</span>}</div><p><strong>Evidence:</strong> {finding.evidence}</p><p><strong>Action:</strong> {finding.action}</p>{finding.file && <code>{finding.file}</code>}</div>
                   <span className="finding-category">{finding.category}</span>
                 </article>
               ))}

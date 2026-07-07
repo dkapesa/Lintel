@@ -13,7 +13,7 @@ import {
 import { pruneUnsupportedReviewerFocus } from "../../lib/report-quality";
 
 function sourceLabel(source: ReportHistoryEntry["source"]) {
-  return source === "ai" ? "AI generated" : "Local fallback";
+  return source === "ai" ? "Baseline + model-assisted" : "Baseline only";
 }
 
 function createdTime(value: string) {

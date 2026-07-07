@@ -20,7 +20,7 @@ const capabilities = [
   ["Operational readiness", "Failure modes, detection signals, recovery paths and customer impact, assessed before merge."],
   ["Risk-specific test plan", "Not “add more tests.” Named test cases for the exact failure paths the change introduces, like proving a retry cannot duplicate a redemption."],
   ["Reviewer focus", "Routes attention to the disciplines that matter for this change, such as backend reliability, API contract or security, with one primary focus."],
-  ["Evidence and provenance", "Findings include concise evidence and provenance labels such as Baseline preserved, Rule detected or Model assisted."],
+  ["Evidence and provenance", "Findings include concise evidence and provenance labels such as Rule detected or Model assisted."],
   ["Local-first workspace", "Reports live on your machine. Raw diffs are not saved in local report history. No account is required to run a report."],
 ] as const;
 
@@ -55,6 +55,28 @@ export default function Home() {
             <Link className="landing-button landing-button--secondary" href="/report">See a full report</Link>
           </div>
         </div>
+        <article className="landing-hero-report" aria-label="Example TESTS_REQUIRED merge-readiness report">
+          <div className="landing-hero-report-top">
+            <span>MERGE DECISION</span>
+            <strong>TESTS REQUIRED</strong>
+          </div>
+          <div className="landing-hero-report-risk">
+            <strong>HIGH RISK</strong>
+            <span>Merge is not ready</span>
+          </div>
+          <div className="landing-hero-condition">
+            <span>Top condition</span>
+            <p>Prove retries cannot create duplicate redemptions or issue duplicate discount codes</p>
+          </div>
+          <dl className="landing-hero-report-stats">
+            <div><dt>5</dt><dd>findings</dd></div>
+            <div><dt>7</dt><dd>missing tests</dd></div>
+          </dl>
+          <div className="landing-hero-report-footer">
+            <span>Provenance: Rule detected</span>
+            <Link href="/report">See full report</Link>
+          </div>
+        </article>
       </section>
 
       <section className="landing-section landing-output" aria-labelledby="landing-output-title">

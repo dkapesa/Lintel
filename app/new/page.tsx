@@ -53,7 +53,7 @@ function importErrorMessage(value: unknown) {
 }
 
 function historySourceLabel(source: ReportHistoryEntry["source"]) {
-  return source === "ai" ? "AI generated" : "Local fallback";
+  return source === "ai" ? "Baseline + model-assisted" : "Baseline only";
 }
 
 function historyTime(value: string) {

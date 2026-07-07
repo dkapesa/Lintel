@@ -18,10 +18,10 @@ Run the app with `npm run dev` and use `http://localhost:3000/new`. Use browser 
 
 ## Report source visibility
 
-- A successful AI response stores `{ report, source: "ai" }` and shows **AI generated**.
-- An API or client-side deterministic fallback stores `{ report, source: "deterministic" }` and shows **Local fallback**.
+- A successful AI response stores `{ report, source: "ai" }` and shows **Baseline + model-assisted**.
+- An API or client-side deterministic fallback stores `{ report, source: "deterministic" }` and shows **Baseline only**.
 - No generated report shows the bundled demo report with **Demo report**.
-- Legacy bare Report objects remain readable and display **Local fallback** because their original source is unknown.
+- Legacy bare Report objects remain readable and display **Baseline only** because their original source is unknown.
 - Malformed storage is removed and the demo report is shown.
 
 ## Copy summary
@@ -33,7 +33,7 @@ Use **Copy summary** on `/report` to copy a concise Markdown report. Confirm the
 - The button temporarily shows `Copied` only after the browser clipboard or hidden-textarea fallback succeeds.
 - If both copy methods fail, the button shows `Copy failed`.
 - Raw diff markers, submitted patch lines and secret values must not appear in the copied Markdown.
-- Verify all three source labels: `AI generated`, `Local fallback` and `Demo report`.
+- Verify all three source labels: `Baseline + model-assisted`, `Baseline only` and `Demo report`.
 
 ## Expected outcome matrix
 
@@ -189,7 +189,7 @@ Expected:
 
 - HTTP status: `200`
 - Response source: `deterministic`
-- Source badge: `Local fallback`
+- Source badge: `Baseline only`
 - A complete `report` object is returned
 - Recommendation: `TESTS_REQUIRED`
 - Risk level: `HIGH`
@@ -215,7 +215,7 @@ Expected:
 
 - HTTP status: `200`
 - Response source: `ai`
-- Source badge: `AI generated`
+- Source badge: `Baseline + model-assisted`
 - The result matches the existing Report shape
 - Submitted PR metadata and changed files are preserved
 - Recommendation: `TESTS_REQUIRED`
@@ -629,12 +629,12 @@ Manual tests:
 
 ## V2.1 finding provenance
 
-New findings show a concise provenance label: **Rule detected** for deterministic reports, **Baseline preserved** for deterministic findings retained in an AI-normalised report, and **Model assisted** for additional model findings. Legacy findings without provenance continue to render without failure or an invented source label.
+New findings show a concise provenance label: **Rule detected** for deterministic or preserved baseline findings, and **Model assisted** for additional model findings. Legacy findings without provenance continue to render without failure or an invented source label.
 
 Manual tests:
 
 1. Force deterministic fallback and confirm every new finding shows **Rule detected**.
-2. Generate a risky AI report and confirm retained baseline findings show **Baseline preserved** while genuinely additional findings show **Model assisted**.
+2. Generate a risky AI report and confirm retained baseline findings show **Rule detected** while genuinely additional findings show **Model assisted**.
 3. Confirm finding evidence starts with concise detected-behaviour wording rather than a raw **Matched ...** keyword list.
 4. Confirm relevant source file paths remain visible when the report has safe path evidence.
 5. Load a legacy report without finding provenance and confirm it renders, copies, and downloads without crashing.
@@ -658,3 +658,14 @@ Checks:
 5. Missing coverage, suggested tests, and reviewer checklist appear under one **Test plan** heading.
 6. Report quality remains compact and the closing summary does not repeat conditions.
 7. Search copied and downloaded Markdown for `diff --git`, `@@`, raw hunks, unique diff markers, and secrets; none should appear.
+
+## V2.5 public pilot trust polish
+
+Manual tests:
+
+1. Open `/` and confirm the hero shows a compact `TESTS_REQUIRED` / `HIGH RISK` report card on desktop and stacks cleanly on mobile.
+2. Generate the risky provider retry sample and confirm **Conditions before merge** prefers specific, provable conditions over broad filler language.
+3. Confirm **Copy conditions** copies only `## Conditions before merge` with the displayed conditions, or `No merge conditions detected.` for an `APPROVE` report.
+4. Confirm source labels render as **Baseline + model-assisted**, **Baseline only**, and **Demo report** in `/report`, copied/downloaded Markdown, `/new` history, and `/workspace`.
+5. Confirm finding provenance labels render as **Rule detected** or **Model assisted**; legacy stored `Baseline preserved` provenance should display/export as **Rule detected**.
+6. Search the UI, copied conditions, copied summary, downloaded Markdown, session storage, and local history for `diff --git`, `@@`, raw hunks, unique diff markers, and secrets; none should appear.

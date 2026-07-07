@@ -2,7 +2,7 @@ import type { Report } from "./mock-report";
 import { decisionConditions, deduplicateReportItems, pruneUnsupportedReviewerFocus } from "./report-quality";
 import { reviewProfileLabel } from "./review-profiles";
 
-export type ReportSourceLabel = "AI generated" | "Local fallback" | "Demo report";
+export type ReportSourceLabel = "Baseline + model-assisted" | "Baseline only" | "Demo report";
 
 const MAX_SECTION_ITEMS = 5;
 
@@ -18,6 +18,25 @@ function safeMarkdownText(value: string) {
     .replace(/\s+/g, " ")
     .trim()
     .replace(/([\\`*_[\]<>])/g, "\\$1");
+}
+
+export function findingProvenanceLabel(value: string) {
+  if (value === "Baseline preserved") return "Rule detected";
+  if (value === "Rule detected" || value === "Model assisted") return value;
+  return value;
+}
+
+export function conditionsToMarkdown(report: Report) {
+  const displayedConditions = report.verdict.recommendation === "APPROVE"
+    ? []
+    : decisionConditions(report.conditionsBeforeMerge);
+
+  if (displayedConditions.length === 0) return "No merge conditions detected.";
+
+  return [
+    "## Conditions before merge",
+    ...displayedConditions.map((condition) => `- ${safeMarkdownText(condition)}`),
+  ].join("\n");
 }
 
 function limitedList<T>(items: T[], formatItem: (item: T) => string) {
@@ -75,7 +94,7 @@ export function reportToMarkdown(report: Report, source: ReportSourceLabel) {
           `**${index + 1}. ${safeMarkdownText(finding.title)}**`,
           `- **Severity:** ${finding.severity}`,
           `- **Category:** ${safeMarkdownText(finding.category)}`,
-          ...(finding.provenance ? [`- **Provenance:** ${safeMarkdownText(finding.provenance)}`] : []),
+          ...(finding.provenance ? [`- **Provenance:** ${safeMarkdownText(findingProvenanceLabel(finding.provenance))}`] : []),
           `- **Evidence:** ${safeMarkdownText(finding.evidence)}`,
           `- **Action:** ${safeMarkdownText(finding.action)}`,
           ...(finding.file ? [`- **File:** ${safeMarkdownText(finding.file)}`] : []),
@@ -95,7 +114,7 @@ export function reportToMarkdown(report: Report, source: ReportSourceLabel) {
     ? []
     : decisionConditions(report.conditionsBeforeMerge);
   const conditions = displayedConditions.length > 0
-    ? limitedList(displayedConditions, (condition) => safeMarkdownText(condition))
+    ? displayedConditions.map((condition) => `- ${safeMarkdownText(condition)}`).join("\n")
     : "No merge conditions detected.";
   const cleanApprove = report.verdict.recommendation === "APPROVE"
     && report.findings.length === 0

@@ -100,6 +100,10 @@ export function decisionConditions(items: string[]) {
   return conditions.filter((condition, index) => {
     const normalized = condition.toLowerCase();
     const alternatives = conditions.filter((_, alternativeIndex) => alternativeIndex !== index);
+    const genericCondition = /implement the necessary test coverage for all newly introduced behaviou?rs and edge cases|conduct a thorough review of the operational impacts of retries and ensure that safe boundaries are defined|complete implementation of missing risk-specific tests before merge|confirm operational readiness and address attention states regarding reliability and security|all high-risk behaviou?rs must have appropriate tests implemented before merge|address operational readiness findings before merging/.test(normalized);
+    const genericComprehensiveTests = /add comprehensive tests covering success and failure scenarios/.test(normalized);
+    const genericAlternative = (item: string) => /implement the necessary test coverage for all newly introduced behaviou?rs and edge cases|conduct a thorough review of the operational impacts of retries and ensure that safe boundaries are defined|complete implementation of missing risk-specific tests before merge|confirm operational readiness and address attention states regarding reliability and security|all high-risk behaviou?rs must have appropriate tests implemented before merge|address operational readiness findings before merging|add comprehensive tests covering success and failure scenarios|complete focused review of the detected sensitive change area|resolve or explicitly accept each operational readiness gap|provide focused test evidence for every changed behaviou?r path|confirm operational detection signals/i.test(item);
+    const hasSpecificAlternative = alternatives.some((item) => !genericAlternative(item));
     const hasSpecificTestCondition = alternatives.some((item) => (
       /\b(?:test|coverage|prove|verify)\b/i.test(item)
       && !/risk-specific tests listed|focused test evidence for every changed behavio(?:u)?r path/i.test(item)
@@ -115,9 +119,23 @@ export function decisionConditions(items: string[]) {
     const hasSpecificCondition = alternatives.some((item) => !(
       /complete focused review of the detected sensitive change area|resolve or explicitly accept each operational readiness gap/i.test(item)
     ));
+    const hasSpecificProvableCondition = alternatives.some((item) => !(
+      /complete implementation of missing risk-specific tests before merge|confirm operational readiness and address attention states|all high-risk behaviou?rs must have appropriate tests implemented before merge|address operational readiness findings before merging|complete focused review of the detected sensitive change area|resolve or explicitly accept each operational readiness gap|provide focused test evidence for every changed behavio(?:u)?r path|confirm operational detection signals/i.test(item)
+    ));
+    const isGenericTestCondition = /complete implementation of missing risk-specific tests before merge|all high-risk behaviou?rs must have appropriate tests implemented before merge|risk-specific tests listed|focused test evidence for every changed behavio(?:u)?r path/.test(normalized);
+    const isGenericOperationalCondition = /confirm operational readiness and address attention states|address operational readiness findings before merging|resolve or explicitly accept each operational readiness gap/.test(normalized);
 
-    if (/risk-specific tests listed|focused test evidence for every changed behavio(?:u)?r path/.test(normalized)) {
+    if (genericCondition) {
+      return false;
+    }
+    if (genericComprehensiveTests) {
+      return !hasSpecificTestCondition && !hasSpecificAlternative;
+    }
+    if (isGenericTestCondition) {
       return !hasSpecificTestCondition;
+    }
+    if (isGenericOperationalCondition) {
+      return !hasSpecificOperationalCondition && !hasSpecificProvableCondition;
     }
     if (/complete focused review of the detected sensitive change area/.test(normalized)) {
       return !hasSpecificCondition;

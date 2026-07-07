@@ -198,6 +198,10 @@ Useful evaluation documents:
 - Evaluation results
 - Manual evaluation
 
+## Public pilot
+
+The public pilot package is documented in [docs/public-pilot.md](docs/public-pilot.md). It covers pilot positioning, target users, current capabilities, limitations, pilot offers, outreach notes and a 30-day pilot plan.
+
 ## Current limitations
 
 Lintel is a prototype and has important limitations:
@@ -282,6 +286,7 @@ docs/
   evaluation.md
   evaluation-results.md
   manual-evaluation.md
+  public-pilot.md
   screenshot-checklist.md
 ```
 
@@ -292,6 +297,7 @@ docs/
 - Evaluation workflow
 - Evaluation results
 - Manual evaluation
+- Public pilot package
 - Screenshot checklist
 
 ## Roadmap

@@ -323,6 +323,8 @@ The current evaluation documents are:
 - Evaluation results
 - Manual evaluation
 
+The public pilot package in [public-pilot.md](public-pilot.md) documents first-user positioning, pilot offers, outreach strategy and current limitations.
+
 ## Observed evaluation results
 
 The current observed pass includes four representative scenarios:

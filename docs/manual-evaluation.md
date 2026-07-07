@@ -669,3 +669,18 @@ Manual tests:
 4. Confirm source labels render as **Baseline + model-assisted**, **Baseline only**, and **Demo report** in `/report`, copied/downloaded Markdown, `/new` history, and `/workspace`.
 5. Confirm finding provenance labels render as **Rule detected** or **Model assisted**; legacy stored `Baseline preserved` provenance should display/export as **Rule detected**.
 6. Search the UI, copied conditions, copied summary, downloaded Markdown, session storage, and local history for `diff --git`, `@@`, raw hunks, unique diff markers, and secrets; none should appear.
+
+## V2.6 local risk inbox
+
+Manual tests:
+
+1. Generate the same sample report more than once and confirm `/workspace` groups it into one PR row with a run count.
+2. Confirm the triage strip counts grouped PRs, not raw report runs.
+3. Confirm `TESTS_REQUIRED` and `REVIEW_REQUIRED` groups appear under **Needs attention**, while `APPROVE` groups appear under **Ready / cleared**.
+4. Use the filters: All, Needs attention, Tests required, Review required, and Ready.
+5. Change a row's local status and reload; confirm the status persists locally and is not sent to an API.
+6. Use **Copy conditions** from a workspace row and confirm it matches the deduped Decision Gate conditions from `/report`.
+7. Confirm **Delete group** removes only that grouped PR's local report runs, and **Clear history** clears all local history.
+8. Open a grouped row and confirm `/report` renders the latest report in that group.
+9. Confirm the empty state explains the workflow and links to **Check a pull request** and the demo report.
+10. Search the workspace UI, copied conditions, session storage and local history for `diff --git`, `@@`, raw hunks, unique diff markers, and secrets; none should appear.

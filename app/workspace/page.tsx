@@ -3,6 +3,12 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  conditionKey,
+  readConditionProgress,
+  reportConditions,
+  workspaceConditionProgressSummary,
+} from "../../lib/condition-progress";
 import { GENERATED_REPORT_STORAGE_KEY } from "../../lib/report-generator";
 import {
   clearReportHistory,
@@ -11,7 +17,7 @@ import {
   type ReportHistoryEntry,
 } from "../../lib/report-history";
 import { conditionsToMarkdown } from "../../lib/report-markdown";
-import { decisionConditions, pruneUnsupportedReviewerFocus } from "../../lib/report-quality";
+import { pruneUnsupportedReviewerFocus } from "../../lib/report-quality";
 
 const WORKSPACE_STATUS_STORAGE_KEY = "lintel.workspaceStatus.v1";
 
@@ -134,9 +140,7 @@ function groupMatchesFilter(group: WorkspaceGroup, filter: WorkspaceFilter) {
 
 function topConditionOrRisk(entry: ReportHistoryEntry) {
   const report = entry.report;
-  const conditions = report.verdict.recommendation === "APPROVE"
-    ? []
-    : decisionConditions(report.conditionsBeforeMerge);
+  const conditions = reportConditions(report);
 
   if (conditions.length > 0) return conditions[0];
   if (report.findings.length > 0) return report.findings[0].title;
@@ -175,6 +179,7 @@ async function writeToClipboard(value: string) {
 function WorkspaceReportCard({
   group,
   copyFeedback,
+  conditionProgressLabel,
   onOpen,
   onCopyConditions,
   onDeleteGroup,
@@ -182,6 +187,7 @@ function WorkspaceReportCard({
 }: {
   group: WorkspaceGroup;
   copyFeedback: CopyFeedback;
+  conditionProgressLabel: string;
   onOpen: (entry: ReportHistoryEntry) => void;
   onCopyConditions: (group: WorkspaceGroup) => void;
   onDeleteGroup: (group: WorkspaceGroup) => void;
@@ -219,6 +225,7 @@ function WorkspaceReportCard({
         <span>{entry.inputLabel}</span>
         <span>{sourceLabel(entry.source)}</span>
         <span>Profile: {entry.metadata.reviewProfile}</span>
+        <span>{conditionProgressLabel}</span>
         <span>{focus.length} {focus.length === 1 ? "focus area" : "focus areas"} / {focusLabel}</span>
         <time dateTime={entry.createdAt}>Latest {createdTime(entry.createdAt)}</time>
       </div>
@@ -255,6 +262,7 @@ function WorkspaceSection({
   groups,
   emptyCopy,
   copyFeedback,
+  conditionProgressByGroup,
   onOpen,
   onCopyConditions,
   onDeleteGroup,
@@ -265,6 +273,7 @@ function WorkspaceSection({
   groups: WorkspaceGroup[];
   emptyCopy: string;
   copyFeedback: CopyFeedback;
+  conditionProgressByGroup: Record<string, string>;
   onOpen: (entry: ReportHistoryEntry) => void;
   onCopyConditions: (group: WorkspaceGroup) => void;
   onDeleteGroup: (group: WorkspaceGroup) => void;
@@ -287,6 +296,7 @@ function WorkspaceSection({
               key={group.key}
               group={group}
               copyFeedback={copyFeedback}
+              conditionProgressLabel={conditionProgressByGroup[group.key] ?? "No merge conditions detected."}
               onOpen={onOpen}
               onCopyConditions={onCopyConditions}
               onDeleteGroup={onDeleteGroup}
@@ -305,6 +315,7 @@ export default function ReportsWorkspacePage() {
   const router = useRouter();
   const [history, setHistory] = useState<ReportHistoryEntry[]>([]);
   const [statuses, setStatuses] = useState<Record<string, LocalStatus>>({});
+  const [conditionProgressByGroup, setConditionProgressByGroup] = useState<Record<string, string>>({});
   const [activeFilter, setActiveFilter] = useState<WorkspaceFilter>("all");
   const [copyFeedback, setCopyFeedback] = useState<CopyFeedback>(null);
   const [error, setError] = useState<string | null>(null);
@@ -339,6 +350,23 @@ export default function ReportsWorkspacePage() {
   const needsAttentionCount = groups.filter((group) => group.latest.metadata.recommendation !== "APPROVE").length;
   const testsRequiredCount = groups.filter((group) => group.latest.metadata.recommendation === "TESTS_REQUIRED").length;
   const readyCount = groups.filter((group) => group.latest.metadata.recommendation === "APPROVE").length;
+
+  useEffect(() => {
+    try {
+      const nextProgress: Record<string, string> = {};
+
+      for (const group of groups) {
+        const conditions = reportConditions(group.latest.report);
+        const cleared = readConditionProgress(window.localStorage, group.latest.report, conditions);
+        const clearedCount = conditions.filter((condition) => cleared.has(conditionKey(condition))).length;
+        nextProgress[group.key] = workspaceConditionProgressSummary(clearedCount, conditions.length);
+      }
+
+      setConditionProgressByGroup(nextProgress);
+    } catch {
+      setConditionProgressByGroup({});
+    }
+  }, [groups]);
 
   function openReport(entry: ReportHistoryEntry) {
     try {
@@ -463,6 +491,7 @@ export default function ReportsWorkspacePage() {
               groups={needsAttention}
               emptyCopy="No blocked or attention-required PRs match this filter."
               copyFeedback={copyFeedback}
+              conditionProgressByGroup={conditionProgressByGroup}
               onOpen={openReport}
               onCopyConditions={copyConditions}
               onDeleteGroup={deleteGroup}
@@ -475,6 +504,7 @@ export default function ReportsWorkspacePage() {
               groups={ready}
               emptyCopy="No ready PRs match this filter yet."
               copyFeedback={copyFeedback}
+              conditionProgressByGroup={conditionProgressByGroup}
               onOpen={openReport}
               onCopyConditions={copyConditions}
               onDeleteGroup={deleteGroup}

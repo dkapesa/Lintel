@@ -1,11 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import {
+  conditionKey,
+  conditionProgressSummary,
+  readConditionProgress,
+  reportConditions,
+  writeConditionProgress,
+} from "../../lib/condition-progress";
 import { GENERATED_REPORT_STORAGE_KEY } from "../../lib/report-generator";
 import { conditionsToMarkdown, findingProvenanceLabel, reportMarkdownFilename, reportToMarkdown, type ReportSourceLabel } from "../../lib/report-markdown";
 import type { FindingSeverity, Recommendation, Report, ReviewArea, RiskLevel } from "../../lib/mock-report";
 import { report as demoReport } from "../../lib/mock-report";
-import { decisionConditions, deduplicateReportItems, pruneUnsupportedReviewerFocus } from "../../lib/report-quality";
+import { deduplicateReportItems, pruneUnsupportedReviewerFocus } from "../../lib/report-quality";
 import { reviewProfileLabel } from "../../lib/review-profiles";
 
 type GeneratedReportSource = "ai" | "deterministic";
@@ -214,6 +221,7 @@ export default function ReportPage() {
   const [copyState, setCopyState] = useState<CopyState>("idle");
   const [conditionsCopyState, setConditionsCopyState] = useState<CopyState>("idle");
   const [downloadState, setDownloadState] = useState<DownloadState>("idle");
+  const [clearedConditionKeys, setClearedConditionKeys] = useState<Set<string>>(new Set());
   const copyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const conditionsCopyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const downloadResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -253,9 +261,11 @@ export default function ReportPage() {
   const { report, source } = displayedReport;
   const { pr, verdict } = report;
   const supportedReviewerFocus = pruneUnsupportedReviewerFocus(report);
-  const displayedConditions = verdict.recommendation === "APPROVE"
-    ? []
-    : decisionConditions(report.conditionsBeforeMerge);
+  const displayedConditions = reportConditions(report);
+  const displayedConditionSignature = displayedConditions.join("\n");
+  const conditionTrackingEnabled = (verdict.recommendation === "TESTS_REQUIRED" || verdict.recommendation === "REVIEW_REQUIRED")
+    && displayedConditions.length > 0;
+  const clearedConditionCount = displayedConditions.filter((condition) => clearedConditionKeys.has(conditionKey(condition))).length;
   const findingTitles = report.findings.map((finding) => finding.title);
   const cleanApprove = verdict.recommendation === "APPROVE"
     && report.findings.length === 0
@@ -263,6 +273,33 @@ export default function ReportPage() {
     && report.suggestedTests.length === 0
     && report.operationalReadiness?.status === "CLEAR";
   const displayedReviewerChecklist = cleanApprove ? [] : report.reviewerChecklist;
+
+  useEffect(() => {
+    try {
+      setClearedConditionKeys(readConditionProgress(window.localStorage, report, displayedConditions));
+    } catch {
+      setClearedConditionKeys(new Set());
+    }
+  }, [report, displayedConditionSignature]);
+
+  function toggleCondition(condition: string, checked: boolean) {
+    const nextConditionKeys = new Set(clearedConditionKeys);
+    const key = conditionKey(condition);
+
+    if (checked) {
+      nextConditionKeys.add(key);
+    } else {
+      nextConditionKeys.delete(key);
+    }
+
+    setClearedConditionKeys(nextConditionKeys);
+
+    try {
+      writeConditionProgress(window.localStorage, report, displayedConditions, nextConditionKeys);
+    } catch {
+      // Condition tracking is local-only and should not affect report rendering.
+    }
+  }
 
   async function handleCopySummary() {
     const copied = await writeToClipboard(reportToMarkdown(report, sourceLabels[source]));
@@ -367,7 +404,11 @@ export default function ReportPage() {
 
           <section className="merge-conditions" aria-labelledby="merge-conditions-title">
             <div className="section-heading">
-              <div><span className="card-kicker">DECISION GATE</span><h2 id="merge-conditions-title">Conditions before merge</h2></div>
+              <div>
+                <span className="card-kicker">DECISION GATE</span>
+                <h2 id="merge-conditions-title">Conditions before merge</h2>
+                {conditionTrackingEnabled && <span className="condition-progress">{conditionProgressSummary(clearedConditionCount, displayedConditions.length)}</span>}
+              </div>
               <div className="merge-conditions-actions">
                 <RecommendationBadge recommendation={verdict.recommendation} />
                 <button
@@ -380,7 +421,30 @@ export default function ReportPage() {
                 </button>
               </div>
             </div>
-            {displayedConditions.length > 0 ? (
+            {conditionTrackingEnabled ? (
+              <>
+                <ul className="condition-checklist">
+                  {displayedConditions.map((condition) => {
+                    const key = conditionKey(condition);
+                    const checked = clearedConditionKeys.has(key);
+
+                    return (
+                      <li key={condition}>
+                        <label>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(event) => toggleCondition(condition, event.target.checked)}
+                          />
+                          <span>{condition}</span>
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <p className="condition-local-note">Track locally. Condition progress is stored on this device.</p>
+              </>
+            ) : displayedConditions.length > 0 ? (
               <ol>{displayedConditions.map((condition) => <li key={condition}>{condition}</li>)}</ol>
             ) : <p className="merge-conditions-clear">No merge conditions detected.</p>}
           </section>

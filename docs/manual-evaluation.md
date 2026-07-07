@@ -736,3 +736,18 @@ Current limitations to keep visible:
 - Line-level evidence and raw diff hunks are not shown.
 - Frontend-specific reviewer routing still needs refinement.
 - Model-assisted quality depends on the configured provider when enabled.
+
+## V2.13 local condition tracking
+
+Manual tests:
+
+1. Generate a `TESTS_REQUIRED` report with Conditions before merge and confirm each condition renders with a checkbox.
+2. Generate a `REVIEW_REQUIRED` report with Conditions before merge and confirm each condition renders with a checkbox.
+3. Generate a clean `APPROVE` report and confirm it remains quiet: **No merge conditions detected.** and no checkboxes.
+4. Check several conditions, refresh `/report`, and confirm the cleared state persists.
+5. Confirm the Decision Gate progress text updates, for example `0/6 cleared`, `3/6 cleared`, or **All conditions cleared**.
+6. Open `/workspace` and confirm the latest grouped PR row shows condition progress, such as `0/6 conditions cleared`, `2 conditions remaining`, or **All conditions cleared**.
+7. Confirm the workspace local status select remains manual and is not forced by checkbox state.
+8. Use **Copy conditions** from `/report` and `/workspace`; confirm it still copies the full deduped conditions list.
+9. Inspect `localStorage` and confirm condition progress is stored locally on this device without raw diffs, patch hunks, `diff --git`, `@@`, or secret values.
+10. Confirm malformed or legacy reports without conditions still render safely.

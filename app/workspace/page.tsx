@@ -18,10 +18,18 @@ import {
 } from "../../lib/report-history";
 import { conditionsToMarkdown } from "../../lib/report-markdown";
 import { pruneUnsupportedReviewerFocus } from "../../lib/report-quality";
+import {
+  clearReviewStates,
+  defaultReviewState,
+  readReviewStates,
+  removeReviewState,
+  REVIEW_STATUSES,
+  reviewStateKey,
+  type ReportReviewState,
+  type ReviewStatus,
+  writeReviewState,
+} from "../../lib/review-state";
 
-const WORKSPACE_STATUS_STORAGE_KEY = "lintel.workspaceStatus.v1";
-
-const LOCAL_STATUSES = ["Needs work", "Conditions met", "Merged", "Dismissed"] as const;
 const QUEUES = [
   ["inbox", "Inbox"],
   ["needs-tests", "Needs tests"],
@@ -31,7 +39,6 @@ const QUEUES = [
   ["reviewed", "Reviewed"],
 ] as const;
 
-type LocalStatus = (typeof LOCAL_STATUSES)[number];
 type WorkspaceQueue = (typeof QUEUES)[number][0];
 type CopyFeedback = { key: string; state: "copied" | "failed" } | null;
 
@@ -39,7 +46,7 @@ type WorkspaceGroup = {
   key: string;
   latest: ReportHistoryEntry;
   entries: ReportHistoryEntry[];
-  status: LocalStatus;
+  reviewState: ReportReviewState;
 };
 
 function inputPreviewLabel(entry: ReportHistoryEntry) {
@@ -63,42 +70,11 @@ function recommendationLabel(value: ReportHistoryEntry["metadata"]["recommendati
   return value.replaceAll("_", " ");
 }
 
-function isLocalStatus(value: unknown): value is LocalStatus {
-  return typeof value === "string" && (LOCAL_STATUSES as readonly string[]).includes(value);
-}
-
-function defaultStatus(entry: ReportHistoryEntry): LocalStatus {
-  return entry.metadata.recommendation === "APPROVE" ? "Conditions met" : "Needs work";
-}
-
 function groupIdentity(entry: ReportHistoryEntry) {
-  return [
-    entry.metadata.repository,
-    entry.metadata.title,
-    entry.inputLabel,
-  ].map((value) => value.trim().toLowerCase().replace(/\s+/g, " ")).join("\u001f");
+  return reviewStateKey(entry.metadata.repository, entry.metadata.title, entry.inputLabel);
 }
 
-function readWorkspaceStatuses(storage: Storage) {
-  try {
-    const stored = storage.getItem(WORKSPACE_STATUS_STORAGE_KEY);
-    if (!stored) return {};
-    const parsed: unknown = JSON.parse(stored);
-    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) return {};
-
-    return Object.fromEntries(
-      Object.entries(parsed).filter(([, value]) => isLocalStatus(value)),
-    ) as Record<string, LocalStatus>;
-  } catch {
-    return {};
-  }
-}
-
-function writeWorkspaceStatuses(storage: Storage, statuses: Record<string, LocalStatus>) {
-  storage.setItem(WORKSPACE_STATUS_STORAGE_KEY, JSON.stringify(statuses));
-}
-
-function groupHistory(entries: ReportHistoryEntry[], statuses: Record<string, LocalStatus>): WorkspaceGroup[] {
+function groupHistory(entries: ReportHistoryEntry[], reviewStates: Record<string, ReportReviewState>): WorkspaceGroup[] {
   const grouped = new Map<string, ReportHistoryEntry[]>();
 
   for (const entry of entries) {
@@ -114,7 +90,7 @@ function groupHistory(entries: ReportHistoryEntry[], statuses: Record<string, Lo
       key,
       latest,
       entries: sortedEntries,
-      status: statuses[key] ?? defaultStatus(latest),
+      reviewState: reviewStates[key] ?? defaultReviewState(latest.report),
     };
   }).sort((a, b) => Date.parse(b.latest.createdAt) - Date.parse(a.latest.createdAt));
 }
@@ -144,16 +120,19 @@ function hasOperationalRisk(entry: ReportHistoryEntry) {
 }
 
 function groupMatchesQueue(group: WorkspaceGroup, queue: WorkspaceQueue) {
-  const recommendation = group.latest.metadata.recommendation;
-  const report = group.latest.report;
+  const status = group.reviewState.status;
 
   if (queue === "inbox") return true;
-  if (queue === "needs-tests") return recommendation === "TESTS_REQUIRED" || report.missingTests.length > 0;
-  if (queue === "needs-review") return recommendation === "REVIEW_REQUIRED" || (report.findings.length > 0 && recommendation !== "TESTS_REQUIRED");
+  if (queue === "needs-tests") return status === "Tests requested";
+  if (queue === "needs-review") return status === "Review required" || status === "Blocked";
   if (queue === "operational-risk") return hasOperationalRisk(group.latest);
-  if (queue === "ready") return recommendation === "APPROVE";
-  if (queue === "reviewed") return group.status !== "Needs work";
+  if (queue === "ready") return status === "Ready to merge";
+  if (queue === "reviewed") return status === "Reviewed" || status === "Archived";
   return true;
+}
+
+function groupNeedsAttention(group: WorkspaceGroup) {
+  return ["Needs work", "Tests requested", "Review required", "Blocked"].includes(group.reviewState.status);
 }
 
 function topConditionOrRisk(entry: ReportHistoryEntry) {
@@ -239,7 +218,7 @@ function WorkspaceReportCard({
   onOpen: (entry: ReportHistoryEntry) => void;
   onCopyConditions: (group: WorkspaceGroup) => void;
   onDeleteGroup: (group: WorkspaceGroup) => void;
-  onStatusChange: (group: WorkspaceGroup, status: LocalStatus) => void;
+  onStatusChange: (group: WorkspaceGroup, status: ReviewStatus) => void;
 }) {
   const entry = group.latest;
   const report = entry.report;
@@ -295,15 +274,18 @@ function WorkspaceReportCard({
         <span className="workspace-condition-progress">{conditionProgressLabel}</span>
         <span className={entry.report.missingTests.length > 0 ? "workspace-signal workspace-signal--attention" : "workspace-signal"}>{testSignal(entry)}</span>
         <span className={hasOperationalRisk(entry) ? "workspace-signal workspace-signal--attention" : "workspace-signal"}>{operationalSignal(entry)}</span>
+        <span className="workspace-review-state">{group.reviewState.status}</span>
+        {group.reviewState.note.trim().length > 0 && <span>Local note</span>}
+        {group.reviewState.updatedAt && <time dateTime={group.reviewState.updatedAt}>State saved {createdTime(group.reviewState.updatedAt)}</time>}
         <span>{focus.length} {focus.length === 1 ? "focus area" : "focus areas"} / {focusLabel}</span>
         <time dateTime={entry.createdAt}>Latest {createdTime(entry.createdAt)}</time>
       </div>
 
       <div className="workspace-card-footer">
         <label className="workspace-local-status" onClick={(event) => event.stopPropagation()}>
-          <span>Local status</span>
-          <select value={group.status} onChange={(event) => onStatusChange(group, event.target.value as LocalStatus)}>
-            {LOCAL_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
+          <span>Review state</span>
+          <select value={group.reviewState.status} onChange={(event) => onStatusChange(group, event.target.value as ReviewStatus)}>
+            {REVIEW_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
           </select>
         </label>
         <div className="workspace-row-actions">
@@ -350,7 +332,7 @@ function WorkspaceSection({
   onOpen: (entry: ReportHistoryEntry) => void;
   onCopyConditions: (group: WorkspaceGroup) => void;
   onDeleteGroup: (group: WorkspaceGroup) => void;
-  onStatusChange: (group: WorkspaceGroup, status: LocalStatus) => void;
+  onStatusChange: (group: WorkspaceGroup, status: ReviewStatus) => void;
 }) {
   return (
     <section className="workspace-inbox-section" aria-labelledby={`${title.toLowerCase().replaceAll(" ", "-")}-title`}>
@@ -441,9 +423,11 @@ function WorkspacePreviewPanel({
 
       <dl className="workspace-preview-meta">
         <div><dt>Profile</dt><dd>{entry.metadata.reviewProfile}</dd></div>
+        <div><dt>Review state</dt><dd>{group.reviewState.status}</dd></div>
         <div><dt>Input</dt><dd>{inputPreviewLabel(entry)}</dd></div>
         <div><dt>Mode</dt><dd>{sourceLabel(entry.source)}</dd></div>
         <div><dt>Latest</dt><dd><time dateTime={entry.createdAt}>{createdTime(entry.createdAt)}</time></dd></div>
+        <div><dt>Local update</dt><dd>{group.reviewState.updatedAt ? createdTime(group.reviewState.updatedAt) : "Not saved yet"}</dd></div>
       </dl>
 
       <section className="workspace-preview-block">
@@ -495,6 +479,11 @@ function WorkspacePreviewPanel({
         )}
       </section>
 
+      <section className="workspace-preview-block">
+        <h3>Local reviewer note</h3>
+        <p>{group.reviewState.note.trim() || "No local note saved for this report."}</p>
+      </section>
+
       <div className="workspace-preview-actions">
         <button type="button" onClick={() => onOpen(entry)}>Open full report</button>
         <button type="button" onClick={() => onCopyConditions(group)}>
@@ -509,7 +498,7 @@ function WorkspacePreviewPanel({
 export default function ReportsWorkspacePage() {
   const router = useRouter();
   const [history, setHistory] = useState<ReportHistoryEntry[]>([]);
-  const [statuses, setStatuses] = useState<Record<string, LocalStatus>>({});
+  const [reviewStates, setReviewStates] = useState<Record<string, ReportReviewState>>({});
   const [conditionProgressByGroup, setConditionProgressByGroup] = useState<Record<string, string>>({});
   const [activeQueue, setActiveQueue] = useState<WorkspaceQueue>("inbox");
   const [selectedGroupKey, setSelectedGroupKey] = useState<string | null>(null);
@@ -520,10 +509,10 @@ export default function ReportsWorkspacePage() {
   useEffect(() => {
     try {
       setHistory(readReportHistory(window.localStorage));
-      setStatuses(readWorkspaceStatuses(window.localStorage));
+      setReviewStates(readReviewStates(window.localStorage));
     } catch {
       setHistory([]);
-      setStatuses({});
+      setReviewStates({});
       setError("Local report history is unavailable in this browser.");
     }
   }, []);
@@ -532,25 +521,23 @@ export default function ReportsWorkspacePage() {
     if (copyResetTimer.current) clearTimeout(copyResetTimer.current);
   }, []);
 
-  const groups = useMemo(() => groupHistory(history, statuses), [history, statuses]);
+  const groups = useMemo(() => groupHistory(history, reviewStates), [history, reviewStates]);
   const filteredGroups = useMemo(
     () => groups.filter((group) => groupMatchesQueue(group, activeQueue)),
     [activeQueue, groups],
   );
   const needsAttention = useMemo(() => sortByRiskThenRecency(filteredGroups.filter((group) => (
-    group.latest.metadata.recommendation === "TESTS_REQUIRED"
-    || group.latest.metadata.recommendation === "REVIEW_REQUIRED"
-    || group.latest.metadata.recommendation === "BLOCK"
+    groupNeedsAttention(group)
   ))), [filteredGroups]);
   const ready = useMemo(() => filteredGroups
-    .filter((group) => group.latest.metadata.recommendation === "APPROVE")
+    .filter((group) => !groupNeedsAttention(group))
     .sort((a, b) => Date.parse(b.latest.createdAt) - Date.parse(a.latest.createdAt)), [filteredGroups]);
   const visibleGroups = useMemo(() => [...needsAttention, ...ready], [needsAttention, ready]);
   const selectedGroup = visibleGroups.find((group) => group.key === selectedGroupKey) ?? null;
-  const needsAttentionCount = groups.filter((group) => group.latest.metadata.recommendation !== "APPROVE").length;
-  const testsRequiredCount = groups.filter((group) => group.latest.metadata.recommendation === "TESTS_REQUIRED").length;
+  const needsAttentionCount = groups.filter(groupNeedsAttention).length;
+  const testsRequiredCount = groups.filter((group) => groupMatchesQueue(group, "needs-tests")).length;
   const operationalRiskCount = groups.filter((group) => hasOperationalRisk(group.latest)).length;
-  const readyCount = groups.filter((group) => group.latest.metadata.recommendation === "APPROVE").length;
+  const readyCount = groups.filter((group) => groupMatchesQueue(group, "ready")).length;
   const queueCounts: Record<WorkspaceQueue, number> = {
     inbox: groups.length,
     "needs-tests": groups.filter((group) => groupMatchesQueue(group, "needs-tests")).length,
@@ -610,15 +597,16 @@ export default function ReportsWorkspacePage() {
     copyResetTimer.current = setTimeout(() => setCopyFeedback(null), 2_000);
   }
 
-  function updateLocalStatus(group: WorkspaceGroup, status: LocalStatus) {
-    const nextStatuses = { ...statuses, [group.key]: status };
-    setStatuses(nextStatuses);
-
+  function updateLocalStatus(group: WorkspaceGroup, status: ReviewStatus) {
     try {
-      writeWorkspaceStatuses(window.localStorage, nextStatuses);
+      const nextState = writeReviewState(window.localStorage, group.key, {
+        ...group.reviewState,
+        status,
+      });
+      setReviewStates((current) => ({ ...current, [group.key]: nextState }));
       setError(null);
     } catch {
-      setError("Local status could not be saved in this browser.");
+      setError("Local review state could not be saved in this browser.");
     }
   }
 
@@ -630,11 +618,13 @@ export default function ReportsWorkspacePage() {
         nextHistory = deleteReportFromHistory(window.localStorage, entry.createdAt);
       }
 
-      const nextStatuses = { ...statuses };
-      delete nextStatuses[group.key];
       setHistory(nextHistory);
-      setStatuses(nextStatuses);
-      writeWorkspaceStatuses(window.localStorage, nextStatuses);
+      setReviewStates((current) => {
+        const nextStates = { ...current };
+        delete nextStates[group.key];
+        return nextStates;
+      });
+      removeReviewState(window.localStorage, group.key);
       setError(null);
     } catch {
       setError("This report group could not be deleted.");
@@ -644,8 +634,8 @@ export default function ReportsWorkspacePage() {
   function clearHistory() {
     try {
       setHistory(clearReportHistory(window.localStorage));
-      setStatuses({});
-      window.localStorage.removeItem(WORKSPACE_STATUS_STORAGE_KEY);
+      setReviewStates({});
+      clearReviewStates(window.localStorage);
       setError(null);
     } catch {
       setError("Report history could not be cleared.");
@@ -735,8 +725,8 @@ export default function ReportsWorkspacePage() {
                 />
 
                 <WorkspaceSection
-                  title="Ready / cleared"
-                  description="Reports currently approved by the latest local merge-readiness run."
+                  title="Ready / reviewed"
+                  description="Reports marked ready, reviewed, archived or currently approved by the latest local run."
                   groups={ready}
                   emptyCopy="No ready PRs match this filter yet."
                   copyFeedback={copyFeedback}

@@ -14,6 +14,15 @@ import type { FindingSeverity, Recommendation, Report, ReviewArea, RiskLevel } f
 import { report as demoReport } from "../../lib/mock-report";
 import { deduplicateReportItems, pruneUnsupportedReviewerFocus } from "../../lib/report-quality";
 import { reviewProfileLabel } from "../../lib/review-profiles";
+import {
+  defaultReviewState,
+  readReviewState,
+  REVIEW_STATUSES,
+  reviewStateKeyForReport,
+  type ReportReviewState,
+  type ReviewStatus,
+  writeReviewState,
+} from "../../lib/review-state";
 
 type GeneratedReportSource = "ai" | "deterministic";
 type ReportSource = GeneratedReportSource | "demo";
@@ -231,6 +240,7 @@ export default function ReportPage() {
   const [downloadState, setDownloadState] = useState<DownloadState>("idle");
   const [clearedConditionKeys, setClearedConditionKeys] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<ReportTab>("overview");
+  const [reviewState, setReviewState] = useState<ReportReviewState>(() => defaultReviewState(demoReport));
   const copyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const conditionsCopyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const downloadResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -307,6 +317,31 @@ export default function ReportPage() {
       setClearedConditionKeys(new Set());
     }
   }, [report, displayedConditionSignature]);
+
+  useEffect(() => {
+    try {
+      setReviewState(readReviewState(window.localStorage, report));
+    } catch {
+      setReviewState(defaultReviewState(report));
+    }
+  }, [report]);
+
+  function updateReviewState(nextState: ReportReviewState) {
+    try {
+      const savedState = writeReviewState(window.localStorage, reviewStateKeyForReport(report), nextState);
+      setReviewState(savedState);
+    } catch {
+      setReviewState(nextState);
+    }
+  }
+
+  function updateReviewStatus(status: ReviewStatus) {
+    updateReviewState({ ...reviewState, status });
+  }
+
+  function updateReviewNote(note: string) {
+    updateReviewState({ ...reviewState, note });
+  }
 
   function toggleCondition(condition: string, checked: boolean) {
     const nextConditionKeys = new Set(clearedConditionKeys);
@@ -793,6 +828,30 @@ export default function ReportPage() {
             <section className="report-decision-panel-conditions" aria-label="Condition progress">
               <span>Conditions cleared</span>
               <strong>{conditionProgressLabel}</strong>
+            </section>
+
+            <section className="report-local-review-state" aria-label="Local review state">
+              <div className="report-local-review-heading">
+                <span>Local review state</span>
+                <strong>{reviewState.status}</strong>
+              </div>
+              <label>
+                <span>Status</span>
+                <select value={reviewState.status} onChange={(event) => updateReviewStatus(event.target.value as ReviewStatus)}>
+                  {REVIEW_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
+                </select>
+              </label>
+              <label>
+                <span>Reviewer note</span>
+                <textarea
+                  value={reviewState.note}
+                  maxLength={1000}
+                  rows={4}
+                  onChange={(event) => updateReviewNote(event.target.value)}
+                  placeholder="Local/private note for this device. Do not paste raw diffs or secrets."
+                />
+              </label>
+              <p>{reviewState.updatedAt ? `Review state saved locally ${new Date(reviewState.updatedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}.` : "Review state is stored locally on this device."}</p>
             </section>
 
             <div className="report-decision-panel-actions">

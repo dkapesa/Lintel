@@ -19,6 +19,7 @@ type GeneratedReportSource = "ai" | "deterministic";
 type ReportSource = GeneratedReportSource | "demo";
 type CopyState = "idle" | "copied" | "failed";
 type DownloadState = "idle" | "downloaded" | "failed";
+type ReportTab = "overview" | "findings" | "tests" | "operations" | "review-focus" | "changed-files" | "export";
 
 type StoredReport = {
   report: Report;
@@ -229,6 +230,7 @@ export default function ReportPage() {
   const [conditionsCopyState, setConditionsCopyState] = useState<CopyState>("idle");
   const [downloadState, setDownloadState] = useState<DownloadState>("idle");
   const [clearedConditionKeys, setClearedConditionKeys] = useState<Set<string>>(new Set());
+  const [activeTab, setActiveTab] = useState<ReportTab>("overview");
   const copyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const conditionsCopyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const downloadResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -288,6 +290,15 @@ export default function ReportPage() {
       ? `${supportedReviewerFocus.length} ${supportedReviewerFocus.length === 1 ? "area" : "areas"} / ${supportedReviewerFocus[0].area}`
       : "No specialist focus"
     : "Not assessed";
+  const reportTabs: Array<{ id: ReportTab; label: string; indicator: string }> = [
+    { id: "overview", label: "Overview", indicator: `${displayedConditions.length}` },
+    { id: "findings", label: "Findings", indicator: `${report.findings.length}` },
+    { id: "tests", label: "Tests", indicator: `${report.missingTests.length}` },
+    { id: "operations", label: "Operations", indicator: operationalStatus === "ATTENTION" ? "Attention" : "Clear" },
+    { id: "review-focus", label: "Review focus", indicator: supportedReviewerFocus ? `${supportedReviewerFocus.length}` : "Legacy" },
+    { id: "changed-files", label: "Changed files", indicator: `${report.changedFiles.length}` },
+    { id: "export", label: "Export", indicator: "MD" },
+  ];
 
   useEffect(() => {
     try {
@@ -396,6 +407,31 @@ export default function ReportPage() {
 
         <div className="report-working-layout">
           <div className="report-content">
+          <nav className="report-tabs" aria-label="Report sections" role="tablist">
+            {reportTabs.map((tab) => (
+              <button
+                key={tab.id}
+                id={`report-tab-${tab.id}`}
+                className={activeTab === tab.id ? "report-tab report-tab--active" : "report-tab"}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === tab.id}
+                aria-controls={`report-panel-${tab.id}`}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                <span>{tab.label}</span>
+                <strong>{tab.indicator}</strong>
+              </button>
+            ))}
+          </nav>
+
+          {activeTab === "overview" && (
+            <div
+              className="report-tab-panel report-tab-panel--overview"
+              id="report-panel-overview"
+              role="tabpanel"
+              aria-labelledby="report-tab-overview"
+            >
           <section className="report-header" id="overview">
             <div className="header-copy">
               <div className="header-overline"><span className="pull-request-mark">↗</span> PULL REQUEST #{pr.number}</div>
@@ -470,7 +506,16 @@ export default function ReportPage() {
               <ol>{displayedConditions.map((condition) => <li key={condition}>{condition}</li>)}</ol>
             ) : <p className="merge-conditions-clear">No merge conditions detected.</p>}
           </section>
+            </div>
+          )}
 
+          {activeTab === "findings" && (
+            <div
+              className="report-tab-panel"
+              id="report-panel-findings"
+              role="tabpanel"
+              aria-labelledby="report-tab-findings"
+            >
           <section className="section-block report-findings">
             <div className="section-heading"><div><span className="card-kicker">PRIORITY ITEMS</span><h2>Risk findings</h2></div><span className="section-count">{report.findings.length} findings</span></div>
             {report.findings.length > 0 ? <div className="findings-list">
@@ -483,7 +528,16 @@ export default function ReportPage() {
               ))}
             </div> : <p className="section-empty">No risk findings detected.</p>}
           </section>
+            </div>
+          )}
 
+          {activeTab === "tests" && (
+            <div
+              className="report-tab-panel"
+              id="report-panel-tests"
+              role="tabpanel"
+              aria-labelledby="report-tab-tests"
+            >
           <section className="section-block report-test-plan">
             <div className="section-heading"><div><span className="card-kicker">VERIFICATION</span><h2>Test plan</h2></div><span className="section-count">{report.missingTests.length} gaps · {report.suggestedTests.length} tests</span></div>
             <div className="test-plan-grid">
@@ -518,7 +572,16 @@ export default function ReportPage() {
               )}
             </div>
           </section>
+            </div>
+          )}
 
+          {activeTab === "operations" && (
+            <div
+              className="report-tab-panel"
+              id="report-panel-operations"
+              role="tabpanel"
+              aria-labelledby="report-tab-operations"
+            >
           <section className="section-block report-operational-readiness">
             <div className="section-heading"><div><span className="card-kicker">OPERATIONS</span><h2>Operational readiness</h2></div></div>
             {report.operationalReadiness ? (
@@ -543,7 +606,16 @@ export default function ReportPage() {
               </div>
             )}
           </section>
+            </div>
+          )}
 
+          {activeTab === "review-focus" && (
+            <div
+              className="report-tab-panel"
+              id="report-panel-review-focus"
+              role="tabpanel"
+              aria-labelledby="report-tab-review-focus"
+            >
           <section className="section-block report-reviewer-focus">
             <div className="section-heading">
               <div><span className="card-kicker">REVIEW ROUTING</span><h2>Reviewer focus</h2></div>
@@ -569,7 +641,16 @@ export default function ReportPage() {
               <p className="reviewer-focus-legacy">Reviewer focus was not assessed — regenerate this report.</p>
             )}
           </section>
+            </div>
+          )}
 
+          {activeTab === "changed-files" && (
+            <div
+              className="report-tab-panel"
+              id="report-panel-changed-files"
+              role="tabpanel"
+              aria-labelledby="report-tab-changed-files"
+            >
           <section className="section-block report-changed-files">
             <div className="section-heading"><div><span className="card-kicker">CHANGESET</span><h2>Changed files</h2></div><span className="section-count">{report.changedFiles.length} files</span></div>
             <div className="file-list">
@@ -580,7 +661,11 @@ export default function ReportPage() {
               ))}
             </div>
           </section>
+            </div>
+          )}
 
+          {activeTab === "review-focus" && (
+            <div className="report-tab-panel report-tab-panel--continued">
           <section className="section-block report-engineering-review">
             <div className="section-heading"><div><span className="card-kicker">ENGINEERING REVIEW</span><h2>Change quality</h2></div></div>
             <div className="review-grid">
@@ -599,11 +684,79 @@ export default function ReportPage() {
             ) : <p>Regenerate this legacy report to run quality checks.</p>}
             <span className={`quality-status quality-status--${report.reportQuality?.status.toLowerCase() ?? "legacy"}`}>{report.reportQuality?.status ?? "NOT ASSESSED"}</span>
           </section>
+            </div>
+          )}
+
+          {activeTab === "export" && (
+            <div
+              className="report-tab-panel"
+              id="report-panel-export"
+              role="tabpanel"
+              aria-labelledby="report-tab-export"
+            >
+          <section className="section-block report-export-actions" aria-labelledby="report-export-title">
+            <div className="section-heading">
+              <div>
+                <span className="card-kicker">HANDOFF</span>
+                <h2 id="report-export-title">Export and next steps</h2>
+              </div>
+              <SourceBadge source={source} />
+            </div>
+            <div className="report-export-grid">
+              <article>
+                <h3>Copy conditions</h3>
+                <p>Copy only the merge conditions as PR-ready Markdown.</p>
+                <button
+                  className={`copy-conditions-button copy-conditions-button--${conditionsCopyState}`}
+                  type="button"
+                  onClick={handleCopyConditions}
+                  aria-live="polite"
+                >
+                  {copyConditionsLabels[conditionsCopyState]}
+                </button>
+              </article>
+              <article>
+                <h3>Copy summary</h3>
+                <p>Copy a concise Markdown report for review handoff or validation.</p>
+                <button
+                  className={`copy-summary-button copy-summary-button--${copyState}`}
+                  type="button"
+                  onClick={handleCopySummary}
+                  aria-live="polite"
+                >
+                  {copyLabels[copyState]}
+                </button>
+              </article>
+              <article>
+                <h3>Download Markdown</h3>
+                <p>Save the current report as a local Markdown artifact.</p>
+                <button
+                  className={`download-markdown-button download-markdown-button--${downloadState}`}
+                  type="button"
+                  onClick={handleDownloadMarkdown}
+                  aria-live="polite"
+                >
+                  {downloadLabels[downloadState]}
+                </button>
+              </article>
+              <article>
+                <h3>Navigate</h3>
+                <p>Return to the local risk inbox or check another pull request.</p>
+                <div className="report-export-links">
+                  <a href="/workspace">Back to workspace</a>
+                  <a href="/new">Check another pull request</a>
+                  <a href="/docs/security-model.md">Security model</a>
+                </div>
+              </article>
+            </div>
+          </section>
 
           <section className="final-recommendation final-recommendation--compact">
             <div className="final-intro"><span className="card-kicker">CLOSING SUMMARY</span><h2>{recommendationHeadings[verdict.recommendation]}</h2></div>
             <p>{closingRecommendations[verdict.recommendation]}</p>
           </section>
+            </div>
+          )}
           </div>
 
           <aside className="report-decision-panel" aria-label="Merge-readiness decision panel">

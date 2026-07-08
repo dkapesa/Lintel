@@ -193,6 +193,44 @@ button { font:inherit; }
   .final-recommendation.final-recommendation--compact { align-items:flex-start; flex-direction:column; gap:15px; }
 }
 
+/* V3.2 report working surface */
+.report-side-nav-legacy { display:none; }
+.app-shell > .sidebar .brand-mark { width:17px; height:17px; border:1px solid #81d5b4; border-radius:5px; font-size:0; transform:rotate(45deg); }
+.sidebar-footer > span[aria-hidden="true"] { display:none; }
+.report-working-layout { width:min(100%, 1540px); margin:0 auto; padding:0 clamp(26px, 4vw, 68px); display:grid; grid-template-columns:minmax(0, 1fr) minmax(310px, 350px); gap:24px; align-items:start; }
+.report-working-layout .report-content { max-width:none; margin:0; padding:54px 0 80px; min-width:0; }
+.report-decision-panel { position:sticky; top:24px; display:grid; gap:15px; margin-top:54px; padding:18px; border:1px solid #dfe5e1; border-radius:16px; background:rgba(255,255,255,.96); box-shadow:0 16px 42px rgba(28,45,38,.055); }
+.report-decision-panel-header { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.report-decision-panel-title h2 { margin:0; color:var(--ink); font-size:18px; line-height:1.2; letter-spacing:-.04em; }
+.report-decision-panel-title p { margin:7px 0 0; color:#6b7670; font:10px ui-monospace, SFMono-Regular, Consolas, monospace; overflow-wrap:anywhere; }
+.report-decision-panel-risk { padding:14px; border:1px solid #e1e8e4; border-radius:12px; background:#f8faf8; }
+.report-decision-panel-risk .risk-band { margin:0 0 8px; font-size:22px; }
+.report-decision-panel-risk span { color:#7b8580; font:10px "DM Mono", monospace; }
+.report-decision-panel-meta { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:8px; margin:0; }
+.report-decision-panel-meta div { min-width:0; padding:10px; border:1px solid #edf0ed; border-radius:10px; background:#fbfcfb; }
+.report-decision-panel-meta dt { margin:0 0 4px; color:#8a9590; font-size:8px; font-weight:850; letter-spacing:.08em; text-transform:uppercase; }
+.report-decision-panel-meta dd { margin:0; overflow-wrap:anywhere; color:#33443d; font-size:10px; font-weight:750; line-height:1.35; }
+.report-decision-panel-conditions { display:grid; gap:7px; padding:13px 14px; border:1px solid #d7e1dc; border-radius:12px; background:#f8fbf9; }
+.report-decision-panel-conditions span { color:#72817a; font-size:8px; font-weight:850; letter-spacing:.08em; text-transform:uppercase; }
+.report-decision-panel-conditions strong { color:#28473b; font-size:13px; line-height:1.3; }
+.report-decision-panel-actions { display:grid; gap:7px; padding-top:14px; border-top:1px solid var(--line); }
+.report-decision-panel-actions button, .report-decision-panel-actions a { min-height:33px; padding:0 10px; border:1px solid #dce2de; border-radius:7px; display:inline-flex; align-items:center; justify-content:center; background:#fff; color:#53615b; font-size:9px; font-weight:750; cursor:pointer; text-align:center; white-space:normal; }
+.report-decision-panel-actions button:hover, .report-decision-panel-actions a:hover { border-color:#bdc9c3; background:#f8faf8; color:#20342d; }
+.report-decision-panel-actions button:focus-visible, .report-decision-panel-actions a:focus-visible { outline:2px solid #6fa98f; outline-offset:2px; }
+
+@media (max-width:1120px) {
+  .report-working-layout { grid-template-columns:1fr; }
+  .report-decision-panel { position:static; order:-1; margin-top:30px; }
+  .report-working-layout .report-content { padding-top:26px; }
+}
+
+@media (max-width:680px) {
+  .report-working-layout { padding:0 20px; }
+  .report-decision-panel { margin-top:22px; padding:16px; }
+  .report-decision-panel-meta { grid-template-columns:1fr; }
+  .report-decision-panel-actions { grid-template-columns:1fr; }
+}
+
 .finding-provenance { flex:0 0 auto; margin-left:auto; padding:4px 6px; border:1px solid #dce2de; border-radius:999px; background:#f7f8f6; color:#6d7772; font-size:8px; font-weight:750; letter-spacing:.03em; white-space:nowrap; }
 .finding-provenance--rule-detected { border-color:#cee2d8; background:#f1f8f4; color:#39765d; }
 .finding-provenance--model-assisted { border-color:#d8dce7; background:#f4f5fa; color:#596a8a; }

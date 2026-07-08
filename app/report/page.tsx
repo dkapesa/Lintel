@@ -156,6 +156,13 @@ function inputSourceLabel(value: string) {
   return value;
 }
 
+function decisionPanelInputLabel(value: string) {
+  if (value === "github-pr") return "GitHub import";
+  if (value === "sample") return "Sample";
+  if (value === "pasted-diff") return "Manual";
+  return inputSourceLabel(value);
+}
+
 function RecommendationBadge({ recommendation }: { recommendation: Recommendation }) {
   return <span className={`recommendation recommendation--${recommendation.toLowerCase()}`}>{displayLabel(recommendation)}</span>;
 }
@@ -273,6 +280,14 @@ export default function ReportPage() {
     && report.suggestedTests.length === 0
     && report.operationalReadiness?.status === "CLEAR";
   const displayedReviewerChecklist = cleanApprove ? [] : report.reviewerChecklist;
+  const conditionProgressLabel = conditionProgressSummary(clearedConditionCount, displayedConditions.length);
+  const operationalStatus = report.operationalReadiness?.status ?? "Not assessed";
+  const qualityStatus = report.reportQuality?.status ?? "Not assessed";
+  const reviewerFocusSummary = supportedReviewerFocus
+    ? supportedReviewerFocus.length > 0
+      ? `${supportedReviewerFocus.length} ${supportedReviewerFocus.length === 1 ? "area" : "areas"} / ${supportedReviewerFocus[0].area}`
+      : "No specialist focus"
+    : "Not assessed";
 
   useEffect(() => {
     try {
@@ -333,7 +348,12 @@ export default function ReportPage() {
           <span className="brand-mark" aria-hidden="true">◢</span>
           <span>Lintel</span>
         </a>
-        <nav className="side-nav" aria-label="Primary navigation">
+        <nav className="side-nav report-side-nav-clean" aria-label="Primary navigation">
+          <a className="nav-item" href="/new">New report</a>
+          <a className={`nav-item${source !== "demo" ? " nav-item--active" : ""}`} href="/workspace">Risk inbox</a>
+          <a className={`nav-item${source === "demo" ? " nav-item--active" : ""}`} href="/report?demo=1">Demo report</a>
+        </nav>
+        <nav className="side-nav report-side-nav-legacy" aria-label="Legacy navigation">
           <a className="nav-item" href="/new"><span aria-hidden="true">＋</span>New report</a>
           <a className={`nav-item${source !== "demo" ? " nav-item--active" : ""}`} href="/workspace"><span aria-hidden="true">▦</span>Reports workspace</a>
           <a className={`nav-item${source === "demo" ? " nav-item--active" : ""}`} href="/report?demo=1"><span aria-hidden="true">◇</span>Demo report</a>
@@ -345,7 +365,7 @@ export default function ReportPage() {
         </div>
       </aside>
 
-      <main className="main-content" id="report">
+      <main className="main-content report-surface" id="report">
         <header className="topbar">
           <nav className="breadcrumbs" aria-label="Breadcrumb">
             <a href="#repository">{pr.project}</a><span>/</span><a href="#overview">Reports</a><span>/</span><strong>PR #{pr.number}</strong>
@@ -373,7 +393,8 @@ export default function ReportPage() {
           </div>
         </header>
 
-        <div className="report-content">
+        <div className="report-working-layout">
+          <div className="report-content">
           <section className="report-header" id="overview">
             <div className="header-copy">
               <div className="header-overline"><span className="pull-request-mark">↗</span> PULL REQUEST #{pr.number}</div>
@@ -582,6 +603,67 @@ export default function ReportPage() {
             <div className="final-intro"><span className="card-kicker">CLOSING SUMMARY</span><h2>{recommendationHeadings[verdict.recommendation]}</h2></div>
             <p>{closingRecommendations[verdict.recommendation]}</p>
           </section>
+          </div>
+
+          <aside className="report-decision-panel" aria-label="Merge-readiness decision panel">
+            <div className="report-decision-panel-header">
+              <span className="card-kicker">DECISION</span>
+              <RecommendationBadge recommendation={verdict.recommendation} />
+            </div>
+
+            <div className="report-decision-panel-title">
+              <h2>{pr.title}</h2>
+              <p>{pr.repository}</p>
+            </div>
+
+            <div className="report-decision-panel-risk">
+              <strong className={`risk-band risk-band--${verdict.riskLevel.toLowerCase()}`}>{verdict.riskLevel} RISK</strong>
+              <span>Score detail: {verdict.riskScore}/100</span>
+            </div>
+
+            <dl className="report-decision-panel-meta">
+              <div><dt>Profile</dt><dd>{reviewProfileLabel(pr.reviewProfile)}</dd></div>
+              <div><dt>Input</dt><dd>{decisionPanelInputLabel(pr.branch)}</dd></div>
+              <div><dt>Mode</dt><dd>{sourceLabels[source]}</dd></div>
+              <div><dt>Operations</dt><dd>{operationalStatus}</dd></div>
+              <div><dt>Quality</dt><dd>{qualityStatus}</dd></div>
+              <div><dt>Reviewer focus</dt><dd>{reviewerFocusSummary}</dd></div>
+            </dl>
+
+            <section className="report-decision-panel-conditions" aria-label="Condition progress">
+              <span>Conditions cleared</span>
+              <strong>{conditionProgressLabel}</strong>
+            </section>
+
+            <div className="report-decision-panel-actions">
+              <button
+                className={`copy-conditions-button copy-conditions-button--${conditionsCopyState}`}
+                type="button"
+                onClick={handleCopyConditions}
+                aria-live="polite"
+              >
+                {copyConditionsLabels[conditionsCopyState]}
+              </button>
+              <button
+                className={`copy-summary-button copy-summary-button--${copyState}`}
+                type="button"
+                onClick={handleCopySummary}
+                aria-live="polite"
+              >
+                {copyLabels[copyState]}
+              </button>
+              <button
+                className={`download-markdown-button download-markdown-button--${downloadState}`}
+                type="button"
+                onClick={handleDownloadMarkdown}
+                aria-live="polite"
+              >
+                {downloadLabels[downloadState]}
+              </button>
+              <a href="/workspace">Back to workspace</a>
+              <a href="/new">Check another pull request</a>
+            </div>
+          </aside>
         </div>
       </main>
     </div>

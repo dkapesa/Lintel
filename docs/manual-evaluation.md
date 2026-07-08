@@ -781,3 +781,19 @@ Manual tests:
 9. Confirm **Copy conditions** works from both the row and preview panel.
 10. Resize to a narrow viewport and confirm the preview stacks with the list without breaking row actions.
 11. Search the workspace UI, preview panel, copied conditions, copied summary, downloaded Markdown, session storage and local history for `diff --git`, `@@`, raw hunks, unique diff markers and secrets; none should appear.
+
+## V3.2 report working surface
+
+Manual tests:
+
+1. Open `/report` on a desktop-width viewport and confirm the sticky decision panel renders beside the report content.
+2. Resize to tablet/mobile widths and confirm the decision panel stacks above the report without horizontal overflow.
+3. Confirm the panel shows recommendation, risk band and score detail, report title, repository, review profile, input source, analysis mode, operational readiness, report quality, reviewer focus and condition progress.
+4. Check and uncheck Conditions before merge; confirm the main Decision Gate and sticky panel progress update together.
+5. Refresh `/report` and confirm condition progress persists from local storage.
+6. Confirm **Copy conditions**, **Copy summary** and **Download Markdown** work from the sticky panel and preserve existing output behaviour.
+7. Confirm **Back to workspace** opens `/workspace` and **Check another pull request** opens `/new`.
+8. Generate or open a clean `APPROVE` report and confirm it remains quiet: no condition checkboxes, no generic checklist work and **No merge conditions detected.**
+9. Confirm findings still show provenance labels such as **Rule detected** or **Model assisted**.
+10. Confirm copied/downloaded Markdown still follows the V2 report hierarchy.
+11. Search the report UI, decision panel, copied conditions, copied summary, downloaded Markdown, session storage and local history for `diff --git`, `@@`, raw hunks, unique diff markers and secrets; none should appear.

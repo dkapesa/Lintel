@@ -76,6 +76,8 @@ The intended v1 model:
 
 This is the preferred private-repo path before a GitHub App or hosted private repository import.
 
+For the concise developer-facing workflow, see the [CLI and GitHub Action blueprint](cli-github-action-blueprint.md).
+
 ## GitHub permissions
 
 Planned minimal permissions:

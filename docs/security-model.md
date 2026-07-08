@@ -113,6 +113,8 @@ Planned behaviour:
 
 The Action should be a thin wrapper around the CLI, not a separate analysis implementation. This keeps local, CI and web report behaviour closer together and reduces drift.
 
+For the concise developer-facing workflow, see the [CLI and GitHub Action blueprint](cli-github-action-blueprint.md).
+
 ## Private repo nuance
 
 The current web app does not import private repositories.

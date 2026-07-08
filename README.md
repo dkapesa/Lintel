@@ -89,6 +89,7 @@ Lintel focuses on the merge decision: what needs to be true before this PR can s
 - `/new` - new report working surface with sample PRs, public PR import, pasted diffs, and review profiles.
 - `/report` - report working surface with a sticky decision panel, merge conditions, findings, test plan, operational readiness, reviewer focus, and export actions.
 - `/docs/security-model.md` - public security model summary.
+- `/docs/cli-github-action-blueprint.md` - planned CLI and GitHub Action workflow blueprint.
 
 ## Trust and privacy model
 
@@ -126,6 +127,8 @@ Lintel is built with Next.js App Router, TypeScript, and plain CSS.
 ```
 
 There is currently no database, authentication layer, billing system, hosted GitHub App, private repository web import, team account system, or CI integration.
+
+The planned CI direction is CLI-first: a reusable Lintel CLI runs inside the user's CI environment, with a thin GitHub Action wrapper posting or updating one PR summary comment. See the [CLI and GitHub Action blueprint](docs/cli-github-action-blueprint.md).
 
 ## Case study summary
 
@@ -183,6 +186,7 @@ Useful pilot docs:
 - [Security model](docs/security-model.md)
 - [Distribution assets](docs/distribution-assets.md)
 - [GitHub Action plan](docs/github-action-plan.md)
+- [CLI and GitHub Action blueprint](docs/cli-github-action-blueprint.md)
 
 ## Current limitations
 
@@ -270,6 +274,7 @@ docs/
   distribution-assets.md
   evaluation.md
   evaluation-results.md
+  cli-github-action-blueprint.md
   github-action-plan.md
   manual-evaluation.md
   public-pilot.md
@@ -288,13 +293,14 @@ docs/
 - [Security model](docs/security-model.md)
 - [Distribution assets](docs/distribution-assets.md)
 - [GitHub Action plan](docs/github-action-plan.md)
+- [CLI and GitHub Action blueprint](docs/cli-github-action-blueprint.md)
 - [Screenshot checklist](docs/screenshot-checklist.md)
 
 ## Roadmap
 
 Near-term:
 
-- GitHub Action planning.
+- CLI and GitHub Action blueprint validation.
 - Minimal PR comment workflow.
 - Before/after verification.
 - More public and anonymized real-world PR evaluations.

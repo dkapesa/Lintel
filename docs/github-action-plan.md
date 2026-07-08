@@ -1,5 +1,7 @@
 # Lintel GitHub Action plan
 
+For the shorter developer workflow summary, see the [CLI and GitHub Action blueprint](cli-github-action-blueprint.md).
+
 ## Goal
 
 Bring Lintel closer to the real pull request workflow.

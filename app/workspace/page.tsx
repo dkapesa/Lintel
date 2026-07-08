@@ -22,16 +22,17 @@ import { pruneUnsupportedReviewerFocus } from "../../lib/report-quality";
 const WORKSPACE_STATUS_STORAGE_KEY = "lintel.workspaceStatus.v1";
 
 const LOCAL_STATUSES = ["Needs work", "Conditions met", "Merged", "Dismissed"] as const;
-const FILTERS = [
-  ["all", "All"],
-  ["attention", "Needs attention"],
-  ["tests", "Tests required"],
-  ["review", "Review required"],
-  ["ready", "Ready"],
+const QUEUES = [
+  ["inbox", "Inbox"],
+  ["needs-tests", "Needs tests"],
+  ["needs-review", "Needs review"],
+  ["operational-risk", "Operational risk"],
+  ["ready", "Ready to merge"],
+  ["reviewed", "Reviewed"],
 ] as const;
 
 type LocalStatus = (typeof LOCAL_STATUSES)[number];
-type WorkspaceFilter = (typeof FILTERS)[number][0];
+type WorkspaceQueue = (typeof QUEUES)[number][0];
 type CopyFeedback = { key: string; state: "copied" | "failed" } | null;
 
 type WorkspaceGroup = {
@@ -133,14 +134,25 @@ function sortByRiskThenRecency(groups: WorkspaceGroup[]) {
   });
 }
 
-function groupMatchesFilter(group: WorkspaceGroup, filter: WorkspaceFilter) {
-  const recommendation = group.latest.metadata.recommendation;
+function hasOperationalRisk(entry: ReportHistoryEntry) {
+  const report = entry.report;
+  return report.operationalReadiness?.status === "ATTENTION"
+    || report.reviews.security.status === "ATTENTION"
+    || report.reviews.reliability.status === "ATTENTION"
+    || report.verdict.riskLevel === "HIGH"
+    || report.verdict.riskLevel === "CRITICAL";
+}
 
-  if (filter === "all") return true;
-  if (filter === "attention") return recommendation === "TESTS_REQUIRED" || recommendation === "REVIEW_REQUIRED" || recommendation === "BLOCK";
-  if (filter === "tests") return recommendation === "TESTS_REQUIRED";
-  if (filter === "review") return recommendation === "REVIEW_REQUIRED";
-  if (filter === "ready") return recommendation === "APPROVE";
+function groupMatchesQueue(group: WorkspaceGroup, queue: WorkspaceQueue) {
+  const recommendation = group.latest.metadata.recommendation;
+  const report = group.latest.report;
+
+  if (queue === "inbox") return true;
+  if (queue === "needs-tests") return recommendation === "TESTS_REQUIRED" || report.missingTests.length > 0;
+  if (queue === "needs-review") return recommendation === "REVIEW_REQUIRED" || (report.findings.length > 0 && recommendation !== "TESTS_REQUIRED");
+  if (queue === "operational-risk") return hasOperationalRisk(group.latest);
+  if (queue === "ready") return recommendation === "APPROVE";
+  if (queue === "reviewed") return group.status !== "Needs work";
   return true;
 }
 
@@ -151,6 +163,32 @@ function topConditionOrRisk(entry: ReportHistoryEntry) {
   if (conditions.length > 0) return conditions[0];
   if (report.findings.length > 0) return report.findings[0].title;
   return "No merge conditions detected.";
+}
+
+function nextAction(entry: ReportHistoryEntry) {
+  const report = entry.report;
+
+  if (report.conditionsBeforeMerge.length > 0) return "Clear merge conditions";
+  if (report.missingTests.length > 0) return "Add focused tests";
+  if (report.operationalReadiness?.status === "ATTENTION") return "Review operational readiness";
+  if (report.reviews.security.status === "ATTENTION") return "Review security/privacy";
+  if (report.findings.length > 0) return "Complete focused review";
+  return "Complete normal review";
+}
+
+function testSignal(entry: ReportHistoryEntry) {
+  const { report } = entry;
+  if (report.missingTests.length > 0) return `${report.missingTests.length} missing tests`;
+  if (report.suggestedTests.length > 0) return `${report.suggestedTests.length} suggested tests`;
+  return "No missing test gaps";
+}
+
+function operationalSignal(entry: ReportHistoryEntry) {
+  const { report } = entry;
+  if (report.operationalReadiness?.status === "ATTENTION") return "Operational attention";
+  if (report.reviews.security.status === "ATTENTION") return "Security attention";
+  if (report.reviews.reliability.status === "ATTENTION") return "Reliability attention";
+  return "No operational blocker";
 }
 
 async function writeToClipboard(value: string) {
@@ -210,6 +248,7 @@ function WorkspaceReportCard({
     ? focus.slice(0, 2).map((item) => item.area).join(" / ")
     : "No specialist focus";
   const feedback = copyFeedback?.key === group.key ? copyFeedback.state : null;
+  const action = nextAction(entry);
 
   return (
     <article
@@ -235,6 +274,10 @@ function WorkspaceReportCard({
           </div>
           <h3>{entry.metadata.title}</h3>
           <p>{topConditionOrRisk(entry)}</p>
+          <div className="workspace-next-action">
+            <span>Next action</span>
+            <strong>{action}</strong>
+          </div>
         </div>
         <div className="workspace-card-decision">
           <span className={`workspace-recommendation workspace-recommendation--${entry.metadata.recommendation.toLowerCase()}`}>
@@ -250,6 +293,8 @@ function WorkspaceReportCard({
         <span>{sourceLabel(entry.source)}</span>
         <span>Profile: {entry.metadata.reviewProfile}</span>
         <span className="workspace-condition-progress">{conditionProgressLabel}</span>
+        <span className={entry.report.missingTests.length > 0 ? "workspace-signal workspace-signal--attention" : "workspace-signal"}>{testSignal(entry)}</span>
+        <span className={hasOperationalRisk(entry) ? "workspace-signal workspace-signal--attention" : "workspace-signal"}>{operationalSignal(entry)}</span>
         <span>{focus.length} {focus.length === 1 ? "focus area" : "focus areas"} / {focusLabel}</span>
         <time dateTime={entry.createdAt}>Latest {createdTime(entry.createdAt)}</time>
       </div>
@@ -375,6 +420,7 @@ function WorkspacePreviewPanel({
   const operationalStatus = report.operationalReadiness?.status ?? "Not assessed";
   const topRisk = report.findings[0]?.title ?? topConditionOrRisk(entry);
   const feedback = copyFeedback?.key === group.key ? copyFeedback.state : null;
+  const action = nextAction(entry);
 
   return (
     <aside className="workspace-preview" aria-label="Selected report preview">
@@ -402,6 +448,14 @@ function WorkspacePreviewPanel({
 
       <section className="workspace-preview-block">
         <div className="workspace-preview-block-heading">
+          <h3>Next action</h3>
+          <span>{action}</span>
+        </div>
+        <p>{topConditionOrRisk(entry)}</p>
+      </section>
+
+      <section className="workspace-preview-block">
+        <div className="workspace-preview-block-heading">
           <h3>Conditions before merge</h3>
           <span>{conditionProgressLabel}</span>
         </div>
@@ -425,7 +479,7 @@ function WorkspacePreviewPanel({
       </section>
 
       <div className="workspace-preview-stats" aria-label="Selected report status">
-        <div><span>Missing tests</span><strong>{report.missingTests.length}</strong></div>
+        <div><span>Test signal</span><strong>{testSignal(entry)}</strong></div>
         <div><span>Operations</span><strong>{operationalStatus}</strong></div>
         <div><span>Quality</span><strong>{qualityStatus}</strong></div>
       </div>
@@ -457,7 +511,7 @@ export default function ReportsWorkspacePage() {
   const [history, setHistory] = useState<ReportHistoryEntry[]>([]);
   const [statuses, setStatuses] = useState<Record<string, LocalStatus>>({});
   const [conditionProgressByGroup, setConditionProgressByGroup] = useState<Record<string, string>>({});
-  const [activeFilter, setActiveFilter] = useState<WorkspaceFilter>("all");
+  const [activeQueue, setActiveQueue] = useState<WorkspaceQueue>("inbox");
   const [selectedGroupKey, setSelectedGroupKey] = useState<string | null>(null);
   const [copyFeedback, setCopyFeedback] = useState<CopyFeedback>(null);
   const [error, setError] = useState<string | null>(null);
@@ -480,8 +534,8 @@ export default function ReportsWorkspacePage() {
 
   const groups = useMemo(() => groupHistory(history, statuses), [history, statuses]);
   const filteredGroups = useMemo(
-    () => groups.filter((group) => groupMatchesFilter(group, activeFilter)),
-    [activeFilter, groups],
+    () => groups.filter((group) => groupMatchesQueue(group, activeQueue)),
+    [activeQueue, groups],
   );
   const needsAttention = useMemo(() => sortByRiskThenRecency(filteredGroups.filter((group) => (
     group.latest.metadata.recommendation === "TESTS_REQUIRED"
@@ -493,10 +547,18 @@ export default function ReportsWorkspacePage() {
     .sort((a, b) => Date.parse(b.latest.createdAt) - Date.parse(a.latest.createdAt)), [filteredGroups]);
   const visibleGroups = useMemo(() => [...needsAttention, ...ready], [needsAttention, ready]);
   const selectedGroup = visibleGroups.find((group) => group.key === selectedGroupKey) ?? null;
-  const trackedCount = groups.length;
   const needsAttentionCount = groups.filter((group) => group.latest.metadata.recommendation !== "APPROVE").length;
   const testsRequiredCount = groups.filter((group) => group.latest.metadata.recommendation === "TESTS_REQUIRED").length;
+  const operationalRiskCount = groups.filter((group) => hasOperationalRisk(group.latest)).length;
   const readyCount = groups.filter((group) => group.latest.metadata.recommendation === "APPROVE").length;
+  const queueCounts: Record<WorkspaceQueue, number> = {
+    inbox: groups.length,
+    "needs-tests": groups.filter((group) => groupMatchesQueue(group, "needs-tests")).length,
+    "needs-review": groups.filter((group) => groupMatchesQueue(group, "needs-review")).length,
+    "operational-risk": operationalRiskCount,
+    ready: readyCount,
+    reviewed: groups.filter((group) => groupMatchesQueue(group, "reviewed")).length,
+  };
 
   useEffect(() => {
     try {
@@ -637,19 +699,20 @@ export default function ReportsWorkspacePage() {
             <div className="workspace-triage-strip" aria-label="Workspace summary">
               <article><span>Needs attention</span><strong>{needsAttentionCount}</strong></article>
               <article><span>Tests required</span><strong>{testsRequiredCount}</strong></article>
+              <article><span>Operational risk</span><strong>{operationalRiskCount}</strong></article>
               <article><span>Ready</span><strong>{readyCount}</strong></article>
-              <article><span>Tracked PRs</span><strong>{trackedCount}</strong></article>
             </div>
 
-            <div className="workspace-filters" aria-label="Filter reports">
-              {FILTERS.map(([value, label]) => (
+            <div className="workspace-queue-tabs" aria-label="Review queues">
+              {QUEUES.map(([value, label]) => (
                 <button
                   key={value}
-                  className={activeFilter === value ? "workspace-filter workspace-filter--active" : "workspace-filter"}
+                  className={activeQueue === value ? "workspace-queue-tab workspace-queue-tab--active" : "workspace-queue-tab"}
                   type="button"
-                  onClick={() => setActiveFilter(value)}
+                  onClick={() => setActiveQueue(value)}
                 >
-                  {label}
+                  <span>{label}</span>
+                  <strong>{queueCounts[value]}</strong>
                 </button>
               ))}
             </div>

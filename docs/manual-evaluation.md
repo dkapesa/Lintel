@@ -751,3 +751,17 @@ Manual tests:
 8. Use **Copy conditions** from `/report` and `/workspace`; confirm it still copies the full deduped conditions list.
 9. Inspect `localStorage` and confirm condition progress is stored locally on this device without raw diffs, patch hunks, `diff --git`, `@@`, or secret values.
 10. Confirm malformed or legacy reports without conditions still render safely.
+
+## V3.0 workspace app shell
+
+Manual tests:
+
+1. Open `/workspace` and confirm the dark left app sidebar renders with clean navigation for **New report**, **Risk inbox**, **Reports** and **Evaluation**.
+2. Confirm **Risk inbox** remains the primary workspace title and the header keeps the local-first privacy copy.
+3. Confirm **Check a pull request** and **Clear history** remain available from the workspace header when applicable.
+4. Confirm grouped PR rows, triage counts, filters, **Needs attention** / **Ready / cleared** sections, local status, condition progress, **Open**, **Copy conditions** and **Delete reports** still work.
+5. Check and uncheck report conditions, refresh `/workspace`, and confirm condition progress still persists.
+6. Change a row's local status, refresh `/workspace`, and confirm the status still persists locally.
+7. Confirm **Delete reports** removes the grouped PR and **Clear history** clears local report history.
+8. Resize to a narrow viewport and confirm the sidebar collapses into usable navigation without clipping the workspace rows.
+9. Search the workspace UI, copied conditions, copied summary, downloaded Markdown, session storage and local history for `diff --git`, `@@`, raw hunks, unique diff markers and secrets; none should appear.

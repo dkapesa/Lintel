@@ -197,7 +197,7 @@ function WorkspaceReportCard({
   const report = entry.report;
   const focus = pruneUnsupportedReviewerFocus(report) ?? [];
   const focusLabel = focus.length > 0
-    ? focus.slice(0, 2).map((item) => item.area).join(" · ")
+    ? focus.slice(0, 2).map((item) => item.area).join(" / ")
     : "No specialist focus";
   const feedback = copyFeedback?.key === group.key ? copyFeedback.state : null;
 
@@ -225,7 +225,7 @@ function WorkspaceReportCard({
         <span>{entry.inputLabel}</span>
         <span>{sourceLabel(entry.source)}</span>
         <span>Profile: {entry.metadata.reviewProfile}</span>
-        <span>{conditionProgressLabel}</span>
+        <span className="workspace-condition-progress">{conditionProgressLabel}</span>
         <span>{focus.length} {focus.length === 1 ? "focus area" : "focus areas"} / {focusLabel}</span>
         <time dateTime={entry.createdAt}>Latest {createdTime(entry.createdAt)}</time>
       </div>
@@ -432,16 +432,23 @@ export default function ReportsWorkspacePage() {
 
   return (
     <div className="app-shell workspace-shell">
-      <aside className="sidebar">
-        <Link className="brand" href="/" aria-label="Lintel home">
+      <aside className="sidebar workspace-sidebar">
+        <Link className="brand workspace-brand" href="/" aria-label="Lintel home">
           <span className="brand-mark" aria-hidden="true" />
           <span>Lintel</span>
         </Link>
-        <nav className="side-nav" aria-label="Primary navigation">
-          <Link className="nav-item" href="/new">New report</Link>
-          <Link className="nav-item nav-item--active" href="/workspace" aria-current="page">Reports workspace</Link>
-          <Link className="nav-item" href="/report?demo=1">Demo report</Link>
+        <nav className="side-nav workspace-side-nav" aria-label="Primary navigation">
+          <span className="workspace-nav-label">Workspace</span>
+          <Link className="nav-item workspace-nav-item" href="/new">New report</Link>
+          <Link className="nav-item workspace-nav-item nav-item--active" href="/workspace" aria-current="page">Risk inbox</Link>
+          <Link className="nav-item workspace-nav-item" href="/report">Reports</Link>
+          <span className="workspace-nav-label">Evidence</span>
+          <Link className="nav-item workspace-nav-item" href="/docs/evaluation-results.md">Evaluation</Link>
         </nav>
+        <div className="workspace-sidebar-panel">
+          <span>Local-first workspace</span>
+          <p>Reports stay on this device. Raw diffs are not saved in local history.</p>
+        </div>
         <div className="sidebar-footer">
           <div className="workspace-avatar">N</div>
           <div><strong>Demo Workspace</strong><span>Local reports</span></div>
@@ -449,11 +456,12 @@ export default function ReportsWorkspacePage() {
       </aside>
 
       <main className="workspace-main">
-        <header className="workspace-header">
-          <div>
+        <header className="workspace-header workspace-header--app">
+          <div className="workspace-header-copy">
             <span className="eyebrow">LOCAL MERGE READINESS</span>
             <h1>Risk inbox</h1>
             <p>Track local pull request reports by readiness state. Reports stay on this device and raw diffs are not saved in local history.</p>
+            <span className="workspace-header-note">Stored locally on this device</span>
           </div>
           <div className="workspace-header-actions">
             {history.length > 0 && <button type="button" onClick={clearHistory}>Clear history</button>}

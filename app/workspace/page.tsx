@@ -41,6 +41,12 @@ type WorkspaceGroup = {
   status: LocalStatus;
 };
 
+function inputPreviewLabel(entry: ReportHistoryEntry) {
+  if (entry.inputLabel === "GitHub PR import") return "GitHub import";
+  if (entry.inputLabel === "Pasted diff") return "Manual";
+  return entry.inputLabel;
+}
+
 function sourceLabel(source: ReportHistoryEntry["source"]) {
   return source === "ai" ? "Baseline + model-assisted" : "Baseline only";
 }
@@ -180,6 +186,8 @@ function WorkspaceReportCard({
   group,
   copyFeedback,
   conditionProgressLabel,
+  isSelected,
+  onSelect,
   onOpen,
   onCopyConditions,
   onDeleteGroup,
@@ -188,6 +196,8 @@ function WorkspaceReportCard({
   group: WorkspaceGroup;
   copyFeedback: CopyFeedback;
   conditionProgressLabel: string;
+  isSelected: boolean;
+  onSelect: (group: WorkspaceGroup) => void;
   onOpen: (entry: ReportHistoryEntry) => void;
   onCopyConditions: (group: WorkspaceGroup) => void;
   onDeleteGroup: (group: WorkspaceGroup) => void;
@@ -202,7 +212,21 @@ function WorkspaceReportCard({
   const feedback = copyFeedback?.key === group.key ? copyFeedback.state : null;
 
   return (
-    <article className={`workspace-inbox-card workspace-inbox-card--${entry.metadata.recommendation.toLowerCase()}`}>
+    <article
+      className={`workspace-inbox-card workspace-inbox-card--${entry.metadata.recommendation.toLowerCase()}${isSelected ? " workspace-inbox-card--selected" : ""}`}
+      role="button"
+      tabIndex={0}
+      aria-label={`Preview ${entry.metadata.title}`}
+      aria-selected={isSelected}
+      onClick={() => onSelect(group)}
+      onKeyDown={(event) => {
+        if (event.target !== event.currentTarget) return;
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onSelect(group);
+        }
+      }}
+    >
       <div className="workspace-inbox-main">
         <div>
           <div className="workspace-card-overline">
@@ -231,21 +255,21 @@ function WorkspaceReportCard({
       </div>
 
       <div className="workspace-card-footer">
-        <label className="workspace-local-status">
+        <label className="workspace-local-status" onClick={(event) => event.stopPropagation()}>
           <span>Local status</span>
           <select value={group.status} onChange={(event) => onStatusChange(group, event.target.value as LocalStatus)}>
             {LOCAL_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
           </select>
         </label>
         <div className="workspace-row-actions">
-          <button type="button" onClick={() => onOpen(entry)}>Open</button>
-          <button type="button" onClick={() => onCopyConditions(group)}>
+          <button type="button" onClick={(event) => { event.stopPropagation(); onOpen(entry); }}>Open</button>
+          <button type="button" onClick={(event) => { event.stopPropagation(); onCopyConditions(group); }}>
             {feedback === "copied" ? "Copied" : feedback === "failed" ? "Copy failed" : "Copy conditions"}
           </button>
           <button
             className="workspace-delete"
             type="button"
-            onClick={() => onDeleteGroup(group)}
+            onClick={(event) => { event.stopPropagation(); onDeleteGroup(group); }}
             aria-label={`Delete all local runs for ${entry.metadata.title}`}
           >
             Delete reports
@@ -263,6 +287,8 @@ function WorkspaceSection({
   emptyCopy,
   copyFeedback,
   conditionProgressByGroup,
+  selectedGroupKey,
+  onSelect,
   onOpen,
   onCopyConditions,
   onDeleteGroup,
@@ -274,6 +300,8 @@ function WorkspaceSection({
   emptyCopy: string;
   copyFeedback: CopyFeedback;
   conditionProgressByGroup: Record<string, string>;
+  selectedGroupKey: string | null;
+  onSelect: (group: WorkspaceGroup) => void;
   onOpen: (entry: ReportHistoryEntry) => void;
   onCopyConditions: (group: WorkspaceGroup) => void;
   onDeleteGroup: (group: WorkspaceGroup) => void;
@@ -297,6 +325,8 @@ function WorkspaceSection({
               group={group}
               copyFeedback={copyFeedback}
               conditionProgressLabel={conditionProgressByGroup[group.key] ?? "No merge conditions detected."}
+              isSelected={selectedGroupKey === group.key}
+              onSelect={onSelect}
               onOpen={onOpen}
               onCopyConditions={onCopyConditions}
               onDeleteGroup={onDeleteGroup}
@@ -311,12 +341,124 @@ function WorkspaceSection({
   );
 }
 
+function WorkspacePreviewPanel({
+  group,
+  copyFeedback,
+  conditionProgressLabel,
+  onOpen,
+  onCopyConditions,
+  onDeleteGroup,
+}: {
+  group: WorkspaceGroup | null;
+  copyFeedback: CopyFeedback;
+  conditionProgressLabel: string;
+  onOpen: (entry: ReportHistoryEntry) => void;
+  onCopyConditions: (group: WorkspaceGroup) => void;
+  onDeleteGroup: (group: WorkspaceGroup) => void;
+}) {
+  if (!group) {
+    return (
+      <aside className="workspace-preview workspace-preview--empty" aria-label="Selected report preview">
+        <span className="workspace-preview-kicker">Selected report</span>
+        <h2>No report selected</h2>
+        <p>Select a report row to preview its merge-readiness decision without leaving the Risk Inbox.</p>
+      </aside>
+    );
+  }
+
+  const entry = group.latest;
+  const report = entry.report;
+  const conditions = reportConditions(report);
+  const visibleConditions = conditions.slice(0, 4);
+  const focus = pruneUnsupportedReviewerFocus(report) ?? [];
+  const qualityStatus = report.reportQuality?.status ?? "Not assessed";
+  const operationalStatus = report.operationalReadiness?.status ?? "Not assessed";
+  const topRisk = report.findings[0]?.title ?? topConditionOrRisk(entry);
+  const feedback = copyFeedback?.key === group.key ? copyFeedback.state : null;
+
+  return (
+    <aside className="workspace-preview" aria-label="Selected report preview">
+      <div className="workspace-preview-header">
+        <span className="workspace-preview-kicker">Selected report</span>
+        <span className={`workspace-recommendation workspace-recommendation--${entry.metadata.recommendation.toLowerCase()}`}>
+          {recommendationLabel(entry.metadata.recommendation)}
+        </span>
+      </div>
+
+      <h2>{entry.metadata.title}</h2>
+      <p className="workspace-preview-repo">{entry.metadata.repository}</p>
+
+      <div className="workspace-preview-risk">
+        <strong>{report.verdict.riskLevel} risk</strong>
+        <span>{entry.metadata.riskScore}/100 score detail</span>
+      </div>
+
+      <dl className="workspace-preview-meta">
+        <div><dt>Profile</dt><dd>{entry.metadata.reviewProfile}</dd></div>
+        <div><dt>Input</dt><dd>{inputPreviewLabel(entry)}</dd></div>
+        <div><dt>Mode</dt><dd>{sourceLabel(entry.source)}</dd></div>
+        <div><dt>Latest</dt><dd><time dateTime={entry.createdAt}>{createdTime(entry.createdAt)}</time></dd></div>
+      </dl>
+
+      <section className="workspace-preview-block">
+        <div className="workspace-preview-block-heading">
+          <h3>Conditions before merge</h3>
+          <span>{conditionProgressLabel}</span>
+        </div>
+        {conditions.length > 0 ? (
+          <>
+            <ol className="workspace-preview-conditions">
+              {visibleConditions.map((condition) => <li key={condition}>{condition}</li>)}
+            </ol>
+            {conditions.length > visibleConditions.length && (
+              <p className="workspace-preview-more">+{conditions.length - visibleConditions.length} more conditions</p>
+            )}
+          </>
+        ) : (
+          <p>No merge conditions detected.</p>
+        )}
+      </section>
+
+      <section className="workspace-preview-block">
+        <h3>Top risk</h3>
+        <p>{topRisk}</p>
+      </section>
+
+      <div className="workspace-preview-stats" aria-label="Selected report status">
+        <div><span>Missing tests</span><strong>{report.missingTests.length}</strong></div>
+        <div><span>Operations</span><strong>{operationalStatus}</strong></div>
+        <div><span>Quality</span><strong>{qualityStatus}</strong></div>
+      </div>
+
+      <section className="workspace-preview-block">
+        <h3>Reviewer focus</h3>
+        {focus.length > 0 ? (
+          <div className="workspace-preview-focus">
+            {focus.slice(0, 4).map((item) => <span key={`${item.area}-${item.priority}`}>{item.priority}: {item.area}</span>)}
+          </div>
+        ) : (
+          <p>No specialist focus detected.</p>
+        )}
+      </section>
+
+      <div className="workspace-preview-actions">
+        <button type="button" onClick={() => onOpen(entry)}>Open full report</button>
+        <button type="button" onClick={() => onCopyConditions(group)}>
+          {feedback === "copied" ? "Copied" : feedback === "failed" ? "Copy failed" : "Copy conditions"}
+        </button>
+        <button className="workspace-delete" type="button" onClick={() => onDeleteGroup(group)}>Delete reports</button>
+      </div>
+    </aside>
+  );
+}
+
 export default function ReportsWorkspacePage() {
   const router = useRouter();
   const [history, setHistory] = useState<ReportHistoryEntry[]>([]);
   const [statuses, setStatuses] = useState<Record<string, LocalStatus>>({});
   const [conditionProgressByGroup, setConditionProgressByGroup] = useState<Record<string, string>>({});
   const [activeFilter, setActiveFilter] = useState<WorkspaceFilter>("all");
+  const [selectedGroupKey, setSelectedGroupKey] = useState<string | null>(null);
   const [copyFeedback, setCopyFeedback] = useState<CopyFeedback>(null);
   const [error, setError] = useState<string | null>(null);
   const copyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -337,15 +479,20 @@ export default function ReportsWorkspacePage() {
   }, []);
 
   const groups = useMemo(() => groupHistory(history, statuses), [history, statuses]);
-  const filteredGroups = groups.filter((group) => groupMatchesFilter(group, activeFilter));
-  const needsAttention = sortByRiskThenRecency(filteredGroups.filter((group) => (
+  const filteredGroups = useMemo(
+    () => groups.filter((group) => groupMatchesFilter(group, activeFilter)),
+    [activeFilter, groups],
+  );
+  const needsAttention = useMemo(() => sortByRiskThenRecency(filteredGroups.filter((group) => (
     group.latest.metadata.recommendation === "TESTS_REQUIRED"
     || group.latest.metadata.recommendation === "REVIEW_REQUIRED"
     || group.latest.metadata.recommendation === "BLOCK"
-  )));
-  const ready = filteredGroups
+  ))), [filteredGroups]);
+  const ready = useMemo(() => filteredGroups
     .filter((group) => group.latest.metadata.recommendation === "APPROVE")
-    .sort((a, b) => Date.parse(b.latest.createdAt) - Date.parse(a.latest.createdAt));
+    .sort((a, b) => Date.parse(b.latest.createdAt) - Date.parse(a.latest.createdAt)), [filteredGroups]);
+  const visibleGroups = useMemo(() => [...needsAttention, ...ready], [needsAttention, ready]);
+  const selectedGroup = visibleGroups.find((group) => group.key === selectedGroupKey) ?? null;
   const trackedCount = groups.length;
   const needsAttentionCount = groups.filter((group) => group.latest.metadata.recommendation !== "APPROVE").length;
   const testsRequiredCount = groups.filter((group) => group.latest.metadata.recommendation === "TESTS_REQUIRED").length;
@@ -367,6 +514,19 @@ export default function ReportsWorkspacePage() {
       setConditionProgressByGroup({});
     }
   }, [groups]);
+
+  useEffect(() => {
+    if (visibleGroups.length === 0) {
+      setSelectedGroupKey(null);
+      return;
+    }
+
+    setSelectedGroupKey((current) => (
+      current && visibleGroups.some((group) => group.key === current)
+        ? current
+        : visibleGroups[0].key
+    ));
+  }, [visibleGroups]);
 
   function openReport(entry: ReportHistoryEntry) {
     try {
@@ -493,31 +653,48 @@ export default function ReportsWorkspacePage() {
               ))}
             </div>
 
-            <WorkspaceSection
-              title="Needs attention"
-              description="Reports with tests required, focused review, or blocking risk."
-              groups={needsAttention}
-              emptyCopy="No blocked or attention-required PRs match this filter."
-              copyFeedback={copyFeedback}
-              conditionProgressByGroup={conditionProgressByGroup}
-              onOpen={openReport}
-              onCopyConditions={copyConditions}
-              onDeleteGroup={deleteGroup}
-              onStatusChange={updateLocalStatus}
-            />
+            <div className="workspace-split-view">
+              <div className="workspace-list-pane">
+                <WorkspaceSection
+                  title="Needs attention"
+                  description="Reports with tests required, focused review, or blocking risk."
+                  groups={needsAttention}
+                  emptyCopy="No blocked or attention-required PRs match this filter."
+                  copyFeedback={copyFeedback}
+                  conditionProgressByGroup={conditionProgressByGroup}
+                  selectedGroupKey={selectedGroupKey}
+                  onSelect={(group) => setSelectedGroupKey(group.key)}
+                  onOpen={openReport}
+                  onCopyConditions={copyConditions}
+                  onDeleteGroup={deleteGroup}
+                  onStatusChange={updateLocalStatus}
+                />
 
-            <WorkspaceSection
-              title="Ready / cleared"
-              description="Reports currently approved by the latest local merge-readiness run."
-              groups={ready}
-              emptyCopy="No ready PRs match this filter yet."
-              copyFeedback={copyFeedback}
-              conditionProgressByGroup={conditionProgressByGroup}
-              onOpen={openReport}
-              onCopyConditions={copyConditions}
-              onDeleteGroup={deleteGroup}
-              onStatusChange={updateLocalStatus}
-            />
+                <WorkspaceSection
+                  title="Ready / cleared"
+                  description="Reports currently approved by the latest local merge-readiness run."
+                  groups={ready}
+                  emptyCopy="No ready PRs match this filter yet."
+                  copyFeedback={copyFeedback}
+                  conditionProgressByGroup={conditionProgressByGroup}
+                  selectedGroupKey={selectedGroupKey}
+                  onSelect={(group) => setSelectedGroupKey(group.key)}
+                  onOpen={openReport}
+                  onCopyConditions={copyConditions}
+                  onDeleteGroup={deleteGroup}
+                  onStatusChange={updateLocalStatus}
+                />
+              </div>
+
+              <WorkspacePreviewPanel
+                group={selectedGroup}
+                copyFeedback={copyFeedback}
+                conditionProgressLabel={selectedGroup ? conditionProgressByGroup[selectedGroup.key] ?? "No merge conditions detected." : "No merge conditions detected."}
+                onOpen={openReport}
+                onCopyConditions={copyConditions}
+                onDeleteGroup={deleteGroup}
+              />
+            </div>
           </section>
         ) : (
           <section className="workspace-empty">

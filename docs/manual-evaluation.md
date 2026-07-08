@@ -765,3 +765,19 @@ Manual tests:
 7. Confirm **Delete reports** removes the grouped PR and **Clear history** clears local report history.
 8. Resize to a narrow viewport and confirm the sidebar collapses into usable navigation without clipping the workspace rows.
 9. Search the workspace UI, copied conditions, copied summary, downloaded Markdown, session storage and local history for `diff --git`, `@@`, raw hunks, unique diff markers and secrets; none should appear.
+
+## V3.1 workspace split-view report preview
+
+Manual tests:
+
+1. Open `/workspace` with mixed local history and confirm the first **Needs attention** row is selected by default; if none exist, confirm the first report is selected.
+2. Click different grouped PR rows and confirm the preview panel updates without navigating away from the Risk Inbox.
+3. Confirm row actions still behave independently: **Open** navigates to `/report`, **Copy conditions** copies Markdown, **Delete reports** removes the group, and the local status selector does not accidentally change selection.
+4. Confirm the preview shows repository, PR title, recommendation, risk band and score detail, review profile, input source, analysis mode, latest timestamp, condition progress, conditions preview, top risk, missing test count, operational readiness, reviewer focus and report quality.
+5. Delete the selected report group and confirm the workspace selects the next available visible report or shows the no-selection preview state.
+6. Check and uncheck conditions on `/report`, return to `/workspace`, and confirm preview condition progress reflects local state.
+7. Use filters and confirm selection remains safe when a selected report is filtered out.
+8. Confirm local status still persists after reload.
+9. Confirm **Copy conditions** works from both the row and preview panel.
+10. Resize to a narrow viewport and confirm the preview stacks with the list without breaking row actions.
+11. Search the workspace UI, preview panel, copied conditions, copied summary, downloaded Markdown, session storage and local history for `diff --git`, `@@`, raw hunks, unique diff markers and secrets; none should appear.

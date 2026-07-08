@@ -29,6 +29,8 @@ type ReportSource = GeneratedReportSource | "demo";
 type CopyState = "idle" | "copied" | "failed";
 type DownloadState = "idle" | "downloaded" | "failed";
 type ReportTab = "overview" | "findings" | "tests" | "operations" | "review-focus" | "changed-files" | "export";
+type Finding = Report["findings"][number];
+type ReviewerFocus = NonNullable<Report["reviewerFocus"]>[number];
 
 type StoredReport = {
   report: Report;
@@ -226,6 +228,111 @@ function SeverityTag({ severity }: { severity: FindingSeverity }) {
   return <span className={`severity severity--${severity.toLowerCase()}`}>{severity}</span>;
 }
 
+const relatedStopWords = new Set([
+  "and",
+  "are",
+  "before",
+  "change",
+  "changes",
+  "confirm",
+  "detected",
+  "does",
+  "each",
+  "from",
+  "handling",
+  "into",
+  "needs",
+  "path",
+  "risk",
+  "should",
+  "that",
+  "the",
+  "this",
+  "with",
+]);
+
+function relatedTokens(value: string) {
+  return new Set(
+    value
+      .toLowerCase()
+      .match(/[a-z0-9_/-]+/g)
+      ?.filter((token) => token.length > 2 && !relatedStopWords.has(token)) ?? [],
+  );
+}
+
+function relatedScore(source: string, candidate: string) {
+  const sourceTokens = relatedTokens(source);
+  const candidateTokens = relatedTokens(candidate);
+  let score = 0;
+
+  for (const token of sourceTokens) {
+    if (candidateTokens.has(token)) score += 1;
+  }
+
+  return score;
+}
+
+function findingContext(finding: Finding) {
+  return [
+    finding.title,
+    finding.category,
+    finding.evidence,
+    finding.action,
+    finding.file ?? "",
+  ].join(" ");
+}
+
+function affectedFilesForFinding(report: Report, finding: Finding) {
+  const context = findingContext(finding).toLowerCase();
+  const files = new Set<string>();
+
+  if (finding.file) files.add(finding.file);
+
+  for (const file of report.changedFiles) {
+    const path = file.path.toLowerCase();
+    const pathParts = path.split("/");
+    const basename = pathParts[pathParts.length - 1] ?? path;
+
+    if (context.includes(path) || context.includes(basename)) {
+      files.add(file.path);
+    }
+  }
+
+  return [...files];
+}
+
+function bestRelatedText(finding: Finding, items: string[]) {
+  const context = findingContext(finding);
+  let best: { item: string; score: number } | null = null;
+
+  for (const item of items) {
+    const score = relatedScore(context, item);
+    if (score > (best?.score ?? 0)) best = { item, score };
+  }
+
+  return best && best.score > 0 ? best.item : null;
+}
+
+function reviewerFocusForFinding(finding: Finding, focusItems: ReviewerFocus[]) {
+  const context = findingContext(finding);
+  let best: { item: ReviewerFocus; score: number } | null = null;
+
+  for (const item of focusItems) {
+    const score = relatedScore(context, `${item.area} ${item.reason}`);
+    const categoryBoost = finding.category === "Security" && item.area === "Security/privacy"
+      ? 2
+      : finding.category === "API contract" && item.area === "API contract"
+        ? 2
+        : finding.category === "Reliability" && item.area === "Backend reliability"
+          ? 2
+          : 0;
+    const totalScore = score + categoryBoost;
+    if (totalScore > (best?.score ?? 0)) best = { item, score: totalScore };
+  }
+
+  return best && best.score > 0 ? best.item : null;
+}
+
 function SourceBadge({ source }: { source: ReportSource }) {
   return <span className={`source-badge source-badge--${source}`}>{sourceLabels[source]}</span>;
 }
@@ -240,6 +347,7 @@ export default function ReportPage() {
   const [downloadState, setDownloadState] = useState<DownloadState>("idle");
   const [clearedConditionKeys, setClearedConditionKeys] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<ReportTab>("overview");
+  const [selectedFindingIndex, setSelectedFindingIndex] = useState<number | null>(null);
   const [reviewState, setReviewState] = useState<ReportReviewState>(() => defaultReviewState(demoReport));
   const copyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const conditionsCopyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -281,6 +389,13 @@ export default function ReportPage() {
   const { pr, verdict } = report;
   const supportedReviewerFocus = pruneUnsupportedReviewerFocus(report);
   const displayedConditions = reportConditions(report);
+  const selectedFinding = selectedFindingIndex !== null ? report.findings[selectedFindingIndex] : undefined;
+  const selectedFindingFiles = selectedFinding ? affectedFilesForFinding(report, selectedFinding) : [];
+  const selectedFindingMissingTest = selectedFinding ? bestRelatedText(selectedFinding, report.missingTests) : null;
+  const selectedFindingCondition = selectedFinding ? bestRelatedText(selectedFinding, displayedConditions) : null;
+  const selectedFindingReviewerFocus = selectedFinding && supportedReviewerFocus
+    ? reviewerFocusForFinding(selectedFinding, supportedReviewerFocus)
+    : null;
   const displayedConditionSignature = displayedConditions.join("\n");
   const conditionTrackingEnabled = (verdict.recommendation === "TESTS_REQUIRED" || verdict.recommendation === "REVIEW_REQUIRED")
     && displayedConditions.length > 0;
@@ -317,6 +432,12 @@ export default function ReportPage() {
       setClearedConditionKeys(new Set());
     }
   }, [report, displayedConditionSignature]);
+
+  useEffect(() => {
+    setSelectedFindingIndex((current) => (
+      current !== null && current >= report.findings.length ? null : current
+    ));
+  }, [report]);
 
   useEffect(() => {
     try {
@@ -553,15 +674,113 @@ export default function ReportPage() {
             >
           <section className="section-block report-findings">
             <div className="section-heading"><div><span className="card-kicker">PRIORITY ITEMS</span><h2>Risk findings</h2></div><span className="section-count">{report.findings.length} findings</span></div>
-            {report.findings.length > 0 ? <div className="findings-list">
-              {report.findings.map((finding, index) => (
-                <article className="finding" key={finding.title}>
-                  <div className="finding-index">{String(index + 1).padStart(2, "0")}</div>
-                  <div className="finding-content"><div className="finding-title"><SeverityTag severity={finding.severity} /><h3>{finding.title}</h3>{finding.provenance && <span className={`finding-provenance finding-provenance--${findingProvenanceLabel(finding.provenance).toLowerCase().replaceAll(" ", "-")}`}>{findingProvenanceLabel(finding.provenance)}</span>}</div><p><strong>Evidence:</strong> {finding.evidence}</p><p><strong>Action:</strong> {finding.action}</p>{finding.file && <code>{finding.file}</code>}</div>
-                  <span className="finding-category">{finding.category}</span>
-                </article>
-              ))}
-            </div> : <p className="section-empty">No risk findings detected.</p>}
+            {report.findings.length > 0 ? (
+              <div className="findings-workspace">
+                <div className="findings-list" aria-label="Selectable findings">
+                  {report.findings.map((finding, index) => {
+                    const selected = selectedFindingIndex === index;
+
+                    return (
+                      <article
+                        className={selected ? "finding finding--selectable finding--selected" : "finding finding--selectable"}
+                        key={`${finding.title}-${index}`}
+                        role="button"
+                        tabIndex={0}
+                        aria-pressed={selected}
+                        aria-label={`Inspect finding: ${finding.title}`}
+                        onClick={() => setSelectedFindingIndex(index)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            setSelectedFindingIndex(index);
+                          }
+                        }}
+                      >
+                        <div className="finding-index">{String(index + 1).padStart(2, "0")}</div>
+                        <div className="finding-content">
+                          <div className="finding-title">
+                            <SeverityTag severity={finding.severity} />
+                            <h3>{finding.title}</h3>
+                            {finding.provenance && <span className={`finding-provenance finding-provenance--${findingProvenanceLabel(finding.provenance).toLowerCase().replaceAll(" ", "-")}`}>{findingProvenanceLabel(finding.provenance)}</span>}
+                          </div>
+                          <p><strong>Evidence:</strong> {finding.evidence}</p>
+                          <p><strong>Action:</strong> {finding.action}</p>
+                          {finding.file && <code>{finding.file}</code>}
+                          <span className="finding-inspect-hint">{selected ? "Selected" : "Inspect evidence"}</span>
+                        </div>
+                        <span className="finding-category">{finding.category}</span>
+                      </article>
+                    );
+                  })}
+                </div>
+
+                <aside className="finding-detail-panel" aria-label="Finding evidence panel">
+                  {selectedFinding ? (
+                    <>
+                      <div className="finding-detail-header">
+                        <div>
+                          <span className="card-kicker">EVIDENCE PANEL</span>
+                          <h3>{selectedFinding.title}</h3>
+                        </div>
+                        <button type="button" onClick={() => setSelectedFindingIndex(null)}>Close</button>
+                      </div>
+
+                      <div className="finding-detail-tags">
+                        <SeverityTag severity={selectedFinding.severity} />
+                        <span>{selectedFinding.category}</span>
+                        {selectedFinding.provenance && <span>{findingProvenanceLabel(selectedFinding.provenance)}</span>}
+                      </div>
+
+                      <section>
+                        <h4>Why this matters</h4>
+                        <p>{selectedFinding.evidence}</p>
+                      </section>
+
+                      <section>
+                        <h4>Recommended reviewer action</h4>
+                        <p>{selectedFinding.action}</p>
+                      </section>
+
+                      <div className="finding-detail-grid">
+                        <section>
+                          <h4>Affected files or areas</h4>
+                          {selectedFindingFiles.length > 0 ? (
+                            <ul>{selectedFindingFiles.map((file) => <li key={file}><code>{file}</code></li>)}</ul>
+                          ) : (
+                            <p>No specific file was attached to this finding.</p>
+                          )}
+                        </section>
+
+                        <section>
+                          <h4>Related missing test</h4>
+                          <p>{selectedFindingMissingTest ?? "No directly related missing test was identified."}</p>
+                        </section>
+
+                        <section>
+                          <h4>Related merge condition</h4>
+                          <p>{selectedFindingCondition ?? "No directly related merge condition was identified."}</p>
+                        </section>
+
+                        <section>
+                          <h4>Reviewer focus</h4>
+                          {selectedFindingReviewerFocus ? (
+                            <p><strong>{selectedFindingReviewerFocus.area}:</strong> {selectedFindingReviewerFocus.reason}</p>
+                          ) : (
+                            <p>No specialist reviewer focus was matched to this finding.</p>
+                          )}
+                        </section>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="finding-detail-empty">
+                      <span className="card-kicker">EVIDENCE PANEL</span>
+                      <h3>Select a finding to inspect the evidence.</h3>
+                      <p>Use this panel to review the finding evidence, recommended action, affected files, related tests, merge conditions and reviewer focus without leaving the Findings tab.</p>
+                    </div>
+                  )}
+                </aside>
+              </div>
+            ) : <p className="section-empty">No risk findings detected.</p>}
           </section>
             </div>
           )}

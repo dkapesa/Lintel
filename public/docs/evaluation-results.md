@@ -1,19 +1,37 @@
 # Lintel evaluation results
 
-Lintel was manually evaluated against four representative pull request scenarios covering approval restraint, provider retry risk, public GitHub PR import, and a clean pasted diff.
+Lintel is manually evaluated against built-in and public pull request scenarios covering approval restraint, risky backend changes, frontend/API changes, local workspace behavior and raw-diff privacy.
 
-| Scenario | Expected | Observed | Result |
-| --- | --- | --- | --- |
-| Clean utility change | APPROVE / LOW / CLEAR | APPROVE / LOW / CLEAR | PASS |
-| Provider retry risk | TESTS_REQUIRED / HIGH / ATTENTION | TESTS_REQUIRED / HIGH / ATTENTION | PASS |
-| Frontend public PR | No payment false positive | No payment false positive | PASS |
-| Clean pasted diff | APPROVE / LOW / CLEAR | APPROVE / LOW / CLEAR | PASS |
+These results describe the current prototype evaluation set, not a guarantee for every pull request.
 
-Summary:
+## Current sample coverage
 
-- 4/4 evaluation scenarios correct
-- 0 invented findings on clean changes
-- 0 false payment flags on the frontend scenario
-- 0 raw diff markers observed in generated reports
+| Scenario | Expected broad outcome | What it checks |
+| --- | --- | --- |
+| Clean utility change | APPROVE / LOW / CLEAR | Lintel stays quiet for a small tested change. |
+| Provider failure / retry risk | TESTS_REQUIRED / HIGH / ATTENTION | Duplicate side effects, provider failures, API contract, logging/privacy and missing tests. |
+| Auth/session change | TESTS_REQUIRED or REVIEW_REQUIRED | Token/session behavior and security review. |
+| Database migration | TESTS_REQUIRED or REVIEW_REQUIRED | Migration compatibility, data safety and rollback/recovery concerns. |
+| Payment/refund side effect | TESTS_REQUIRED | Repeat-safe payment/refund side effects and idempotency expectations. |
+| API contract change | REVIEW_REQUIRED | Tests exist, but client-facing response semantics still need focused review. |
+| Logging/privacy risk | REVIEW_REQUIRED | Structured logging near identifiers and token context. |
+| Frontend analytics/type change | TESTS_REQUIRED | Frontend/docs/API-consumer review without payment false positives. |
 
-These results describe the current prototype evaluation set, not a guarantee for every pull request. Lintel remains a decision-support tool used alongside human review, CI, security review, and tests.
+## Key regressions
+
+- Clean APPROVE reports should have no findings, missing tests, suggested tests, merge conditions or generic checklist work.
+- Provider retry risk should escalate to TESTS_REQUIRED / HIGH with specific Conditions before merge.
+- Frontend analytics/type changes must not show unsupported Payments/domain logic.
+- Report quality should pass for supported generated reports.
+- Raw diff markers should not appear in generated reports, copied conditions, copied summaries, downloaded Markdown or local history.
+
+## Current limitations
+
+- Evaluation is still manual.
+- Scenario count is still small.
+- Private repository web import is not supported.
+- GitHub App and CI integration are not implemented.
+- Line-level diff hunk evidence is not shown.
+- Model-assisted quality depends on the configured provider when enabled.
+
+Lintel remains a decision-support tool used alongside human review, CI, security review and tests.

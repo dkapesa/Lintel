@@ -1,6 +1,6 @@
 # Lintel sample evaluation
 
-This workflow checks Lintel’s built-in samples against stable, broad merge-readiness expectations. It intentionally exercises the real `/new` → `/api/generate-report` → `/report` flow instead of duplicating TypeScript generator rules in a separate script.
+This workflow checks Lintel's built-in demo samples against stable, broad merge-readiness expectations. It intentionally exercises the real `/new` -> `/api/generate-report` -> `/report` flow instead of duplicating TypeScript generator rules in a separate script.
 
 ## Evaluation mode
 
@@ -9,21 +9,36 @@ Run the primary regression pass with deterministic fallback so results are repea
 1. Leave `OPENAI_API_KEY` and `OPENAI_MODEL` unset or empty.
 2. Restart the development server with `npm run dev` after environment changes.
 3. Open `http://localhost:3000/new`.
-4. Keep **Review profile** set to **Standard**.
+4. Keep **Review profile** set to **Standard** unless the case says otherwise.
 5. For each case below, select the sample, choose **Generate Report**, and record the result.
-6. Confirm the source badge is **Local fallback** and input source is **Sample**.
+6. Confirm the source label is **Baseline only** and input source is **Sample**.
 
-An optional second pass may enable AI. AI wording and scores can vary, but normalization must preserve the expected recommendation constraints, important focus areas, report quality, and false-positive exclusions.
+An optional second pass may enable model-assisted analysis. Wording and scores can vary, but normalization must preserve the expected recommendation constraints, important focus areas, report quality and false-positive exclusions.
 
 ## Pass criteria
 
 A case passes when:
 
-- recommendation, risk level, and operational status match the expected deterministic outcome;
+- recommendation, risk level and operational status match the expected deterministic outcome;
 - every listed reviewer-focus area is present;
 - no forbidden false-positive area appears;
 - report quality is `PASS`;
-- the report, copied Markdown, downloaded Markdown, session storage, and local history contain no raw diff.
+- the report, copied Markdown, downloaded Markdown, session storage and local history contain no raw diff.
+
+## Scenario pack
+
+The built-in samples are intentionally small but realistic enough to exercise different merge-readiness decisions.
+
+| Sample | Purpose |
+| --- | --- |
+| Clean utility change | Confirm Lintel can approve a low-risk tested utility change without inventing work. |
+| Provider failure / retry risk | Exercise duplicate side effects, provider failure handling, API contract, logging/privacy and missing tests. |
+| Auth/session change | Exercise token/session behavior and security review. |
+| Database migration | Exercise schema/data safety, migration compatibility and rollback expectations. |
+| Payment/refund side effect | Exercise repeat-safe payment/refund side effects and idempotency expectations. |
+| API contract change | Exercise `REVIEW_REQUIRED` when tests exist but client-facing semantics still need review. |
+| Logging/privacy risk | Exercise structured logging near identifiers and token context. |
+| Frontend analytics/type change | Exercise frontend/docs/API-consumer routing and the no-payment-false-positive regression. |
 
 ## Expected deterministic outcomes
 
@@ -31,14 +46,14 @@ A case passes when:
 | --- | --- | --- | --- | --- | --- | --- |
 | Clean utility change | `APPROVE` | `LOW` | `CLEAR` | None required | Any unsupported specialist area | `PASS` |
 | Provider failure / retry risk | `TESTS_REQUIRED` | `HIGH` | `ATTENTION` | Backend reliability; API contract; Security/privacy; Payments/domain logic; Platform/observability | Data/migration; Frontend integration | `PASS` |
-| Auth/session change | `TESTS_REQUIRED` | `MEDIUM` | `ATTENTION` | Backend reliability; Security/privacy; Platform/observability | Payments/domain logic; Data/migration; API contract | `PASS` |
-| Database migration | `TESTS_REQUIRED` | `MEDIUM` | `ATTENTION` | Backend reliability; Data/migration; Platform/observability | Payments/domain logic; Security/privacy; API contract | `PASS` |
-| Payment/refund side effect | `TESTS_REQUIRED` | `MEDIUM` | `ATTENTION` | Backend reliability; Payments/domain logic; Platform/observability | Security/privacy; Data/migration; API contract | `PASS` |
-| API contract change | `REVIEW_REQUIRED` | `LOW` | `ATTENTION` | API contract; Platform/observability | Payments/domain logic; Security/privacy; Data/migration | `PASS` |
-| Logging/privacy risk | `REVIEW_REQUIRED` | `MEDIUM` | `ATTENTION` | Security/privacy; Platform/observability | Payments/domain logic; Data/migration; API contract | `PASS` |
+| Auth/session change | `TESTS_REQUIRED` | `MEDIUM` | `ATTENTION` | Backend reliability; Security/privacy; Platform/observability | Payments/domain logic; Data/migration | `PASS` |
+| Database migration | `TESTS_REQUIRED` | `MEDIUM` | `ATTENTION` | Backend reliability; Data/migration; Platform/observability | Payments/domain logic; Security/privacy | `PASS` |
+| Payment/refund side effect | `TESTS_REQUIRED` | `MEDIUM` or `HIGH` | `ATTENTION` | Backend reliability; Payments/domain logic; Platform/observability | Security/privacy; Data/migration | `PASS` |
+| API contract change | `REVIEW_REQUIRED` | `LOW` or `MEDIUM` | `ATTENTION` | API contract; Platform/observability | Payments/domain logic; Security/privacy; Data/migration | `PASS` |
+| Logging/privacy risk | `REVIEW_REQUIRED` | `MEDIUM` | `ATTENTION` | Security/privacy; Platform/observability | Payments/domain logic; Data/migration | `PASS` |
 | Frontend analytics/type change | `TESTS_REQUIRED` | `MEDIUM` | `CLEAR` | Backend reliability; Frontend integration; Docs/API consumer review | **Payments/domain logic**; Security/privacy; Data/migration | `PASS` |
 
-Risk levels follow the current thresholds: `LOW` 0–30, `MEDIUM` 31–60, `HIGH` 61–80, and `CRITICAL` 81–100.
+Risk levels follow the current thresholds: `LOW` 0-30, `MEDIUM` 31-60, `HIGH` 61-80 and `CRITICAL` 81-100.
 
 ## Case checklist
 
@@ -62,7 +77,7 @@ Notes:
 Also confirm:
 
 - recommendation heading matches the recommendation;
-- `APPROVE` has no findings, missing tests, suggested tests, or merge conditions;
+- `APPROVE` has no findings, missing tests, suggested tests or merge conditions;
 - `TESTS_REQUIRED` has concrete missing or suggested tests;
 - operational `ATTENTION` never produces `APPROVE`;
 - reviewer-focus reasons are evidence-based and assign no person or team;
@@ -74,21 +89,21 @@ Also confirm:
 For **Frontend analytics/type change**:
 
 1. Generate the built-in sample.
-2. Confirm **Backend reliability**, **Frontend integration**, and **Docs/API consumer review**.
+2. Confirm **Backend reliability**, **Frontend integration** and **Docs/API consumer review**.
 3. Confirm **Payments/domain logic** is absent from the page.
 4. Copy and download the Markdown and confirm it remains absent.
 5. Confirm report quality is `PASS`, not a warning masking an unpruned focus item.
 
-This regression fails if generic terms such as event, side effect, behavior, domain, or execution order are treated as payment evidence.
+This regression fails if generic terms such as event, side effect, behavior, domain or execution order are treated as payment evidence.
 
-## Optional AI comparison
+## Optional model-assisted comparison
 
 After the deterministic suite passes:
 
 1. Configure evaluator-owned `OPENAI_API_KEY` and `OPENAI_MODEL` values in ignored local environment configuration.
 2. Restart the server.
-3. Repeat the eight cases and confirm the source is **AI generated**.
-4. Accept wording and score variation only when recommendation consistency, risk floors, operational attention, reviewer-focus evidence, and report quality remain valid.
-5. Record any AI-only false positive separately from deterministic behavior.
+3. Repeat the eight cases and confirm the source is **Baseline + model-assisted** when the provider succeeds.
+4. Accept wording and score variation only when recommendation consistency, risk floors, operational attention, reviewer-focus evidence and report quality remain valid.
+5. Record any model-only false positive separately from deterministic behavior.
 
-Never include credentials, private code, or raw production diffs in evaluation notes.
+Never include credentials, private code or raw production diffs in evaluation notes.

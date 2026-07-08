@@ -26,7 +26,7 @@ Run the app with `npm run dev` and use `http://localhost:3000/new`. Use browser 
 
 ## Copy summary
 
-Use **Copy summary** on `/report` to copy a concise Markdown report. Confirm the copied text follows the V2 hierarchy: PR metadata, source label, recommendation, risk band before score detail, executive summary, Conditions before merge, findings, Test plan, operational readiness, reviewer focus, report quality and closing summary.
+Use **Copy summary** on `/report` to copy a concise Markdown report. Confirm the copied text follows the current report hierarchy: PR metadata, source label, recommendation, risk band before score detail, executive summary, Conditions before merge, findings, Test plan, operational readiness, reviewer focus, report quality and closing summary.
 
 - Finding and test sections show at most five items, followed by `...and N more` when truncated.
 - Conditions before merge are deduped and exported in full; they should not be truncated.
@@ -50,11 +50,26 @@ Risk levels are derived from the final score: `LOW` 0–30, `MEDIUM` 31–60, `H
 
 AI reports are normalised against the deterministic baseline. Concrete baseline findings, test gaps, suggested tests and merge conditions remain present even when the AI omits them. A baseline `ATTENTION` review cannot be downgraded to `CLEAR`. Untested changes have a minimum `MEDIUM` score, while a `HIGH` baseline with multiple concrete findings remains `HIGH` and can fall by no more than five points.
 
+## Built-in demo scenario pack
+
+Use the sample picker on `/new` for a fast V3.8 regression pass.
+
+| Sample | Expected broad outcome | What it demonstrates |
+| --- | --- | --- |
+| Clean utility change | `APPROVE` / `LOW` / `CLEAR` | Small tested utility change with no invented work. |
+| Provider failure / retry risk | `TESTS_REQUIRED` / `HIGH` / `ATTENTION` | Retry, duplicate side effects, provider failure, API contract and logging/privacy test gaps. |
+| Auth/session change | `TESTS_REQUIRED` or `REVIEW_REQUIRED` | Token/session handling and security review. |
+| Database migration | `TESTS_REQUIRED` or `REVIEW_REQUIRED` | Migration compatibility, data safety and recovery expectations. |
+| Payment/refund side effect | `TESTS_REQUIRED` | Payment/refund idempotency and repeat-safe side effects. |
+| API contract change | `REVIEW_REQUIRED` | Tests exist, but client-facing response semantics still need focused review. |
+| Logging/privacy risk | `REVIEW_REQUIRED` | Structured logging near identifiers and token context. |
+| Frontend analytics/type change | `TESTS_REQUIRED` | Frontend/docs/API-consumer review without Payments/domain false positives. |
+
 ## Clean APPROVE test case
 
 Use:
 
-- PR title: `Format display names consistently`
+- PR title: `Normalize customer display names`
 - Repository: `acme/profile-api`
 - Language/framework: `Python / FastAPI`
 
@@ -720,7 +735,7 @@ Current V2 regression checklist:
 - Report quality checks: reports show `PASS` or explicit warnings and continue to flag unsupported reviewer focus.
 - Provenance labels: findings show **Rule detected** or **Model assisted** where available.
 - Copy conditions: Decision Gate and workspace copy the full deduped condition list, or **No merge conditions detected.** for `APPROVE`.
-- Markdown export alignment: copied and downloaded Markdown follow the V2 hierarchy.
+- Markdown export alignment: copied and downloaded Markdown follow the current report hierarchy.
 - Workspace/risk inbox grouping: duplicate local runs group into one PR row with triage counts, filters and local statuses.
 - Raw diff privacy: raw diffs and patch markers do not appear in UI, copied conditions, copied summary, downloaded Markdown, session storage or local history.
 

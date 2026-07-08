@@ -1,7 +1,7 @@
 import type { ReportInput } from "./report-generator";
 
 export const CLEAN_APPROVE_SAMPLE = {
-  title: "Format display names consistently",
+  title: "Normalize customer display names",
   repository: "acme/profile-api",
   technology: "Python / FastAPI",
   diff: `diff --git a/app/utils/format_name.py b/app/utils/format_name.py
@@ -69,36 +69,52 @@ diff --git a/app/api/redemptions.py b/app/api/redemptions.py
 } satisfies ReportInput;
 
 export const AUTH_SESSION_SAMPLE = {
-  title: "Rotate sessions during authentication refresh",
+  title: "Rotate sessions during token refresh",
   repository: "acme/customer-portal",
   technology: "TypeScript / Next.js",
   diff: `diff --git a/app/auth/session.ts b/app/auth/session.ts
 --- a/app/auth/session.ts
 +++ b/app/auth/session.ts
-@@ -8,3 +8,10 @@
+@@ -8,3 +8,18 @@
++import { cookies } from "next/headers";
++
 +export async function refreshSession(request: Request) {
-+  const token = request.headers.get("x-session-token");
-+  if (!token) return null;
++  const token = request.headers.get("x-session-token") ?? cookies().get("session")?.value;
++  if (!token) {
++    return Response.json({ error_code: "session_missing" }, { status: 401 });
++  }
 +
 +  const session = await sessionStore.rotate(token);
-+  return session;
++  if (!session) {
++    return Response.json({ error_code: "session_expired" }, { status: 401 });
++  }
++
++  cookies().set("session", session.token, { httpOnly: true, sameSite: "lax" });
++  return Response.json({ user_id: session.userId });
 +}`,
 } satisfies ReportInput;
 
 export const DATABASE_MIGRATION_SAMPLE = {
-  title: "Make customer account references unique",
+  title: "Enforce unique customer account references",
   repository: "acme/accounts-api",
   technology: "Python / Django",
   diff: `diff --git a/accounts/migrations/0042_unique_account_reference.py b/accounts/migrations/0042_unique_account_reference.py
 --- /dev/null
 +++ b/accounts/migrations/0042_unique_account_reference.py
-@@ -0,0 +1,11 @@
+@@ -0,0 +1,17 @@
 +from django.db import migrations, models
++
++def backfill_missing_references(apps, schema_editor):
++    Account = apps.get_model("accounts", "Account")
++    for account in Account.objects.filter(reference__isnull=True):
++        account.reference = f"acct-{account.id}"
++        account.save(update_fields=["reference"])
 +
 +class Migration(migrations.Migration):
 +    dependencies = [("accounts", "0041_account_reference")]
 +
 +    operations = [
++        migrations.RunPython(backfill_missing_references, migrations.RunPython.noop),
 +        migrations.AlterField(
 +            model_name="account",
 +            name="reference",
@@ -108,35 +124,55 @@ export const DATABASE_MIGRATION_SAMPLE = {
 } satisfies ReportInput;
 
 export const PAYMENT_REFUND_SAMPLE = {
-  title: "Retry refunds after gateway timeouts",
+  title: "Retry refund creation after gateway timeouts",
   repository: "acme/billing-service",
   technology: "TypeScript / Node.js",
   diff: `diff --git a/src/payments/refund-service.ts b/src/payments/refund-service.ts
 --- a/src/payments/refund-service.ts
 +++ b/src/payments/refund-service.ts
-@@ -18,3 +18,12 @@
-+export async function issueRefund(paymentId: string, amount: number) {
+@@ -18,3 +18,19 @@
++export async function issueRefund(orderId: string, paymentId: string, amount: number) {
 +  try {
-+    return await paymentGateway.refund(paymentId, amount);
++    const refund = await paymentGateway.refund(paymentId, amount);
++    return refundRepository.create({
++      orderId,
++      paymentId,
++      refundId: refund.id,
++      amount,
++    });
 +  } catch (error) {
 +    if (!(error instanceof GatewayTimeoutError)) throw error;
-+    return paymentGateway.refund(paymentId, amount);
++
++    const refund = await paymentGateway.refund(paymentId, amount);
++    return refundRepository.create({
++      orderId,
++      paymentId,
++      refundId: refund.id,
++      amount,
++    });
 +  }
 +}`,
 } satisfies ReportInput;
 
 export const API_CONTRACT_SAMPLE = {
-  title: "Return retry details for unavailable exports",
+  title: "Stabilize unavailable export responses",
   repository: "acme/reporting-api",
   technology: "Python / FastAPI",
   diff: `diff --git a/app/api/exports.py b/app/api/exports.py
 --- a/app/api/exports.py
 +++ b/app/api/exports.py
-@@ -12,3 +12,8 @@
-+return JSONResponse(
-+    status_code=503,
-+    content={"error_code": "export_unavailable", "retryable": True},
-+)
+@@ -12,3 +12,12 @@
++try:
++    export = export_service.start_export(request.account_id)
++except ExportProviderUnavailable:
++    return JSONResponse(
++        status_code=503,
++        content={
++            "error_code": "export_unavailable",
++            "retryable": True,
++        },
++    )
++return ExportResponse(id=export.id)
 
 diff --git a/tests/test_exports_api.py b/tests/test_exports_api.py
 --- a/tests/test_exports_api.py
@@ -149,18 +185,22 @@ diff --git a/tests/test_exports_api.py b/tests/test_exports_api.py
 } satisfies ReportInput;
 
 export const LOGGING_PRIVACY_SAMPLE = {
-  title: "Add session refresh diagnostics",
+  title: "Add structured diagnostics for session refresh",
   repository: "acme/identity-api",
   technology: "Python / FastAPI",
   diff: `diff --git a/app/services/session_service.py b/app/services/session_service.py
 --- a/app/services/session_service.py
 +++ b/app/services/session_service.py
-@@ -20,3 +20,8 @@
-+logger.info("session refreshed", extra={
-+    "user_id": user_id,
-+    "account_id": account_id,
-+    "token": session_token,
-+})
+@@ -20,3 +20,14 @@
++def refresh_session(user_id: str, account_id: str, session_token: str):
++    session = session_store.refresh(session_token)
++    logger.info("session refreshed", extra={
++        "user_id": user_id,
++        "account_id": account_id,
++        "token": session_token,
++        "session_id": session.id,
++    })
++    return session
 
 diff --git a/tests/test_session_service.py b/tests/test_session_service.py
 --- a/tests/test_session_service.py
@@ -172,7 +212,7 @@ diff --git a/tests/test_session_service.py b/tests/test_session_service.py
 } satisfies ReportInput;
 
 export const FRONTEND_ANALYTICS_SAMPLE = {
-  title: "Add typed sendGAEvent helper",
+  title: "Add typed analytics event helper",
   repository: "vercel/next.js",
   technology: "TypeScript / Next.js",
   diff: `diff --git a/packages/next/src/client/analytics/send-ga-event.ts b/packages/next/src/client/analytics/send-ga-event.ts

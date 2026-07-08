@@ -810,3 +810,19 @@ Manual tests:
 6. Confirm GitHub Action/private repo claims are marked as planned and do not imply current CI, GitHub App or private repo support.
 7. Confirm there are no fake enterprise or compliance claims such as SOC 2, SSO, RBAC, audit logs or enterprise admin being available today.
 8. Confirm the document says Lintel does not replace human review, CI, tests or security review and does not catch every bug.
+
+## V3.5 engineer experience review and workspace polish
+
+Manual tests:
+
+1. Start at `/` and confirm the landing page clearly says Lintel helps decide what is ready to merge.
+2. Confirm landing navigation links to **Risk inbox**, **Security model** and **Check a pull request**.
+3. Confirm landing trust cues mention local-first workspace and raw-diff-free history.
+4. Open `/workspace` and confirm it reads as a risk inbox, not a generic dashboard.
+5. Confirm workspace navigation includes **Security model** and the privacy copy still says raw diffs are not saved in history.
+6. Open `/new` and confirm the intro describes a merge-readiness checklist: recommendation, risks, missing tests, reviewer focus and conditions before merge.
+7. Confirm `/new` links to the security model and keeps the model-assisted privacy copy honest.
+8. Open `/report` and confirm the decision panel makes conditions, missing tests and findings easier to scan at a glance.
+9. Confirm report actions still work: Copy conditions, Copy summary, Download Markdown, Back to workspace and Check another pull request.
+10. Confirm `/docs/security-model.md` resolves from app links.
+11. Search UI, copied output, downloaded Markdown, session storage and local history for `diff --git`, `@@`, raw hunks, unique diff markers and secrets; none should appear.

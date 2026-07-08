@@ -7,7 +7,7 @@ const workflow = [
   ],
   [
     "Lintel analyses it",
-    "Deterministic checks read the diff for failure modes, missing coverage, contract stability and sensitive-data handling. Model-assisted analysis can add synthesis on top while preserving the baseline findings.",
+    "Deterministic checks read the diff for failure modes, missing coverage, contract stability and sensitive-data handling. Model-assisted analysis can add synthesis on top while preserving baseline findings.",
   ],
   [
     "Get the decision",
@@ -16,9 +16,9 @@ const workflow = [
 ] as const;
 
 const capabilities = [
-  ["Conditions before merge", "A concrete, numbered list of what must be proven before this change ships. Paste it straight into the PR thread."],
+  ["Conditions before merge", "A concrete list of what must be proven before this change ships. Paste it straight into the PR thread."],
   ["Operational readiness", "Failure modes, detection signals, recovery paths and customer impact, assessed before merge."],
-  ["Risk-specific test plan", "Not “add more tests.” Named test cases for the exact failure paths the change introduces, like proving a retry cannot duplicate a redemption."],
+  ["Risk-specific test plan", "Not \"add more tests.\" Named test cases for the exact failure paths the change introduces, like proving a retry cannot duplicate a redemption."],
   ["Reviewer focus", "Routes attention to the disciplines that matter for this change, such as backend reliability, API contract or security, with one primary focus."],
   ["Evidence and provenance", "Findings include concise evidence and provenance labels such as Rule detected or Model assisted."],
   ["Local-first workspace", "Reports live on your machine. Raw diffs are not saved in local report history. No account is required to run a report."],
@@ -36,11 +36,12 @@ export default function Home() {
     <main className="landing-page">
       <header className="landing-nav">
         <Link className="landing-brand" href="/" aria-label="Lintel home">
-          <span className="brand-mark" aria-hidden="true">◇</span>
+          <span className="brand-mark" aria-hidden="true" />
           <span>Lintel</span>
         </Link>
         <div className="landing-nav-actions">
-          <Link href="/report">See a full report</Link>
+          <Link href="/workspace">Risk inbox</Link>
+          <Link href="/docs/security-model.md">Security model</Link>
           <Link className="landing-button landing-button--small" href="/new">Check a pull request</Link>
         </div>
       </header>
@@ -48,11 +49,16 @@ export default function Home() {
       <section className="landing-hero landing-hero--decision">
         <div className="landing-hero-copy">
           <span className="eyebrow">MERGE READINESS FOR PULL REQUESTS</span>
-          <h1>Decide what’s ready to merge.</h1>
+          <h1>Decide what is ready to merge.</h1>
           <p>Lintel analyses a pull request and produces a merge-readiness report: a clear recommendation, the risks with evidence, the tests that are missing, and the conditions to meet before merge. Clean changes get approved. Risky ones get a checklist, not a lecture.</p>
           <div className="landing-actions">
-            <Link className="landing-button" href="/new">Check a pull request <span aria-hidden="true">→</span></Link>
+            <Link className="landing-button" href="/new">Check a pull request <span aria-hidden="true">-&gt;</span></Link>
             <Link className="landing-button landing-button--secondary" href="/report">See a full report</Link>
+          </div>
+          <div className="landing-trust-links" aria-label="Trust and privacy notes">
+            <span>Local-first workspace</span>
+            <span>Raw-diff-free history</span>
+            <Link href="/docs/security-model.md">Read security model</Link>
           </div>
         </div>
         <article className="landing-hero-report" aria-label="Example TESTS_REQUIRED merge-readiness report">
@@ -90,23 +96,23 @@ export default function Home() {
             <div className="landing-output-verdict"><strong>APPROVE</strong><span>Low risk</span></div>
             <h3>Format display names consistently</h3>
             <code>acme/profile-api</code>
-            <p className="landing-output-metrics">0 findings · 0 missing tests · No conditions before merge</p>
-            <blockquote>“Formatting utility with matching tests. Nothing to block on.”</blockquote>
+            <p className="landing-output-metrics">0 findings / 0 missing tests / No conditions before merge</p>
+            <blockquote>&quot;Formatting utility with matching tests. Nothing to block on.&quot;</blockquote>
           </article>
           <article className="landing-output-card landing-output-card--tests">
             <div className="landing-output-verdict"><strong>TESTS REQUIRED</strong><span>High risk</span></div>
             <h3>Add fallback handling for failed discount-code retrieval</h3>
             <code>acme/redemption-api</code>
             <p className="landing-output-risk"><span>Top risk</span>Retry behaviour may duplicate customer-facing side effects</p>
-            <p className="landing-output-metrics">7 missing tests · 5 conditions before merge</p>
-            <blockquote>“Do not approve until repeated retries are proven safe.”</blockquote>
+            <p className="landing-output-metrics">7 missing tests / 5 conditions before merge</p>
+            <blockquote>&quot;Do not approve until repeated retries are proven safe.&quot;</blockquote>
           </article>
         </div>
         <p className="landing-output-caption">A tool that only ever raises flags is not judging readiness. Lintel is built to tell the difference.</p>
       </section>
 
       <section className="landing-context-band" aria-label="Why Lintel exists">
-        <p>Coding agents raised PR volume. Review confidence did not scale with it. Lintel is the decision layer in between.</p>
+        <p>Agents create code. Lintel decides what is ready to merge.</p>
       </section>
 
       <section className="landing-section" aria-labelledby="how-lintel-works">
@@ -162,7 +168,7 @@ export default function Home() {
         <dl className="landing-evidence-stats">
           {evaluationStats.map(([value, label]) => <div key={label}><dt>{value}</dt><dd>{label}</dd></div>)}
         </dl>
-        <a className="landing-text-link" href="/docs/evaluation-results.md">Read the evaluation results <span aria-hidden="true">→</span></a>
+        <a className="landing-text-link" href="/docs/evaluation-results.md">Read the evaluation results <span aria-hidden="true">-&gt;</span></a>
       </section>
 
       <section className="landing-limitations" id="scope">
@@ -172,14 +178,15 @@ export default function Home() {
         </div>
         <div className="landing-limitations-copy">
           <p>Lintel is in public pilot preparation. It currently supports pasted diffs, public GitHub PR imports and local report history. It does not support private repositories, a GitHub App, CI integration, team dashboards, authentication or billing yet.</p>
-          <p>Reports are local to your browser. Analysis quality is strongest on backend service changes today, and frontend-specific reviewer routing is still being refined. Pilot feedback will shape the roadmap.</p>
+          <p>Reports are local to your browser. Raw diffs are not saved in local report history. The planned private-repo path is a GitHub Action that runs inside customer CI.</p>
+          <p><Link href="/docs/security-model.md">Read the security model</Link> for current privacy guarantees, model-assisted mode and the planned GitHub Action direction.</p>
         </div>
       </section>
 
       <section className="landing-final-cta">
         <div><span className="eyebrow">CHECK THE NEXT PR</span><h2>Run it on a pull request you are unsure about.</h2></div>
         <div className="landing-actions">
-          <Link className="landing-button landing-button--light" href="/new">Check a pull request <span aria-hidden="true">→</span></Link>
+          <Link className="landing-button landing-button--light" href="/new">Check a pull request <span aria-hidden="true">-&gt;</span></Link>
           <Link className="landing-button landing-button--ghost" href="/report">See a full report</Link>
         </div>
       </section>

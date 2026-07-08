@@ -352,6 +352,7 @@ export default function ReportPage() {
           <a className="nav-item" href="/new">New report</a>
           <a className={`nav-item${source !== "demo" ? " nav-item--active" : ""}`} href="/workspace">Risk inbox</a>
           <a className={`nav-item${source === "demo" ? " nav-item--active" : ""}`} href="/report?demo=1">Demo report</a>
+          <a className="nav-item" href="/docs/security-model.md">Security model</a>
         </nav>
         <nav className="side-nav report-side-nav-legacy" aria-label="Legacy navigation">
           <a className="nav-item" href="/new"><span aria-hidden="true">＋</span>New report</a>
@@ -621,6 +622,12 @@ export default function ReportPage() {
               <span>Score detail: {verdict.riskScore}/100</span>
             </div>
 
+            <dl className="report-decision-panel-snapshot" aria-label="Report at a glance">
+              <div><dt>{displayedConditions.length}</dt><dd>conditions</dd></div>
+              <div><dt>{report.missingTests.length}</dt><dd>missing tests</dd></div>
+              <div><dt>{report.findings.length}</dt><dd>findings</dd></div>
+            </dl>
+
             <dl className="report-decision-panel-meta">
               <div><dt>Profile</dt><dd>{reviewProfileLabel(pr.reviewProfile)}</dd></div>
               <div><dt>Input</dt><dd>{decisionPanelInputLabel(pr.branch)}</dd></div>
@@ -662,6 +669,7 @@ export default function ReportPage() {
               </button>
               <a href="/workspace">Back to workspace</a>
               <a href="/new">Check another pull request</a>
+              <a href="/docs/security-model.md">Security model</a>
             </div>
           </aside>
         </div>

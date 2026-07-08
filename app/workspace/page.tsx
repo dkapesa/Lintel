@@ -359,9 +359,9 @@ function WorkspacePreviewPanel({
   if (!group) {
     return (
       <aside className="workspace-preview workspace-preview--empty" aria-label="Selected report preview">
-        <span className="workspace-preview-kicker">Selected report</span>
+        <span className="workspace-preview-kicker">Decision preview</span>
         <h2>No report selected</h2>
-        <p>Select a report row to preview its merge-readiness decision without leaving the Risk Inbox.</p>
+        <p>Select a report row to preview its merge-readiness decision without leaving the risk inbox.</p>
       </aside>
     );
   }
@@ -379,7 +379,7 @@ function WorkspacePreviewPanel({
   return (
     <aside className="workspace-preview" aria-label="Selected report preview">
       <div className="workspace-preview-header">
-        <span className="workspace-preview-kicker">Selected report</span>
+        <span className="workspace-preview-kicker">Decision preview</span>
         <span className={`workspace-recommendation workspace-recommendation--${entry.metadata.recommendation.toLowerCase()}`}>
           {recommendationLabel(entry.metadata.recommendation)}
         </span>
@@ -604,10 +604,11 @@ export default function ReportsWorkspacePage() {
           <Link className="nav-item workspace-nav-item" href="/report">Reports</Link>
           <span className="workspace-nav-label">Evidence</span>
           <Link className="nav-item workspace-nav-item" href="/docs/evaluation-results.md">Evaluation</Link>
+          <Link className="nav-item workspace-nav-item" href="/docs/security-model.md">Security model</Link>
         </nav>
         <div className="workspace-sidebar-panel">
-          <span>Local-first workspace</span>
-          <p>Reports stay on this device. Raw diffs are not saved in local history.</p>
+          <span>Risk inbox</span>
+          <p>Track merge conditions, reviewer focus and PR readiness locally. Raw diffs are not saved in history.</p>
         </div>
         <div className="sidebar-footer">
           <div className="workspace-avatar">N</div>
@@ -620,8 +621,8 @@ export default function ReportsWorkspacePage() {
           <div className="workspace-header-copy">
             <span className="eyebrow">LOCAL MERGE READINESS</span>
             <h1>Risk inbox</h1>
-            <p>Track local pull request reports by readiness state. Reports stay on this device and raw diffs are not saved in local history.</p>
-            <span className="workspace-header-note">Stored locally on this device</span>
+            <p>Review what is blocked, waiting on tests, or ready to merge. Reports stay on this device and raw diffs are not saved in local history.</p>
+            <span className="workspace-header-note">Local-first / raw-diff-free history / <Link href="/docs/security-model.md">Security model</Link></span>
           </div>
           <div className="workspace-header-actions">
             {history.length > 0 && <button type="button" onClick={clearHistory}>Clear history</button>}
@@ -656,8 +657,8 @@ export default function ReportsWorkspacePage() {
             <div className="workspace-split-view">
               <div className="workspace-list-pane">
                 <WorkspaceSection
-                  title="Needs attention"
-                  description="Reports with tests required, focused review, or blocking risk."
+              title="Needs attention"
+              description="Reports with tests required, focused review, unresolved conditions or blocking risk."
                   groups={needsAttention}
                   emptyCopy="No blocked or attention-required PRs match this filter."
                   copyFeedback={copyFeedback}

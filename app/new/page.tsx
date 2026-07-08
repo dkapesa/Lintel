@@ -234,8 +234,8 @@ export default function NewReportPage() {
           <span>Lintel</span>
         </Link>
         <nav className="new-topbar-links" aria-label="Workspace navigation">
-          <Link href="/workspace">Reports workspace</Link>
-          <span>Local prototype</span>
+          <Link href="/workspace">Risk inbox</Link>
+          <Link href="/docs/security-model.md">Security model</Link>
         </nav>
       </header>
 
@@ -262,7 +262,8 @@ export default function NewReportPage() {
             </label>
           </div>
           <h1>Check merge readiness</h1>
-          <p>Paste the PR context and diff. Lintel will analyse the change and produce a merge-readiness report.</p>
+          <p>Paste the PR context and diff. Lintel turns it into a merge-readiness checklist: recommendation, risks, missing tests, reviewer focus and conditions before merge.</p>
+          <p className="new-trust-note">Local-first history stores generated reports, not raw diffs. <Link href="/docs/security-model.md">Read the security model.</Link></p>
         </section>
 
         <form className="report-form" onSubmit={handleSubmit}>
@@ -325,14 +326,14 @@ export default function NewReportPage() {
             </label>
             <label className="form-field form-field--wide">
               <span>PR diff</span>
-              <textarea name="diff" required rows={16} value={diff} onChange={(event) => setDiff(event.target.value)} spellCheck={false} placeholder={"diff --git a/app/service.py b/app/service.py\n--- a/app/service.py\n+++ b/app/service.py\n@@ -12,6 +12,10 @@"} />
+              <textarea name="diff" required rows={16} value={diff} onChange={(event) => setDiff(event.target.value)} spellCheck={false} placeholder="Paste the pull request diff here. Raw diffs are analysed transiently and are not saved in local report history." />
             </label>
           </div>
 
           {error && <p className="form-error" role="alert">{error}</p>}
 
           <div className="form-footer">
-            <p>Your diff is sent for analysis when AI generation is enabled. Lintel does not store the raw diff.</p>
+            <p>Your diff is sent for analysis when model-assisted generation is enabled. Lintel does not store the raw diff in local report history.</p>
             <button className="generate-button" type="submit" disabled={isGenerating || isFetchingDiff}>
               {isGenerating ? "Generating…" : "Generate Report"}<span aria-hidden="true">→</span>
             </button>

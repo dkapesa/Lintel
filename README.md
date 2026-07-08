@@ -112,6 +112,7 @@ Useful pilot docs:
 
 - [Evaluation results](docs/evaluation-results.md)
 - [Public pilot package](docs/public-pilot.md)
+- [Security model](docs/security-model.md)
 - [Distribution assets](docs/distribution-assets.md)
 
 ## Current limitations
@@ -213,6 +214,7 @@ docs/
 - [Evaluation results](docs/evaluation-results.md)
 - [Manual evaluation](docs/manual-evaluation.md)
 - [Public pilot package](docs/public-pilot.md)
+- [Security model](docs/security-model.md)
 - [Distribution assets](docs/distribution-assets.md)
 - [Screenshot checklist](docs/screenshot-checklist.md)
 

@@ -71,6 +71,8 @@ Reports support engineering judgment. They do not catch all bugs, replace senior
 
 Planned GitHub Action direction: the safer private-repo path is a CLI-first Action that runs inside the customer's own GitHub Actions runner. That keeps code inside customer CI before any GitHub App or hosted private import exists.
 
+For the current privacy model and planned GitHub Action security direction, see [security-model.md](security-model.md).
+
 ## Pilot offers
 
 ### A. Free structured pilot

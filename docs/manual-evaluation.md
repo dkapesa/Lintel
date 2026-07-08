@@ -797,3 +797,16 @@ Manual tests:
 9. Confirm findings still show provenance labels such as **Rule detected** or **Model assisted**.
 10. Confirm copied/downloaded Markdown still follows the V2 report hierarchy.
 11. Search the report UI, decision panel, copied conditions, copied summary, downloaded Markdown, session storage and local history for `diff --git`, `@@`, raw hunks, unique diff markers and secrets; none should appear.
+
+## V3.4 security model documentation
+
+Manual tests:
+
+1. Confirm `docs/security-model.md` exists.
+2. Confirm README links to `docs/security-model.md`.
+3. Confirm `docs/public-pilot.md` links to `security-model.md`.
+4. Confirm current privacy claims match the product: raw diffs are not saved in local report history, copied summaries/conditions and Markdown exports should remain raw-diff-free, and browser storage is local-first.
+5. Confirm model-assisted mode is described honestly: provider use depends on configuration and no provider retention guarantees are claimed.
+6. Confirm GitHub Action/private repo claims are marked as planned and do not imply current CI, GitHub App or private repo support.
+7. Confirm there are no fake enterprise or compliance claims such as SOC 2, SSO, RBAC, audit logs or enterprise admin being available today.
+8. Confirm the document says Lintel does not replace human review, CI, tests or security review and does not catch every bug.

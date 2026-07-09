@@ -876,3 +876,18 @@ Manual tests:
 10. Open `/slack-handoff` and confirm the concept copy includes owner cues while still saying it is copy/export-only.
 11. Confirm ownership remains local-only: no auth, users, notifications, Slack API, GitHub posting or backend collaboration.
 12. Search report UI, workspace, copied/exported text and `localStorage` for `diff --git`, `@@`, raw hunks, unique diff markers and secrets; none should appear.
+
+## V4.14 readiness score breakdown
+
+Manual tests:
+
+1. Open `/report` and confirm the Overview tab includes **Why this score looks the way it does**.
+2. Confirm the summary shows current score, strongest positive signal, biggest score drag and next readiness action.
+3. Confirm the component cards include: Test coverage, Operational readiness, Security/privacy, Blast radius, Merge conditions, Evidence quality and Reviewer confidence.
+4. Confirm each component shows a status, explanation, improvement action and related evidence.
+5. Generate or open a risky provider/retry report and confirm missing tests, open merge conditions, operational attention and affected surfaces create visible score drags.
+6. Generate or open a clean `APPROVE` report and confirm the score breakdown stays calm, with no invented blockers.
+7. Change condition progress and owner locally; confirm the Merge conditions and Reviewer confidence components reflect current local state.
+8. Confirm the section clearly says the breakdown is heuristic and not production-calibrated.
+9. Resize to mobile width and confirm the summary/cards stack cleanly.
+10. Search the score breakdown UI for `diff --git`, `@@`, raw hunks, unique diff markers and secrets; none should appear.

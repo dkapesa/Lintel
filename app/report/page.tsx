@@ -58,6 +58,20 @@ type AffectedSurface = {
   evidence: string;
   action: string;
 };
+type ScoreComponentStatus = "Strong" | "Watch" | "Drag";
+type ScoreBreakdownComponent = {
+  label: string;
+  status: ScoreComponentStatus;
+  explanation: string;
+  improvesWith: string;
+  relatedEvidence: string;
+};
+type ScoreBreakdown = {
+  strongestPositiveSignal: string;
+  biggestScoreDrag: string;
+  nextAction: string;
+  components: ScoreBreakdownComponent[];
+};
 
 type StoredReport = {
   report: Report;
@@ -733,6 +747,145 @@ function SourceBadge({ source }: { source: ReportSource }) {
   return <span className={`source-badge source-badge--${source}`}>{sourceLabels[source]}</span>;
 }
 
+function firstOrFallback(items: string[], fallback: string) {
+  return items.find((item) => item.trim().length > 0) ?? fallback;
+}
+
+function componentRank(status: ScoreComponentStatus) {
+  if (status === "Drag") return 3;
+  if (status === "Watch") return 2;
+  return 1;
+}
+
+function buildReadinessScoreBreakdown({
+  report,
+  conditions,
+  evidenceLedger,
+  affectedSurfaces,
+  openConditionCount,
+  ownerLabel,
+}: {
+  report: Report;
+  conditions: string[];
+  evidenceLedger: ReturnType<typeof buildEvidenceLedger>;
+  affectedSurfaces: AffectedSurface[];
+  openConditionCount: number;
+  ownerLabel: string;
+}): ScoreBreakdown {
+  const securityFinding = report.findings.find((finding) => finding.category === "Security");
+  const securityAttention = report.reviews.security.status === "ATTENTION" || Boolean(securityFinding);
+  const blockerSurfaceCount = affectedSurfaces.filter((surface) => surface.status === "Blocker").length;
+  const attentionSurfaceCount = affectedSurfaces.filter((surface) => surface.status === "Attention").length;
+  const watchSurfaceCount = affectedSurfaces.filter((surface) => surface.status === "Watch").length;
+  const missingEvidenceCount = evidenceLedger.missing.length;
+  const hasAssignedOwner = !ownerLabel.startsWith("Suggested:") && ownerLabel !== "Unassigned";
+
+  const components: ScoreBreakdownComponent[] = [
+    {
+      label: "Test coverage",
+      status: report.missingTests.length > 0 ? "Drag" : report.suggestedTests.length > 0 ? "Watch" : "Strong",
+      explanation: report.missingTests.length > 0
+        ? `${report.missingTests.length} missing coverage ${report.missingTests.length === 1 ? "gap is" : "gaps are"} still part of the merge decision.`
+        : report.suggestedTests.length > 0
+          ? `${report.suggestedTests.length} suggested tests remain useful before merge.`
+          : "No missing test gaps are present in this report.",
+      improvesWith: report.missingTests.length > 0
+        ? "Add the missing focused tests and regenerate or re-check the report."
+        : report.suggestedTests.length > 0
+          ? "Add or consciously accept the suggested tests based on review judgment."
+          : "Keep focused tests passing through CI.",
+      relatedEvidence: firstOrFallback(report.missingTests, report.suggestedTests[0]?.title ?? "No missing test evidence detected."),
+    },
+    {
+      label: "Operational readiness",
+      status: report.operationalReadiness?.status === "ATTENTION" ? "Drag" : report.operationalReadiness ? "Strong" : "Watch",
+      explanation: report.operationalReadiness
+        ? report.operationalReadiness.summary
+        : "Operational readiness was not assessed on this legacy report.",
+      improvesWith: report.operationalReadiness?.status === "ATTENTION"
+        ? "Document or verify detection, recovery and rollback paths for the risky behavior."
+        : "Keep operational assumptions explicit during final review.",
+      relatedEvidence: report.operationalReadiness
+        ? firstOrFallback([
+          ...report.operationalReadiness.observabilityGaps,
+          ...report.operationalReadiness.recoveryOrRollback,
+          ...report.operationalReadiness.failureModes,
+        ], "No operational gap detected.")
+        : "Regenerate the report to assess operational readiness.",
+    },
+    {
+      label: "Security/privacy",
+      status: securityAttention ? "Drag" : "Strong",
+      explanation: securityAttention
+        ? report.reviews.security.summary
+        : "No security/privacy attention state is present in this report.",
+      improvesWith: securityAttention
+        ? "Confirm sensitive data, permissions, identifiers and logging are safe before merge."
+        : "Keep normal security review and CI checks in place.",
+      relatedEvidence: securityFinding?.title ?? firstOrFallback(report.reviews.security.points, "No security/privacy finding detected."),
+    },
+    {
+      label: "Blast radius",
+      status: blockerSurfaceCount > 0 ? "Drag" : attentionSurfaceCount > 0 || watchSurfaceCount > 2 ? "Watch" : "Strong",
+      explanation: affectedSurfaces.length > 0
+        ? `${affectedSurfaces.length} affected ${affectedSurfaces.length === 1 ? "surface is" : "surfaces are"} identified; ${blockerSurfaceCount} blocker and ${attentionSurfaceCount} attention surfaces.`
+        : "No affected surface beyond normal review was identified.",
+      improvesWith: blockerSurfaceCount > 0 || attentionSurfaceCount > 0
+        ? "Resolve blocker or attention surfaces and confirm the primary review area."
+        : "Keep review focused on the listed affected surfaces.",
+      relatedEvidence: affectedSurfaces[0]?.evidence ?? "No affected surface evidence detected.",
+    },
+    {
+      label: "Merge conditions",
+      status: openConditionCount > 0 ? "Drag" : conditions.length > 0 ? "Watch" : "Strong",
+      explanation: openConditionCount > 0
+        ? `${openConditionCount} ${openConditionCount === 1 ? "condition remains" : "conditions remain"} open before this report is ready to clear.`
+        : conditions.length > 0
+          ? "All conditions are locally marked cleared; the recommendation is not changed automatically."
+          : "No merge conditions are present.",
+      improvesWith: openConditionCount > 0
+        ? "Clear or explicitly resolve the remaining merge conditions."
+        : "Complete normal human review and CI checks.",
+      relatedEvidence: firstOrFallback(conditions, "No merge conditions detected."),
+    },
+    {
+      label: "Evidence quality",
+      status: missingEvidenceCount > 2 ? "Drag" : missingEvidenceCount > 0 ? "Watch" : "Strong",
+      explanation: missingEvidenceCount > 0
+        ? `${missingEvidenceCount} missing evidence ${missingEvidenceCount === 1 ? "item needs" : "items need"} confirmation in the evidence ledger.`
+        : "Evidence ledger has no missing evidence items.",
+      improvesWith: missingEvidenceCount > 0
+        ? "Add the missing proof through tests, review confirmation or documented operational controls."
+        : "Keep evidence linked to findings, tests and conditions.",
+      relatedEvidence: evidenceLedger.missing[0]?.detail ?? evidenceLedger.found[0]?.detail ?? "No evidence ledger item available.",
+    },
+    {
+      label: "Reviewer confidence",
+      status: report.verdict.confidence === "LOW" ? "Drag" : hasAssignedOwner || report.verdict.confidence === "HIGH" ? "Strong" : "Watch",
+      explanation: hasAssignedOwner
+        ? `${ownerLabel} is selected as the local owner cue. Report confidence is ${report.verdict.confidence}.`
+        : `Report confidence is ${report.verdict.confidence}; owner routing is still a local cue.`,
+      improvesWith: hasAssignedOwner
+        ? "Have the selected owner complete the focused review and update local state."
+        : "Assign a local owner cue and complete the focused review path.",
+      relatedEvidence: ownerLabel,
+    },
+  ];
+
+  const strongestPositiveSignal = components.find((component) => component.status === "Strong")?.label ?? "No strong positive signal detected";
+  const biggestScoreDrag = [...components].sort((a, b) => componentRank(b.status) - componentRank(a.status))[0];
+  const nextAction = components.find((component) => component.status === "Drag")?.improvesWith
+    ?? components.find((component) => component.status === "Watch")?.improvesWith
+    ?? "Complete normal human review and CI checks.";
+
+  return {
+    strongestPositiveSignal,
+    biggestScoreDrag: biggestScoreDrag ? `${biggestScoreDrag.label}: ${biggestScoreDrag.explanation}` : "No major score drag detected.",
+    nextAction,
+    components,
+  };
+}
+
 function EvidenceLedgerCard({ item }: { item: EvidenceLedgerItem }) {
   return (
     <article className="evidence-ledger-card">
@@ -864,6 +1017,14 @@ export default function ReportPage() {
   });
   const evidenceLedger = buildEvidenceLedger(report, displayedConditions, supportedReviewerFocus);
   const affectedSurfaces = buildAffectedSurfaces(report, displayedConditions, supportedReviewerFocus);
+  const readinessScoreBreakdown = buildReadinessScoreBreakdown({
+    report,
+    conditions: displayedConditions,
+    evidenceLedger,
+    affectedSurfaces,
+    openConditionCount,
+    ownerLabel: displayedOwner,
+  });
   const blockerSurfaceCount = affectedSurfaces.filter((surface) => surface.status === "Blocker").length;
   const confirmationSurfaceCount = affectedSurfaces.filter((surface) => surface.status === "Attention" || surface.status === "Watch").length;
   const primaryAffectedSurface = affectedSurfaces[0]?.name ?? "No affected surface detected";
@@ -1166,6 +1327,57 @@ export default function ReportPage() {
               <div className="section-heading"><div><span className="card-kicker">EXECUTIVE SUMMARY</span><h2>{recommendationHeadings[verdict.recommendation]}</h2></div><span className="confidence">Confidence: {verdict.confidence}</span></div>
               <p>{verdict.summary}</p>
             </article>
+          </section>
+
+          <section className="section-block report-score-breakdown" aria-labelledby="score-breakdown-title">
+            <div className="section-heading">
+              <div>
+                <span className="card-kicker">READINESS SCORE</span>
+                <h2 id="score-breakdown-title">Why this score looks the way it does</h2>
+              </div>
+              <span className="section-count">Heuristic / not production-calibrated</span>
+            </div>
+
+            <div className="score-breakdown-summary" aria-label="Readiness score summary">
+              <article>
+                <span>Current score</span>
+                <strong>{verdict.riskLevel} · {verdict.riskScore}/100</strong>
+              </article>
+              <article>
+                <span>Strongest positive signal</span>
+                <strong>{readinessScoreBreakdown.strongestPositiveSignal}</strong>
+              </article>
+              <article>
+                <span>Biggest score drag</span>
+                <strong>{readinessScoreBreakdown.biggestScoreDrag}</strong>
+              </article>
+              <article>
+                <span>Next readiness action</span>
+                <strong>{readinessScoreBreakdown.nextAction}</strong>
+              </article>
+            </div>
+
+            <div className="score-breakdown-components">
+              {readinessScoreBreakdown.components.map((component) => (
+                <article className={`score-component score-component--${component.status.toLowerCase()}`} key={component.label}>
+                  <div className="score-component-header">
+                    <h3>{component.label}</h3>
+                    <span>{component.status}</span>
+                  </div>
+                  <p>{component.explanation}</p>
+                  <dl>
+                    <div>
+                      <dt>Improves with</dt>
+                      <dd>{component.improvesWith}</dd>
+                    </div>
+                    <div>
+                      <dt>Related evidence</dt>
+                      <dd>{component.relatedEvidence}</dd>
+                    </div>
+                  </dl>
+                </article>
+              ))}
+            </div>
           </section>
 
           <section className="merge-conditions" aria-labelledby="merge-conditions-title">

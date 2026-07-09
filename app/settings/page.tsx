@@ -74,6 +74,7 @@ export default function SettingsPage() {
           <span className="workspace-nav-label">Workspace</span>
           <Link className="nav-item workspace-nav-item" href="/new">New report</Link>
           <Link className="nav-item workspace-nav-item" href="/workspace">Risk inbox</Link>
+          <Link className="nav-item workspace-nav-item" href="/review-operations">Review operations</Link>
           <Link className="nav-item workspace-nav-item" href="/report">Reports</Link>
           <span className="workspace-nav-label">System</span>
           <Link className="nav-item workspace-nav-item nav-item--active" href="/settings" aria-current="page">Analysis settings</Link>

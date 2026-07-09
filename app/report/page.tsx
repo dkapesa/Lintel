@@ -705,6 +705,7 @@ export default function ReportPage() {
         <nav className="side-nav report-side-nav-clean" aria-label="Primary navigation">
           <a className="nav-item" href="/new">New report</a>
           <a className={`nav-item${source !== "demo" ? " nav-item--active" : ""}`} href="/workspace">Risk inbox</a>
+          <a className="nav-item" href="/review-operations">Review operations</a>
           <a className={`nav-item${source === "demo" ? " nav-item--active" : ""}`} href="/report?demo=1">Demo report</a>
           <a className="nav-item" href="/settings">Analysis settings</a>
           <a className="nav-item" href="/github-action">GitHub Action</a>

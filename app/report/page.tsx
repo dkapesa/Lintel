@@ -8,6 +8,7 @@ import {
   reportConditions,
   writeConditionProgress,
 } from "../../lib/condition-progress";
+import { mergeSummaryToMarkdown } from "../../lib/merge-summary";
 import { GENERATED_REPORT_STORAGE_KEY } from "../../lib/report-generator";
 import { conditionsToMarkdown, findingProvenanceLabel, reportMarkdownFilename, reportToMarkdown, type ReportSourceLabel } from "../../lib/report-markdown";
 import type { FindingSeverity, Recommendation, Report, ReviewArea, RiskLevel } from "../../lib/mock-report";
@@ -58,6 +59,12 @@ const downloadLabels: Record<DownloadState, string> = {
 const copyConditionsLabels: Record<CopyState, string> = {
   idle: "Copy conditions",
   copied: "Conditions copied",
+  failed: "Copy failed",
+};
+
+const copyMergeSummaryLabels: Record<CopyState, string> = {
+  idle: "Copy PR comment",
+  copied: "PR comment copied",
   failed: "Copy failed",
 };
 
@@ -344,13 +351,16 @@ export default function ReportPage() {
   });
   const [copyState, setCopyState] = useState<CopyState>("idle");
   const [conditionsCopyState, setConditionsCopyState] = useState<CopyState>("idle");
+  const [mergeSummaryCopyState, setMergeSummaryCopyState] = useState<CopyState>("idle");
   const [downloadState, setDownloadState] = useState<DownloadState>("idle");
   const [clearedConditionKeys, setClearedConditionKeys] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<ReportTab>("overview");
   const [selectedFindingIndex, setSelectedFindingIndex] = useState<number | null>(null);
+  const [includeLocalNoteInMergeSummary, setIncludeLocalNoteInMergeSummary] = useState(false);
   const [reviewState, setReviewState] = useState<ReportReviewState>(() => defaultReviewState(demoReport));
   const copyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const conditionsCopyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mergeSummaryCopyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const downloadResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -382,6 +392,7 @@ export default function ReportPage() {
   useEffect(() => () => {
     if (copyResetTimer.current) clearTimeout(copyResetTimer.current);
     if (conditionsCopyResetTimer.current) clearTimeout(conditionsCopyResetTimer.current);
+    if (mergeSummaryCopyResetTimer.current) clearTimeout(mergeSummaryCopyResetTimer.current);
     if (downloadResetTimer.current) clearTimeout(downloadResetTimer.current);
   }, []);
 
@@ -415,6 +426,11 @@ export default function ReportPage() {
       ? `${supportedReviewerFocus.length} ${supportedReviewerFocus.length === 1 ? "area" : "areas"} / ${supportedReviewerFocus[0].area}`
       : "No specialist focus"
     : "Not assessed";
+  const mergeSummaryMarkdown = mergeSummaryToMarkdown(report, {
+    sourceLabel: sourceLabels[source],
+    reviewState,
+    includeLocalNote: includeLocalNoteInMergeSummary,
+  });
   const reportTabs: Array<{ id: ReportTab; label: string; indicator: string }> = [
     { id: "overview", label: "Overview", indicator: `${displayedConditions.length}` },
     { id: "findings", label: "Findings", indicator: `${report.findings.length}` },
@@ -497,6 +513,14 @@ export default function ReportPage() {
 
     if (conditionsCopyResetTimer.current) clearTimeout(conditionsCopyResetTimer.current);
     conditionsCopyResetTimer.current = setTimeout(() => setConditionsCopyState("idle"), 2_000);
+  }
+
+  async function handleCopyMergeSummary() {
+    const copied = await writeToClipboard(mergeSummaryMarkdown);
+    setMergeSummaryCopyState(copied ? "copied" : "failed");
+
+    if (mergeSummaryCopyResetTimer.current) clearTimeout(mergeSummaryCopyResetTimer.current);
+    mergeSummaryCopyResetTimer.current = setTimeout(() => setMergeSummaryCopyState("idle"), 2_000);
   }
 
   function handleDownloadMarkdown() {
@@ -1003,6 +1027,42 @@ export default function ReportPage() {
                 </div>
               </article>
             </div>
+
+            <div className="merge-summary-builder" aria-label="GitHub comment builder">
+              <div className="merge-summary-builder-header">
+                <div>
+                  <span className="card-kicker">PR COMMENT BUILDER</span>
+                  <h3>Merge-readiness handoff</h3>
+                  <p>Preview a concise Markdown comment you can paste into a GitHub PR. This is local/export only; Lintel does not post to GitHub.</p>
+                </div>
+                <button
+                  className={`copy-summary-button copy-summary-button--${mergeSummaryCopyState}`}
+                  type="button"
+                  onClick={handleCopyMergeSummary}
+                  aria-live="polite"
+                >
+                  {copyMergeSummaryLabels[mergeSummaryCopyState]}
+                </button>
+              </div>
+
+              <div className="merge-summary-options">
+                <span>{verdict.recommendation.replaceAll("_", " ")} · {verdict.riskLevel} risk · {reviewState.status}</span>
+                {reviewState.note.trim().length > 0 ? (
+                  <label>
+                    <input
+                      type="checkbox"
+                      checked={includeLocalNoteInMergeSummary}
+                      onChange={(event) => setIncludeLocalNoteInMergeSummary(event.target.checked)}
+                    />
+                    <span>Include local reviewer note</span>
+                  </label>
+                ) : (
+                  <span>Local reviewer note is empty.</span>
+                )}
+              </div>
+
+              <pre className="merge-summary-preview" aria-label="Generated merge-readiness Markdown preview">{mergeSummaryMarkdown}</pre>
+            </div>
           </section>
 
           <section className="final-recommendation final-recommendation--compact">
@@ -1074,6 +1134,12 @@ export default function ReportPage() {
             </section>
 
             <div className="report-decision-panel-actions">
+              <button
+                type="button"
+                onClick={() => setActiveTab("export")}
+              >
+                Build PR comment
+              </button>
               <button
                 className={`copy-conditions-button copy-conditions-button--${conditionsCopyState}`}
                 type="button"

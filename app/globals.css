@@ -217,6 +217,14 @@ button { font:inherit; }
 .report-export-grid button, .report-export-grid a { min-height:33px; padding:0 10px; border:1px solid #dce2de; border-radius:7px; display:inline-flex; align-items:center; justify-content:center; background:#fff; color:#53615b; font-size:9px; font-weight:750; cursor:pointer; text-align:center; }
 .report-export-grid button:hover, .report-export-grid a:hover { border-color:#bdc9c3; background:#f8faf8; color:#20342d; }
 .report-export-links { display:flex; flex-wrap:wrap; gap:7px; }
+.merge-summary-builder { display:grid; gap:14px; margin-top:16px; padding:20px; border:1px solid #dfe5e1; border-radius:14px; background:#fbfcfb; }
+.merge-summary-builder-header { display:flex; align-items:flex-start; justify-content:space-between; gap:18px; }
+.merge-summary-builder-header h3 { margin:5px 0 7px; color:var(--ink); font-size:18px; letter-spacing:-.035em; }
+.merge-summary-builder-header p { max-width:660px; margin:0; color:#68736d; font-size:11px; line-height:1.6; }
+.merge-summary-options { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; border:1px solid #e4e9e5; border-radius:10px; background:#fff; color:#65706b; font-size:10px; font-weight:750; }
+.merge-summary-options label { display:inline-flex; align-items:center; gap:7px; cursor:pointer; }
+.merge-summary-options input { accent-color:#315f4d; }
+.merge-summary-preview { max-height:440px; overflow:auto; margin:0; padding:16px; border:1px solid #dce3df; border-radius:12px; background:#14231d; color:#e8f0eb; font:11px/1.65 "DM Mono", ui-monospace, SFMono-Regular, Consolas, monospace; white-space:pre-wrap; overflow-wrap:anywhere; }
 .report-decision-panel { position:sticky; top:24px; display:grid; gap:15px; margin-top:54px; padding:18px; border:1px solid #dfe5e1; border-radius:16px; background:rgba(255,255,255,.96); box-shadow:0 16px 42px rgba(28,45,38,.055); }
 .report-decision-panel-header { display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .report-decision-panel-title h2 { margin:0; color:var(--ink); font-size:18px; line-height:1.2; letter-spacing:-.04em; }
@@ -268,6 +276,8 @@ button { font:inherit; }
   .report-tabs { grid-template-columns:1fr 1fr; padding:8px; }
   .report-tab { min-height:40px; }
   .report-export-grid { grid-template-columns:1fr; }
+  .merge-summary-builder-header { flex-direction:column; }
+  .merge-summary-builder-header button { width:100%; justify-content:center; }
 }
 
 .finding-provenance { flex:0 0 auto; margin-left:auto; padding:4px 6px; border:1px solid #dce2de; border-radius:999px; background:#f7f8f6; color:#6d7772; font-size:8px; font-weight:750; letter-spacing:.03em; white-space:nowrap; }

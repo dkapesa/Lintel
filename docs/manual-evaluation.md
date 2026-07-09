@@ -842,3 +842,20 @@ Manual tests:
 9. Confirm report actions still work: Copy conditions, Copy summary, Download Markdown, Back to workspace and Check another pull request.
 10. Confirm `/docs/security-model.md` resolves from app links.
 11. Search UI, copied output, downloaded Markdown, session storage and local history for `diff --git`, `@@`, raw hunks, unique diff markers and secrets; none should appear.
+
+## V4.12 PR readiness timeline and decision history
+
+Manual tests:
+
+1. Open `/report` and confirm the **Timeline** tab appears in the report working surface.
+2. Confirm the timeline summary shows current review state, conditions cleared, open conditions and last local update.
+3. Confirm newly opened reports seed local history with **Report generated** and **Recommendation assigned** entries.
+4. Change local review state from the report decision panel and confirm a **Local review state changed** entry appears.
+5. Change local review state from `/workspace`, open the report, and confirm the same timeline records the change.
+6. Check and uncheck Conditions before merge and confirm **Condition cleared** and **Condition reopened** entries appear.
+7. Add or clear a local reviewer note, blur the note field, and confirm a **Local reviewer note updated** entry appears without storing the note body in the timeline.
+8. Use **Copy PR comment** in the Export tab and confirm a **Merge summary copied** entry appears only after copy succeeds.
+9. Refresh `/report` and confirm timeline entries persist locally.
+10. Confirm the timeline says it is local-only decision history, not team audit logging.
+11. Clear local history from `/workspace` and confirm report history, review state and decision history are cleared together.
+12. Search the timeline UI and `localStorage` for `diff --git`, `@@`, raw hunks, unique diff markers and secrets; none should appear.

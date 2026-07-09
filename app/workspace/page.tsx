@@ -9,6 +9,12 @@ import {
   reportConditions,
   workspaceConditionProgressSummary,
 } from "../../lib/condition-progress";
+import {
+  appendDecisionHistoryEvent,
+  clearDecisionHistory,
+  removeDecisionHistory,
+  reviewStatusChangeEvent,
+} from "../../lib/decision-history";
 import { GENERATED_REPORT_STORAGE_KEY } from "../../lib/report-generator";
 import {
   clearReportHistory,
@@ -604,6 +610,19 @@ export default function ReportsWorkspacePage() {
         status,
       });
       setReviewStates((current) => ({ ...current, [group.key]: nextState }));
+
+      if (group.reviewState.status !== nextState.status) {
+        try {
+          appendDecisionHistoryEvent(
+            window.localStorage,
+            group.key,
+            reviewStatusChangeEvent(group.reviewState.status, nextState.status),
+          );
+        } catch {
+          // Decision history is local-only and should not block status changes.
+        }
+      }
+
       setError(null);
     } catch {
       setError("Local review state could not be saved in this browser.");
@@ -625,6 +644,7 @@ export default function ReportsWorkspacePage() {
         return nextStates;
       });
       removeReviewState(window.localStorage, group.key);
+      removeDecisionHistory(window.localStorage, group.key);
       setError(null);
     } catch {
       setError("This report group could not be deleted.");
@@ -636,6 +656,7 @@ export default function ReportsWorkspacePage() {
       setHistory(clearReportHistory(window.localStorage));
       setReviewStates({});
       clearReviewStates(window.localStorage);
+      clearDecisionHistory(window.localStorage);
       setError(null);
     } catch {
       setError("Report history could not be cleared.");

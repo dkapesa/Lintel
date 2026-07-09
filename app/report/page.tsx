@@ -8,6 +8,15 @@ import {
   reportConditions,
   writeConditionProgress,
 } from "../../lib/condition-progress";
+import {
+  appendDecisionHistoryEvent,
+  decisionHistoryKeyForReport,
+  ensureDecisionHistory,
+  initialDecisionHistory,
+  readDecisionHistory,
+  reviewStatusChangeEvent,
+  type DecisionHistoryEvent,
+} from "../../lib/decision-history";
 import { mergeSummaryToMarkdown } from "../../lib/merge-summary";
 import { GENERATED_REPORT_STORAGE_KEY } from "../../lib/report-generator";
 import { conditionsToMarkdown, findingProvenanceLabel, reportMarkdownFilename, reportToMarkdown, type ReportSourceLabel } from "../../lib/report-markdown";
@@ -30,7 +39,7 @@ type GeneratedReportSource = "ai" | "deterministic";
 type ReportSource = GeneratedReportSource | "demo";
 type CopyState = "idle" | "copied" | "failed";
 type DownloadState = "idle" | "downloaded" | "failed";
-type ReportTab = "overview" | "evidence" | "blast-radius" | "findings" | "tests" | "operations" | "review-focus" | "changed-files" | "export";
+type ReportTab = "overview" | "timeline" | "evidence" | "blast-radius" | "findings" | "tests" | "operations" | "review-focus" | "changed-files" | "export";
 type Finding = Report["findings"][number];
 type ReviewerFocus = NonNullable<Report["reviewerFocus"]>[number];
 type EvidenceLedgerItem = {
@@ -195,6 +204,12 @@ function decisionPanelInputLabel(value: string) {
   if (value === "sample") return "Sample";
   if (value === "pasted-diff") return "Manual";
   return inputSourceLabel(value);
+}
+
+function timelineTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Unknown time";
+  return date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 }
 
 function RecommendationBadge({ recommendation }: { recommendation: Recommendation }) {
@@ -763,10 +778,12 @@ export default function ReportPage() {
   const [selectedFindingIndex, setSelectedFindingIndex] = useState<number | null>(null);
   const [includeLocalNoteInMergeSummary, setIncludeLocalNoteInMergeSummary] = useState(false);
   const [reviewState, setReviewState] = useState<ReportReviewState>(() => defaultReviewState(demoReport));
+  const [decisionHistory, setDecisionHistory] = useState<DecisionHistoryEvent[]>(() => initialDecisionHistory(demoReport));
   const copyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const conditionsCopyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mergeSummaryCopyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const downloadResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const noteHistoryBaselineRef = useRef("");
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("demo") === "1") return;
@@ -806,6 +823,7 @@ export default function ReportPage() {
   const supportedReviewerFocus = pruneUnsupportedReviewerFocus(report);
   const activePolicy = reviewPolicyForProfile(pr.reviewProfile);
   const activePolicyStatus = policyStatusForReport(report, activePolicy);
+  const decisionHistoryKey = decisionHistoryKeyForReport(report);
   const displayedConditions = reportConditions(report);
   const selectedFinding = selectedFindingIndex !== null ? report.findings[selectedFindingIndex] : undefined;
   const selectedFindingFiles = selectedFinding ? affectedFilesForFinding(report, selectedFinding) : [];
@@ -827,6 +845,7 @@ export default function ReportPage() {
   const displayedReviewerChecklist = cleanApprove ? [] : report.reviewerChecklist;
   const conditionProgressLabel = conditionProgressSummary(clearedConditionCount, displayedConditions.length);
   const openConditionCount = Math.max(displayedConditions.length - clearedConditionCount, 0);
+  const lastDecisionUpdate = decisionHistory[0]?.timestamp ?? reviewState.updatedAt;
   const operationalStatus = report.operationalReadiness?.status ?? "Not assessed";
   const qualityStatus = report.reportQuality?.status ?? "Not assessed";
   const reviewerFocusSummary = supportedReviewerFocus
@@ -851,6 +870,7 @@ export default function ReportPage() {
       : `${openConditionCount} ${openConditionCount === 1 ? "merge condition remains" : "merge conditions remain"} open before this report is ready to clear.`;
   const reportTabs: Array<{ id: ReportTab; label: string; indicator: string }> = [
     { id: "overview", label: "Overview", indicator: `${displayedConditions.length}` },
+    { id: "timeline", label: "Timeline", indicator: `${decisionHistory.length}` },
     { id: "evidence", label: "Evidence", indicator: `${evidenceLedger.missing.length}` },
     { id: "blast-radius", label: "Surfaces", indicator: `${affectedSurfaces.length}` },
     { id: "findings", label: "Findings", indicator: `${report.findings.length}` },
@@ -877,27 +897,79 @@ export default function ReportPage() {
 
   useEffect(() => {
     try {
-      setReviewState(readReviewState(window.localStorage, report));
+      const savedState = readReviewState(window.localStorage, report);
+      setReviewState(savedState);
+      noteHistoryBaselineRef.current = savedState.note;
     } catch {
-      setReviewState(defaultReviewState(report));
+      const fallbackState = defaultReviewState(report);
+      setReviewState(fallbackState);
+      noteHistoryBaselineRef.current = fallbackState.note;
     }
   }, [report]);
+
+  useEffect(() => {
+    try {
+      setDecisionHistory(ensureDecisionHistory(window.localStorage, decisionHistoryKey, report));
+    } catch {
+      setDecisionHistory(initialDecisionHistory(report));
+    }
+  }, [report, decisionHistoryKey]);
+
+  function recordDecisionEvent(event: Parameters<typeof appendDecisionHistoryEvent>[2]) {
+    try {
+      setDecisionHistory(appendDecisionHistoryEvent(window.localStorage, decisionHistoryKey, event));
+    } catch {
+      setDecisionHistory((current) => [{
+        id: `local-${Date.now()}`,
+        type: event.type,
+        title: event.title,
+        timestamp: event.timestamp ?? new Date().toISOString(),
+        detail: event.detail,
+        previousState: event.previousState,
+        nextState: event.nextState,
+        label: event.label ?? "Local",
+      }, ...current].slice(0, 60));
+    }
+  }
 
   function updateReviewState(nextState: ReportReviewState) {
     try {
       const savedState = writeReviewState(window.localStorage, reviewStateKeyForReport(report), nextState);
       setReviewState(savedState);
+      return savedState;
     } catch {
       setReviewState(nextState);
+      return nextState;
     }
   }
 
   function updateReviewStatus(status: ReviewStatus) {
-    updateReviewState({ ...reviewState, status });
+    const previousStatus = reviewState.status;
+    const savedState = updateReviewState({ ...reviewState, status });
+
+    if (previousStatus !== savedState.status) {
+      recordDecisionEvent(reviewStatusChangeEvent(previousStatus, savedState.status));
+    }
   }
 
   function updateReviewNote(note: string) {
     updateReviewState({ ...reviewState, note });
+  }
+
+  function handleReviewNoteBlur() {
+    const previousNote = noteHistoryBaselineRef.current.trim();
+    const nextNote = reviewState.note.trim();
+    if (previousNote === nextNote) return;
+
+    noteHistoryBaselineRef.current = reviewState.note;
+    recordDecisionEvent({
+      type: "reviewer-note-updated",
+      title: "Local reviewer note updated",
+      detail: nextNote.length > 0
+        ? "A private reviewer note was updated locally on this device."
+        : "The local reviewer note was cleared.",
+      label: "Local",
+    });
   }
 
   function toggleCondition(condition: string, checked: boolean) {
@@ -917,6 +989,15 @@ export default function ReportPage() {
     } catch {
       // Condition tracking is local-only and should not affect report rendering.
     }
+
+    recordDecisionEvent({
+      type: checked ? "condition-cleared" : "condition-reopened",
+      title: checked ? "Condition cleared" : "Condition reopened",
+      detail: condition,
+      previousState: checked ? "Open" : "Cleared",
+      nextState: checked ? "Cleared" : "Open",
+      label: "Local",
+    });
   }
 
   async function handleCopySummary() {
@@ -938,6 +1019,15 @@ export default function ReportPage() {
   async function handleCopyMergeSummary() {
     const copied = await writeToClipboard(mergeSummaryMarkdown);
     setMergeSummaryCopyState(copied ? "copied" : "failed");
+
+    if (copied) {
+      recordDecisionEvent({
+        type: "merge-summary-copied",
+        title: "Merge summary copied",
+        detail: "PR-ready merge-readiness Markdown was copied locally for handoff.",
+        label: "Local",
+      });
+    }
 
     if (mergeSummaryCopyResetTimer.current) clearTimeout(mergeSummaryCopyResetTimer.current);
     mergeSummaryCopyResetTimer.current = setTimeout(() => setMergeSummaryCopyState("idle"), 2_000);
@@ -1110,6 +1200,71 @@ export default function ReportPage() {
             ) : displayedConditions.length > 0 ? (
               <ol>{displayedConditions.map((condition) => <li key={condition}>{condition}</li>)}</ol>
             ) : <p className="merge-conditions-clear">No merge conditions detected.</p>}
+          </section>
+            </div>
+          )}
+
+          {activeTab === "timeline" && (
+            <div
+              className="report-tab-panel"
+              id="report-panel-timeline"
+              role="tabpanel"
+              aria-labelledby="report-tab-timeline"
+            >
+          <section className="section-block report-decision-history" aria-labelledby="decision-history-title">
+            <div className="section-heading">
+              <div>
+                <span className="card-kicker">LOCAL DECISION HISTORY</span>
+                <h2 id="decision-history-title">PR readiness timeline</h2>
+              </div>
+              <span className="section-count">Stored locally on this device</span>
+            </div>
+
+            <div className="timeline-summary-grid" aria-label="Readiness timeline summary">
+              <article>
+                <span>Current review state</span>
+                <strong>{reviewState.status}</strong>
+              </article>
+              <article>
+                <span>Conditions cleared</span>
+                <strong>{displayedConditions.length === 0 ? "None needed" : `${clearedConditionCount}/${displayedConditions.length}`}</strong>
+              </article>
+              <article>
+                <span>Open conditions</span>
+                <strong>{openConditionCount}</strong>
+              </article>
+              <article>
+                <span>Last local update</span>
+                <strong>{lastDecisionUpdate ? timelineTime(lastDecisionUpdate) : "No local changes yet"}</strong>
+              </article>
+            </div>
+
+            <p className="timeline-local-note">This is local-only decision history for the current browser. It is not team audit logging and is not sent to an API.</p>
+
+            <ol className="decision-timeline">
+              {decisionHistory.map((event) => (
+                <li key={event.id}>
+                  <div className="decision-timeline-marker" aria-hidden="true" />
+                  <article>
+                    <div className="decision-timeline-header">
+                      <div>
+                        <h3>{event.title}</h3>
+                        <time dateTime={event.timestamp}>{timelineTime(event.timestamp)}</time>
+                      </div>
+                      <span>{event.label}</span>
+                    </div>
+                    {(event.previousState || event.nextState) && (
+                      <div className="decision-timeline-state">
+                        {event.previousState && <span>{event.previousState}</span>}
+                        {event.previousState && event.nextState && <strong>→</strong>}
+                        {event.nextState && <span>{event.nextState}</span>}
+                      </div>
+                    )}
+                    <p>{event.detail}</p>
+                  </article>
+                </li>
+              ))}
+            </ol>
           </section>
             </div>
           )}
@@ -1725,6 +1880,7 @@ export default function ReportPage() {
                   maxLength={1000}
                   rows={4}
                   onChange={(event) => updateReviewNote(event.target.value)}
+                  onBlur={handleReviewNoteBlur}
                   placeholder="Local/private note for this device. Do not paste raw diffs or secrets."
                 />
               </label>
@@ -1737,6 +1893,12 @@ export default function ReportPage() {
                 onClick={() => setActiveTab("export")}
               >
                 Build PR comment
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("timeline")}
+              >
+                Decision history
               </button>
               <button
                 type="button"

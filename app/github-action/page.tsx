@@ -111,6 +111,7 @@ export default function GitHubActionPrototypePage() {
           <span className="workspace-nav-label">System</span>
           <Link className="nav-item workspace-nav-item" href="/settings">Analysis settings</Link>
           <Link className="nav-item workspace-nav-item nav-item--active" href="/github-action" aria-current="page">GitHub Action</Link>
+          <Link className="nav-item workspace-nav-item" href="/slack-handoff">Slack handoff</Link>
           <span className="workspace-nav-label">Evidence</span>
           <Link className="nav-item workspace-nav-item" href="/docs/evaluation-results.md">Evaluation</Link>
           <Link className="nav-item workspace-nav-item" href="/docs/security-model.md">Security model</Link>
@@ -231,6 +232,7 @@ export default function GitHubActionPrototypePage() {
           </ul>
           <div className="settings-doc-links">
             <Link href="/settings">Analysis settings</Link>
+            <Link href="/slack-handoff">Slack handoff concept</Link>
             <Link href="/docs/security-model.md">Security model</Link>
             <Link href="/docs/cli-github-action-blueprint.md">CLI / GitHub Action blueprint</Link>
           </div>

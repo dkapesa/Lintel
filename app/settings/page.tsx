@@ -78,6 +78,7 @@ export default function SettingsPage() {
           <span className="workspace-nav-label">System</span>
           <Link className="nav-item workspace-nav-item nav-item--active" href="/settings" aria-current="page">Analysis settings</Link>
           <Link className="nav-item workspace-nav-item" href="/github-action">GitHub Action</Link>
+          <Link className="nav-item workspace-nav-item" href="/slack-handoff">Slack handoff</Link>
           <span className="workspace-nav-label">Evidence</span>
           <Link className="nav-item workspace-nav-item" href="/docs/evaluation-results.md">Evaluation</Link>
           <Link className="nav-item workspace-nav-item" href="/docs/security-model.md">Security model</Link>
@@ -182,6 +183,7 @@ export default function SettingsPage() {
           </ul>
           <div className="settings-doc-links">
             <Link href="/github-action">View GitHub Action prototype</Link>
+            <Link href="/slack-handoff">View Slack handoff concept</Link>
             <Link href="/docs/security-model.md">Read security model</Link>
             <Link href="/docs/cli-github-action-blueprint.md">Read CLI / GitHub Action blueprint</Link>
           </div>

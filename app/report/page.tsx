@@ -545,6 +545,7 @@ export default function ReportPage() {
           <a className={`nav-item${source === "demo" ? " nav-item--active" : ""}`} href="/report?demo=1">Demo report</a>
           <a className="nav-item" href="/settings">Analysis settings</a>
           <a className="nav-item" href="/github-action">GitHub Action</a>
+          <a className="nav-item" href="/slack-handoff">Slack handoff</a>
           <a className="nav-item" href="/docs/security-model.md">Security model</a>
         </nav>
         <nav className="side-nav report-side-nav-legacy" aria-label="Legacy navigation">
@@ -1026,6 +1027,7 @@ export default function ReportPage() {
                   <a href="/workspace">Back to workspace</a>
                   <a href="/new">Check another pull request</a>
                   <a href="/github-action">GitHub Action prototype</a>
+                  <a href="/slack-handoff">Slack handoff concept</a>
                   <a href="/docs/security-model.md">Security model</a>
                 </div>
               </article>

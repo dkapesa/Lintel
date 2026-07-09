@@ -13,6 +13,7 @@ import {
   decisionHistoryKeyForReport,
   ensureDecisionHistory,
   initialDecisionHistory,
+  ownershipChangeEvent,
   readDecisionHistory,
   reviewStatusChangeEvent,
   type DecisionHistoryEvent,
@@ -25,6 +26,7 @@ import { report as demoReport } from "../../lib/mock-report";
 import { deduplicateReportItems, pruneUnsupportedReviewerFocus } from "../../lib/report-quality";
 import { policyGateSummary, policyStatusForReport, reviewPolicyForProfile } from "../../lib/review-policies";
 import { reviewProfileLabel } from "../../lib/review-profiles";
+import { ownerDisplay, REVIEW_OWNER_OPTIONS, suggestedReviewerOwners, type ReviewerOwner } from "../../lib/reviewer-ownership";
 import {
   defaultReviewState,
   readReviewState,
@@ -848,6 +850,8 @@ export default function ReportPage() {
   const lastDecisionUpdate = decisionHistory[0]?.timestamp ?? reviewState.updatedAt;
   const operationalStatus = report.operationalReadiness?.status ?? "Not assessed";
   const qualityStatus = report.reportQuality?.status ?? "Not assessed";
+  const suggestedOwners = suggestedReviewerOwners(report);
+  const displayedOwner = ownerDisplay(reviewState.owner, suggestedOwners);
   const reviewerFocusSummary = supportedReviewerFocus
     ? supportedReviewerFocus.length > 0
       ? `${supportedReviewerFocus.length} ${supportedReviewerFocus.length === 1 ? "area" : "areas"} / ${supportedReviewerFocus[0].area}`
@@ -949,6 +953,15 @@ export default function ReportPage() {
 
     if (previousStatus !== savedState.status) {
       recordDecisionEvent(reviewStatusChangeEvent(previousStatus, savedState.status));
+    }
+  }
+
+  function updateReviewOwner(owner: ReviewerOwner) {
+    const previousOwner = reviewState.owner;
+    const savedState = updateReviewState({ ...reviewState, owner });
+
+    if (previousOwner !== savedState.owner) {
+      recordDecisionEvent(ownershipChangeEvent(previousOwner, savedState.owner));
     }
   }
 
@@ -1201,6 +1214,25 @@ export default function ReportPage() {
               <ol>{displayedConditions.map((condition) => <li key={condition}>{condition}</li>)}</ol>
             ) : <p className="merge-conditions-clear">No merge conditions detected.</p>}
           </section>
+
+          <section className="section-block report-ownership-cues">
+            <div className="section-heading">
+              <div><span className="card-kicker">LOCAL OWNERSHIP</span><h2>Who should look next?</h2></div>
+              <span className="section-count">Stored locally</span>
+            </div>
+            <div className="ownership-cue-grid">
+              <article>
+                <span>Selected owner</span>
+                <strong>{reviewState.owner}</strong>
+                <p>This is a local cue only. Lintel is not assigning a real person or notifying a team.</p>
+              </article>
+              <article>
+                <span>Suggested owner cues</span>
+                <strong>{suggestedOwners.length > 0 ? suggestedOwners.join(" / ") : "No specialist cue"}</strong>
+                <p>Derived from findings, missing tests, operational readiness, reviewer focus and affected surfaces.</p>
+              </article>
+            </div>
+          </section>
             </div>
           )}
 
@@ -1224,6 +1256,10 @@ export default function ReportPage() {
               <article>
                 <span>Current review state</span>
                 <strong>{reviewState.status}</strong>
+              </article>
+              <article>
+                <span>Local owner</span>
+                <strong>{displayedOwner}</strong>
               </article>
               <article>
                 <span>Conditions cleared</span>
@@ -1846,6 +1882,7 @@ export default function ReportPage() {
               <div><dt>Operations</dt><dd>{operationalStatus}</dd></div>
               <div><dt>Quality</dt><dd>{qualityStatus}</dd></div>
               <div><dt>Reviewer focus</dt><dd>{reviewerFocusSummary}</dd></div>
+              <div><dt>Owner</dt><dd>{displayedOwner}</dd></div>
             </dl>
 
             <section className="report-policy-gates" aria-label="Active merge policy">
@@ -1873,6 +1910,13 @@ export default function ReportPage() {
                   {REVIEW_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
                 </select>
               </label>
+              <label>
+                <span>Owner</span>
+                <select value={reviewState.owner} onChange={(event) => updateReviewOwner(event.target.value as ReviewerOwner)}>
+                  {REVIEW_OWNER_OPTIONS.map((owner) => <option key={owner} value={owner}>{owner}</option>)}
+                </select>
+              </label>
+              <p>Suggested owner cue: {suggestedOwners.length > 0 ? suggestedOwners.join(" / ") : "No specialist owner cue detected."}</p>
               <label>
                 <span>Reviewer note</span>
                 <textarea

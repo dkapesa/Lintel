@@ -1,4 +1,5 @@
 import type { Report } from "./mock-report";
+import { isReviewerOwner, type ReviewerOwner } from "./reviewer-ownership";
 
 export const REVIEW_STATE_STORAGE_KEY = "lintel.reviewState.v1";
 export const LEGACY_WORKSPACE_STATUS_STORAGE_KEY = "lintel.workspaceStatus.v1";
@@ -17,6 +18,7 @@ export type ReviewStatus = (typeof REVIEW_STATUSES)[number];
 
 export type ReportReviewState = {
   status: ReviewStatus;
+  owner: ReviewerOwner;
   note: string;
   updatedAt: string | null;
 };
@@ -75,6 +77,7 @@ export function defaultReviewStatus(report: Report): ReviewStatus {
 export function defaultReviewState(report: Report): ReportReviewState {
   return {
     status: defaultReviewStatus(report),
+    owner: "Unassigned",
     note: "",
     updatedAt: null,
   };
@@ -85,6 +88,7 @@ function parseReviewState(value: unknown): ReportReviewState | null {
 
   return {
     status: value.status,
+    owner: isReviewerOwner(value.owner) ? value.owner : "Unassigned",
     note: typeof value.note === "string" ? sanitizeNote(value.note) : "",
     updatedAt: typeof value.updatedAt === "string" ? value.updatedAt : null,
   };
@@ -115,7 +119,7 @@ export function readReviewStates(storage: Storage) {
       for (const [key, value] of Object.entries(legacyParsed)) {
         if (states[key]) continue;
         const status = legacyStatus(value);
-        if (status) states[key] = { status, note: "", updatedAt: null };
+        if (status) states[key] = { status, owner: "Unassigned", note: "", updatedAt: null };
       }
     }
   } catch {
@@ -133,6 +137,7 @@ export function writeReviewState(storage: Storage, key: string, state: ReportRev
   const current = readReviewStates(storage);
   const nextState: ReportReviewState = {
     status: state.status,
+    owner: isReviewerOwner(state.owner) ? state.owner : "Unassigned",
     note: sanitizeNote(state.note),
     updatedAt: new Date().toISOString(),
   };

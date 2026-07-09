@@ -2,6 +2,7 @@ import type { Report } from "./mock-report";
 import { decisionConditions, deduplicateReportItems, pruneUnsupportedReviewerFocus } from "./report-quality";
 import { policyGateSummary, policyStatusForReport, reviewPolicyForProfile } from "./review-policies";
 import { reviewProfileLabel } from "./review-profiles";
+import { ownerDisplay, suggestedReviewerOwners } from "./reviewer-ownership";
 import type { ReportReviewState } from "./review-state";
 
 type MergeSummaryOptions = {
@@ -92,6 +93,7 @@ export function mergeSummaryToMarkdown(report: Report, options: MergeSummaryOpti
   const localNote = options.reviewState.note.trim();
   const policy = reviewPolicyForProfile(report.pr.reviewProfile);
   const policyStatus = policyStatusForReport(report, policy);
+  const suggestedOwners = suggestedReviewerOwners(report);
 
   return [
     "## Lintel merge-readiness summary",
@@ -99,6 +101,7 @@ export function mergeSummaryToMarkdown(report: Report, options: MergeSummaryOpti
     `**Recommendation:** ${recommendation}`,
     `**Risk:** ${report.verdict.riskLevel} (${report.verdict.riskScore}/100)`,
     `**Local review state:** ${safeMarkdownText(options.reviewState.status)}`,
+    `**Local owner:** ${safeMarkdownText(ownerDisplay(options.reviewState.owner, suggestedOwners))}`,
     `**Source:** ${safeMarkdownText(options.sourceLabel)}`,
     `**Review mode:** ${safeMarkdownText(reviewProfileLabel(report.pr.reviewProfile))}`,
     `**Review policy:** ${safeMarkdownText(policy.label)} (${safeMarkdownText(policyGateSummary(policy))})`,
@@ -118,6 +121,11 @@ export function mergeSummaryToMarkdown(report: Report, options: MergeSummaryOpti
     supportedReviewerFocus
       ? bulletList(focusItems, "No specialist reviewer focus detected.", 4)
       : "Reviewer focus was not assessed — regenerate this report.",
+    "",
+    "### Ownership cue",
+    suggestedOwners.length > 0
+      ? bulletList(suggestedOwners, "No specialist owner cue detected.", suggestedOwners.length)
+      : "No specialist owner cue detected.",
     "",
     "### Operational / security attention",
     bulletList(operationalAttention(report), "No operational or security attention state detected.", 4),

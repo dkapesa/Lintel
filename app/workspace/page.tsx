@@ -24,6 +24,7 @@ import {
 } from "../../lib/report-history";
 import { conditionsToMarkdown } from "../../lib/report-markdown";
 import { pruneUnsupportedReviewerFocus } from "../../lib/report-quality";
+import { ownerDisplay, REVIEW_OWNER_OPTIONS, suggestedReviewerOwners, type ReviewerOwner } from "../../lib/reviewer-ownership";
 import {
   clearReviewStates,
   defaultReviewState,
@@ -215,6 +216,7 @@ function WorkspaceReportCard({
   onCopyConditions,
   onDeleteGroup,
   onStatusChange,
+  onOwnerChange,
 }: {
   group: WorkspaceGroup;
   copyFeedback: CopyFeedback;
@@ -225,6 +227,7 @@ function WorkspaceReportCard({
   onCopyConditions: (group: WorkspaceGroup) => void;
   onDeleteGroup: (group: WorkspaceGroup) => void;
   onStatusChange: (group: WorkspaceGroup, status: ReviewStatus) => void;
+  onOwnerChange: (group: WorkspaceGroup, owner: ReviewerOwner) => void;
 }) {
   const entry = group.latest;
   const report = entry.report;
@@ -234,6 +237,8 @@ function WorkspaceReportCard({
     : "No specialist focus";
   const feedback = copyFeedback?.key === group.key ? copyFeedback.state : null;
   const action = nextAction(entry);
+  const suggestedOwners = suggestedReviewerOwners(report);
+  const displayedOwner = ownerDisplay(group.reviewState.owner, suggestedOwners);
 
   return (
     <article
@@ -278,6 +283,7 @@ function WorkspaceReportCard({
         <span>{sourceLabel(entry.source)}</span>
         <span>Mode: {entry.metadata.reviewProfile}</span>
         <span className="workspace-condition-progress">{conditionProgressLabel}</span>
+        <span className="workspace-owner-cue">{displayedOwner}</span>
         <span className={entry.report.missingTests.length > 0 ? "workspace-signal workspace-signal--attention" : "workspace-signal"}>{testSignal(entry)}</span>
         <span className={hasOperationalRisk(entry) ? "workspace-signal workspace-signal--attention" : "workspace-signal"}>{operationalSignal(entry)}</span>
         <span className="workspace-review-state">{group.reviewState.status}</span>
@@ -292,6 +298,12 @@ function WorkspaceReportCard({
           <span>Review state</span>
           <select value={group.reviewState.status} onChange={(event) => onStatusChange(group, event.target.value as ReviewStatus)}>
             {REVIEW_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
+          </select>
+        </label>
+        <label className="workspace-local-status workspace-local-owner" onClick={(event) => event.stopPropagation()}>
+          <span>Owner</span>
+          <select value={group.reviewState.owner} onChange={(event) => onOwnerChange(group, event.target.value as ReviewerOwner)}>
+            {REVIEW_OWNER_OPTIONS.map((owner) => <option key={owner} value={owner}>{owner}</option>)}
           </select>
         </label>
         <div className="workspace-row-actions">
@@ -326,6 +338,7 @@ function WorkspaceSection({
   onCopyConditions,
   onDeleteGroup,
   onStatusChange,
+  onOwnerChange,
 }: {
   title: string;
   description: string;
@@ -339,6 +352,7 @@ function WorkspaceSection({
   onCopyConditions: (group: WorkspaceGroup) => void;
   onDeleteGroup: (group: WorkspaceGroup) => void;
   onStatusChange: (group: WorkspaceGroup, status: ReviewStatus) => void;
+  onOwnerChange: (group: WorkspaceGroup, owner: ReviewerOwner) => void;
 }) {
   return (
     <section className="workspace-inbox-section" aria-labelledby={`${title.toLowerCase().replaceAll(" ", "-")}-title`}>
@@ -364,6 +378,7 @@ function WorkspaceSection({
               onCopyConditions={onCopyConditions}
               onDeleteGroup={onDeleteGroup}
               onStatusChange={onStatusChange}
+              onOwnerChange={onOwnerChange}
             />
           ))}
         </div>
@@ -409,6 +424,8 @@ function WorkspacePreviewPanel({
   const topRisk = report.findings[0]?.title ?? topConditionOrRisk(entry);
   const feedback = copyFeedback?.key === group.key ? copyFeedback.state : null;
   const action = nextAction(entry);
+  const suggestedOwners = suggestedReviewerOwners(report);
+  const displayedOwner = ownerDisplay(group.reviewState.owner, suggestedOwners);
 
   return (
     <aside className="workspace-preview" aria-label="Selected report preview">
@@ -430,6 +447,7 @@ function WorkspacePreviewPanel({
       <dl className="workspace-preview-meta">
         <div><dt>Review mode</dt><dd>{entry.metadata.reviewProfile}</dd></div>
         <div><dt>Review state</dt><dd>{group.reviewState.status}</dd></div>
+        <div><dt>Owner</dt><dd>{displayedOwner}</dd></div>
         <div><dt>Input</dt><dd>{inputPreviewLabel(entry)}</dd></div>
         <div><dt>Mode</dt><dd>{sourceLabel(entry.source)}</dd></div>
         <div><dt>Latest</dt><dd><time dateTime={entry.createdAt}>{createdTime(entry.createdAt)}</time></dd></div>
@@ -629,6 +647,34 @@ export default function ReportsWorkspacePage() {
     }
   }
 
+  function updateLocalOwner(group: WorkspaceGroup, owner: ReviewerOwner) {
+    try {
+      const nextState = writeReviewState(window.localStorage, group.key, {
+        ...group.reviewState,
+        owner,
+      });
+      setReviewStates((current) => ({ ...current, [group.key]: nextState }));
+
+      if (group.reviewState.owner !== nextState.owner) {
+        try {
+          appendDecisionHistoryEvent(window.localStorage, group.key, {
+            type: "ownership-changed",
+            title: "Local owner changed",
+            detail: `Local ownership changed from ${group.reviewState.owner} to ${nextState.owner}.`,
+            previousState: group.reviewState.owner,
+            nextState: nextState.owner,
+          });
+        } catch {
+          // Decision history is local-only and should not block owner changes.
+        }
+      }
+
+      setError(null);
+    } catch {
+      setError("Local ownership could not be saved in this browser.");
+    }
+  }
+
   function deleteGroup(group: WorkspaceGroup) {
     try {
       let nextHistory = history;
@@ -749,6 +795,7 @@ export default function ReportsWorkspacePage() {
                   onCopyConditions={copyConditions}
                   onDeleteGroup={deleteGroup}
                   onStatusChange={updateLocalStatus}
+                  onOwnerChange={updateLocalOwner}
                 />
 
                 <WorkspaceSection
@@ -764,6 +811,7 @@ export default function ReportsWorkspacePage() {
                   onCopyConditions={copyConditions}
                   onDeleteGroup={deleteGroup}
                   onStatusChange={updateLocalStatus}
+                  onOwnerChange={updateLocalOwner}
                 />
               </div>
 

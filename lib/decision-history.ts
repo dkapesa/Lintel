@@ -11,7 +11,8 @@ export type DecisionHistoryEventType =
   | "condition-cleared"
   | "condition-reopened"
   | "merge-summary-copied"
-  | "reviewer-note-updated";
+  | "reviewer-note-updated"
+  | "ownership-changed";
 
 export type DecisionHistoryEvent = {
   id: string;
@@ -154,6 +155,16 @@ export function reviewStatusChangeEvent(previousState: ReviewStatus, nextState: 
     detail: `Reviewer state changed from ${previousState} to ${nextState}.`,
     previousState,
     nextState,
+  };
+}
+
+export function ownershipChangeEvent(previousOwner: string, nextOwner: string) {
+  return {
+    type: "ownership-changed" as const,
+    title: "Local owner changed",
+    detail: `Local ownership changed from ${previousOwner} to ${nextOwner}.`,
+    previousState: previousOwner,
+    nextState: nextOwner,
   };
 }
 

@@ -859,3 +859,20 @@ Manual tests:
 10. Confirm the timeline says it is local-only decision history, not team audit logging.
 11. Clear local history from `/workspace` and confirm report history, review state and decision history are cleared together.
 12. Search the timeline UI and `localStorage` for `diff --git`, `@@`, raw hunks, unique diff markers and secrets; none should appear.
+
+## V4.13 reviewer assignment and ownership cues
+
+Manual tests:
+
+1. Open `/report` and confirm the sticky decision panel shows an **Owner** field.
+2. Confirm the local review state card has an **Owner** selector with: Unassigned, Backend reviewer, Frontend reviewer, Security reviewer, Data/migration reviewer, Platform/operations reviewer, Test owner and Senior reviewer.
+3. Change the owner, refresh `/report`, and confirm the selected owner persists locally.
+4. Open the **Timeline** tab and confirm an ownership change creates a **Local owner changed** entry.
+5. Open the report overview or review routing area and confirm suggested owner cues are shown without implying a real team assignment.
+6. Open `/workspace` and confirm report rows show an owner cue and include an owner selector.
+7. Change ownership from `/workspace`, open the report, and confirm the owner and timeline event are preserved.
+8. Confirm suggested owners follow report signals: missing tests can suggest **Test owner**, security/privacy can suggest **Security reviewer**, data/migration can suggest **Data/migration reviewer**, operational risk can suggest **Platform/operations reviewer**, backend/API can suggest **Backend reviewer**, frontend/client signals can suggest **Frontend reviewer**, and high-risk/focused review can suggest **Senior reviewer**.
+9. Copy the PR comment / merge summary and confirm it includes local owner and ownership cue.
+10. Open `/slack-handoff` and confirm the concept copy includes owner cues while still saying it is copy/export-only.
+11. Confirm ownership remains local-only: no auth, users, notifications, Slack API, GitHub posting or backend collaboration.
+12. Search report UI, workspace, copied/exported text and `localStorage` for `diff --git`, `@@`, raw hunks, unique diff markers and secrets; none should appear.

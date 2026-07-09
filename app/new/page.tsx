@@ -8,7 +8,7 @@ import { addReportToHistory, clearReportHistory, deleteReportFromHistory, readRe
 import type { Report } from "../../lib/mock-report";
 import { PR_SAMPLES } from "../../lib/sample-pr-input";
 import { inferStack } from "../../lib/stack-inference";
-import { REVIEW_PROFILES, type ReviewProfile } from "../../lib/review-profiles";
+import { REVIEW_PROFILES, reviewProfileDescription, type ReviewProfile } from "../../lib/review-profiles";
 
 type ReportSource = "ai" | "deterministic";
 
@@ -79,6 +79,7 @@ export default function NewReportPage() {
   const [history, setHistory] = useState<ReportHistoryEntry[]>([]);
   const technologyValueRef = useRef("");
   const technologyEditedRef = useRef(false);
+  const selectedReviewModeDescription = reviewProfileDescription(reviewProfile);
 
   function updateTechnology(value: string, manuallyEdited: boolean) {
     technologyValueRef.current = value;
@@ -319,10 +320,11 @@ export default function NewReportPage() {
               <input name="technology" required value={technology} onChange={(event) => updateTechnology(event.target.value, true)} placeholder="Python / FastAPI" />
             </label>
             <label className="form-field form-field--wide review-profile-field">
-              <span>Review profile <small>Optional</small></span>
+              <span>Review mode <small>Optional</small></span>
               <select name="reviewProfile" value={reviewProfile} onChange={(event) => setReviewProfile(event.target.value as ReviewProfile)}>
                 {REVIEW_PROFILES.map((profile) => <option key={profile.id} value={profile.id}>{profile.label}</option>)}
               </select>
+              <small className="review-mode-description">{selectedReviewModeDescription}</small>
             </label>
             <label className="form-field form-field--wide">
               <span>PR diff</span>
@@ -361,7 +363,7 @@ export default function NewReportPage() {
                       <span>{entry.metadata.riskScore}/100</span>
                       <span>{historySourceLabel(entry.source)}</span>
                       <span>{entry.inputLabel}</span>
-                      <span>Profile: {entry.metadata.reviewProfile}</span>
+                      <span>Mode: {entry.metadata.reviewProfile}</span>
                       <time dateTime={entry.createdAt}>{historyTime(entry.createdAt)}</time>
                     </span>
                   </button>

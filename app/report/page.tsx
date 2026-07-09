@@ -617,7 +617,7 @@ export default function ReportPage() {
               <div className="header-overline"><span className="pull-request-mark">↗</span> PULL REQUEST #{pr.number}</div>
               <h1>{pr.title}</h1>
               <div className="report-meta">
-                <span>{pr.repository}</span><span className="meta-separator">•</span><span>{inputSourceLabel(pr.branch)}</span><span className="meta-separator">•</span><span>Profile: {reviewProfileLabel(pr.reviewProfile)}</span><span className="meta-separator">•</span><span>{pr.language}</span><span className="meta-separator">•</span><span>{pr.framework}</span>
+                <span>{pr.repository}</span><span className="meta-separator">•</span><span>{inputSourceLabel(pr.branch)}</span><span className="meta-separator">•</span><span>Mode: {reviewProfileLabel(pr.reviewProfile)}</span><span className="meta-separator">•</span><span>{pr.language}</span><span className="meta-separator">•</span><span>{pr.framework}</span>
               </div>
             </div>
             <div className="header-verdict">
@@ -1096,7 +1096,7 @@ export default function ReportPage() {
             </dl>
 
             <dl className="report-decision-panel-meta">
-              <div><dt>Profile</dt><dd>{reviewProfileLabel(pr.reviewProfile)}</dd></div>
+              <div><dt>Review mode</dt><dd>{reviewProfileLabel(pr.reviewProfile)}</dd></div>
               <div><dt>Input</dt><dd>{decisionPanelInputLabel(pr.branch)}</dd></div>
               <div><dt>Mode</dt><dd>{sourceLabels[source]}</dd></div>
               <div><dt>Operations</dt><dd>{operationalStatus}</dd></div>

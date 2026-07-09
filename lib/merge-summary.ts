@@ -97,7 +97,7 @@ export function mergeSummaryToMarkdown(report: Report, options: MergeSummaryOpti
     `**Risk:** ${report.verdict.riskLevel} (${report.verdict.riskScore}/100)`,
     `**Local review state:** ${safeMarkdownText(options.reviewState.status)}`,
     `**Source:** ${safeMarkdownText(options.sourceLabel)}`,
-    `**Review profile:** ${safeMarkdownText(reviewProfileLabel(report.pr.reviewProfile))}`,
+    `**Review mode:** ${safeMarkdownText(reviewProfileLabel(report.pr.reviewProfile))}`,
     "",
     "### Top blockers",
     bulletList(topBlockers(report), "No blockers detected.", 4),

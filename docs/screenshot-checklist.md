@@ -26,7 +26,7 @@ outputs/screenshots/
 
 ## 3. New report working surface
 
-- Show `/new` with the GitHub PR import, sample picker, review profile, and pasted diff area.
+- Show `/new` with the GitHub PR import, sample picker, review mode selector, and pasted diff area.
 - Use public/sample data only.
 - Avoid displaying a full raw diff in the screenshot if a compact state is available.
 - Suggested filename: `03-new-report.png`

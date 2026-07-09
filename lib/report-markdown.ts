@@ -172,7 +172,7 @@ export function reportToMarkdown(report: Report, source: ReportSourceLabel) {
     `**Repository:** ${safeMarkdownText(report.pr.repository)}`,
     `**Source:** ${source}`,
     inputSourceMarkdown(report.pr.branch),
-    `**Review profile:** ${safeMarkdownText(reviewProfileLabel(report.pr.reviewProfile))}`,
+    `**Review mode:** ${safeMarkdownText(reviewProfileLabel(report.pr.reviewProfile))}`,
     `**Recommendation:** ${recommendation}`,
     `**Risk band:** ${report.verdict.riskLevel}`,
     `**Score detail:** ${report.verdict.riskScore}/100`,

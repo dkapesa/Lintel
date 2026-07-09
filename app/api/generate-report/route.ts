@@ -1,6 +1,6 @@
 import { generateReport, type ReportInput, type ReportInputSource } from "../../../lib/report-generator";
 import { normaliseReport, REPORT_JSON_SCHEMA } from "../../../lib/report-normalizer";
-import { isReviewProfile, reviewProfileLabel } from "../../../lib/review-profiles";
+import { isReviewProfile, reviewProfileDescription, reviewProfileLabel } from "../../../lib/review-profiles";
 
 export const runtime = "nodejs";
 
@@ -72,7 +72,8 @@ function buildPrompt(input: ReportInput, baseline: ReturnType<typeof generateRep
       repository: input.repository,
       technology: input.technology,
       reviewProfile: input.reviewProfile ?? "standard",
-      reviewProfileLabel: reviewProfileLabel(input.reviewProfile),
+      reviewModeLabel: reviewProfileLabel(input.reviewProfile),
+      reviewModeDescription: reviewProfileDescription(input.reviewProfile),
     }, null, 2),
     "</submitted_metadata>",
     "",
@@ -124,7 +125,8 @@ async function generateWithOpenAI(
               "Return reviewer focus using only the allowed engineering review categories, and include an area only when changed files, diff-grounded findings or operational readiness provide direct evidence for it.",
               "Do not add reviewer-focus areas as general precautions: payments/domain requires payment, billing, refund, redemption, discount, checkout, invoice, subscription, order or charge evidence; security/privacy requires auth, permissions, tokens, secrets, identifiers, PII, sensitive data, logging or exposure evidence; API contract requires API, endpoint, route, response shape, status code, error contract, OpenAPI or public-contract evidence; platform/observability requires logs, metrics, alerts, traces, monitoring, rollback, recovery or an operational gap.",
               "Backend reliability requires missing tests or backend failure evidence; data/migration requires database, schema, migration or data-write evidence; frontend integration requires frontend, browser, UI or analytics evidence; docs/API consumer review requires documentation or public API documentation evidence.",
-              "Apply the selected review profile as an additional risk lens only where the changed files or diff provide supporting evidence. Never invent a profile-specific concern when its evidence is absent, and never weaken the deterministic baseline.",
+              "Apply the selected review mode as the requested review job, not as a model selector. Use it as an additional risk lens only where the changed files or diff provide supporting evidence. Never invent a mode-specific concern when its evidence is absent, and never weaken the deterministic baseline.",
+              "Mode guidance: Fast triage should prioritize top blockers and next action; Standard readiness should balance safety, tests, maintainability and operations; Deep review should be more comprehensive for complex risks; Security-sensitive should emphasize auth, permissions, identifiers, logging and exposure; Test coverage review should emphasize missing coverage and named tests; Operational readiness should emphasize failure modes, observability, rollback, recovery and production impact; AI-generated code review should emphasize hidden assumptions, missing tests and unsafe generated-code patterns.",
               "Reviewer focus may identify review disciplines, but must never invent or assign people, usernames, owners or teams.",
               "Each finding must have a specific title, diff-grounded evidence, a focused reviewer action and the most relevant category.",
               "Write evidence as a concise description of detected behavior and relevant changed files. Do not lead with 'Matched', list raw keyword matches, invent line numbers, or quote patch text.",

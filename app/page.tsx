@@ -3,7 +3,7 @@ import Link from "next/link";
 const workflow = [
   [
     "Provide the change",
-    "Paste a diff, import a public GitHub PR, or load a sample. Pick a review profile if the change touches payments, auth, or data migrations.",
+    "Paste a diff, import a public GitHub PR, or load a sample. Pick a review mode for fast triage, deep review, security, tests, operations or generated-code review.",
   ],
   [
     "Lintel analyses it",

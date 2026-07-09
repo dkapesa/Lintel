@@ -270,7 +270,7 @@ function WorkspaceReportCard({
       <div className="workspace-card-meta">
         <span>{entry.inputLabel}</span>
         <span>{sourceLabel(entry.source)}</span>
-        <span>Profile: {entry.metadata.reviewProfile}</span>
+        <span>Mode: {entry.metadata.reviewProfile}</span>
         <span className="workspace-condition-progress">{conditionProgressLabel}</span>
         <span className={entry.report.missingTests.length > 0 ? "workspace-signal workspace-signal--attention" : "workspace-signal"}>{testSignal(entry)}</span>
         <span className={hasOperationalRisk(entry) ? "workspace-signal workspace-signal--attention" : "workspace-signal"}>{operationalSignal(entry)}</span>
@@ -422,7 +422,7 @@ function WorkspacePreviewPanel({
       </div>
 
       <dl className="workspace-preview-meta">
-        <div><dt>Profile</dt><dd>{entry.metadata.reviewProfile}</dd></div>
+        <div><dt>Review mode</dt><dd>{entry.metadata.reviewProfile}</dd></div>
         <div><dt>Review state</dt><dd>{group.reviewState.status}</dd></div>
         <div><dt>Input</dt><dd>{inputPreviewLabel(entry)}</dd></div>
         <div><dt>Mode</dt><dd>{sourceLabel(entry.source)}</dd></div>

@@ -67,7 +67,7 @@ Current product capabilities:
 - Typed report normalization and guardrails.
 - Deterministic fallback when model-assisted analysis fails.
 - Stack/context inference.
-- Review policy profiles.
+- Review modes for fast triage, standard readiness, deep review, security, tests, operations and generated-code review.
 - `APPROVE`, `REVIEW_REQUIRED`, and `TESTS_REQUIRED` recommendations.
 - Risk band and score detail.
 - Missing tests and suggested tests.
@@ -88,7 +88,7 @@ Current product journey:
 
 1. The homepage explains Lintel as a merge-readiness decision layer.
 2. The Risk inbox at `/workspace` shows recent reports grouped by PR readiness state.
-3. The new report surface at `/new` supports public PR import, pasted diffs, samples, and review profiles.
+3. The new report surface at `/new` supports public PR import, pasted diffs, samples, and review modes.
 4. The report working surface at `/report` shows the decision, conditions, findings, test plan, operational readiness, reviewer focus, and export actions.
 5. The security model documentation explains current privacy boundaries and the planned GitHub Action direction.
 

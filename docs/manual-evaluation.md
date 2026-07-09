@@ -574,33 +574,34 @@ Manual tests:
 7. Confirm failed imports do not change the field.
 8. Confirm stack inference does not write the raw diff to session storage, local history, copied Markdown, or downloaded Markdown.
 
-## Review policy profiles
+## Review modes
 
-`/new` includes an optional **Review profile** selector. New reports store the selected profile in report metadata and show it in the report header, copied Markdown, downloaded Markdown, and local history. Legacy reports without profile metadata safely use the `Standard` label.
+`/new` includes an optional **Review mode** selector. New reports store the selected mode in report metadata and show it in the report header, copied Markdown, downloaded Markdown, merge summary, and local history. Legacy reports without mode metadata safely use the `Standard readiness` label.
 
-Profiles:
+Modes:
 
-- **Standard** preserves the existing deterministic behavior.
-- **High assurance** increases the deterministic score and adds stronger test or operational conditions when missing tests or operational `ATTENTION` already exist.
-- **Payments/refunds** strengthens idempotency, retry, side-effect and recovery review only when payment, refund, billing, redemption, discount, checkout, invoice, subscription, order or charge evidence exists.
-- **Auth/security** strengthens access, permission, session, token, logging, identifier and sensitive-data review only when corresponding evidence exists.
-- **Data/migrations** strengthens schema, migration, data-write, rollback and recovery review only when corresponding evidence exists.
-- **Frontend/API consumer** strengthens browser, frontend, analytics, documentation and public-contract review only when corresponding evidence exists.
+- **Fast triage** quickly identifies obvious blockers, missing tests and next reviewer action.
+- **Standard readiness** preserves the balanced deterministic merge-readiness behavior.
+- **Deep review** increases the deterministic score and adds stronger test or operational conditions when missing tests or operational `ATTENTION` already exist.
+- **Security-sensitive** strengthens access, permission, session, token, logging, identifier and sensitive-data review only when corresponding evidence exists.
+- **Test coverage review** emphasizes missing coverage, risky branches, failure paths and named suggested tests.
+- **Operational readiness** emphasizes failure modes, observability, rollback, recovery and production impact when operational evidence exists.
+- **AI-generated code review** focuses on hidden assumptions, missing tests and unsafe generated-code patterns when changed behavior or attention signals exist.
 
 Manual tests:
 
-1. Run the eight-sample evaluation suite with **Standard** and confirm existing expectations remain unchanged.
-2. Generate **Clean utility change** under every specialist profile and confirm no unsupported finding, reviewer focus, merge condition or risk increase appears.
-3. Generate **Provider failure / retry risk** with **High assurance** and confirm the higher score plus stricter test and operational conditions.
-4. Generate **Payment/refund side effect** with **Payments/refunds** and confirm focused idempotency, retry and recovery output.
-5. Generate **Auth/session change** with **Auth/security** and confirm focused access, session, token or sensitive-data output.
-6. Generate **Database migration** with **Data/migrations** and confirm compatibility, rollback and recovery output.
-7. Generate **Frontend analytics/type change** with **Frontend/API consumer** and confirm browser, documentation and consumer-contract output while **Payments/domain logic** remains absent.
-8. Apply each specialist profile to an unrelated clean change and confirm it does not manufacture its domain risk.
-9. Confirm AI-generated output uses the selected profile without removing deterministic findings or lowering protected risk floors.
-10. Open reports from local history and verify profile labels persist.
-11. Confirm Copy summary and Download Markdown contain the profile and no raw diff.
-12. Load a legacy report without `reviewProfile` and confirm it renders and copies safely as **Standard**.
+1. Run the eight-sample evaluation suite with **Standard readiness** and confirm existing expectations remain unchanged.
+2. Generate **Clean utility change** under every mode and confirm no unsupported finding, reviewer focus, merge condition or risk increase appears.
+3. Generate **Provider failure / retry risk** with **Deep review** and confirm the higher score plus stricter test and operational conditions.
+4. Generate **Auth/session change** with **Security-sensitive** and confirm focused access, session, token or sensitive-data output.
+5. Generate a risky untested change with **Test coverage review** and confirm missing coverage and suggested tests are prominent.
+6. Generate **Provider failure / retry risk** with **Operational readiness** and confirm failure modes, detection, rollback or recovery and production impact are prominent.
+7. Generate a larger risky change with **AI-generated code review** and confirm generated-code assumptions, missing tests and unsafe patterns are reviewed without claiming a different model was used.
+8. Apply each specialist mode to an unrelated clean change and confirm it does not manufacture its domain risk.
+9. Confirm model-assisted output uses the selected mode without removing deterministic findings or lowering protected risk floors.
+10. Open reports from local history and verify mode labels persist.
+11. Confirm Copy summary, Download Markdown and the merge summary contain the mode and no raw diff.
+12. Load a legacy report without `reviewProfile` and confirm it renders and copies safely as **Standard readiness**.
 
 ## Local Risk inbox
 

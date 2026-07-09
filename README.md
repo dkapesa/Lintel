@@ -65,7 +65,7 @@ Lintel focuses on the merge decision: what needs to be true before this PR can s
 - Typed report normalization and guardrails.
 - Deterministic fallback when model-assisted analysis fails.
 - Stack/context inference.
-- Review policy profiles.
+- Review modes for fast triage, standard readiness, deep review, security, tests, operations and generated-code review.
 - Structured recommendations: `APPROVE`, `REVIEW_REQUIRED`, `TESTS_REQUIRED`.
 - Risk band and score detail.
 - Missing tests and suggested tests.
@@ -86,7 +86,7 @@ Lintel focuses on the merge decision: what needs to be true before this PR can s
 
 - `/` - positioning and product overview.
 - `/workspace` - local Risk inbox for recent reports and condition progress.
-- `/new` - new report working surface with sample PRs, public PR import, pasted diffs, and review profiles.
+- `/new` - new report working surface with sample PRs, public PR import, pasted diffs, and review modes.
 - `/report` - report working surface with a sticky decision panel, merge conditions, findings, test plan, operational readiness, reviewer focus, and export actions.
 - `/docs/security-model.md` - public security model summary.
 - `/docs/cli-github-action-blueprint.md` - planned CLI and GitHub Action workflow blueprint.

@@ -301,13 +301,13 @@ function profileRiskAdjustment(profile: ReviewProfile, signals: Signals) {
     || signals.hasRiskyPath
     || signals.hasConfigTerms;
 
-  if (profile === "high-assurance") {
+  if (profile === "deep-review") {
     return (!signals.hasTests ? 8 : 0) + (operationalAttention ? 6 : 0);
   }
-  if (profile === "payments-refunds" && signals.hasPaymentDomainTerms) return 6;
-  if (profile === "auth-security" && signals.hasSensitiveReviewTerms) return 6;
-  if (profile === "data-migrations" && signals.hasDataMigrationTerms) return 6;
-  if (profile === "frontend-api-consumer" && (signals.hasFrontendTerms || signals.hasDocsTerms || signals.apiContract.detected)) return 6;
+  if (profile === "security-sensitive" && signals.hasSensitiveReviewTerms) return 7;
+  if (profile === "test-coverage" && signals.hasChangedBehavior && !signals.hasTests) return 8;
+  if (profile === "operational-readiness" && operationalAttention) return 7;
+  if (profile === "ai-generated-code" && signals.hasChangedBehavior && (!signals.hasTests || operationalAttention || signals.changedLines > 80)) return 6;
   return 0;
 }
 
@@ -657,15 +657,17 @@ export function generateReport(input: ReportInput): Report {
   const paths = parseChangedFiles(input.diff);
   const signals = detectSignals(input.diff, paths);
   const reviewProfile = input.reviewProfile ?? "standard";
-  const paymentProfileAttention = reviewProfile === "payments-refunds" && signals.hasPaymentDomainTerms;
-  const authProfileAttention = reviewProfile === "auth-security" && signals.hasSensitiveReviewTerms;
-  const dataProfileAttention = reviewProfile === "data-migrations" && signals.hasDataMigrationTerms;
-  const frontendProfileAttention = reviewProfile === "frontend-api-consumer"
-    && (signals.hasFrontendTerms || signals.hasDocsTerms || signals.apiContract.detected);
   const riskScore = Math.min(100, calculateRiskScore(signals) + profileRiskAdjustment(reviewProfile, signals));
   const riskLevel = riskLevelForScore(riskScore);
   const technology = parseTechnology(input.technology);
   const operational = operationalReadiness(signals);
+  const securityModeAttention = reviewProfile === "security-sensitive" && signals.hasSensitiveReviewTerms;
+  const testCoverageModeAttention = reviewProfile === "test-coverage" && signals.hasChangedBehavior;
+  const operationalModeAttention = reviewProfile === "operational-readiness" && operational.status === "ATTENTION";
+  const deepReviewAttention = reviewProfile === "deep-review" && (!signals.hasTests || operational.status === "ATTENTION");
+  const aiGeneratedModeAttention = reviewProfile === "ai-generated-code"
+    && signals.hasChangedBehavior
+    && (!signals.hasTests || operational.status === "ATTENTION" || signals.changedLines > 80);
   const findings: Report["findings"] = [];
 
   if (!signals.hasTests && signals.hasChangedBehavior) {
@@ -744,42 +746,32 @@ export function generateReport(input: ReportInput): Report {
     ));
   }
 
-  if (paymentProfileAttention && !signals.duplicateSideEffect.detected) {
+  if (securityModeAttention && !signals.sensitiveLogging.detected) {
     findings.push(makeFinding(
       "MEDIUM",
-      "Payment or refund side effects need repeat-safety review.",
-      "The selected Payments/refunds profile is supported by payment, refund, billing or transaction evidence in the change.",
-      "Confirm idempotency, retry boundaries and recovery behavior before merge.",
-      "Reliability",
-    ));
-  }
-
-  if (authProfileAttention && !signals.sensitiveLogging.detected) {
-    findings.push(makeFinding(
-      "MEDIUM",
-      "Authentication or sensitive-data behavior needs focused review.",
-      "The selected Auth/security profile is supported by authentication, session, permission, token, identifier or logging evidence.",
+      "Security-sensitive behavior needs focused review.",
+      "The selected Security-sensitive mode is supported by authentication, session, permission, token, identifier or logging evidence.",
       "Verify access controls, session handling, redaction and failure behavior.",
       "Security",
     ));
   }
 
-  if (dataProfileAttention) {
+  if (operationalModeAttention && operational.observabilityGaps.length > 0) {
     findings.push(makeFinding(
       "MEDIUM",
-      "Migration or data-write safety needs focused review.",
-      "The selected Data/migrations profile is supported by migration, schema, database or data-write evidence.",
-      "Confirm compatibility, forward execution, rollback and recovery expectations.",
-      "Maintainability",
+      "Operational readiness gaps need focused review.",
+      "The selected Operational readiness mode is supported by detected failure modes without complete detection or recovery controls.",
+      "Confirm failure detection, rollback or recovery behavior and customer impact before merge.",
+      "Reliability",
     ));
   }
 
-  if (frontendProfileAttention && !signals.apiContract.detected) {
+  if (aiGeneratedModeAttention && signals.changedLines > 80 && !signals.apiContract.detected && !signals.sensitiveLogging.detected) {
     findings.push(makeFinding(
       "MEDIUM",
-      "Consumer-facing behavior needs compatibility review.",
-      "The selected Frontend/API consumer profile is supported by frontend, browser, analytics or documentation evidence.",
-      "Confirm browser behavior, public guidance and consumer compatibility remain intentional.",
+      "Generated-code assumptions need focused review.",
+      "The selected AI-generated code review mode is being applied to a non-trivial changed behavior surface.",
+      "Check for hidden assumptions, incomplete edge cases and missing failure-path coverage before merge.",
       "Maintainability",
     ));
   }
@@ -823,12 +815,12 @@ export function generateReport(input: ReportInput): Report {
   ];
   const suggestedTestTitles = unique([
     ...suggestedTests(signals),
-    ...(reviewProfile === "high-assurance" && !signals.hasTests ? ["test_all_changed_behaviour_paths_have_focused_coverage"] : []),
-    ...(reviewProfile === "high-assurance" && operational.status === "ATTENTION" ? ["test_operational_failure_paths_are_detectable_and_recoverable"] : []),
-    ...(paymentProfileAttention ? ["test_payment_or_refund_retries_are_idempotent"] : []),
-    ...(authProfileAttention ? ["test_session_access_and_sensitive_fields_are_protected"] : []),
-    ...(dataProfileAttention ? ["test_migration_forward_and_rollback_paths"] : []),
-    ...(frontendProfileAttention ? ["test_public_contract_and_browser_behavior_remain_compatible"] : []),
+    ...(deepReviewAttention && !signals.hasTests ? ["test_all_changed_behaviour_paths_have_focused_coverage"] : []),
+    ...(deepReviewAttention && operational.status === "ATTENTION" ? ["test_operational_failure_paths_are_detectable_and_recoverable"] : []),
+    ...(securityModeAttention ? ["test_session_access_and_sensitive_fields_are_protected"] : []),
+    ...(testCoverageModeAttention && !signals.hasTests ? ["test_missing_edge_cases_from_review_mode"] : []),
+    ...(operationalModeAttention ? ["test_failure_modes_are_detectable_and_recoverable"] : []),
+    ...(aiGeneratedModeAttention ? ["test_generated_code_assumptions_and_error_paths"] : []),
   ]);
   const hasAttentionSignals = signals.duplicateSideEffect.detected
     || signals.providerFailure.detected
@@ -860,16 +852,16 @@ export function generateReport(input: ReportInput): Report {
     ...(operational.status === "ATTENTION" && !signals.recoveryControls.detected
       ? ["Document a safe recovery or rollback path for the identified operational risks"]
       : []),
-    ...(reviewProfile === "high-assurance" && missingTests.length > 0
+    ...(deepReviewAttention && missingTests.length > 0
       ? ["Provide focused test evidence for every changed behavior path"]
       : []),
-    ...(reviewProfile === "high-assurance" && operational.status === "ATTENTION"
+    ...(deepReviewAttention && operational.status === "ATTENTION"
       ? ["Resolve or explicitly accept each operational readiness gap"]
       : []),
-    ...(paymentProfileAttention ? ["Confirm payment or refund retries are idempotent and recoverable"] : []),
-    ...(authProfileAttention ? ["Confirm access, session, token and sensitive-data controls"] : []),
-    ...(dataProfileAttention ? ["Confirm migration compatibility, rollback and recovery"] : []),
-    ...(frontendProfileAttention ? ["Confirm browser behavior and public consumer contracts"] : []),
+    ...(securityModeAttention ? ["Confirm access, session, token and sensitive-data controls"] : []),
+    ...(testCoverageModeAttention && missingTests.length > 0 ? ["Confirm missing coverage is addressed before merge"] : []),
+    ...(operationalModeAttention ? ["Confirm failure detection, rollback or recovery and production impact"] : []),
+    ...(aiGeneratedModeAttention ? ["Confirm generated-code assumptions, edge cases and unsafe patterns are reviewed"] : []),
   ]);
 
   const recommendation: Report["verdict"]["recommendation"] = missingTests.length > 0
@@ -921,47 +913,45 @@ export function generateReport(input: ReportInput): Report {
     findings,
     reviews: {
       security: {
-        status: signals.sensitiveLogging.detected || signals.hasOtherSensitiveTerms || authProfileAttention ? "ATTENTION" : "CLEAR",
+        status: signals.sensitiveLogging.detected || signals.hasOtherSensitiveTerms || securityModeAttention ? "ATTENTION" : "CLEAR",
         summary: signals.sensitiveLogging.detected
           ? "Logging statements and sensitive fields appear together in the changed code."
-            : signals.hasOtherSensitiveTerms || authProfileAttention
+            : signals.hasOtherSensitiveTerms || securityModeAttention
             ? "Authentication, payment or data-sensitive behaviour needs human review."
             : "No direct security signal was detected by the prototype rules.",
         points: [signals.sensitiveLogging.detected
           ? sensitiveLoggingAction(signals.sensitiveLogging)
-          : signals.hasOtherSensitiveTerms || authProfileAttention
+          : signals.hasOtherSensitiveTerms || securityModeAttention
             ? "Confirm access control and sensitive data handling remain intentional."
             : "Confirm the change does not expose sensitive data through logs, errors or responses."],
       },
       reliability: {
-        status: signals.duplicateSideEffect.detected || signals.providerFailure.detected || paymentProfileAttention ? "ATTENTION" : "CLEAR",
+        status: signals.duplicateSideEffect.detected || signals.providerFailure.detected || operationalModeAttention ? "ATTENTION" : "CLEAR",
         summary: signals.duplicateSideEffect.detected
           ? "Retry behaviour and a redemption side effect appear together in the diff."
           : signals.providerFailure.detected
             ? "External provider failure states need focused review."
-            : paymentProfileAttention
-              ? "Payment or refund side effects need repeat-safety and recovery review."
+            : operationalModeAttention
+              ? "Detected failure modes need operational readiness review."
             : "No explicit failure-handling, provider or duplicate-side-effect signal was detected.",
-        points: [signals.duplicateSideEffect.detected || signals.providerFailure.detected || paymentProfileAttention
+        points: [signals.duplicateSideEffect.detected || signals.providerFailure.detected || operationalModeAttention
           ? "Verify failure paths are bounded, observable, idempotent and safe to repeat."
           : "Confirm the changed behaviour is covered by focused tests."],
       },
       maintainability: {
-        status: signals.apiContract.detected || signals.hasConfigTerms || signals.changedLines > 200 || dataProfileAttention || frontendProfileAttention ? "ATTENTION" : "CLEAR",
+        status: signals.apiContract.detected || signals.hasConfigTerms || signals.changedLines > 200 || aiGeneratedModeAttention ? "ATTENTION" : "CLEAR",
         summary: signals.apiContract.detected
           ? "Client-facing response construction needs focused review."
-          : dataProfileAttention
-            ? "Migration, schema or data-write behavior needs compatibility and rollback review."
-            : frontendProfileAttention
-              ? "Frontend or API-consumer behavior needs compatibility review."
-              : signals.changedLines > 200
+          : aiGeneratedModeAttention
+            ? "Generated-code assumptions and edge cases need focused review."
+          : signals.changedLines > 200
             ? "The diff size increases review and maintenance risk."
             : signals.hasConfigTerms
               ? "Configuration behaviour and defaults need focused review."
               : "The change is within the prototype’s normal maintenance signals.",
         points: [signals.apiContract.detected
           ? "Confirm provider-specific logic remains isolated from API response formatting."
-          : signals.hasConfigTerms || signals.changedLines > 200 || dataProfileAttention || frontendProfileAttention
+          : signals.hasConfigTerms || signals.changedLines > 200 || aiGeneratedModeAttention
             ? "Confirm the change scope remains cohesive and responsibilities stay clear."
             : "Confirm responsibilities remain clear and the implementation stays easy to review."],
       },

@@ -94,7 +94,7 @@ button { font:inherit; }
 .form-field input, .form-field select { height:44px; padding:0 13px; }
 .form-field textarea { min-height:300px; padding:14px; resize:vertical; font-family:ui-monospace, SFMono-Regular, Consolas, monospace; font-size:11px; line-height:1.6; tab-size:2; }
 .form-field input::placeholder, .form-field textarea::placeholder { color:#a2aaa6; }
-.form-field input:focus, .form-field textarea:focus, .form-field select:focus { border-color:#6da78f; background:#fff; box-shadow:0 0 0 3px rgba(63,137,105,.11); }.review-profile-field { max-width:360px; }
+.form-field input:focus, .form-field textarea:focus, .form-field select:focus { border-color:#6da78f; background:#fff; box-shadow:0 0 0 3px rgba(63,137,105,.11); }.review-profile-field { max-width:420px; }.review-mode-description { margin-top:-5px; color:#7d8983; font-size:10px; line-height:1.5; }
 .form-footer { display:flex; align-items:center; justify-content:space-between; gap:24px; margin-top:24px; padding-top:22px; border-top:1px solid var(--line); }
 .form-footer p { max-width:480px; margin:0; color:#7b8580; font-size:10px; line-height:1.6; }
 .generate-button { min-height:42px; padding:0 16px; border:0; border-radius:8px; display:inline-flex; align-items:center; gap:18px; color:#fff; background:#20342d; font-size:12px; font-weight:700; cursor:pointer; }

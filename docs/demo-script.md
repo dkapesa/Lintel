@@ -12,7 +12,7 @@
 ## 2-minute demo
 
 1. On `/workspace`, show the Risk inbox and explain that reports stay local and raw diffs are not saved in local history.
-2. Open `/new`, show the sample library, review profile selector and optional public GitHub PR URL import.
+2. Open `/new`, show the sample library, review mode selector and optional public GitHub PR URL import.
 3. Generate **Clean utility change**. Highlight `APPROVE`, `LOW`, **Ready to merge**, no conditions and a quiet Test plan.
 4. Return to `/new` and generate **Provider failure / retry risk**.
 5. Contrast the `TESTS_REQUIRED` result with specific retry, provider, API-contract, logging/privacy and test-gap evidence.
@@ -41,7 +41,7 @@ The built-in samples are designed to show different merge-readiness outcomes:
 - Four editable inputs: PR title, repository, language/framework and diff.
 - The eight-scenario **Load sample** picker.
 - Optional public GitHub PR import and its compact status feedback.
-- Review profile selector for Standard, High assurance, Payments/refunds, Auth/security, Data/migrations and Frontend/API consumer.
+- Review mode selector for Fast triage, Standard readiness, Deep review, Security-sensitive, Test coverage review, Operational readiness and AI-generated code review.
 - Nothing is generated until **Generate Report** is selected.
 - The privacy note: raw diffs are analyzed transiently and are not saved in local report history.
 

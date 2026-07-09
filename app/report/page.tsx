@@ -29,7 +29,7 @@ type GeneratedReportSource = "ai" | "deterministic";
 type ReportSource = GeneratedReportSource | "demo";
 type CopyState = "idle" | "copied" | "failed";
 type DownloadState = "idle" | "downloaded" | "failed";
-type ReportTab = "overview" | "evidence" | "findings" | "tests" | "operations" | "review-focus" | "changed-files" | "export";
+type ReportTab = "overview" | "evidence" | "blast-radius" | "findings" | "tests" | "operations" | "review-focus" | "changed-files" | "export";
 type Finding = Report["findings"][number];
 type ReviewerFocus = NonNullable<Report["reviewerFocus"]>[number];
 type EvidenceLedgerItem = {
@@ -37,6 +37,14 @@ type EvidenceLedgerItem = {
   detail: string;
   impact: "Supports decision" | "Missing evidence" | "Blocks merge" | "Needs human confirmation" | "Ready signal";
   relation: string;
+};
+type SurfaceStatus = "Clear" | "Watch" | "Attention" | "Blocker";
+type AffectedSurface = {
+  name: string;
+  status: SurfaceStatus;
+  reason: string;
+  evidence: string;
+  action: string;
 };
 
 type StoredReport = {
@@ -482,6 +490,227 @@ function deduplicateEvidenceItems(items: EvidenceLedgerItem[]) {
   return deduped;
 }
 
+function textMatches(value: string, patterns: RegExp[]) {
+  return patterns.some((pattern) => pattern.test(value));
+}
+
+function surfaceEvidenceText(report: Report, conditions: string[], focusItems: ReviewerFocus[] | null | undefined) {
+  return [
+    ...report.changedFiles.map((file) => file.path),
+    ...report.findings.flatMap((finding) => [finding.title, finding.category, finding.evidence, finding.action, finding.file ?? ""]),
+    ...report.missingTests,
+    ...report.suggestedTests.flatMap((test) => [test.title, test.description ?? ""]),
+    ...conditions,
+    ...report.reviewerChecklist.map((item) => item.label),
+    ...(focusItems?.flatMap((item) => [item.area, item.reason]) ?? []),
+    report.reviews.security.summary,
+    report.reviews.reliability.summary,
+    report.reviews.maintainability.summary,
+    ...report.reviews.security.points,
+    ...report.reviews.reliability.points,
+    ...report.reviews.maintainability.points,
+    report.operationalReadiness?.summary ?? "",
+    ...(report.operationalReadiness?.failureModes ?? []),
+    ...(report.operationalReadiness?.detectionSignals ?? []),
+    ...(report.operationalReadiness?.observabilityGaps ?? []),
+    ...(report.operationalReadiness?.recoveryOrRollback ?? []),
+    ...(report.operationalReadiness?.customerOrDataImpact ?? []),
+    ...(report.operationalReadiness?.ownerOrReviewerFocus ?? []),
+  ].join(" ").toLowerCase();
+}
+
+function strongestSurfaceStatus(options: {
+  report: Report;
+  relatedFindings: Finding[];
+  relatedConditions: string[];
+  relatedMissingTests: string[];
+  attention: boolean;
+  readySignal?: boolean;
+}): SurfaceStatus {
+  const hasSevereFinding = options.relatedFindings.some((finding) => finding.severity === "HIGH" || finding.severity === "CRITICAL");
+
+  if (options.relatedConditions.length > 0 || hasSevereFinding) return "Blocker";
+  if (options.relatedMissingTests.length > 0 && options.report.verdict.recommendation === "TESTS_REQUIRED") return "Blocker";
+  if (options.relatedFindings.length > 0 || options.relatedMissingTests.length > 0 || options.attention) return "Attention";
+  if (options.readySignal) return "Clear";
+  return "Watch";
+}
+
+function surfaceRelation(surface: AffectedSurface) {
+  return `${surface.name} ${surface.reason} ${surface.evidence}`.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
+function deduplicateSurfaces(surfaces: AffectedSurface[]) {
+  const seen = new Set<string>();
+  const deduped: AffectedSurface[] = [];
+
+  for (const surface of surfaces) {
+    const key = surfaceRelation(surface);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(surface);
+  }
+
+  return deduped;
+}
+
+function buildAffectedSurfaces(report: Report, conditions: string[], focusItems: ReviewerFocus[] | null | undefined) {
+  const evidenceText = surfaceEvidenceText(report, conditions, focusItems);
+  const changedFiles = report.changedFiles.map((file) => file.path);
+  const surfaceDefinitions: Array<{
+    name: string;
+    patterns: RegExp[];
+    focusAreas: string[];
+    categories: string[];
+    action: string;
+    attention?: boolean;
+    readySignal?: boolean;
+  }> = [
+    {
+      name: "API contract",
+      patterns: [/\bapi\b/, /\broute\b/, /\bendpoint\b/, /\bstatus_?code\b/, /\bjsonresponse\b/, /\bresponse shape\b/, /\berror contract\b/, /\bopenapi\b/, /\bclient-facing\b/, /\bfrontend-safe\b/],
+      focusAreas: ["API contract", "Docs/API consumer review"],
+      categories: ["API contract"],
+      action: "Confirm client-facing response shape, status semantics and contract stability.",
+    },
+    {
+      name: "Backend/domain logic",
+      patterns: [/\bservice\b/, /\brepository\b/, /\bcontroller\b/, /\bworker\b/, /\bqueue\b/, /\bredemption\b/, /\brefund\b/, /\bpayment\b/, /\bbilling\b/, /\border\b/, /\bcheckout\b/, /\bbackend\b/, /\bserver\b/, /app\/services/, /app\/clients/],
+      focusAreas: ["Payments/domain logic"],
+      categories: [],
+      action: "Review side effects, ownership boundaries, retry behaviour and idempotency assumptions.",
+    },
+    {
+      name: "Data/model/migration",
+      patterns: [/\bdatabase\b/, /\bmigration\b/, /\bschema\b/, /\bdata write\b/, /\bdata-write\b/, /\bmodel\b/, /\bprisma\b/, /\bsql\b/, /\brollback\b/, /migrations?\//],
+      focusAreas: ["Data/migration"],
+      categories: [],
+      action: "Confirm migration safety, rollback path, data writes and compatibility with existing records.",
+    },
+    {
+      name: "Auth/session",
+      patterns: [/\bauth\b/, /\bauthori[sz]ation\b/, /\bpermission\b/, /\bsession\b/, /\btoken\b/, /\bjwt\b/, /\blogin\b/, /\bcredential\b/],
+      focusAreas: ["Security/privacy"],
+      categories: ["Security"],
+      action: "Review authentication, permissions, token handling and session boundary changes.",
+    },
+    {
+      name: "External providers",
+      patterns: [/\bprovider\b/, /\bpartner\b/, /\bexternal\b/, /\bhttp\b/, /\b5xx\b/, /\btimeout\b/, /\bunavailable\b/, /\bfallback\b/],
+      focusAreas: [],
+      categories: [],
+      action: "Verify provider failure handling, timeout behavior, retries and safe fallback boundaries.",
+    },
+    {
+      name: "Operational readiness",
+      patterns: [/\boperational\b/, /\bfailure mode\b/, /\brecovery\b/, /\brollback\b/, /\btimeout\b/, /\bretry\b/, /\bunavailable\b/, /\bincident\b/],
+      focusAreas: ["Platform/observability"],
+      categories: ["Reliability"],
+      action: "Confirm failure modes, detection signals, recovery path and customer impact before merge.",
+      attention: report.operationalReadiness?.status === "ATTENTION",
+      readySignal: report.operationalReadiness?.status === "CLEAR",
+    },
+    {
+      name: "Observability/logging",
+      patterns: [/\blogger\b/, /\blogging\b/, /\blog\b/, /\bmetric\b/, /\balert\b/, /\btrace\b/, /\bmonitoring\b/, /\bobservability\b/],
+      focusAreas: ["Platform/observability", "Security/privacy"],
+      categories: ["Security", "Reliability"],
+      action: "Check logs, metrics and alerts are useful without exposing sensitive identifiers or codes.",
+    },
+    {
+      name: "Security/privacy",
+      patterns: [/\bsecurity\b/, /\bprivacy\b/, /\buser_id\b/, /\bpartner_id\b/, /\bcustomer_id\b/, /\baccount_id\b/, /\btoken\b/, /\bsecret\b/, /\bcredential\b/, /\bpii\b/, /\bsensitive\b/, /\bexposure\b/],
+      focusAreas: ["Security/privacy"],
+      categories: ["Security"],
+      action: "Confirm sensitive data, identifiers, credentials and error/log exposure are handled safely.",
+      attention: report.reviews.security.status === "ATTENTION",
+    },
+    {
+      name: "Frontend/client behavior",
+      patterns: [/\bfrontend\b/, /\bbrowser\b/, /\breact\b/, /\bnext\.?js\b/, /\bui\b/, /\banalytics\b/, /\bsendgaevent\b/, /\.tsx\b/, /\.jsx\b/, /app\/.*page\./],
+      focusAreas: ["Frontend integration"],
+      categories: [],
+      action: "Confirm user-facing behavior, browser compatibility, analytics semantics and consumer expectations.",
+    },
+    {
+      name: "Tests/coverage",
+      patterns: [/\btest\b/, /\bcoverage\b/, /\bmissing test\b/, /\bsuggested test\b/, /tests?\//, /\.test\./, /\.spec\./],
+      focusAreas: ["Backend reliability", "Frontend integration", "API contract"],
+      categories: ["Missing tests"],
+      action: "Verify focused tests cover the risky behavior and merge contract conditions.",
+      readySignal: report.missingTests.length === 0 && report.suggestedTests.length === 0 && changedFiles.some((file) => /tests?\//.test(file.toLowerCase()) || /\.(test|spec)\./.test(file.toLowerCase())),
+    },
+  ];
+
+  const surfaces = surfaceDefinitions.flatMap((definition): AffectedSurface[] => {
+    const focusMatches = focusItems?.filter((item) => definition.focusAreas.includes(item.area)) ?? [];
+    const relatedFindings = report.findings.filter((finding) => (
+      definition.categories.includes(finding.category)
+      || textMatches(findingContext(finding).toLowerCase(), definition.patterns)
+    ));
+    const relatedConditions = conditions.filter((condition) => textMatches(condition.toLowerCase(), definition.patterns));
+    const relatedMissingTests = report.missingTests.filter((test) => textMatches(test.toLowerCase(), definition.patterns));
+    const relatedFiles = changedFiles.filter((file) => textMatches(file.toLowerCase(), definition.patterns));
+    const hasSignal = textMatches(evidenceText, definition.patterns)
+      || focusMatches.length > 0
+      || relatedFindings.length > 0
+      || relatedConditions.length > 0
+      || relatedMissingTests.length > 0
+      || relatedFiles.length > 0
+      || Boolean(definition.readySignal);
+
+    if (!hasSignal) return [];
+
+    const status = strongestSurfaceStatus({
+      report,
+      relatedFindings,
+      relatedConditions,
+      relatedMissingTests,
+      attention: Boolean(definition.attention),
+      readySignal: definition.readySignal,
+    });
+    const evidence = relatedConditions[0]
+      ? `Merge condition: ${relatedConditions[0]}`
+      : relatedFindings[0]
+        ? `${relatedFindings[0].category} finding: ${relatedFindings[0].title}`
+        : relatedMissingTests[0]
+          ? `Missing test: ${relatedMissingTests[0]}`
+          : relatedFiles.length > 0
+            ? `Changed files: ${relatedFiles.slice(0, 3).join(", ")}`
+            : focusMatches[0]
+              ? `Reviewer focus: ${focusMatches[0].area}`
+              : definition.readySignal
+                ? "No missing test gaps or open conditions detected for this surface."
+                : "Signal detected in report context.";
+    const reason = relatedConditions.length > 0
+      ? "Included because an open merge condition touches this surface."
+      : relatedFindings.length > 0
+        ? "Included because a risk finding touches this surface."
+        : relatedMissingTests.length > 0
+          ? "Included because missing test evidence touches this surface."
+          : relatedFiles.length > 0
+            ? "Included because changed files suggest this surface may be affected."
+            : focusMatches.length > 0
+              ? "Included because reviewer focus routes attention here."
+              : definition.readySignal
+                ? "Included as a ready signal for the changed surface."
+                : "Included because report signals reference this surface.";
+
+    return [{
+      name: definition.name,
+      status,
+      reason,
+      evidence,
+      action: definition.action,
+    }];
+  });
+
+  return deduplicateSurfaces(surfaces).sort((a, b) => {
+    const rank: Record<SurfaceStatus, number> = { Blocker: 4, Attention: 3, Watch: 2, Clear: 1 };
+    return rank[b.status] - rank[a.status] || a.name.localeCompare(b.name);
+  });
+}
+
 function SourceBadge({ source }: { source: ReportSource }) {
   return <span className={`source-badge source-badge--${source}`}>{sourceLabels[source]}</span>;
 }
@@ -495,6 +724,26 @@ function EvidenceLedgerCard({ item }: { item: EvidenceLedgerItem }) {
       </div>
       <h3>{item.label}</h3>
       <p>{item.detail}</p>
+    </article>
+  );
+}
+
+function AffectedSurfaceCard({ surface }: { surface: AffectedSurface }) {
+  return (
+    <article className="affected-surface-card">
+      <div className="affected-surface-card-header">
+        <h3>{surface.name}</h3>
+        <span className={`surface-status surface-status--${surface.status.toLowerCase()}`}>{surface.status}</span>
+      </div>
+      <p>{surface.reason}</p>
+      <div className="affected-surface-evidence">
+        <span>Evidence</span>
+        <strong>{surface.evidence}</strong>
+      </div>
+      <div className="affected-surface-action">
+        <span>Reviewer action</span>
+        <p>{surface.action}</p>
+      </div>
     </article>
   );
 }
@@ -588,6 +837,10 @@ export default function ReportPage() {
     includeLocalNote: includeLocalNoteInMergeSummary,
   });
   const evidenceLedger = buildEvidenceLedger(report, displayedConditions, supportedReviewerFocus);
+  const affectedSurfaces = buildAffectedSurfaces(report, displayedConditions, supportedReviewerFocus);
+  const blockerSurfaceCount = affectedSurfaces.filter((surface) => surface.status === "Blocker").length;
+  const confirmationSurfaceCount = affectedSurfaces.filter((surface) => surface.status === "Attention" || surface.status === "Watch").length;
+  const primaryAffectedSurface = affectedSurfaces[0]?.name ?? "No affected surface detected";
   const readinessConclusion = displayedConditions.length === 0
     ? "No merge conditions detected. Complete normal human review and CI checks."
     : openConditionCount === 0
@@ -596,6 +849,7 @@ export default function ReportPage() {
   const reportTabs: Array<{ id: ReportTab; label: string; indicator: string }> = [
     { id: "overview", label: "Overview", indicator: `${displayedConditions.length}` },
     { id: "evidence", label: "Evidence", indicator: `${evidenceLedger.missing.length}` },
+    { id: "blast-radius", label: "Surfaces", indicator: `${affectedSurfaces.length}` },
     { id: "findings", label: "Findings", indicator: `${report.findings.length}` },
     { id: "tests", label: "Tests", indicator: `${report.missingTests.length}` },
     { id: "operations", label: "Operations", indicator: operationalStatus === "ATTENTION" ? "Attention" : "Clear" },
@@ -966,6 +1220,54 @@ export default function ReportPage() {
             </div>
           )}
 
+          {activeTab === "blast-radius" && (
+            <div
+              className="report-tab-panel"
+              id="report-panel-blast-radius"
+              role="tabpanel"
+              aria-labelledby="report-tab-blast-radius"
+            >
+          <section className="section-block report-blast-radius" aria-labelledby="blast-radius-title">
+            <div className="section-heading">
+              <div>
+                <span className="card-kicker">BLAST RADIUS</span>
+                <h2 id="blast-radius-title">Affected surfaces</h2>
+              </div>
+              <span className="section-count">{affectedSurfaces.length} surfaces</span>
+            </div>
+
+            <div className="surface-summary-grid" aria-label="Blast radius summary">
+              <article>
+                <span>Affected surfaces</span>
+                <strong>{affectedSurfaces.length}</strong>
+              </article>
+              <article>
+                <span>Blocker surfaces</span>
+                <strong>{blockerSurfaceCount}</strong>
+              </article>
+              <article>
+                <span>Need confirmation</span>
+                <strong>{confirmationSurfaceCount}</strong>
+              </article>
+              <article>
+                <span>Primary review area</span>
+                <p>{primaryAffectedSurface}</p>
+              </article>
+            </div>
+
+            {affectedSurfaces.length > 0 ? (
+              <div className="affected-surfaces-grid">
+                {affectedSurfaces.map((surface) => (
+                  <AffectedSurfaceCard surface={surface} key={`${surface.name}-${surface.status}-${surface.evidence}`} />
+                ))}
+              </div>
+            ) : (
+              <p className="section-empty section-empty--positive">No affected surface detected beyond normal human review and CI checks.</p>
+            )}
+          </section>
+            </div>
+          )}
+
           {activeTab === "findings" && (
             <div
               className="report-tab-panel"
@@ -1301,6 +1603,7 @@ export default function ReportPage() {
                   <a href="/workspace">Back to workspace</a>
                   <a href="/new">Check another pull request</a>
                   <button type="button" onClick={() => setActiveTab("evidence")}>Evidence ledger</button>
+                  <button type="button" onClick={() => setActiveTab("blast-radius")}>Affected surfaces</button>
                   <a href="/github-action">GitHub Action prototype</a>
                   <a href="/slack-handoff">Slack handoff concept</a>
                   <a href="/docs/security-model.md">Security model</a>
@@ -1425,6 +1728,12 @@ export default function ReportPage() {
                 onClick={() => setActiveTab("evidence")}
               >
                 Evidence ledger
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("blast-radius")}
+              >
+                Affected surfaces
               </button>
               <button
                 className={`copy-conditions-button copy-conditions-button--${conditionsCopyState}`}

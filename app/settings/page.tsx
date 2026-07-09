@@ -77,6 +77,7 @@ export default function SettingsPage() {
           <Link className="nav-item workspace-nav-item" href="/review-operations">Review operations</Link>
           <Link className="nav-item workspace-nav-item" href="/report">Reports</Link>
           <span className="workspace-nav-label">System</span>
+          <Link className="nav-item workspace-nav-item" href="/review-policies">Review policies</Link>
           <Link className="nav-item workspace-nav-item nav-item--active" href="/settings" aria-current="page">Analysis settings</Link>
           <Link className="nav-item workspace-nav-item" href="/github-action">GitHub Action</Link>
           <Link className="nav-item workspace-nav-item" href="/slack-handoff">Slack handoff</Link>
@@ -183,6 +184,7 @@ export default function SettingsPage() {
             {trustItems.map((item) => <li key={item}>{item}</li>)}
           </ul>
           <div className="settings-doc-links">
+            <Link href="/review-policies">View review policies</Link>
             <Link href="/github-action">View GitHub Action prototype</Link>
             <Link href="/slack-handoff">View Slack handoff concept</Link>
             <Link href="/docs/security-model.md">Read security model</Link>

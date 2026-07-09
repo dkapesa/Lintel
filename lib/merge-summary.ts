@@ -1,5 +1,6 @@
 import type { Report } from "./mock-report";
 import { decisionConditions, deduplicateReportItems, pruneUnsupportedReviewerFocus } from "./report-quality";
+import { policyGateSummary, policyStatusForReport, reviewPolicyForProfile } from "./review-policies";
 import { reviewProfileLabel } from "./review-profiles";
 import type { ReportReviewState } from "./review-state";
 
@@ -89,6 +90,8 @@ export function mergeSummaryToMarkdown(report: Report, options: MergeSummaryOpti
   const supportedReviewerFocus = pruneUnsupportedReviewerFocus(report);
   const focusItems = supportedReviewerFocus?.map((item) => `${item.priority}: ${item.area} — ${item.reason}`) ?? [];
   const localNote = options.reviewState.note.trim();
+  const policy = reviewPolicyForProfile(report.pr.reviewProfile);
+  const policyStatus = policyStatusForReport(report, policy);
 
   return [
     "## Lintel merge-readiness summary",
@@ -98,6 +101,7 @@ export function mergeSummaryToMarkdown(report: Report, options: MergeSummaryOpti
     `**Local review state:** ${safeMarkdownText(options.reviewState.status)}`,
     `**Source:** ${safeMarkdownText(options.sourceLabel)}`,
     `**Review mode:** ${safeMarkdownText(reviewProfileLabel(report.pr.reviewProfile))}`,
+    `**Review policy:** ${safeMarkdownText(policy.label)} (${safeMarkdownText(policyGateSummary(policy))})`,
     "",
     "### Top blockers",
     bulletList(topBlockers(report), "No blockers detected.", 4),
@@ -117,6 +121,9 @@ export function mergeSummaryToMarkdown(report: Report, options: MergeSummaryOpti
     "",
     "### Operational / security attention",
     bulletList(operationalAttention(report), "No operational or security attention state detected.", 4),
+    "",
+    "### Merge gates",
+    `${safeMarkdownText(policyStatus.label)} - ${safeMarkdownText(policyStatus.detail)}`,
     "",
     "### Next action",
     safeMarkdownText(nextAction(report)),

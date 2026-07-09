@@ -656,6 +656,7 @@ export default function ReportsWorkspacePage() {
           <Link className="nav-item workspace-nav-item" href="/review-operations">Review operations</Link>
           <Link className="nav-item workspace-nav-item" href="/report">Reports</Link>
           <span className="workspace-nav-label">System</span>
+          <Link className="nav-item workspace-nav-item" href="/review-policies">Review policies</Link>
           <Link className="nav-item workspace-nav-item" href="/settings">Analysis settings</Link>
           <Link className="nav-item workspace-nav-item" href="/github-action">GitHub Action</Link>
           <Link className="nav-item workspace-nav-item" href="/slack-handoff">Slack handoff</Link>

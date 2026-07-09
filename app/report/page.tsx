@@ -14,6 +14,7 @@ import { conditionsToMarkdown, findingProvenanceLabel, reportMarkdownFilename, r
 import type { FindingSeverity, Recommendation, Report, ReviewArea, RiskLevel } from "../../lib/mock-report";
 import { report as demoReport } from "../../lib/mock-report";
 import { deduplicateReportItems, pruneUnsupportedReviewerFocus } from "../../lib/report-quality";
+import { policyGateSummary, policyStatusForReport, reviewPolicyForProfile } from "../../lib/review-policies";
 import { reviewProfileLabel } from "../../lib/review-profiles";
 import {
   defaultReviewState,
@@ -803,6 +804,8 @@ export default function ReportPage() {
   const { report, source } = displayedReport;
   const { pr, verdict } = report;
   const supportedReviewerFocus = pruneUnsupportedReviewerFocus(report);
+  const activePolicy = reviewPolicyForProfile(pr.reviewProfile);
+  const activePolicyStatus = policyStatusForReport(report, activePolicy);
   const displayedConditions = reportConditions(report);
   const selectedFinding = selectedFindingIndex !== null ? report.findings[selectedFindingIndex] : undefined;
   const selectedFindingFiles = selectedFinding ? affectedFilesForFinding(report, selectedFinding) : [];
@@ -961,6 +964,7 @@ export default function ReportPage() {
           <a className={`nav-item${source !== "demo" ? " nav-item--active" : ""}`} href="/workspace">Risk inbox</a>
           <a className="nav-item" href="/review-operations">Review operations</a>
           <a className={`nav-item${source === "demo" ? " nav-item--active" : ""}`} href="/report?demo=1">Demo report</a>
+          <a className="nav-item" href="/review-policies">Review policies</a>
           <a className="nav-item" href="/settings">Analysis settings</a>
           <a className="nav-item" href="/github-action">GitHub Action</a>
           <a className="nav-item" href="/slack-handoff">Slack handoff</a>
@@ -1602,6 +1606,7 @@ export default function ReportPage() {
                 <div className="report-export-links">
                   <a href="/workspace">Back to workspace</a>
                   <a href="/new">Check another pull request</a>
+                  <a href="/review-policies">Review policies</a>
                   <button type="button" onClick={() => setActiveTab("evidence")}>Evidence ledger</button>
                   <button type="button" onClick={() => setActiveTab("blast-radius")}>Affected surfaces</button>
                   <a href="/github-action">GitHub Action prototype</a>
@@ -1680,12 +1685,22 @@ export default function ReportPage() {
 
             <dl className="report-decision-panel-meta">
               <div><dt>Review mode</dt><dd>{reviewProfileLabel(pr.reviewProfile)}</dd></div>
+              <div><dt>Policy</dt><dd>{activePolicy.label}</dd></div>
               <div><dt>Input</dt><dd>{decisionPanelInputLabel(pr.branch)}</dd></div>
               <div><dt>Mode</dt><dd>{sourceLabels[source]}</dd></div>
               <div><dt>Operations</dt><dd>{operationalStatus}</dd></div>
               <div><dt>Quality</dt><dd>{qualityStatus}</dd></div>
               <div><dt>Reviewer focus</dt><dd>{reviewerFocusSummary}</dd></div>
             </dl>
+
+            <section className="report-policy-gates" aria-label="Active merge policy">
+              <div>
+                <span>Active policy</span>
+                <strong>{activePolicyStatus.label}</strong>
+              </div>
+              <p>{activePolicy.label}: {policyGateSummary(activePolicy)}. {activePolicyStatus.detail}</p>
+              <a href="/review-policies">View merge gates</a>
+            </section>
 
             <section className="report-decision-panel-conditions" aria-label="Condition progress">
               <span>Conditions cleared</span>

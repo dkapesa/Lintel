@@ -41,6 +41,7 @@ export default function Home() {
         </Link>
         <div className="landing-nav-actions">
           <Link href="/workspace">Risk inbox</Link>
+          <Link href="/settings">Analysis settings</Link>
           <Link href="/docs/security-model.md">Security model</Link>
           <Link className="landing-button landing-button--small" href="/new">Check a pull request</Link>
         </div>

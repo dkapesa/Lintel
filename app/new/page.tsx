@@ -236,6 +236,7 @@ export default function NewReportPage() {
         </Link>
         <nav className="new-topbar-links" aria-label="Workspace navigation">
           <Link href="/workspace">Risk inbox</Link>
+          <Link href="/settings">Analysis settings</Link>
           <Link href="/docs/security-model.md">Security model</Link>
         </nav>
       </header>

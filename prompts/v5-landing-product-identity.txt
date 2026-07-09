@@ -1,0 +1,140 @@
+We are continuing the Lintel build.
+
+Current committed product state:
+- V3.9 Risk inbox with review queues
+- V4.0 Tabbed report working surface
+- V4.1 Local review state/actions
+- V4.2 Finding detail evidence panel
+- V4.3 Merge summary / GitHub PR comment builder
+- V4.4 Review modes and analysis profiles
+- V4.5 Analysis/model provider settings concept
+- V4.6 GitHub Action PR comment prototype
+- V4.7 Slack-ready handoff concept
+- V4.8 Evidence ledger and merge contract
+- V4.9 Review operations dashboard
+- V4.10 Blast radius / affected surfaces map
+- V4.11 Review policy profiles and merge gates
+- V4.12 PR readiness timeline and decision history
+- V4.13 Reviewer assignment and ownership cues
+- V4.14 Readiness score breakdown
+- V4.15 Review action board and blocker resolution
+- V4.16 Readiness command palette and quick actions
+
+Next version:
+V5.0 Landing page and product identity refresh.
+
+Goal:
+Refresh the public landing page so Lintel feels like a premium developer tool for serious engineering teams, while still being understandable to general technical users who are not senior engineers.
+
+Product context:
+Lintel is a local-first merge-readiness workspace for engineering teams. It helps teams decide whether pull requests are safe, tested, operationally ready, maintainable, and ready to merge.
+
+Lintel is not a generic AI code review chatbot.
+
+Core positioning:
+“Agents create code. Lintel decides what is ready to merge.”
+
+Alternative accessible positioning:
+“Lintel turns pull requests into clear merge-readiness decisions.”
+
+Product principle:
+“A checklist, not a lecture.”
+
+Visual direction:
+- clean editorial landing page
+- large calm hero section
+- light marketing page with dark product mockup surfaces
+- product visual as the hero
+- premium developer-tool feel
+- refined typography
+- strong whitespace
+- subtle technical/grid motifs
+- restrained gradients or glow only if tasteful
+- crisp cards, borders, and shadows
+- mono-style technical details for PR numbers, YAML, risk labels, repo names, and CLI snippets
+- inspired by the clarity of modern developer tools such as Cursor/Linear, but do not copy them
+
+Scope:
+Focus on the public landing page and any small reusable visual components needed for it.
+Do not redesign the entire app workspace.
+Do not change product functionality.
+Do not change existing report/workspace flows unless a tiny link/CTA is necessary.
+Do not add backend features.
+Do not add auth, billing, database, real GitHub posting, Slack integration, provider integration, or new dependencies.
+Avoid unnecessary rewrites.
+
+Landing page structure:
+1. Hero section:
+   - Main headline: “Decide what’s ready to merge.”
+   - Supporting copy explaining that Lintel helps teams review PRs for risk, missing tests, operational readiness, evidence, and merge conditions.
+   - CTAs such as “Open risk inbox” and “Check a pull request” or existing app routes.
+   - Use simple language that a non-expert can understand.
+
+2. Hero product visual:
+   - Create a polished product mockup or composed UI preview using existing Lintel concepts.
+   - Show a dark product surface inside the light landing page.
+   - Include elements such as Risk inbox, readiness score, report tabs, evidence ledger, merge contract, and PR comment preview.
+   - The mockup should feel like the actual Lintel product, not a fake unrelated dashboard.
+
+3. Problem section:
+   - Explain that AI coding tools make code creation faster, but merge decisions still need engineering judgment.
+   - Make clear that passing CI is not the same as being ready to merge.
+
+4. Workflow section:
+   - Show a simple flow:
+     Analyze PR → inspect evidence → clear merge contract → share decision → track readiness patterns.
+   - Keep this visual and easy to scan.
+
+5. Feature sections/cards:
+   Include concise cards for:
+   - Risk inbox
+   - Evidence ledger
+   - Merge contract
+   - Blast radius
+   - Review policies / merge gates
+   - Reviewer ownership
+   - GitHub PR comment
+   - Slack handoff
+   - Review operations dashboard
+
+6. Trust/security section:
+   - Explain local-first prototype direction.
+   - Mention deterministic baseline.
+   - Mention optional model-assisted analysis.
+   - Mention raw-diff-free local history.
+   - Mention CI-safe future architecture.
+   - Link to Security model and Analysis settings if routes exist.
+
+7. Technical workflow / GitHub Action section:
+   - Show one concise code/YAML-style visual or card.
+   - Explain one comment, no noisy inline comments, no merge blocking by default in v1.
+   - Keep it honest as prototype/blueprint if not live.
+
+8. Closing CTA:
+   - Reinforce “Start with one PR. Leave with a merge decision.”
+   - Link to workspace/new report/demo routes.
+
+Copywriting requirements:
+- Make the main story simple enough for non-experts.
+- Keep technical depth available for engineers.
+- Avoid vague AI hype.
+- Avoid saying Lintel replaces human reviewers.
+- Avoid claiming SOC 2, enterprise readiness, production analytics, live Slack integration, live GitHub posting, or real team sync.
+- Use merge-readiness language consistently.
+- Make the product sound practical, credible, and sharp.
+
+Implementation requirements:
+- Use the existing styling approach and design system where possible.
+- Use existing fonts if already configured. If the app already uses next/font, use a clean sans/mono combination such as Geist/Inter style without adding font packages.
+- Keep the page responsive.
+- Keep build safety high.
+- Do not introduce unnecessary dependencies.
+- Preserve all existing app functionality.
+
+After changes, summarize:
+- files changed
+- landing page sections added/changed
+- copywriting changes
+- product mockup/visual approach
+- routes/CTAs used
+- how to test in the browser

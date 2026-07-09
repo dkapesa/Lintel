@@ -2,34 +2,133 @@ import Link from "next/link";
 
 const workflow = [
   [
-    "Provide the change",
-    "Paste a diff, import a public GitHub PR, or load a sample. Pick a review mode for fast triage, deep review, security, tests, operations or generated-code review.",
+    "Analyze a pull request",
+    "Paste a diff or import a public GitHub PR. Deterministic checks read the change for risky paths, missing tests and contract changes.",
   ],
   [
-    "Lintel analyses it",
-    "Deterministic checks read the diff for failure modes, missing coverage, contract stability and sensitive-data handling. Model-assisted analysis can add synthesis on top while preserving baseline findings.",
+    "Inspect the evidence",
+    "Every finding carries concise evidence and a provenance label — rule detected or model assisted — so you can see why it was raised.",
   ],
   [
-    "Get the decision",
-    "A recommendation, risks with evidence, a test plan, reviewer routing, and the conditions to meet before merge. Copy it into the PR conversation or export Markdown.",
+    "Clear the merge contract",
+    "Risky changes get a short list of conditions to meet before merge. A checklist, not a lecture.",
+  ],
+  [
+    "Share the decision",
+    "Copy a ready-to-paste GitHub PR comment or a Slack-style handoff so the decision travels with the change.",
+  ],
+  [
+    "Track readiness patterns",
+    "The review operations dashboard shows how decisions, risk levels and blockers accumulate across your local reports.",
   ],
 ] as const;
 
-const capabilities = [
-  ["Conditions before merge", "A concrete list of what must be proven before this change ships. Paste it straight into the PR thread."],
-  ["Operational readiness", "Failure modes, detection signals, recovery paths and customer impact, assessed before merge."],
-  ["Risk-specific test plan", "Not \"add more tests.\" Named test cases for the exact failure paths the change introduces, like proving a retry cannot duplicate a redemption."],
-  ["Reviewer focus", "Routes attention to the disciplines that matter for this change, such as backend reliability, API contract or security, with one primary focus."],
-  ["Evidence and provenance", "Findings include concise evidence and provenance labels such as Rule detected or Model assisted."],
-  ["Local-first workspace", "Reports live on your machine. Raw diffs are not saved in local report history. No account is required to run a report."],
+const features = [
+  {
+    tag: "INBOX",
+    title: "Risk inbox",
+    description: "Every analysed pull request lands in one queue, ranked by risk, with review states your team controls.",
+    href: "/workspace",
+    cta: "Open the inbox",
+  },
+  {
+    tag: "LEDGER",
+    title: "Evidence ledger",
+    description: "Findings are backed by concrete evidence and provenance labels, so reviewers know what produced each one.",
+    href: "/report",
+    cta: "See it in a report",
+  },
+  {
+    tag: "CONTRACT",
+    title: "Merge contract",
+    description: "The conditions a change must meet before merge, tracked as an explicit checklist instead of a comment thread.",
+    href: "/report",
+    cta: "See it in a report",
+  },
+  {
+    tag: "BLAST RADIUS",
+    title: "Blast radius",
+    description: "A map of the surfaces a change touches — payments, auth, APIs — so reviewers see how far a mistake could travel.",
+    href: "/report",
+    cta: "See it in a report",
+  },
+  {
+    tag: "POLICY",
+    title: "Review policies & merge gates",
+    description: "Policy profiles define what your team blocks on, and apply it consistently to every report.",
+    href: "/review-policies",
+    cta: "Browse policies",
+  },
+  {
+    tag: "OWNERSHIP",
+    title: "Reviewer ownership",
+    description: "Each report routes attention to the discipline that should look at it, with one clear primary owner.",
+    href: "/report",
+    cta: "See it in a report",
+  },
+  {
+    tag: "GITHUB",
+    title: "GitHub PR comment",
+    description: "One structured comment for the pull request conversation. No line-by-line noise.",
+    href: "/github-action",
+    cta: "Preview the comment",
+  },
+  {
+    tag: "SLACK",
+    title: "Slack handoff",
+    description: "A compact summary formatted for the channel where the merge decision actually gets made.",
+    href: "/slack-handoff",
+    cta: "Preview the handoff",
+  },
+  {
+    tag: "OPERATIONS",
+    title: "Review operations",
+    description: "A dashboard of decisions, risk trends and readiness patterns across your local report history.",
+    href: "/review-operations",
+    cta: "Open the dashboard",
+  },
 ] as const;
 
-const evaluationStats = [
-  ["4/4", "evaluation scenarios correct"],
-  ["0", "invented findings on clean changes"],
-  ["0", "false payment flags on frontend PRs"],
-  ["0", "raw diff markers observed in generated reports"],
+const trustPoints = [
+  [
+    "Local-first by design",
+    "Reports are generated and stored on your machine. No account, no upload, no server-side history in the current prototype.",
+  ],
+  [
+    "Deterministic baseline",
+    "Every report starts from deterministic checks over the diff. The same input produces the same baseline findings.",
+  ],
+  [
+    "Model-assisted, optionally",
+    "Model analysis can improve synthesis and wording on top of the baseline. Findings keep their provenance labels either way.",
+  ],
+  [
+    "Raw-diff-free history",
+    "Local report history stores decisions and findings, not raw diffs. Your code does not linger in a report archive.",
+  ],
+  [
+    "CI-safe by architecture",
+    "The planned private-repo path is a GitHub Action that runs inside your CI, so diffs never leave your infrastructure.",
+  ],
 ] as const;
+
+const actionYaml: ReadonlyArray<{ text: string; comment?: boolean }> = [
+  { text: "# .github/workflows/lintel.yml", comment: true },
+  { text: "name: lintel-merge-readiness" },
+  { text: "on: [pull_request]" },
+  { text: "" },
+  { text: "jobs:" },
+  { text: "  readiness:" },
+  { text: "    runs-on: ubuntu-latest" },
+  { text: "    steps:" },
+  { text: "      - uses: actions/checkout@v4" },
+  { text: "      - name: Lintel readiness report" },
+  { text: "        uses: lintel/readiness-action@v1" },
+  { text: "        with:" },
+  { text: "          comment: single        # one comment, updated in place" },
+  { text: "          inline-comments: off   # no line-by-line noise" },
+  { text: "          block-merge: false     # advisory by default in v1" },
+];
 
 export default function Home() {
   return (
@@ -41,79 +140,142 @@ export default function Home() {
         </Link>
         <div className="landing-nav-actions">
           <Link href="/workspace">Risk inbox</Link>
-          <Link href="/settings">Analysis settings</Link>
+          <Link href="/github-action">GitHub Action</Link>
           <Link href="/docs/security-model.md">Security model</Link>
           <Link className="landing-button landing-button--small" href="/new">Check a pull request</Link>
         </div>
       </header>
 
-      <section className="landing-hero landing-hero--decision">
-        <div className="landing-hero-copy">
-          <span className="eyebrow">MERGE READINESS FOR PULL REQUESTS</span>
-          <h1>Decide what is ready to merge.</h1>
-          <p>Lintel analyses a pull request and produces a merge-readiness report: a clear recommendation, the risks with evidence, the tests that are missing, and the conditions to meet before merge. Clean changes get approved. Risky ones get a checklist, not a lecture.</p>
-          <div className="landing-actions">
-            <Link className="landing-button" href="/new">Check a pull request <span aria-hidden="true">-&gt;</span></Link>
-            <Link className="landing-button landing-button--secondary" href="/report">See a full report</Link>
-          </div>
-          <div className="landing-trust-links" aria-label="Trust and privacy notes">
-            <span>Local-first workspace</span>
-            <span>Raw-diff-free history</span>
-            <Link href="/docs/security-model.md">Read security model</Link>
-          </div>
+      <section className="landing-hero-v5">
+        <span className="eyebrow">LOCAL-FIRST MERGE-READINESS WORKSPACE</span>
+        <h1>Decide what’s ready to merge.</h1>
+        <p>
+          Lintel reads a pull request and turns it into a clear merge decision: the risks it found, the evidence
+          behind them, the tests that are missing, whether it is operationally ready, and the conditions to clear
+          before merge. Plain language for the team. Full depth for the reviewer.
+        </p>
+        <div className="landing-actions">
+          <Link className="landing-button" href="/workspace">Open risk inbox <span aria-hidden="true">-&gt;</span></Link>
+          <Link className="landing-button landing-button--secondary" href="/new">Check a pull request</Link>
         </div>
-        <article className="landing-hero-report" aria-label="Example TESTS_REQUIRED merge-readiness report">
-          <div className="landing-hero-report-top">
-            <span>MERGE DECISION</span>
-            <strong>TESTS REQUIRED</strong>
-          </div>
-          <div className="landing-hero-report-risk">
-            <strong>HIGH RISK</strong>
-            <span>Merge is not ready</span>
-          </div>
-          <div className="landing-hero-condition">
-            <span>Top condition</span>
-            <p>Prove retries cannot create duplicate redemptions or issue duplicate discount codes</p>
-          </div>
-          <dl className="landing-hero-report-stats">
-            <div><dt>5</dt><dd>findings</dd></div>
-            <div><dt>7</dt><dd>missing tests</dd></div>
-          </dl>
-          <div className="landing-hero-report-footer">
-            <span>Provenance: Rule detected</span>
-            <Link href="/report">See full report</Link>
-          </div>
-        </article>
+        <div className="landing-trust-links landing-trust-links--center" aria-label="Trust and privacy notes">
+          <span>Local-first workspace</span>
+          <span>Raw-diff-free history</span>
+          <Link href="/docs/security-model.md">Read security model</Link>
+        </div>
       </section>
 
-      <section className="landing-section landing-output" aria-labelledby="landing-output-title">
-        <div className="landing-section-heading landing-section-heading--wide">
-          <span className="eyebrow">THE OUTPUT</span>
-          <h2 id="landing-output-title">One report. Two very different answers.</h2>
-          <p>Lintel does not find something to say about every change. A well-tested utility change gets approved and the report stays quiet. A retry path that could duplicate a customer side effect gets a high-risk recommendation, the missing tests, and the conditions to clear before merge.</p>
+      <section className="hero-mockup-wrap" aria-label="Preview of the Lintel workspace: risk inbox, readiness report, evidence ledger, merge contract and PR comment">
+        <div className="hero-mockup">
+          <div className="hero-mockup-titlebar">
+            <span className="hero-mockup-dots" aria-hidden="true"><i /><i /><i /></span>
+            <span className="hero-mockup-title">lintel — risk inbox</span>
+            <span className="hero-mockup-env">LOCAL WORKSPACE</span>
+          </div>
+          <div className="hero-mockup-body">
+            <aside className="hero-mockup-inbox">
+              <div className="hero-mockup-inbox-head">
+                <strong>Risk inbox</strong>
+                <span>3 open</span>
+              </div>
+              <div className="hero-mockup-pr hero-mockup-pr--active">
+                <code>PR #482</code>
+                <p>Add fallback for failed discount-code retrieval</p>
+                <span className="mockup-risk mockup-risk--high">HIGH</span>
+              </div>
+              <div className="hero-mockup-pr">
+                <code>PR #479</code>
+                <p>Rotate webhook signing secrets</p>
+                <span className="mockup-risk mockup-risk--medium">MEDIUM</span>
+              </div>
+              <div className="hero-mockup-pr">
+                <code>PR #477</code>
+                <p>Format display names consistently</p>
+                <span className="mockup-risk mockup-risk--low">LOW</span>
+              </div>
+            </aside>
+            <div className="hero-mockup-report">
+              <div className="hero-mockup-tabs" aria-hidden="true">
+                <span className="hero-mockup-tab hero-mockup-tab--active">Overview</span>
+                <span className="hero-mockup-tab">Evidence ledger</span>
+                <span className="hero-mockup-tab">Merge contract</span>
+                <span className="hero-mockup-tab">Blast radius</span>
+              </div>
+              <div className="hero-mockup-headline">
+                <div>
+                  <code>acme/redemption-api · PR #482</code>
+                  <h2>Add fallback handling for failed discount-code retrieval</h2>
+                </div>
+                <div className="hero-mockup-score">
+                  <strong>62<span>/100</span></strong>
+                  <em>TESTS REQUIRED</em>
+                </div>
+              </div>
+              <div className="hero-mockup-columns">
+                <div className="hero-mockup-panel">
+                  <h3>Evidence ledger</h3>
+                  <ul>
+                    <li>
+                      <p>Retry path can re-trigger customer-facing side effects</p>
+                      <span>RULE DETECTED</span>
+                    </li>
+                    <li>
+                      <p>No test covers a duplicate redemption on retry</p>
+                      <span>RULE DETECTED</span>
+                    </li>
+                    <li>
+                      <p>Fallback masks the upstream failure signal</p>
+                      <span>MODEL ASSISTED</span>
+                    </li>
+                  </ul>
+                </div>
+                <div className="hero-mockup-panel">
+                  <h3>Merge contract</h3>
+                  <ul className="hero-mockup-contract">
+                    <li className="hero-mockup-contract--open">
+                      <i aria-hidden="true" />
+                      <p>Prove retries cannot create duplicate redemptions</p>
+                    </li>
+                    <li className="hero-mockup-contract--open">
+                      <i aria-hidden="true" />
+                      <p>Add a test for discount-code retrieval failure</p>
+                    </li>
+                    <li className="hero-mockup-contract--done">
+                      <i aria-hidden="true" />
+                      <p>Confirm rollback path for the new fallback</p>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+              <div className="hero-mockup-comment">
+                <span>PR COMMENT PREVIEW</span>
+                <code>### Lintel merge-readiness report</code>
+                <code>**Recommendation:** TESTS_REQUIRED · High risk</code>
+                <code>2 conditions open before merge · evidence attached</code>
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="landing-output-grid">
-          <article className="landing-output-card landing-output-card--approve">
-            <div className="landing-output-verdict"><strong>APPROVE</strong><span>Low risk</span></div>
-            <h3>Format display names consistently</h3>
-            <code>acme/profile-api</code>
-            <p className="landing-output-metrics">0 findings / 0 missing tests / No conditions before merge</p>
-            <blockquote>&quot;Formatting utility with matching tests. Nothing to block on.&quot;</blockquote>
-          </article>
-          <article className="landing-output-card landing-output-card--tests">
-            <div className="landing-output-verdict"><strong>TESTS REQUIRED</strong><span>High risk</span></div>
-            <h3>Add fallback handling for failed discount-code retrieval</h3>
-            <code>acme/redemption-api</code>
-            <p className="landing-output-risk"><span>Top risk</span>Retry behaviour may duplicate customer-facing side effects</p>
-            <p className="landing-output-metrics">7 missing tests / 5 conditions before merge</p>
-            <blockquote>&quot;Do not approve until repeated retries are proven safe.&quot;</blockquote>
-          </article>
-        </div>
-        <p className="landing-output-caption">A tool that only ever raises flags is not judging readiness. Lintel is built to tell the difference.</p>
       </section>
 
-      <section className="landing-context-band" aria-label="Why Lintel exists">
-        <p>Agents create code. Lintel decides what is ready to merge.</p>
+      <section className="landing-problem landing-problem--v5" aria-labelledby="landing-problem-title">
+        <div>
+          <span className="eyebrow">THE PROBLEM</span>
+        </div>
+        <div>
+          <h2 id="landing-problem-title">Code is getting easier to write. Merging it is still a judgment call.</h2>
+          <p>
+            AI coding tools create more changes, faster, than teams can carefully review. Every one of those changes
+            still ends in the same question: is this safe to merge? That decision still needs engineering judgment —
+            Lintel exists to give that judgment structure, not to replace the people making it.
+          </p>
+          <p>
+            A green CI run means the checks that exist passed. It says nothing about the tests that were never
+            written, the failure modes nobody considered, or what happens when a retry fires twice in production.
+            Passing CI is not the same as being ready to merge.
+          </p>
+          <p className="landing-problem-tagline">Agents create code. Lintel decides what is ready to merge.</p>
+        </div>
       </section>
 
       <section className="landing-section" aria-labelledby="how-lintel-works">
@@ -121,71 +283,90 @@ export default function Home() {
           <span className="eyebrow">WORKFLOW</span>
           <h2 id="how-lintel-works">From pull request to a defensible merge decision.</h2>
         </div>
-        <ol className="landing-steps">
+        <ol className="landing-flow">
           {workflow.map(([title, description], index) => (
-            <li key={title}><span>0{index + 1}</span><h3>{title}</h3><p>{description}</p></li>
+            <li key={title}>
+              <span>0{index + 1}</span>
+              <h3>{title}</h3>
+              <p>{description}</p>
+            </li>
           ))}
         </ol>
       </section>
 
-      <section className="landing-section" aria-labelledby="lintel-capabilities">
+      <section className="landing-section" aria-labelledby="lintel-features">
         <div className="landing-section-heading">
-          <span className="eyebrow">CAPABILITIES</span>
-          <h2 id="lintel-capabilities">Built around the merge decision.</h2>
+          <span className="eyebrow">WHAT IS IN THE WORKSPACE</span>
+          <h2 id="lintel-features">Everything is built around the merge decision.</h2>
         </div>
-        <div className="landing-capabilities landing-capabilities--decision">
-          {capabilities.map(([title, description]) => (
-            <article key={title}><h3>{title}</h3><p>{description}</p></article>
+        <div className="landing-feature-grid">
+          {features.map((feature) => (
+            <article key={feature.title}>
+              <span className="landing-feature-tag">{feature.tag}</span>
+              <h3>{feature.title}</h3>
+              <p>{feature.description}</p>
+              <Link href={feature.href}>{feature.cta} <span aria-hidden="true">-&gt;</span></Link>
+            </article>
           ))}
         </div>
       </section>
 
-      <section className="landing-section landing-analysis" aria-labelledby="analysis-title">
-        <div className="landing-section-heading">
-          <span className="eyebrow">HOW ANALYSIS WORKS</span>
-          <h2 id="analysis-title">Deterministic first. Model-assisted second.</h2>
-        </div>
-        <div className="landing-analysis-copy">
-          <p>Lintel starts with deterministic checks over the pull request diff: failure paths, retry boundaries, missing coverage, contract changes and sensitive-data handling. That baseline gives the report concrete local signals.</p>
-          <p>Model-assisted analysis can enrich the report by improving synthesis, wording and prioritisation. The deterministic baseline is preserved, and findings can show provenance so reviewers know what they are looking at.</p>
-        </div>
-      </section>
-
-      <section className="landing-positioning">
-        <span className="eyebrow">POSITIONING</span>
-        <h2>Code review tells you what to change. Lintel tells you whether it is ready.</h2>
-        <div>
-          <p>Review tools annotate code: style, structure, suggestions and line-by-line comments. That is useful, and it is not what Lintel is trying to replace.</p>
-          <p>Lintel answers the question review comments do not always settle: is this change safe, tested and operationally ready to merge? One recommendation. The evidence behind it. The conditions to clear if it is not ready. Use it alongside whatever review workflow you already have.</p>
-        </div>
-      </section>
-
-      <section className="landing-section landing-evidence" aria-labelledby="evidence-title">
+      <section className="landing-section" aria-labelledby="trust-title">
         <div className="landing-section-heading landing-section-heading--wide">
-          <span className="eyebrow">EVIDENCE</span>
-          <h2 id="evidence-title">Tested against real scenarios, including the ones where the right answer is approve.</h2>
-          <p>Lintel is evaluated against representative pull request scenarios: clean utility changes, risky provider-retry paths, imported public PRs and frontend/API changes. The checks look for both escalation and restraint: risky changes should surface blockers, and clean changes should not accumulate invented findings.</p>
+          <span className="eyebrow">TRUST &amp; SECURITY</span>
+          <h2 id="trust-title">Built local-first, so trying it costs nothing.</h2>
+          <p>
+            Lintel is an early-stage prototype and says so. What it promises today is deliberately narrow — and
+            deliberately verifiable.
+          </p>
         </div>
-        <dl className="landing-evidence-stats">
-          {evaluationStats.map(([value, label]) => <div key={label}><dt>{value}</dt><dd>{label}</dd></div>)}
-        </dl>
-        <a className="landing-text-link" href="/docs/evaluation-results.md">Read the evaluation results <span aria-hidden="true">-&gt;</span></a>
+        <div className="landing-trust-grid">
+          {trustPoints.map(([title, description]) => (
+            <article key={title}>
+              <h3>{title}</h3>
+              <p>{description}</p>
+            </article>
+          ))}
+          <article className="landing-trust-more">
+            <h3>Read the details</h3>
+            <p>The security model documents current guarantees. Analysis settings show exactly what runs where.</p>
+            <div>
+              <Link className="landing-text-link" href="/docs/security-model.md">Security model <span aria-hidden="true">-&gt;</span></Link>
+              <Link className="landing-text-link" href="/settings">Analysis settings <span aria-hidden="true">-&gt;</span></Link>
+            </div>
+          </article>
+        </div>
       </section>
 
-      <section className="landing-limitations" id="scope">
-        <div>
-          <span className="eyebrow">SCOPE</span>
-          <h2>What Lintel does not do yet.</h2>
+      <section className="landing-section landing-action" aria-labelledby="action-title">
+        <div className="landing-action-copy">
+          <span className="eyebrow">IN YOUR CI</span>
+          <h2 id="action-title">One comment per pull request. Nothing louder.</h2>
+          <p>
+            The planned GitHub Action posts a single merge-readiness comment on the pull request and updates it in
+            place. No inline comment spam across the diff, and no merge blocking by default in v1 — the decision
+            stays with your team.
+          </p>
+          <p className="landing-action-note">
+            The Action is a prototype blueprint: the comment format and workflow are real, the published action is
+            not live yet.
+          </p>
+          <div className="landing-action-links">
+            <Link className="landing-text-link" href="/github-action">Preview the PR comment <span aria-hidden="true">-&gt;</span></Link>
+            <Link className="landing-text-link" href="/docs/cli-github-action-blueprint.md">Read the blueprint <span aria-hidden="true">-&gt;</span></Link>
+          </div>
         </div>
-        <div className="landing-limitations-copy">
-          <p>Lintel is in public pilot preparation. It currently supports pasted diffs, public GitHub PR imports and local report history. It does not support private repositories, a GitHub App, CI integration, team dashboards, authentication or billing yet.</p>
-          <p>Reports are local to your browser. Raw diffs are not saved in local report history. The planned private-repo path is a GitHub Action that runs inside customer CI.</p>
-          <p><Link href="/docs/security-model.md">Read the security model</Link> for current privacy guarantees, model-assisted mode and the planned GitHub Action direction.</p>
-        </div>
+        <pre className="landing-action-yaml"><code>{actionYaml.map((line, index) => (
+          <span key={index} className={line.comment ? "yaml-comment" : undefined}>{line.text}{"\n"}</span>
+        ))}</code></pre>
       </section>
 
       <section className="landing-final-cta">
-        <div><span className="eyebrow">CHECK THE NEXT PR</span><h2>Run it on a pull request you are unsure about.</h2></div>
+        <div>
+          <span className="eyebrow">CHECK THE NEXT PR</span>
+          <h2>Start with one PR. Leave with a merge decision.</h2>
+          <p>Run Lintel on a pull request you are unsure about, or explore a full sample report first.</p>
+        </div>
         <div className="landing-actions">
           <Link className="landing-button landing-button--light" href="/new">Check a pull request <span aria-hidden="true">-&gt;</span></Link>
           <Link className="landing-button landing-button--ghost" href="/report">See a full report</Link>

@@ -29,9 +29,15 @@ type GeneratedReportSource = "ai" | "deterministic";
 type ReportSource = GeneratedReportSource | "demo";
 type CopyState = "idle" | "copied" | "failed";
 type DownloadState = "idle" | "downloaded" | "failed";
-type ReportTab = "overview" | "findings" | "tests" | "operations" | "review-focus" | "changed-files" | "export";
+type ReportTab = "overview" | "evidence" | "findings" | "tests" | "operations" | "review-focus" | "changed-files" | "export";
 type Finding = Report["findings"][number];
 type ReviewerFocus = NonNullable<Report["reviewerFocus"]>[number];
+type EvidenceLedgerItem = {
+  label: string;
+  detail: string;
+  impact: "Supports decision" | "Missing evidence" | "Blocks merge" | "Needs human confirmation" | "Ready signal";
+  relation: string;
+};
 
 type StoredReport = {
   report: Report;
@@ -340,8 +346,157 @@ function reviewerFocusForFinding(finding: Finding, focusItems: ReviewerFocus[]) 
   return best && best.score > 0 ? best.item : null;
 }
 
+function buildEvidenceLedger(report: Report, conditions: string[], focusItems: ReviewerFocus[] | null | undefined) {
+  const found: EvidenceLedgerItem[] = [];
+  const missing: EvidenceLedgerItem[] = [];
+
+  if (report.findings.length > 0) {
+    for (const finding of report.findings) {
+      found.push({
+        label: finding.title,
+        detail: finding.evidence,
+        impact: finding.severity === "HIGH" || finding.severity === "CRITICAL" ? "Blocks merge" : "Supports decision",
+        relation: finding.file ? `Finding / ${finding.file}` : `Finding / ${finding.category}`,
+      });
+    }
+  }
+
+  if (report.changedFiles.length > 0) {
+    found.push({
+      label: "Changed file scope identified",
+      detail: `${report.changedFiles.length} changed ${report.changedFiles.length === 1 ? "file" : "files"} used to frame the merge-readiness decision.`,
+      impact: "Supports decision",
+      relation: "Changed files",
+    });
+  }
+
+  if (report.operationalReadiness) {
+    const detectionSignals = deduplicateReportItems(report.operationalReadiness.detectionSignals);
+    const observabilityGaps = deduplicateReportItems(report.operationalReadiness.observabilityGaps);
+    const recoveryGaps = deduplicateReportItems(report.operationalReadiness.recoveryOrRollback);
+    const impactItems = deduplicateReportItems(report.operationalReadiness.customerOrDataImpact);
+
+    if (detectionSignals.length > 0) {
+      found.push({
+        label: "Detection signals identified",
+        detail: detectionSignals.slice(0, 2).join("; "),
+        impact: "Supports decision",
+        relation: "Operational readiness",
+      });
+    }
+
+    for (const gap of observabilityGaps.slice(0, 3)) {
+      missing.push({
+        label: "Observability evidence missing",
+        detail: gap,
+        impact: "Missing evidence",
+        relation: "Operational readiness",
+      });
+    }
+
+    for (const gap of recoveryGaps.slice(0, 3)) {
+      missing.push({
+        label: "Recovery evidence needs confirmation",
+        detail: gap,
+        impact: "Needs human confirmation",
+        relation: "Operational readiness",
+      });
+    }
+
+    if (impactItems.length > 0 && report.operationalReadiness.status === "ATTENTION") {
+      missing.push({
+        label: "Customer or data impact needs review",
+        detail: impactItems.slice(0, 2).join("; "),
+        impact: "Needs human confirmation",
+        relation: "Operational readiness",
+      });
+    }
+  }
+
+  for (const missingTest of report.missingTests.slice(0, 6)) {
+    missing.push({
+      label: "Test evidence missing",
+      detail: missingTest,
+      impact: "Missing evidence",
+      relation: "Test plan",
+    });
+  }
+
+  for (const condition of conditions) {
+    missing.push({
+      label: "Merge contract condition open",
+      detail: condition,
+      impact: "Blocks merge",
+      relation: "Conditions before merge",
+    });
+  }
+
+  if (focusItems && focusItems.length > 0) {
+    found.push({
+      label: "Reviewer focus identified",
+      detail: focusItems.map((item) => item.area).slice(0, 4).join(", "),
+      impact: "Needs human confirmation",
+      relation: "Reviewer focus",
+    });
+  }
+
+  if (report.reportQuality?.status === "PASS") {
+    found.push({
+      label: "Report quality checks passed",
+      detail: "The generated report is internally consistent and raw-diff-free according to current quality checks.",
+      impact: "Ready signal",
+      relation: "Report quality",
+    });
+  } else if (report.reportQuality?.status === "WARNING") {
+    missing.push({
+      label: "Report quality warning",
+      detail: "Review report quality warnings before sharing this report outside the local workspace.",
+      impact: "Needs human confirmation",
+      relation: "Report quality",
+    });
+  }
+
+  if (report.verdict.recommendation === "APPROVE" && conditions.length === 0 && report.findings.length === 0 && report.missingTests.length === 0) {
+    found.push({
+      label: "No merge blockers detected",
+      detail: "The report has no risk findings, missing tests or merge conditions.",
+      impact: "Ready signal",
+      relation: "Merge contract",
+    });
+  }
+
+  return { found: deduplicateEvidenceItems(found), missing: deduplicateEvidenceItems(missing) };
+}
+
+function deduplicateEvidenceItems(items: EvidenceLedgerItem[]) {
+  const seen = new Set<string>();
+  const deduped: EvidenceLedgerItem[] = [];
+
+  for (const item of items) {
+    const key = `${item.label} ${item.detail} ${item.relation}`.toLowerCase().replace(/\s+/g, " ").trim();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(item);
+  }
+
+  return deduped;
+}
+
 function SourceBadge({ source }: { source: ReportSource }) {
   return <span className={`source-badge source-badge--${source}`}>{sourceLabels[source]}</span>;
+}
+
+function EvidenceLedgerCard({ item }: { item: EvidenceLedgerItem }) {
+  return (
+    <article className="evidence-ledger-card">
+      <div className="evidence-ledger-card-header">
+        <span className={`evidence-impact evidence-impact--${item.impact.toLowerCase().replaceAll(" ", "-")}`}>{item.impact}</span>
+        <span>{item.relation}</span>
+      </div>
+      <h3>{item.label}</h3>
+      <p>{item.detail}</p>
+    </article>
+  );
 }
 
 export default function ReportPage() {
@@ -419,6 +574,7 @@ export default function ReportPage() {
     && report.operationalReadiness?.status === "CLEAR";
   const displayedReviewerChecklist = cleanApprove ? [] : report.reviewerChecklist;
   const conditionProgressLabel = conditionProgressSummary(clearedConditionCount, displayedConditions.length);
+  const openConditionCount = Math.max(displayedConditions.length - clearedConditionCount, 0);
   const operationalStatus = report.operationalReadiness?.status ?? "Not assessed";
   const qualityStatus = report.reportQuality?.status ?? "Not assessed";
   const reviewerFocusSummary = supportedReviewerFocus
@@ -431,8 +587,15 @@ export default function ReportPage() {
     reviewState,
     includeLocalNote: includeLocalNoteInMergeSummary,
   });
+  const evidenceLedger = buildEvidenceLedger(report, displayedConditions, supportedReviewerFocus);
+  const readinessConclusion = displayedConditions.length === 0
+    ? "No merge conditions detected. Complete normal human review and CI checks."
+    : openConditionCount === 0
+      ? "All merge contract conditions are locally marked cleared. Recommendation is not changed automatically."
+      : `${openConditionCount} ${openConditionCount === 1 ? "merge condition remains" : "merge conditions remain"} open before this report is ready to clear.`;
   const reportTabs: Array<{ id: ReportTab; label: string; indicator: string }> = [
     { id: "overview", label: "Overview", indicator: `${displayedConditions.length}` },
+    { id: "evidence", label: "Evidence", indicator: `${evidenceLedger.missing.length}` },
     { id: "findings", label: "Findings", indicator: `${report.findings.length}` },
     { id: "tests", label: "Tests", indicator: `${report.missingTests.length}` },
     { id: "operations", label: "Operations", indicator: operationalStatus === "ATTENTION" ? "Attention" : "Clear" },
@@ -688,6 +851,116 @@ export default function ReportPage() {
             ) : displayedConditions.length > 0 ? (
               <ol>{displayedConditions.map((condition) => <li key={condition}>{condition}</li>)}</ol>
             ) : <p className="merge-conditions-clear">No merge conditions detected.</p>}
+          </section>
+            </div>
+          )}
+
+          {activeTab === "evidence" && (
+            <div
+              className="report-tab-panel"
+              id="report-panel-evidence"
+              role="tabpanel"
+              aria-labelledby="report-tab-evidence"
+            >
+          <section className="section-block report-evidence-ledger" aria-labelledby="evidence-ledger-title">
+            <div className="section-heading">
+              <div>
+                <span className="card-kicker">EXPLAINABILITY</span>
+                <h2 id="evidence-ledger-title">Evidence ledger</h2>
+              </div>
+              <span className="section-count">{evidenceLedger.found.length} found / {evidenceLedger.missing.length} missing</span>
+            </div>
+
+            <div className="evidence-summary-grid" aria-label="Evidence summary">
+              <article>
+                <span>Evidence found</span>
+                <strong>{evidenceLedger.found.length}</strong>
+              </article>
+              <article>
+                <span>Missing evidence</span>
+                <strong>{evidenceLedger.missing.length}</strong>
+              </article>
+              <article>
+                <span>Open conditions</span>
+                <strong>{openConditionCount}</strong>
+              </article>
+              <article>
+                <span>Readiness conclusion</span>
+                <p>{readinessConclusion}</p>
+              </article>
+            </div>
+
+            <div className="evidence-ledger-grid">
+              <section className="evidence-ledger-column" aria-labelledby="evidence-found-title">
+                <div className="evidence-ledger-column-heading">
+                  <h3 id="evidence-found-title">Evidence found</h3>
+                  <span>Supports the current decision</span>
+                </div>
+                {evidenceLedger.found.length > 0 ? (
+                  <div className="evidence-ledger-list">
+                    {evidenceLedger.found.map((item) => <EvidenceLedgerCard item={item} key={`${item.label}-${item.detail}`} />)}
+                  </div>
+                ) : (
+                  <p className="section-empty">No supporting evidence was identified in this legacy report.</p>
+                )}
+              </section>
+
+              <section className="evidence-ledger-column" aria-labelledby="evidence-missing-title">
+                <div className="evidence-ledger-column-heading">
+                  <h3 id="evidence-missing-title">Evidence missing</h3>
+                  <span>Blocks or needs confirmation before merge</span>
+                </div>
+                {evidenceLedger.missing.length > 0 ? (
+                  <div className="evidence-ledger-list">
+                    {evidenceLedger.missing.map((item) => <EvidenceLedgerCard item={item} key={`${item.label}-${item.detail}`} />)}
+                  </div>
+                ) : (
+                  <p className="section-empty section-empty--positive">No missing evidence detected.</p>
+                )}
+              </section>
+            </div>
+          </section>
+
+          <section className="section-block report-merge-contract" aria-labelledby="merge-contract-title">
+            <div className="section-heading">
+              <div>
+                <span className="card-kicker">MERGE CONTRACT</span>
+                <h2 id="merge-contract-title">What must be true before merge</h2>
+                {conditionTrackingEnabled && <span className="condition-progress">{conditionProgressLabel}</span>}
+              </div>
+              <RecommendationBadge recommendation={verdict.recommendation} />
+            </div>
+
+            {conditionTrackingEnabled ? (
+              <>
+                <ul className="merge-contract-list">
+                  {displayedConditions.map((condition) => {
+                    const key = conditionKey(condition);
+                    const checked = clearedConditionKeys.has(key);
+
+                    return (
+                      <li key={condition}>
+                        <label>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(event) => toggleCondition(condition, event.target.checked)}
+                          />
+                          <span>{condition}</span>
+                        </label>
+                      </li>
+                    );
+                  })}
+                </ul>
+                <p className="condition-local-note">Stored locally on this device. Clearing every item does not automatically change the recommendation.</p>
+              </>
+            ) : displayedConditions.length > 0 ? (
+              <ol className="merge-contract-list merge-contract-list--static">
+                {displayedConditions.map((condition) => <li key={condition}>{condition}</li>)}
+              </ol>
+            ) : (
+              <p className="merge-contract-clear">No merge conditions detected.</p>
+            )}
           </section>
             </div>
           )}
@@ -1026,6 +1299,7 @@ export default function ReportPage() {
                 <div className="report-export-links">
                   <a href="/workspace">Back to workspace</a>
                   <a href="/new">Check another pull request</a>
+                  <button type="button" onClick={() => setActiveTab("evidence")}>Evidence ledger</button>
                   <a href="/github-action">GitHub Action prototype</a>
                   <a href="/slack-handoff">Slack handoff concept</a>
                   <a href="/docs/security-model.md">Security model</a>
@@ -1144,6 +1418,12 @@ export default function ReportPage() {
                 onClick={() => setActiveTab("export")}
               >
                 Build PR comment
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("evidence")}
+              >
+                Evidence ledger
               </button>
               <button
                 className={`copy-conditions-button copy-conditions-button--${conditionsCopyState}`}

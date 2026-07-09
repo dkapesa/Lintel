@@ -891,3 +891,20 @@ Manual tests:
 8. Confirm the section clearly says the breakdown is heuristic and not production-calibrated.
 9. Resize to mobile width and confirm the summary/cards stack cleanly.
 10. Search the score breakdown UI for `diff --git`, `@@`, raw hunks, unique diff markers and secrets; none should appear.
+
+## V4.15 review action board and blocker resolution
+
+Manual tests:
+
+1. Open `/report` and confirm the new **Actions** tab appears in the report working surface.
+2. Confirm the action board shows progress for open blockers, required actions resolved, optional actions and readiness conclusion.
+3. Confirm action items are derived from missing tests, merge conditions, findings, evidence gaps, required policy gates, operational/security attention and readiness score drag.
+4. Confirm each action item shows title, source/category, priority, suggested owner, status and reason.
+5. Change action status to **In progress**, **Done** and **Not needed**, refresh `/report`, and confirm the local status persists.
+6. Open the **Timeline** tab and confirm action status changes appear as local decision-history entries.
+7. Confirm the sticky decision panel shows open blockers and has a **Review actions** shortcut.
+8. Copy the PR comment / merge summary and confirm it includes review action progress.
+9. Generate or open a clean `APPROVE` report and confirm the action board stays quiet or shows only normal-review guidance.
+10. Resize to mobile width and confirm the action board stacks cleanly.
+11. Confirm action status is local-only: no backend, auth, GitHub posting, Slack posting, users or team assignment.
+12. Search action board UI, copied/exported text and `localStorage` for `diff --git`, `@@`, raw hunks, unique diff markers and secrets; none should appear.

@@ -9,6 +9,7 @@ type MergeSummaryOptions = {
   sourceLabel: string;
   reviewState: ReportReviewState;
   includeLocalNote: boolean;
+  actionProgress?: string;
 };
 
 function safeMarkdownText(value: string) {
@@ -132,6 +133,11 @@ export function mergeSummaryToMarkdown(report: Report, options: MergeSummaryOpti
     "",
     "### Merge gates",
     `${safeMarkdownText(policyStatus.label)} - ${safeMarkdownText(policyStatus.detail)}`,
+    ...(options.actionProgress ? [
+      "",
+      "### Review action progress",
+      safeMarkdownText(options.actionProgress),
+    ] : []),
     "",
     "### Next action",
     safeMarkdownText(nextAction(report)),

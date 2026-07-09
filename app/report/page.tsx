@@ -24,9 +24,21 @@ import { conditionsToMarkdown, findingProvenanceLabel, reportMarkdownFilename, r
 import type { FindingSeverity, Recommendation, Report, ReviewArea, RiskLevel } from "../../lib/mock-report";
 import { report as demoReport } from "../../lib/mock-report";
 import { deduplicateReportItems, pruneUnsupportedReviewerFocus } from "../../lib/report-quality";
-import { policyGateSummary, policyStatusForReport, reviewPolicyForProfile } from "../../lib/review-policies";
+import {
+  gatesByLevel,
+  policyGateSummary,
+  policyStatusForReport,
+  reviewPolicyForProfile,
+} from "../../lib/review-policies";
 import { reviewProfileLabel } from "../../lib/review-profiles";
 import { ownerDisplay, REVIEW_OWNER_OPTIONS, suggestedReviewerOwners, type ReviewerOwner } from "../../lib/reviewer-ownership";
+import {
+  readReviewActionStatuses,
+  REVIEW_ACTION_STATUSES,
+  reviewActionKey,
+  type ReviewActionStatus,
+  writeReviewActionStatus,
+} from "../../lib/review-actions";
 import {
   defaultReviewState,
   readReviewState,
@@ -41,7 +53,7 @@ type GeneratedReportSource = "ai" | "deterministic";
 type ReportSource = GeneratedReportSource | "demo";
 type CopyState = "idle" | "copied" | "failed";
 type DownloadState = "idle" | "downloaded" | "failed";
-type ReportTab = "overview" | "timeline" | "evidence" | "blast-radius" | "findings" | "tests" | "operations" | "review-focus" | "changed-files" | "export";
+type ReportTab = "overview" | "actions" | "timeline" | "evidence" | "blast-radius" | "findings" | "tests" | "operations" | "review-focus" | "changed-files" | "export";
 type Finding = Report["findings"][number];
 type ReviewerFocus = NonNullable<Report["reviewerFocus"]>[number];
 type EvidenceLedgerItem = {
@@ -71,6 +83,17 @@ type ScoreBreakdown = {
   biggestScoreDrag: string;
   nextAction: string;
   components: ScoreBreakdownComponent[];
+};
+type ReviewActionPriority = "Blocker" | "Required" | "Recommended" | "Optional";
+type ReviewActionSource = "Missing test" | "Merge condition" | "Finding" | "Evidence gap" | "Policy gate" | "Operational/security" | "Readiness score";
+type ReviewActionItem = {
+  key: string;
+  title: string;
+  source: ReviewActionSource;
+  priority: ReviewActionPriority;
+  suggestedOwner: ReviewerOwner;
+  defaultStatus: ReviewActionStatus;
+  reason: string;
 };
 
 type StoredReport = {
@@ -886,6 +909,170 @@ function buildReadinessScoreBreakdown({
   };
 }
 
+function actionOwnerForFinding(finding: Finding, suggestedOwners: ReviewerOwner[]): ReviewerOwner {
+  if (finding.category === "Security") return "Security reviewer";
+  if (finding.category === "Missing tests") return "Test owner";
+  if (finding.category === "API contract") return "Backend reviewer";
+  if (finding.category === "Reliability") return suggestedOwners.includes("Platform/operations reviewer") ? "Platform/operations reviewer" : "Backend reviewer";
+  return suggestedOwners[0] ?? "Senior reviewer";
+}
+
+function actionOwnerForGate(label: string, suggestedOwners: ReviewerOwner[]): ReviewerOwner {
+  if (/test/i.test(label)) return "Test owner";
+  if (/security|privacy/i.test(label)) return "Security reviewer";
+  if (/data|migration/i.test(label)) return "Data/migration reviewer";
+  if (/observability|logging|rollback|recovery|failure/i.test(label)) return "Platform/operations reviewer";
+  if (/api|contract/i.test(label)) return "Backend reviewer";
+  if (/human reviewer/i.test(label)) return suggestedOwners[0] ?? "Senior reviewer";
+  return suggestedOwners[0] ?? "Senior reviewer";
+}
+
+function addReviewAction(actions: ReviewActionItem[], action: Omit<ReviewActionItem, "key">) {
+  const key = reviewActionKey(action.source, action.title);
+  if (actions.some((item) => item.key === key)) return;
+  actions.push({ ...action, key });
+}
+
+function buildReviewActions({
+  report,
+  conditions,
+  evidenceLedger,
+  activePolicy,
+  readinessScoreBreakdown,
+  suggestedOwners,
+  clearedConditionKeys,
+}: {
+  report: Report;
+  conditions: string[];
+  evidenceLedger: ReturnType<typeof buildEvidenceLedger>;
+  activePolicy: ReturnType<typeof reviewPolicyForProfile>;
+  readinessScoreBreakdown: ScoreBreakdown;
+  suggestedOwners: ReviewerOwner[];
+  clearedConditionKeys: Set<string>;
+}): ReviewActionItem[] {
+  const actions: ReviewActionItem[] = [];
+  const defaultOwner = suggestedOwners[0] ?? "Senior reviewer";
+
+  for (const test of report.missingTests.slice(0, 8)) {
+    addReviewAction(actions, {
+      title: test,
+      source: "Missing test",
+      priority: report.verdict.recommendation === "TESTS_REQUIRED" ? "Blocker" : "Required",
+      suggestedOwner: "Test owner",
+      defaultStatus: "Open",
+      reason: "Missing test evidence is part of the current merge-readiness decision.",
+    });
+  }
+
+  for (const condition of conditions) {
+    addReviewAction(actions, {
+      title: condition,
+      source: "Merge condition",
+      priority: "Blocker",
+      suggestedOwner: defaultOwner,
+      defaultStatus: clearedConditionKeys.has(conditionKey(condition)) ? "Done" : "Open",
+      reason: "This condition must be resolved or explicitly accepted before merge.",
+    });
+  }
+
+  for (const finding of report.findings.slice(0, 8)) {
+    addReviewAction(actions, {
+      title: finding.title,
+      source: "Finding",
+      priority: finding.severity === "CRITICAL" || finding.severity === "HIGH" ? "Required" : "Recommended",
+      suggestedOwner: actionOwnerForFinding(finding, suggestedOwners),
+      defaultStatus: "Open",
+      reason: finding.action,
+    });
+  }
+
+  for (const item of evidenceLedger.missing.slice(0, 6)) {
+    addReviewAction(actions, {
+      title: item.label,
+      source: "Evidence gap",
+      priority: item.impact === "Blocks merge" ? "Required" : "Recommended",
+      suggestedOwner: defaultOwner,
+      defaultStatus: "Open",
+      reason: item.detail,
+    });
+  }
+
+  if (report.verdict.recommendation !== "APPROVE") {
+    for (const gate of gatesByLevel(activePolicy, "Required")) {
+      addReviewAction(actions, {
+        title: `Satisfy policy gate: ${gate.label}`,
+        source: "Policy gate",
+        priority: "Required",
+        suggestedOwner: actionOwnerForGate(gate.label, suggestedOwners),
+        defaultStatus: "Open",
+        reason: gate.description,
+      });
+    }
+  }
+
+  if (report.operationalReadiness?.status === "ATTENTION") {
+    addReviewAction(actions, {
+      title: "Resolve operational readiness attention",
+      source: "Operational/security",
+      priority: "Required",
+      suggestedOwner: suggestedOwners.includes("Platform/operations reviewer") ? "Platform/operations reviewer" : defaultOwner,
+      defaultStatus: "Open",
+      reason: report.operationalReadiness.summary,
+    });
+  }
+
+  if (report.reviews.security.status === "ATTENTION") {
+    addReviewAction(actions, {
+      title: "Resolve security/privacy attention",
+      source: "Operational/security",
+      priority: "Required",
+      suggestedOwner: "Security reviewer",
+      defaultStatus: "Open",
+      reason: report.reviews.security.summary,
+    });
+  }
+
+  if (actions.length > 0 && !/^No major score drag detected/i.test(readinessScoreBreakdown.biggestScoreDrag)) {
+    addReviewAction(actions, {
+      title: readinessScoreBreakdown.nextAction,
+      source: "Readiness score",
+      priority: "Recommended",
+      suggestedOwner: defaultOwner,
+      defaultStatus: "Open",
+      reason: readinessScoreBreakdown.biggestScoreDrag,
+    });
+  }
+
+  const priorityRank: Record<ReviewActionPriority, number> = { Blocker: 4, Required: 3, Recommended: 2, Optional: 1 };
+  return actions.sort((a, b) => priorityRank[b.priority] - priorityRank[a.priority] || a.title.localeCompare(b.title));
+}
+
+function actionIsResolved(status: ReviewActionStatus) {
+  return status === "Done" || status === "Not needed";
+}
+
+function actionProgressSummary(actions: Array<ReviewActionItem & { status: ReviewActionStatus }>) {
+  const openBlockers = actions.filter((action) => action.priority === "Blocker" && !actionIsResolved(action.status)).length;
+  const requiredActions = actions.filter((action) => action.priority === "Blocker" || action.priority === "Required");
+  const requiredResolved = requiredActions.filter((action) => actionIsResolved(action.status)).length;
+  const optionalActions = actions.filter((action) => action.priority === "Recommended" || action.priority === "Optional").length;
+  const readinessConclusion = actions.length === 0
+    ? "No review actions generated. Complete normal human review and CI checks."
+    : openBlockers > 0
+      ? `${openBlockers} blocker ${openBlockers === 1 ? "action remains" : "actions remain"} before this report is ready to clear.`
+      : requiredResolved < requiredActions.length
+        ? `${requiredActions.length - requiredResolved} required ${requiredActions.length - requiredResolved === 1 ? "action remains" : "actions remain"} before merge readiness is clear.`
+        : "Required review actions are locally resolved. Complete normal human review and CI checks.";
+
+  return {
+    openBlockers,
+    requiredResolved,
+    requiredTotal: requiredActions.length,
+    optionalActions,
+    readinessConclusion,
+  };
+}
+
 function EvidenceLedgerCard({ item }: { item: EvidenceLedgerItem }) {
   return (
     <article className="evidence-ledger-card">
@@ -934,6 +1121,7 @@ export default function ReportPage() {
   const [includeLocalNoteInMergeSummary, setIncludeLocalNoteInMergeSummary] = useState(false);
   const [reviewState, setReviewState] = useState<ReportReviewState>(() => defaultReviewState(demoReport));
   const [decisionHistory, setDecisionHistory] = useState<DecisionHistoryEvent[]>(() => initialDecisionHistory(demoReport));
+  const [actionStatusOverrides, setActionStatusOverrides] = useState<Record<string, ReviewActionStatus>>({});
   const copyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const conditionsCopyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mergeSummaryCopyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1010,11 +1198,6 @@ export default function ReportPage() {
       ? `${supportedReviewerFocus.length} ${supportedReviewerFocus.length === 1 ? "area" : "areas"} / ${supportedReviewerFocus[0].area}`
       : "No specialist focus"
     : "Not assessed";
-  const mergeSummaryMarkdown = mergeSummaryToMarkdown(report, {
-    sourceLabel: sourceLabels[source],
-    reviewState,
-    includeLocalNote: includeLocalNoteInMergeSummary,
-  });
   const evidenceLedger = buildEvidenceLedger(report, displayedConditions, supportedReviewerFocus);
   const affectedSurfaces = buildAffectedSurfaces(report, displayedConditions, supportedReviewerFocus);
   const readinessScoreBreakdown = buildReadinessScoreBreakdown({
@@ -1024,6 +1207,27 @@ export default function ReportPage() {
     affectedSurfaces,
     openConditionCount,
     ownerLabel: displayedOwner,
+  });
+  const baseReviewActions = buildReviewActions({
+    report,
+    conditions: displayedConditions,
+    evidenceLedger,
+    activePolicy,
+    readinessScoreBreakdown,
+    suggestedOwners,
+    clearedConditionKeys,
+  });
+  const actionSignature = baseReviewActions.map((action) => action.key).join("\n");
+  const reviewActions = baseReviewActions.map((action) => ({
+    ...action,
+    status: actionStatusOverrides[action.key] ?? action.defaultStatus,
+  }));
+  const reviewActionProgress = actionProgressSummary(reviewActions);
+  const mergeSummaryMarkdown = mergeSummaryToMarkdown(report, {
+    sourceLabel: sourceLabels[source],
+    reviewState,
+    includeLocalNote: includeLocalNoteInMergeSummary,
+    actionProgress: `${reviewActionProgress.openBlockers} open blockers; ${reviewActionProgress.requiredResolved}/${reviewActionProgress.requiredTotal} required actions resolved. ${reviewActionProgress.readinessConclusion}`,
   });
   const blockerSurfaceCount = affectedSurfaces.filter((surface) => surface.status === "Blocker").length;
   const confirmationSurfaceCount = affectedSurfaces.filter((surface) => surface.status === "Attention" || surface.status === "Watch").length;
@@ -1035,6 +1239,7 @@ export default function ReportPage() {
       : `${openConditionCount} ${openConditionCount === 1 ? "merge condition remains" : "merge conditions remain"} open before this report is ready to clear.`;
   const reportTabs: Array<{ id: ReportTab; label: string; indicator: string }> = [
     { id: "overview", label: "Overview", indicator: `${displayedConditions.length}` },
+    { id: "actions", label: "Actions", indicator: `${reviewActionProgress.openBlockers}` },
     { id: "timeline", label: "Timeline", indicator: `${decisionHistory.length}` },
     { id: "evidence", label: "Evidence", indicator: `${evidenceLedger.missing.length}` },
     { id: "blast-radius", label: "Surfaces", indicator: `${affectedSurfaces.length}` },
@@ -1080,6 +1285,14 @@ export default function ReportPage() {
     }
   }, [report, decisionHistoryKey]);
 
+  useEffect(() => {
+    try {
+      setActionStatusOverrides(readReviewActionStatuses(window.localStorage, decisionHistoryKey));
+    } catch {
+      setActionStatusOverrides({});
+    }
+  }, [decisionHistoryKey, actionSignature]);
+
   function recordDecisionEvent(event: Parameters<typeof appendDecisionHistoryEvent>[2]) {
     try {
       setDecisionHistory(appendDecisionHistoryEvent(window.localStorage, decisionHistoryKey, event));
@@ -1114,6 +1327,26 @@ export default function ReportPage() {
 
     if (previousStatus !== savedState.status) {
       recordDecisionEvent(reviewStatusChangeEvent(previousStatus, savedState.status));
+    }
+  }
+
+  function updateReviewActionStatus(action: ReviewActionItem & { status: ReviewActionStatus }, status: ReviewActionStatus) {
+    const previousStatus = action.status;
+    try {
+      setActionStatusOverrides(writeReviewActionStatus(window.localStorage, decisionHistoryKey, action.key, status));
+    } catch {
+      setActionStatusOverrides((current) => ({ ...current, [action.key]: status }));
+    }
+
+    if (previousStatus !== status) {
+      recordDecisionEvent({
+        type: "review-action-updated",
+        title: "Review action status changed",
+        detail: action.title,
+        previousState: previousStatus,
+        nextState: status,
+        label: "Local",
+      });
     }
   }
 
@@ -1444,6 +1677,78 @@ export default function ReportPage() {
                 <p>Derived from findings, missing tests, operational readiness, reviewer focus and affected surfaces.</p>
               </article>
             </div>
+          </section>
+            </div>
+          )}
+
+          {activeTab === "actions" && (
+            <div
+              className="report-tab-panel"
+              id="report-panel-actions"
+              role="tabpanel"
+              aria-labelledby="report-tab-actions"
+            >
+          <section className="section-block report-action-board" aria-labelledby="review-actions-title">
+            <div className="section-heading">
+              <div>
+                <span className="card-kicker">BLOCKER RESOLUTION</span>
+                <h2 id="review-actions-title">Review actions</h2>
+              </div>
+              <span className="section-count">Stored locally on this device</span>
+            </div>
+
+            <div className="action-progress-grid" aria-label="Review action progress">
+              <article>
+                <span>Open blockers</span>
+                <strong>{reviewActionProgress.openBlockers}</strong>
+              </article>
+              <article>
+                <span>Required resolved</span>
+                <strong>{reviewActionProgress.requiredResolved}/{reviewActionProgress.requiredTotal}</strong>
+              </article>
+              <article>
+                <span>Optional actions</span>
+                <strong>{reviewActionProgress.optionalActions}</strong>
+              </article>
+              <article>
+                <span>Readiness conclusion</span>
+                <p>{reviewActionProgress.readinessConclusion}</p>
+              </article>
+            </div>
+
+            {reviewActions.length > 0 ? (
+              <div className="review-action-list">
+                {reviewActions.map((action) => (
+                  <article className={`review-action-card review-action-card--${action.priority.toLowerCase().replaceAll(" ", "-")}`} key={action.key}>
+                    <div className="review-action-card-header">
+                      <div>
+                        <span>{action.source}</span>
+                        <h3>{action.title}</h3>
+                      </div>
+                      <strong>{action.priority}</strong>
+                    </div>
+                    <p>{action.reason}</p>
+                    <div className="review-action-meta">
+                      <div>
+                        <span>Suggested owner</span>
+                        <strong>{action.suggestedOwner}</strong>
+                      </div>
+                      <label>
+                        <span>Status</span>
+                        <select
+                          value={action.status}
+                          onChange={(event) => updateReviewActionStatus(action, event.target.value as ReviewActionStatus)}
+                        >
+                          {REVIEW_ACTION_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
+                        </select>
+                      </label>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="section-empty section-empty--positive">No blocker or review actions generated. Complete normal human review and CI checks.</p>
+            )}
           </section>
             </div>
           )}
@@ -2083,7 +2388,7 @@ export default function ReportPage() {
             <dl className="report-decision-panel-snapshot" aria-label="Report at a glance">
               <div><dt>{displayedConditions.length}</dt><dd>conditions</dd></div>
               <div><dt>{report.missingTests.length}</dt><dd>missing tests</dd></div>
-              <div><dt>{report.findings.length}</dt><dd>findings</dd></div>
+              <div><dt>{reviewActionProgress.openBlockers}</dt><dd>open blockers</dd></div>
             </dl>
 
             <dl className="report-decision-panel-meta">
@@ -2149,6 +2454,12 @@ export default function ReportPage() {
                 onClick={() => setActiveTab("export")}
               >
                 Build PR comment
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab("actions")}
+              >
+                Review actions
               </button>
               <button
                 type="button"

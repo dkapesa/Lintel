@@ -279,12 +279,32 @@ button { font:inherit; }
 .report-decision-panel-actions button, .report-decision-panel-actions a { min-height:33px; padding:0 10px; border:1px solid #dce2de; border-radius:7px; display:inline-flex; align-items:center; justify-content:center; background:#fff; color:#53615b; font-size:9px; font-weight:750; cursor:pointer; text-align:center; white-space:normal; }
 .report-decision-panel-actions button:hover, .report-decision-panel-actions a:hover { border-color:#bdc9c3; background:#f8faf8; color:#20342d; }
 .report-decision-panel-actions button:focus-visible, .report-decision-panel-actions a:focus-visible { outline:2px solid #6fa98f; outline-offset:2px; }
+.topbar-actions { flex-wrap:wrap; justify-content:flex-end; }
+.quick-actions-trigger { min-height:32px; padding:0 10px; border:1px solid #dce2de; border-radius:8px; display:inline-flex; align-items:center; gap:8px; background:#fff; color:#34463e; font-size:9px; font-weight:850; cursor:pointer; white-space:nowrap; }
+.quick-actions-trigger span { padding:2px 5px; border-radius:999px; background:#f0f3f1; color:#6d7772; font:8px "DM Mono", ui-monospace, SFMono-Regular, Consolas, monospace; }
+.quick-actions-trigger:hover, .quick-actions-trigger--active { border-color:#20342d; background:#20342d; color:#fff; }
+.quick-actions-trigger:hover span, .quick-actions-trigger--active span { background:rgba(255,255,255,.16); color:#fff; }
+.quick-actions-trigger:focus-visible { outline:2px solid #6fa98f; outline-offset:2px; }
+.quick-actions-panel { width:min(100% - 52px, 1540px); margin:18px auto 0; padding:16px; border:1px solid #dfe5e1; border-radius:16px; background:rgba(255,255,255,.94); box-shadow:0 16px 42px rgba(28,45,38,.055); }
+.quick-actions-header { display:flex; align-items:flex-start; justify-content:space-between; gap:18px; margin-bottom:12px; }
+.quick-actions-header h2 { margin:4px 0 5px; color:var(--ink); font-size:18px; letter-spacing:-.04em; }
+.quick-actions-header p { margin:0; color:#69746f; font-size:11px; line-height:1.55; }
+.quick-actions-status { flex:0 0 auto; padding:6px 8px; border:1px solid #dce2de; border-radius:999px; background:#f7f9f7; color:#5e6b65; font-size:9px; font-weight:850; }
+.quick-actions-status--success { border-color:#c5dfd2; background:#edf7f2; color:#307156; }
+.quick-actions-status--failed { border-color:#edd5cc; background:#fff5f1; color:#9b4b2d; }
+.quick-actions-grid { display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:8px; }
+.quick-actions-grid button { min-height:58px; padding:10px; border:1px solid #dce3df; border-radius:11px; display:grid; gap:5px; align-content:center; background:#fff; color:#53615b; cursor:pointer; text-align:left; }
+.quick-actions-grid button strong { color:#263832; font-size:10px; line-height:1.25; }
+.quick-actions-grid button span { color:#7e8983; font-size:9px; line-height:1.3; }
+.quick-actions-grid button:hover { border-color:#bdc9c3; background:#f8faf8; }
+.quick-actions-grid button:focus-visible { outline:2px solid #6fa98f; outline-offset:2px; }
 
 @media (max-width:1120px) {
   .report-working-layout { grid-template-columns:1fr; }
   .report-decision-panel { position:static; order:-1; margin-top:30px; }
   .report-working-layout .report-content { padding-top:26px; }
   .report-tabs { position:static; grid-template-columns:repeat(4, minmax(0,1fr)); }
+  .quick-actions-grid { grid-template-columns:repeat(2, minmax(0,1fr)); }
   .timeline-summary-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .score-breakdown-summary { grid-template-columns:repeat(2,minmax(0,1fr)); }
   .score-breakdown-components { grid-template-columns:1fr; }
@@ -295,6 +315,10 @@ button { font:inherit; }
 
 @media (max-width:680px) {
   .report-working-layout { padding:0 20px; }
+  .quick-actions-panel { width:calc(100% - 40px); margin-top:12px; padding:14px; }
+  .quick-actions-header { align-items:flex-start; flex-direction:column; gap:10px; }
+  .quick-actions-grid { grid-template-columns:1fr; }
+  .quick-actions-trigger span { display:none; }
   .report-decision-panel { margin-top:22px; padding:16px; }
   .report-decision-panel-meta { grid-template-columns:1fr; }
   .report-decision-panel-snapshot { grid-template-columns:1fr; }
@@ -394,6 +418,11 @@ button { font:inherit; }
 .workspace-queue-tab:hover { border-color:#bec9c3; color:#263832; }.workspace-queue-tab:focus-visible { outline:2px solid #6fa98f; outline-offset:2px; }
 .workspace-queue-tab--active { border-color:#20342d; background:#20342d; color:#fff; box-shadow:0 10px 24px rgba(32,52,45,.12); }
 .workspace-queue-tab--active strong { background:rgba(255,255,255,.16); color:#fff; }
+.workspace-quick-actions { display:flex; flex-wrap:wrap; align-items:center; gap:7px; margin:-2px 0 16px; padding:10px; border:1px solid #dfe5e1; border-radius:12px; background:rgba(255,255,255,.72); }
+.workspace-quick-actions span { margin-right:4px; color:#7b8580; font-size:8px; font-weight:850; letter-spacing:.08em; text-transform:uppercase; }
+.workspace-quick-actions button, .workspace-quick-actions a { min-height:30px; padding:0 9px; border:1px solid #dce2de; border-radius:7px; display:inline-flex; align-items:center; justify-content:center; background:#fff; color:#53615b; font-size:9px; font-weight:800; cursor:pointer; }
+.workspace-quick-actions button:hover, .workspace-quick-actions a:hover { border-color:#bdc9c3; background:#f8faf8; color:#20342d; }
+.workspace-quick-actions button:focus-visible, .workspace-quick-actions a:focus-visible { outline:2px solid #6fa98f; outline-offset:2px; }
 .workspace-inbox-section { margin-top:30px; }
 .workspace-section-heading { display:flex; align-items:flex-end; justify-content:space-between; gap:18px; margin-bottom:12px; }
 .workspace-section-heading h2 { margin:0 0 5px; font-size:20px; letter-spacing:-.04em; }
@@ -699,6 +728,8 @@ button { font:inherit; }
 
 @media (max-width:680px) {
   .workspace-triage-strip { grid-template-columns:1fr 1fr; }
+  .workspace-quick-actions { align-items:flex-start; flex-direction:column; }
+  .workspace-quick-actions button, .workspace-quick-actions a { width:100%; }
   .workspace-queue-tabs { grid-template-columns:1fr 1fr; }
   .workspace-inbox-main { grid-template-columns:1fr; }
   .workspace-card-decision { justify-items:start; text-align:left; }

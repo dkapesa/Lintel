@@ -53,6 +53,7 @@ type GeneratedReportSource = "ai" | "deterministic";
 type ReportSource = GeneratedReportSource | "demo";
 type CopyState = "idle" | "copied" | "failed";
 type DownloadState = "idle" | "downloaded" | "failed";
+type QuickActionMessageState = "success" | "failed";
 type ReportTab = "overview" | "actions" | "timeline" | "evidence" | "blast-radius" | "findings" | "tests" | "operations" | "review-focus" | "changed-files" | "export";
 type Finding = Report["findings"][number];
 type ReviewerFocus = NonNullable<Report["reviewerFocus"]>[number];
@@ -95,6 +96,7 @@ type ReviewActionItem = {
   defaultStatus: ReviewActionStatus;
   reason: string;
 };
+type ActionProgress = ReturnType<typeof actionProgressSummary>;
 
 type StoredReport = {
   report: Report;
@@ -1073,6 +1075,45 @@ function actionProgressSummary(actions: Array<ReviewActionItem & { status: Revie
   };
 }
 
+function slackHandoffToText({
+  report,
+  ownerLabel,
+  conditions,
+  actionProgress,
+}: {
+  report: Report;
+  ownerLabel: string;
+  conditions: string[];
+  actionProgress: ActionProgress;
+}) {
+  const topBlocker = conditions[0]
+    ?? report.findings[0]?.title
+    ?? "No merge conditions detected.";
+  const missingTests = report.missingTests.length > 0
+    ? `${report.missingTests.length} missing ${report.missingTests.length === 1 ? "test" : "tests"}`
+    : "No missing test gaps detected";
+  const reviewerFocus = pruneUnsupportedReviewerFocus(report)?.slice(0, 3).map((focus) => focus.area).join(" / ")
+    || "No specialist reviewer focus detected";
+  const operationalAttention = report.operationalReadiness?.status === "ATTENTION" || report.reviews.security.status === "ATTENTION"
+    ? "Operational/security attention present"
+    : "No operational/security attention flagged";
+
+  return [
+    `Lintel handoff: ${displayLabel(report.verdict.recommendation)} / ${report.verdict.riskLevel} risk (${report.verdict.riskScore}/100)`,
+    `PR: ${report.pr.title}`,
+    `Repo: ${report.pr.repository}`,
+    `Owner cue: ${ownerLabel}`,
+    `Top blocker: ${topBlocker}`,
+    `Test signal: ${missingTests}`,
+    `Operational signal: ${operationalAttention}`,
+    `Reviewer focus: ${reviewerFocus}`,
+    `Action progress: ${actionProgress.openBlockers} open blockers; ${actionProgress.requiredResolved}/${actionProgress.requiredTotal} required actions resolved`,
+    `Next action: ${actionProgress.readinessConclusion}`,
+    "",
+    "Copy/export only. Lintel did not post this to Slack.",
+  ].join("\n");
+}
+
 function EvidenceLedgerCard({ item }: { item: EvidenceLedgerItem }) {
   return (
     <article className="evidence-ledger-card">
@@ -1119,6 +1160,8 @@ export default function ReportPage() {
   const [activeTab, setActiveTab] = useState<ReportTab>("overview");
   const [selectedFindingIndex, setSelectedFindingIndex] = useState<number | null>(null);
   const [includeLocalNoteInMergeSummary, setIncludeLocalNoteInMergeSummary] = useState(false);
+  const [quickActionsOpen, setQuickActionsOpen] = useState(false);
+  const [quickActionMessage, setQuickActionMessage] = useState<{ state: QuickActionMessageState; text: string } | null>(null);
   const [reviewState, setReviewState] = useState<ReportReviewState>(() => defaultReviewState(demoReport));
   const [decisionHistory, setDecisionHistory] = useState<DecisionHistoryEvent[]>(() => initialDecisionHistory(demoReport));
   const [actionStatusOverrides, setActionStatusOverrides] = useState<Record<string, ReviewActionStatus>>({});
@@ -1126,6 +1169,7 @@ export default function ReportPage() {
   const conditionsCopyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mergeSummaryCopyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const downloadResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const quickActionResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const noteHistoryBaselineRef = useRef("");
 
   useEffect(() => {
@@ -1159,6 +1203,27 @@ export default function ReportPage() {
     if (conditionsCopyResetTimer.current) clearTimeout(conditionsCopyResetTimer.current);
     if (mergeSummaryCopyResetTimer.current) clearTimeout(mergeSummaryCopyResetTimer.current);
     if (downloadResetTimer.current) clearTimeout(downloadResetTimer.current);
+    if (quickActionResetTimer.current) clearTimeout(quickActionResetTimer.current);
+  }, []);
+
+  useEffect(() => {
+    function handleQuickActionShortcut(event: KeyboardEvent) {
+      const isQuickActionShortcut = (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k";
+      const target = event.target instanceof HTMLElement ? event.target : null;
+      const isTextEntry = !!target?.closest("input, textarea, select, [contenteditable='true']");
+
+      if (isQuickActionShortcut && !isTextEntry) {
+        event.preventDefault();
+        setQuickActionsOpen((current) => !current);
+      }
+
+      if (event.key === "Escape") {
+        setQuickActionsOpen(false);
+      }
+    }
+
+    window.addEventListener("keydown", handleQuickActionShortcut);
+    return () => window.removeEventListener("keydown", handleQuickActionShortcut);
   }, []);
 
   const { report, source } = displayedReport;
@@ -1223,6 +1288,12 @@ export default function ReportPage() {
     status: actionStatusOverrides[action.key] ?? action.defaultStatus,
   }));
   const reviewActionProgress = actionProgressSummary(reviewActions);
+  const slackHandoffText = slackHandoffToText({
+    report,
+    ownerLabel: displayedOwner,
+    conditions: displayedConditions,
+    actionProgress: reviewActionProgress,
+  });
   const mergeSummaryMarkdown = mergeSummaryToMarkdown(report, {
     sourceLabel: sourceLabels[source],
     reviewState,
@@ -1407,6 +1478,23 @@ export default function ReportPage() {
     });
   }
 
+  function showQuickActionMessage(state: QuickActionMessageState, text: string) {
+    setQuickActionMessage({ state, text });
+
+    if (quickActionResetTimer.current) clearTimeout(quickActionResetTimer.current);
+    quickActionResetTimer.current = setTimeout(() => setQuickActionMessage(null), 2_000);
+  }
+
+  function quickSetReviewStatus(status: ReviewStatus) {
+    updateReviewStatus(status);
+    showQuickActionMessage("success", `Marked ${status}.`);
+  }
+
+  function quickJumpTo(tab: ReportTab, label: string) {
+    setActiveTab(tab);
+    showQuickActionMessage("success", `Jumped to ${label}.`);
+  }
+
   async function handleCopySummary() {
     const copied = await writeToClipboard(reportToMarkdown(report, sourceLabels[source]));
     setCopyState(copied ? "copied" : "failed");
@@ -1438,6 +1526,18 @@ export default function ReportPage() {
 
     if (mergeSummaryCopyResetTimer.current) clearTimeout(mergeSummaryCopyResetTimer.current);
     mergeSummaryCopyResetTimer.current = setTimeout(() => setMergeSummaryCopyState("idle"), 2_000);
+
+    return copied;
+  }
+
+  async function handleQuickCopyMergeSummary() {
+    const copied = await handleCopyMergeSummary();
+    showQuickActionMessage(copied ? "success" : "failed", copied ? "Merge summary copied." : "Copy failed.");
+  }
+
+  async function handleQuickCopySlackHandoff() {
+    const copied = await writeToClipboard(slackHandoffText);
+    showQuickActionMessage(copied ? "success" : "failed", copied ? "Slack handoff copied." : "Copy failed.");
   }
 
   function handleDownloadMarkdown() {
@@ -1487,6 +1587,15 @@ export default function ReportPage() {
           <div className="topbar-actions">
             <SourceBadge source={source} />
             <button
+              className={quickActionsOpen ? "quick-actions-trigger quick-actions-trigger--active" : "quick-actions-trigger"}
+              type="button"
+              onClick={() => setQuickActionsOpen((current) => !current)}
+              aria-expanded={quickActionsOpen}
+              aria-controls="report-quick-actions"
+            >
+              Quick actions <span>Ctrl/Cmd K</span>
+            </button>
+            <button
               className={`copy-summary-button copy-summary-button--${copyState}`}
               type="button"
               onClick={handleCopySummary}
@@ -1506,6 +1615,65 @@ export default function ReportPage() {
             <button className="icon-button" aria-label="More report actions">•••</button>
           </div>
         </header>
+
+        {quickActionsOpen && (
+          <section className="quick-actions-panel" id="report-quick-actions" aria-label="Report quick actions">
+            <div className="quick-actions-header">
+              <div>
+                <span className="card-kicker">QUICK ACTIONS</span>
+                <h2>Move the review forward</h2>
+                <p>Local actions only. No GitHub, Slack or backend updates are sent.</p>
+              </div>
+              {quickActionMessage && (
+                <span className={`quick-actions-status quick-actions-status--${quickActionMessage.state}`} role="status">
+                  {quickActionMessage.text}
+                </span>
+              )}
+            </div>
+            <div className="quick-actions-grid">
+              <button type="button" onClick={() => quickSetReviewStatus("Ready to merge")}>
+                <strong>Ready to merge</strong>
+                <span>Mark local state</span>
+              </button>
+              <button type="button" onClick={() => quickSetReviewStatus("Tests requested")}>
+                <strong>Tests requested</strong>
+                <span>Mark local state</span>
+              </button>
+              <button type="button" onClick={() => quickSetReviewStatus("Blocked")}>
+                <strong>Blocked</strong>
+                <span>Mark local state</span>
+              </button>
+              <button type="button" onClick={handleQuickCopyMergeSummary}>
+                <strong>Copy merge summary</strong>
+                <span>PR-ready Markdown</span>
+              </button>
+              <button type="button" onClick={handleQuickCopySlackHandoff}>
+                <strong>Copy Slack handoff</strong>
+                <span>Channel-friendly text</span>
+              </button>
+              <button type="button" onClick={() => quickJumpTo("evidence", "Evidence")}>
+                <strong>Jump to Evidence</strong>
+                <span>Ledger and contract</span>
+              </button>
+              <button type="button" onClick={() => quickJumpTo("actions", "Actions")}>
+                <strong>Jump to Actions</strong>
+                <span>Blockers board</span>
+              </button>
+              <button type="button" onClick={() => quickJumpTo("timeline", "Timeline")}>
+                <strong>Jump to Timeline</strong>
+                <span>Decision history</span>
+              </button>
+              <button type="button" onClick={() => quickJumpTo("blast-radius", "Blast radius")}>
+                <strong>Jump to Blast radius</strong>
+                <span>Affected surfaces</span>
+              </button>
+              <button type="button" onClick={() => quickJumpTo("export", "Export")}>
+                <strong>Jump to Export</strong>
+                <span>Copy and download</span>
+              </button>
+            </div>
+          </section>
+        )}
 
         <div className="report-working-layout">
           <div className="report-content">

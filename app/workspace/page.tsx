@@ -766,6 +766,15 @@ export default function ReportsWorkspacePage() {
               <article><span>Ready</span><strong>{readyCount}</strong></article>
             </div>
 
+            <div className="workspace-quick-actions" aria-label="Risk inbox quick actions">
+              <span>Quick filters</span>
+              <button type="button" onClick={() => setActiveQueue("needs-tests")}>Needs tests</button>
+              <button type="button" onClick={() => setActiveQueue("needs-review")}>Needs review</button>
+              <button type="button" onClick={() => setActiveQueue("operational-risk")}>Operational risk</button>
+              <button type="button" onClick={() => setActiveQueue("ready")}>Ready</button>
+              <Link href="/new">Check PR</Link>
+            </div>
+
             <div className="workspace-queue-tabs" aria-label="Review queues">
               {QUEUES.map(([value, label]) => (
                 <button

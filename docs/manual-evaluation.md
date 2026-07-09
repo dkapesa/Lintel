@@ -908,3 +908,18 @@ Manual tests:
 10. Resize to mobile width and confirm the action board stacks cleanly.
 11. Confirm action status is local-only: no backend, auth, GitHub posting, Slack posting, users or team assignment.
 12. Search action board UI, copied/exported text and `localStorage` for `diff --git`, `@@`, raw hunks, unique diff markers and secrets; none should appear.
+
+## V4.16 readiness quick actions
+
+Manual tests:
+
+1. Open `/report` and confirm the **Quick actions** trigger appears in the report top bar.
+2. Open Quick actions with the button and with `Ctrl+K` / `Cmd+K`; press `Escape` and confirm it closes.
+3. Use **Ready to merge**, **Tests requested** and **Blocked**; confirm the local review state updates in the sticky decision panel and creates local decision-history entries.
+4. Use **Copy merge summary** and confirm the PR-ready Markdown is copied without posting to GitHub.
+5. Use **Copy Slack handoff** and confirm the copied text is concise, channel-friendly and labelled copy/export only.
+6. Use the jump actions for **Evidence**, **Actions**, **Timeline**, **Blast radius** and **Export**; confirm the report tabs change without losing report state.
+7. Open `/workspace` and confirm the Risk inbox quick filters can jump to Needs tests, Needs review, Operational risk and Ready queues.
+8. Resize to mobile width and confirm the report quick actions panel and workspace quick filters stack cleanly.
+9. Confirm all quick actions remain local-only: no backend, auth, GitHub posting, Slack posting, users or team assignment.
+10. Search quick action UI, copied text, session storage and local history for `diff --git`, `@@`, raw hunks, unique diff markers and secrets; none should appear.

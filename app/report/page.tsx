@@ -1709,6 +1709,11 @@ export default function ReportPage() {
               <div className="report-meta">
                 <span>{pr.repository}</span><span className="meta-separator">•</span><span>{inputSourceLabel(pr.branch)}</span><span className="meta-separator">•</span><span>Mode: {reviewProfileLabel(pr.reviewProfile)}</span><span className="meta-separator">•</span><span>{pr.language}</span><span className="meta-separator">•</span><span>{pr.framework}</span>
               </div>
+              <div className="report-header-state" aria-label="Local review state summary">
+                <span className="report-header-chip report-header-chip--state">{reviewState.status}</span>
+                <span className="report-header-chip report-header-chip--owner">{displayedOwner}</span>
+                <span className="report-header-chip">{conditionProgressLabel}</span>
+              </div>
             </div>
             <div className="header-verdict">
               <RecommendationBadge recommendation={verdict.recommendation} />
@@ -2556,8 +2561,23 @@ export default function ReportPage() {
             <dl className="report-decision-panel-snapshot" aria-label="Report at a glance">
               <div><dt>{displayedConditions.length}</dt><dd>conditions</dd></div>
               <div><dt>{report.missingTests.length}</dt><dd>missing tests</dd></div>
-              <div><dt>{reviewActionProgress.openBlockers}</dt><dd>open blockers</dd></div>
+              <div className={reviewActionProgress.openBlockers > 0 ? "snapshot-stat--attention" : undefined}><dt>{reviewActionProgress.openBlockers}</dt><dd>open blockers</dd></div>
             </dl>
+
+            <section className="report-decision-panel-next" aria-label="Next action">
+              <span>Next action</span>
+              <strong>
+                {displayedConditions.length > 0
+                  ? "Clear merge conditions"
+                  : report.missingTests.length > 0
+                    ? "Add focused tests"
+                    : operationalStatus === "ATTENTION"
+                      ? "Review operational readiness"
+                      : report.findings.length > 0
+                        ? "Complete focused review"
+                        : "Complete normal review"}
+              </strong>
+            </section>
 
             <dl className="report-decision-panel-meta">
               <div><dt>Review mode</dt><dd>{reviewProfileLabel(pr.reviewProfile)}</dd></div>

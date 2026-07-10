@@ -1007,3 +1007,54 @@ button { font:inherit; }
   .workspace-card-provenance { gap:3px 10px; }
 }
 .workspace-preview { background:#18211d; }
+
+/* V5.3 report workspace visual hierarchy pass */
+.report-header { padding-bottom:24px; border-bottom:1px solid var(--dline); margin-bottom:26px; }
+.report-header h1 { font-size:clamp(25px, 2.6vw, 34px); margin:12px 0 13px; }
+.report-header-state { display:flex; flex-wrap:wrap; gap:6px; margin-top:13px; }
+.report-header-chip { display:inline-flex; align-items:center; padding:4px 8px; border:1px solid var(--dline); border-radius:999px; background:var(--dpanel2); color:var(--dtext); font-size:8px; font-weight:800; letter-spacing:.04em; }
+.report-header-chip--state { border-color:rgba(140,219,187,.35); background:rgba(58,170,124,.1); color:var(--dgreen); }
+.report-header-chip--owner { border-color:rgba(130,160,195,.32); background:rgba(106,142,178,.12); color:var(--dblue); }
+
+.report-tabs { gap:6px; padding:8px; border-radius:13px; }
+.report-tab { min-height:40px; border-radius:8px; }
+.report-tab strong { height:20px; }
+
+.section-block { margin-top:40px; }
+.report-tab-panel .section-heading h2 { font-size:17px; }
+
+.report-decision-panel { gap:13px; background:#18211d; }
+.report-decision-panel-next { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:11px 14px; border:1px solid rgba(140,219,187,.32); border-radius:12px; background:rgba(58,170,124,.08); }
+.report-decision-panel-next span { color:var(--dmuted); font-size:8px; font-weight:850; letter-spacing:.08em; text-transform:uppercase; white-space:nowrap; }
+.report-decision-panel-next strong { color:var(--dgreen); font-size:11px; line-height:1.35; text-align:right; }
+.report-decision-panel-snapshot .snapshot-stat--attention { border-color:rgba(200,160,80,.35); background:rgba(196,148,54,.08); }
+.report-decision-panel-snapshot .snapshot-stat--attention dt { color:var(--damber); }
+.report-decision-panel-actions button:first-child { border-color:rgba(140,219,187,.42); background:#1e2b25; color:#fff; }
+.report-decision-panel-actions button:first-child:hover { border-color:rgba(140,219,187,.6); background:#24352d; color:#fff; }
+
+.score-component--strong { border-left:2px solid #46b083; }
+.score-component--watch { border-left:2px solid #7a94ad; }
+.score-component--drag { border-left:2px solid #cb6437; }
+
+.evidence-ledger-column[aria-labelledby="evidence-found-title"] { border-top:2px solid #46b083; }
+.evidence-ledger-column[aria-labelledby="evidence-missing-title"] { border-top:2px solid #cf9435; }
+
+.merge-contract-list label:hover span, .condition-checklist label:hover span { color:var(--dink); }
+.decision-timeline time { font-family:var(--dmono); }
+.decision-timeline article { transition:border-color .13s ease; }
+.decision-timeline article:hover { border-color:#35423b; }
+
+.section-empty, .missing-tests-empty, .merge-conditions-clear, .merge-contract-clear, .reviewer-focus-empty, .quality-pass { display:flex; align-items:baseline; gap:8px; }
+.section-empty:before, .missing-tests-empty:before, .merge-conditions-clear:before, .merge-contract-clear:before, .reviewer-focus-empty:before, .quality-pass:before { content:"\2713"; flex:0 0 auto; font-weight:800; }
+
+.quick-actions-panel { padding:14px; }
+.quick-actions-grid button { min-height:54px; }
+.quick-actions-grid button:hover { border-color:rgba(140,219,187,.4); background:var(--dpanel2); }
+.report-export-grid button:hover, .report-export-grid a:hover { border-color:rgba(140,219,187,.4); }
+
+@media (max-width:680px) {
+  .report-header { margin-bottom:18px; }
+  .report-header-state { gap:5px; }
+  .report-decision-panel-next { align-items:flex-start; flex-direction:column; gap:6px; }
+  .report-decision-panel-next strong { text-align:left; }
+}

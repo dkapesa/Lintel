@@ -1,26 +1,65 @@
 import Link from "next/link";
 
 const workflow = [
-  [
-    "Analyze a pull request",
-    "Paste a diff or import a public GitHub PR. Deterministic checks read the change for risky paths, missing tests and contract changes.",
-  ],
-  [
-    "Inspect the evidence",
-    "Every finding carries concise evidence and a provenance label — rule detected or model assisted — so you can see why it was raised.",
-  ],
-  [
-    "Clear the merge contract",
-    "Risky changes get a short list of conditions to meet before merge. A checklist, not a lecture.",
-  ],
-  [
-    "Share the decision",
-    "Copy a ready-to-paste GitHub PR comment or a Slack-style handoff so the decision travels with the change.",
-  ],
-  [
-    "Track readiness patterns",
-    "The review operations dashboard shows how decisions, risk levels and blockers accumulate across your local reports.",
-  ],
+  {
+    title: "Analyze the pull request",
+    description:
+      "Paste a diff or import a public GitHub PR. Deterministic checks read the change for risky paths, missing tests and contract changes.",
+    visual: (
+      <div className="lp-mini">
+        <code>+ retry(fetch_discount_code)</code>
+        <code>- raise ProviderError</code>
+        <span className="lp-chip lp-chip--amber">HIGH RISK · 78/100</span>
+      </div>
+    ),
+  },
+  {
+    title: "Inspect evidence and blockers",
+    description:
+      "Every finding carries concise evidence and a provenance label — rule detected or model assisted — so you can see why it was raised.",
+    visual: (
+      <div className="lp-mini">
+        <div className="lp-row"><code>Retry may duplicate side effects</code><span className="lp-chip">RULE</span></div>
+        <div className="lp-row"><code>No duplicate-redemption test</code><span className="lp-chip">RULE</span></div>
+      </div>
+    ),
+  },
+  {
+    title: "Clear the merge contract",
+    description:
+      "Risky changes get a short list of conditions to meet before merge. A checklist, not a lecture.",
+    visual: (
+      <div className="lp-mini">
+        <div className="lp-check lp-check--done"><i aria-hidden="true" /><code>Prove retries are idempotent</code></div>
+        <div className="lp-check lp-check--done"><i aria-hidden="true" /><code>Add provider-failure test</code></div>
+        <div className="lp-check"><i aria-hidden="true" /><code>Confirm rollback path</code></div>
+      </div>
+    ),
+  },
+  {
+    title: "Share the decision",
+    description:
+      "Copy a ready-to-paste GitHub PR comment or a Slack-style handoff so the decision travels with the change.",
+    visual: (
+      <div className="lp-mini">
+        <code>### Lintel merge-readiness report</code>
+        <code>**Recommendation:** TESTS_REQUIRED</code>
+        <span className="lp-chip lp-chip--mint">COPY-READY MARKDOWN</span>
+      </div>
+    ),
+  },
+  {
+    title: "Track readiness patterns",
+    description:
+      "The review operations dashboard shows how decisions, risk levels and blockers accumulate across your local reports.",
+    visual: (
+      <div className="lp-mini">
+        <div className="lp-bar"><span>Ready</span><em><i className="lp-bar--mint" style={{ width: "62%" }} /></em></div>
+        <div className="lp-bar"><span>Tests</span><em><i className="lp-bar--amber" style={{ width: "34%" }} /></em></div>
+        <div className="lp-bar"><span>Blocked</span><em><i className="lp-bar--orange" style={{ width: "14%" }} /></em></div>
+      </div>
+    ),
+  },
 ] as const;
 
 const features = [
@@ -30,6 +69,12 @@ const features = [
     description: "Every analysed pull request lands in one queue, ranked by risk, with review states your team controls.",
     href: "/workspace",
     cta: "Open the inbox",
+    peek: (
+      <>
+        <div className="lp-row"><code>PR #482 · redemption-api</code><span className="lp-chip lp-chip--orange">HIGH</span></div>
+        <div className="lp-row"><code>PR #479 · session-api</code><span className="lp-chip lp-chip--amber">MEDIUM</span></div>
+      </>
+    ),
   },
   {
     tag: "LEDGER",
@@ -37,6 +82,12 @@ const features = [
     description: "Findings are backed by concrete evidence and provenance labels, so reviewers know what produced each one.",
     href: "/report",
     cta: "See it in a report",
+    peek: (
+      <>
+        <div className="lp-row"><code>Retry may duplicate side effects</code><span className="lp-chip">RULE DETECTED</span></div>
+        <div className="lp-row"><code>Fallback masks failure signal</code><span className="lp-chip lp-chip--blue">MODEL ASSISTED</span></div>
+      </>
+    ),
   },
   {
     tag: "CONTRACT",
@@ -44,6 +95,12 @@ const features = [
     description: "The conditions a change must meet before merge, tracked as an explicit checklist instead of a comment thread.",
     href: "/report",
     cta: "See it in a report",
+    peek: (
+      <>
+        <div className="lp-check lp-check--done"><i aria-hidden="true" /><code>Prove retries are idempotent</code></div>
+        <div className="lp-check"><i aria-hidden="true" /><code>Add provider-failure test</code></div>
+      </>
+    ),
   },
   {
     tag: "BLAST RADIUS",
@@ -51,6 +108,13 @@ const features = [
     description: "A map of the surfaces a change touches — payments, auth, APIs — so reviewers see how far a mistake could travel.",
     href: "/report",
     cta: "See it in a report",
+    peek: (
+      <div className="lp-chips">
+        <span className="lp-chip lp-chip--orange">PAYMENTS</span>
+        <span className="lp-chip lp-chip--amber">PROVIDER API</span>
+        <span className="lp-chip">RETRY PATH</span>
+      </div>
+    ),
   },
   {
     tag: "POLICY",
@@ -58,6 +122,13 @@ const features = [
     description: "Policy profiles define what your team blocks on, and apply it consistently to every report.",
     href: "/review-policies",
     cta: "Browse policies",
+    peek: (
+      <div className="lp-chips">
+        <span className="lp-chip lp-chip--orange">2 REQUIRED</span>
+        <span className="lp-chip lp-chip--amber">3 RECOMMENDED</span>
+        <span className="lp-chip lp-chip--blue">3 OPTIONAL</span>
+      </div>
+    ),
   },
   {
     tag: "OWNERSHIP",
@@ -65,6 +136,12 @@ const features = [
     description: "Each report routes attention to the discipline that should look at it, with one clear primary owner.",
     href: "/report",
     cta: "See it in a report",
+    peek: (
+      <>
+        <div className="lp-row"><code>Primary owner</code><span className="lp-chip lp-chip--blue">SECURITY REVIEWER</span></div>
+        <div className="lp-row"><code>Focus</code><span className="lp-chip">BACKEND RELIABILITY</span></div>
+      </>
+    ),
   },
   {
     tag: "GITHUB",
@@ -72,6 +149,12 @@ const features = [
     description: "One structured comment for the pull request conversation. No line-by-line noise.",
     href: "/github-action",
     cta: "Preview the comment",
+    peek: (
+      <>
+        <code>### Lintel merge-readiness report</code>
+        <code>**Recommendation:** TESTS_REQUIRED</code>
+      </>
+    ),
   },
   {
     tag: "SLACK",
@@ -79,6 +162,12 @@ const features = [
     description: "A compact, copy-ready summary for the channel where the merge decision actually gets made.",
     href: "/slack-handoff",
     cta: "Preview the handoff",
+    peek: (
+      <>
+        <code>TESTS_REQUIRED · HIGH risk</code>
+        <code>Next action: add retry/idempotency tests</code>
+      </>
+    ),
   },
   {
     tag: "OPERATIONS",
@@ -86,6 +175,12 @@ const features = [
     description: "A dashboard of decisions, risk trends and readiness patterns across your local report history.",
     href: "/review-operations",
     cta: "Open the dashboard",
+    peek: (
+      <>
+        <div className="lp-bar"><span>Ready</span><em><i className="lp-bar--mint" style={{ width: "58%" }} /></em></div>
+        <div className="lp-bar"><span>Tests</span><em><i className="lp-bar--amber" style={{ width: "30%" }} /></em></div>
+      </>
+    ),
   },
 ] as const;
 
@@ -247,11 +342,19 @@ export default function Home() {
                   </ul>
                 </div>
               </div>
-              <div className="hero-mockup-comment">
-                <span>PR COMMENT PREVIEW</span>
-                <code>### Lintel merge-readiness report</code>
-                <code>**Recommendation:** TESTS_REQUIRED · High risk</code>
-                <code>2 conditions open before merge · evidence attached</code>
+              <div className="hero-mockup-share">
+                <div className="hero-mockup-comment">
+                  <span>PR COMMENT PREVIEW</span>
+                  <code>### Lintel merge-readiness report</code>
+                  <code>**Recommendation:** TESTS_REQUIRED · High risk</code>
+                  <code>2 conditions open before merge · evidence attached</code>
+                </div>
+                <div className="hero-mockup-comment">
+                  <span>SLACK HANDOFF PREVIEW</span>
+                  <code>TESTS_REQUIRED · HIGH risk · acme/redemption-api</code>
+                  <code>Top blocker: retries may duplicate redemptions</code>
+                  <code>Next action: add retry/idempotency tests</code>
+                </div>
               </div>
             </div>
           </div>
@@ -274,6 +377,19 @@ export default function Home() {
             written, the failure modes nobody considered, or what happens when a retry fires twice in production.
             Passing CI is not the same as being ready to merge.
           </p>
+          <div className="landing-problem-compare" aria-label="What CI sees compared with what Lintel sees">
+            <div className="problem-compare-card">
+              <span>WHAT CI SEES</span>
+              <strong className="problem-compare-ok">✓ All checks passed</strong>
+              <code>build ✓ · lint ✓ · tests 214 passed</code>
+            </div>
+            <div className="problem-compare-card problem-compare-card--lintel">
+              <span>WHAT LINTEL SEES</span>
+              <code>7 missing tests · 2 open merge gates</code>
+              <code>Blast radius: payments · provider API</code>
+              <code>Next action: prove retries are idempotent</code>
+            </div>
+          </div>
           <p className="landing-problem-tagline">Agents create code. Lintel decides what is ready to merge.</p>
         </div>
       </section>
@@ -283,12 +399,13 @@ export default function Home() {
           <span className="eyebrow">WORKFLOW</span>
           <h2 id="how-lintel-works">From pull request to a defensible merge decision.</h2>
         </div>
-        <ol className="landing-flow">
-          {workflow.map(([title, description], index) => (
-            <li key={title}>
+        <ol className="landing-flow landing-flow--visual">
+          {workflow.map((step, index) => (
+            <li key={step.title}>
               <span>0{index + 1}</span>
-              <h3>{title}</h3>
-              <p>{description}</p>
+              <h3>{step.title}</h3>
+              <p>{step.description}</p>
+              <div className="landing-flow-visual" aria-hidden="true">{step.visual}</div>
             </li>
           ))}
         </ol>
@@ -302,6 +419,7 @@ export default function Home() {
         <div className="landing-feature-grid">
           {features.map((feature) => (
             <article key={feature.title}>
+              <div className="lp-mini landing-feature-peek" aria-hidden="true">{feature.peek}</div>
               <span className="landing-feature-tag">{feature.tag}</span>
               <h3>{feature.title}</h3>
               <p>{feature.description}</p>

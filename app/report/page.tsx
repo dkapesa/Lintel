@@ -1726,7 +1726,7 @@ export default function ReportPage() {
               <div>
                 <span className="card-kicker">RISK BAND</span>
                 <strong className={`risk-band risk-band--${verdict.riskLevel.toLowerCase()}`}>{verdict.riskLevel} RISK</strong>
-                <span className="risk-score-detail">Score detail: {verdict.riskScore}/100</span>
+                <span className="risk-score-detail">Risk score: {verdict.riskScore}/100</span>
               </div>
             </article>
             <article className="summary-card">
@@ -2263,7 +2263,7 @@ export default function ReportPage() {
                     <div className="finding-detail-empty">
                       <span className="card-kicker">EVIDENCE PANEL</span>
                       <h3>Select a finding to inspect the evidence.</h3>
-                      <p>Use this panel to review the finding evidence, recommended action, affected files, related tests, merge conditions and reviewer focus without leaving the Findings tab.</p>
+                      <p>Evidence, recommended action, affected files, related tests and merge conditions for the selected finding — without leaving this tab.</p>
                     </div>
                   )}
                 </aside>
@@ -2555,7 +2555,7 @@ export default function ReportPage() {
 
             <div className="report-decision-panel-risk">
               <strong className={`risk-band risk-band--${verdict.riskLevel.toLowerCase()}`}>{verdict.riskLevel} RISK</strong>
-              <span>Score detail: {verdict.riskScore}/100</span>
+              <span>Risk score: {verdict.riskScore}/100</span>
             </div>
 
             <dl className="report-decision-panel-snapshot" aria-label="Report at a glance">

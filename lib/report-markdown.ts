@@ -175,7 +175,7 @@ export function reportToMarkdown(report: Report, source: ReportSourceLabel) {
     `**Review mode:** ${safeMarkdownText(reviewProfileLabel(report.pr.reviewProfile))}`,
     `**Recommendation:** ${recommendation}`,
     `**Risk band:** ${report.verdict.riskLevel}`,
-    `**Score detail:** ${report.verdict.riskScore}/100`,
+    `**Risk score:** ${report.verdict.riskScore}/100`,
     "",
     "## Executive summary",
     safeMarkdownText(report.verdict.summary),

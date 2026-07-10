@@ -76,7 +76,7 @@ const features = [
   {
     tag: "SLACK",
     title: "Slack handoff",
-    description: "A compact summary formatted for the channel where the merge decision actually gets made.",
+    description: "A compact, copy-ready summary for the channel where the merge decision actually gets made.",
     href: "/slack-handoff",
     cta: "Preview the handoff",
   },
@@ -150,9 +150,9 @@ export default function Home() {
         <span className="eyebrow">LOCAL-FIRST MERGE-READINESS WORKSPACE</span>
         <h1>Decide what’s ready to merge.</h1>
         <p>
-          Lintel reads a pull request and turns it into a clear merge decision: the risks it found, the evidence
-          behind them, the tests that are missing, whether it is operationally ready, and the conditions to clear
-          before merge. Plain language for the team. Full depth for the reviewer.
+          Lintel turns a pull request into a clear merge-readiness decision: the risks, the missing tests, the
+          evidence behind them, and the conditions to clear before merge. Plain language for the team. Full depth
+          for the reviewer.
         </p>
         <div className="landing-actions">
           <Link className="landing-button" href="/workspace">Open risk inbox <span aria-hidden="true">-&gt;</span></Link>
@@ -329,7 +329,7 @@ export default function Home() {
           ))}
           <article className="landing-trust-more">
             <h3>Read the details</h3>
-            <p>The security model documents current guarantees. Analysis settings show exactly what runs where.</p>
+            <p>The security model spells out what the prototype does — and does not — promise. Analysis settings show exactly what runs where.</p>
             <div>
               <Link className="landing-text-link" href="/docs/security-model.md">Security model <span aria-hidden="true">-&gt;</span></Link>
               <Link className="landing-text-link" href="/settings">Analysis settings <span aria-hidden="true">-&gt;</span></Link>

@@ -201,7 +201,7 @@ export default function SlackHandoffPage() {
           <div className="workspace-header-copy">
             <span className="eyebrow">SLACK-READY HANDOFF</span>
             <h1>Share the merge decision.</h1>
-            <p>Lintel should create concise, structured review decisions that teams can paste into their existing communication channels. This is copy/export-only, not a live Slack integration.</p>
+            <p>Lintel produces concise, structured merge decisions that teams can paste into the channels they already use. This is copy/export-only — not a live Slack integration.</p>
             <span className="workspace-header-note">Prototype only / no Slack API calls / raw-diff-free handoff / <Link href="/docs/security-model.md">Security model</Link></span>
           </div>
           <div className="workspace-header-actions">
@@ -246,7 +246,7 @@ export default function SlackHandoffPage() {
           <article className="slack-explanation-card">
             <span className="card-kicker">HANDOFF, NOT CHAT</span>
             <h2>A checklist for the channel.</h2>
-            <p>Lintel should not become another place to discuss code. It should produce the merge-readiness decision, the blocker, the reviewer focus and the next action so teams can coordinate in tools they already use.</p>
+            <p>Lintel is not another place to discuss code. It hands over the merge-readiness decision, the top blocker, the reviewer focus and the next action — so coordination stays in the tools teams already use.</p>
             <ul>
               {handoffPrinciples.map((item) => <li key={item}>{item}</li>)}
             </ul>

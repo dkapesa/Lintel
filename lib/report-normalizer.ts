@@ -307,10 +307,10 @@ function canonicalAiSummary(baseline: Report, findings: Report["findings"], miss
   const changedFiles = `${changedFileCount} changed file${changedFileCount === 1 ? "" : "s"}`;
 
   if (findings.length === 0 && missingTests.length === 0) {
-    return `AI-assisted analysis found no unresolved merge-readiness findings or test gaps across ${changedFiles}.`;
+    return `Model-assisted analysis found no unresolved merge-readiness findings or test gaps across ${changedFiles}.`;
   }
 
-  return `AI-assisted analysis identified ${findings.length} merge-readiness finding${findings.length === 1 ? "" : "s"} and ${missingTests.length} test gap${missingTests.length === 1 ? "" : "s"} across ${changedFiles}.`;
+  return `Model-assisted analysis identified ${findings.length} merge-readiness finding${findings.length === 1 ? "" : "s"} and ${missingTests.length} test gap${missingTests.length === 1 ? "" : "s"} across ${changedFiles}.`;
 }
 
 function baselineRiskFloor(baseline: Report) {

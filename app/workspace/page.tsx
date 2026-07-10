@@ -462,7 +462,7 @@ function WorkspacePreviewPanel({
 
       <div className={`workspace-preview-risk workspace-preview-risk--${report.verdict.riskLevel.toLowerCase()}`}>
         <strong>{report.verdict.riskLevel} risk</strong>
-        <span>{entry.metadata.riskScore}/100 score detail</span>
+        <span>Risk score: {entry.metadata.riskScore}/100</span>
       </div>
 
       <section className="workspace-preview-block workspace-preview-block--first">
@@ -766,7 +766,7 @@ export default function ReportsWorkspacePage() {
       <main className="workspace-main">
         <header className="workspace-header workspace-header--app">
           <div className="workspace-header-copy">
-            <span className="eyebrow">LOCAL MERGE READINESS</span>
+            <span className="eyebrow">LOCAL MERGE-READINESS OPERATIONS</span>
             <h1>Risk inbox</h1>
             <p>Review what is blocked, waiting on tests, or ready to merge. Reports stay on this device and raw diffs are not saved in local history.</p>
             <div className="workspace-header-cues">
@@ -850,7 +850,7 @@ export default function ReportsWorkspacePage() {
 
                 <WorkspaceSection
                   title="Ready / reviewed"
-                  description="Reports marked ready, reviewed, archived or currently approved by the latest local run."
+                  description="Reports marked ready, reviewed or archived — plus changes the latest local run approved."
                   groups={ready}
                   emptyCopy={READY_EMPTY_COPY[activeQueue]}
                   copyFeedback={copyFeedback}

@@ -142,6 +142,24 @@ function groupNeedsAttention(group: WorkspaceGroup) {
   return ["Needs work", "Tests requested", "Review required", "Blocked"].includes(group.reviewState.status);
 }
 
+const ATTENTION_EMPTY_COPY: Record<WorkspaceQueue, string> = {
+  inbox: "Nothing needs attention right now. New reports land in the inbox automatically when you check a pull request.",
+  "needs-tests": "No PRs are waiting on tests. Set a report's review state to “Tests requested” to queue it here.",
+  "needs-review": "No PRs are waiting on focused review. Reports marked “Review required” or “Blocked” queue here.",
+  "operational-risk": "No PRs carry operational, security or reliability attention right now.",
+  ready: "Ready PRs never need attention — they are listed under Ready / reviewed below.",
+  reviewed: "Reviewed PRs never need attention — they are listed under Ready / reviewed below.",
+};
+
+const READY_EMPTY_COPY: Record<WorkspaceQueue, string> = {
+  inbox: "No PRs are marked ready or reviewed yet. Clear a report's merge conditions, then set its review state to “Ready to merge”.",
+  "needs-tests": "PRs stay in the list above while they wait on test evidence.",
+  "needs-review": "PRs stay in the list above until their focused review completes.",
+  "operational-risk": "PRs stay in the list above until their operational signals clear.",
+  ready: "Nothing is marked “Ready to merge” yet. Clear conditions and update the review state to move a PR here.",
+  reviewed: "Nothing is marked “Reviewed” or “Archived” yet. Reviewed PRs are kept here for reference.",
+};
+
 function topConditionOrRisk(entry: ReportHistoryEntry) {
   const report = entry.report;
   const conditions = reportConditions(report);
@@ -278,18 +296,21 @@ function WorkspaceReportCard({
         </div>
       </div>
 
-      <div className="workspace-card-meta">
-        <span>{entry.inputLabel}</span>
-        <span>{sourceLabel(entry.source)}</span>
-        <span>Mode: {entry.metadata.reviewProfile}</span>
+      <div className="workspace-card-signals">
+        <span className="workspace-review-state">{group.reviewState.status}</span>
         <span className="workspace-condition-progress">{conditionProgressLabel}</span>
         <span className="workspace-owner-cue">{displayedOwner}</span>
         <span className={entry.report.missingTests.length > 0 ? "workspace-signal workspace-signal--attention" : "workspace-signal"}>{testSignal(entry)}</span>
         <span className={hasOperationalRisk(entry) ? "workspace-signal workspace-signal--attention" : "workspace-signal"}>{operationalSignal(entry)}</span>
-        <span className="workspace-review-state">{group.reviewState.status}</span>
-        {group.reviewState.note.trim().length > 0 && <span>Local note</span>}
-        {group.reviewState.updatedAt && <time dateTime={group.reviewState.updatedAt}>State saved {createdTime(group.reviewState.updatedAt)}</time>}
+        {group.reviewState.note.trim().length > 0 && <span className="workspace-signal">Local note</span>}
+      </div>
+
+      <div className="workspace-card-provenance">
+        <span>{entry.inputLabel}</span>
+        <span>{sourceLabel(entry.source)}</span>
+        <span>Mode: {entry.metadata.reviewProfile}</span>
         <span>{focus.length} {focus.length === 1 ? "focus area" : "focus areas"} / {focusLabel}</span>
+        {group.reviewState.updatedAt && <time dateTime={group.reviewState.updatedAt}>State saved {createdTime(group.reviewState.updatedAt)}</time>}
         <time dateTime={entry.createdAt}>Latest {createdTime(entry.createdAt)}</time>
       </div>
 
@@ -439,22 +460,12 @@ function WorkspacePreviewPanel({
       <h2>{entry.metadata.title}</h2>
       <p className="workspace-preview-repo">{entry.metadata.repository}</p>
 
-      <div className="workspace-preview-risk">
+      <div className={`workspace-preview-risk workspace-preview-risk--${report.verdict.riskLevel.toLowerCase()}`}>
         <strong>{report.verdict.riskLevel} risk</strong>
         <span>{entry.metadata.riskScore}/100 score detail</span>
       </div>
 
-      <dl className="workspace-preview-meta">
-        <div><dt>Review mode</dt><dd>{entry.metadata.reviewProfile}</dd></div>
-        <div><dt>Review state</dt><dd>{group.reviewState.status}</dd></div>
-        <div><dt>Owner</dt><dd>{displayedOwner}</dd></div>
-        <div><dt>Input</dt><dd>{inputPreviewLabel(entry)}</dd></div>
-        <div><dt>Mode</dt><dd>{sourceLabel(entry.source)}</dd></div>
-        <div><dt>Latest</dt><dd><time dateTime={entry.createdAt}>{createdTime(entry.createdAt)}</time></dd></div>
-        <div><dt>Local update</dt><dd>{group.reviewState.updatedAt ? createdTime(group.reviewState.updatedAt) : "Not saved yet"}</dd></div>
-      </dl>
-
-      <section className="workspace-preview-block">
+      <section className="workspace-preview-block workspace-preview-block--first">
         <div className="workspace-preview-block-heading">
           <h3>Next action</h3>
           <span>{action}</span>
@@ -482,7 +493,7 @@ function WorkspacePreviewPanel({
       </section>
 
       <section className="workspace-preview-block">
-        <h3>Top risk</h3>
+        <h3>Top blocker</h3>
         <p>{topRisk}</p>
       </section>
 
@@ -491,6 +502,16 @@ function WorkspacePreviewPanel({
         <div><span>Operations</span><strong>{operationalStatus}</strong></div>
         <div><span>Quality</span><strong>{qualityStatus}</strong></div>
       </div>
+
+      <dl className="workspace-preview-meta">
+        <div><dt>Review mode</dt><dd>{entry.metadata.reviewProfile}</dd></div>
+        <div><dt>Review state</dt><dd>{group.reviewState.status}</dd></div>
+        <div><dt>Owner</dt><dd>{displayedOwner}</dd></div>
+        <div><dt>Input</dt><dd>{inputPreviewLabel(entry)}</dd></div>
+        <div><dt>Mode</dt><dd>{sourceLabel(entry.source)}</dd></div>
+        <div><dt>Latest</dt><dd><time dateTime={entry.createdAt}>{createdTime(entry.createdAt)}</time></dd></div>
+        <div><dt>Local update</dt><dd>{group.reviewState.updatedAt ? createdTime(group.reviewState.updatedAt) : "Not saved yet"}</dd></div>
+      </dl>
 
       <section className="workspace-preview-block">
         <h3>Reviewer focus</h3>
@@ -562,6 +583,7 @@ export default function ReportsWorkspacePage() {
   const testsRequiredCount = groups.filter((group) => groupMatchesQueue(group, "needs-tests")).length;
   const operationalRiskCount = groups.filter((group) => hasOperationalRisk(group.latest)).length;
   const readyCount = groups.filter((group) => groupMatchesQueue(group, "ready")).length;
+  const highRiskCount = groups.filter((group) => riskRank(group.latest.report.verdict.riskLevel) >= 3).length;
   const queueCounts: Record<WorkspaceQueue, number> = {
     inbox: groups.length,
     "needs-tests": groups.filter((group) => groupMatchesQueue(group, "needs-tests")).length,
@@ -747,7 +769,14 @@ export default function ReportsWorkspacePage() {
             <span className="eyebrow">LOCAL MERGE READINESS</span>
             <h1>Risk inbox</h1>
             <p>Review what is blocked, waiting on tests, or ready to merge. Reports stay on this device and raw diffs are not saved in local history.</p>
-            <span className="workspace-header-note">Local-first / raw-diff-free history / <Link href="/docs/security-model.md">Security model</Link></span>
+            <div className="workspace-header-cues">
+              <span className="workspace-header-note">Local-first / raw-diff-free history / <Link href="/docs/security-model.md">Security model</Link></span>
+              {history.length > 0 && (
+                <span className="workspace-header-count">
+                  {groups.length} {groups.length === 1 ? "PR" : "PRs"} tracked · {needsAttentionCount} needing attention · {readyCount} ready
+                </span>
+              )}
+            </div>
           </div>
           <div className="workspace-header-actions">
             {history.length > 0 && <button type="button" onClick={clearHistory}>Clear history</button>}
@@ -760,10 +789,21 @@ export default function ReportsWorkspacePage() {
         {history.length > 0 ? (
           <section className="workspace-inbox" aria-label="Local merge-readiness inbox">
             <div className="workspace-triage-strip" aria-label="Workspace summary">
-              <article><span>Needs attention</span><strong>{needsAttentionCount}</strong></article>
-              <article><span>Tests required</span><strong>{testsRequiredCount}</strong></article>
-              <article><span>Operational risk</span><strong>{operationalRiskCount}</strong></article>
-              <article><span>Ready</span><strong>{readyCount}</strong></article>
+              <article className={needsAttentionCount > 0 ? "workspace-triage-card workspace-triage-card--attention" : "workspace-triage-card"}>
+                <span>Needs attention</span><strong>{needsAttentionCount}</strong><p>blocked, tests or review</p>
+              </article>
+              <article className={testsRequiredCount > 0 ? "workspace-triage-card workspace-triage-card--tests" : "workspace-triage-card"}>
+                <span>Tests required</span><strong>{testsRequiredCount}</strong><p>waiting on test evidence</p>
+              </article>
+              <article className={operationalRiskCount > 0 ? "workspace-triage-card workspace-triage-card--operational" : "workspace-triage-card"}>
+                <span>Operational risk</span><strong>{operationalRiskCount}</strong><p>ops / security attention</p>
+              </article>
+              <article className={highRiskCount > 0 ? "workspace-triage-card workspace-triage-card--high-risk" : "workspace-triage-card"}>
+                <span>High risk</span><strong>{highRiskCount}</strong><p>high or critical band</p>
+              </article>
+              <article className={readyCount > 0 ? "workspace-triage-card workspace-triage-card--ready" : "workspace-triage-card"}>
+                <span>Ready</span><strong>{readyCount}</strong><p>cleared to merge</p>
+              </article>
             </div>
 
             <div className="workspace-quick-actions" aria-label="Risk inbox quick actions">
@@ -779,8 +819,9 @@ export default function ReportsWorkspacePage() {
               {QUEUES.map(([value, label]) => (
                 <button
                   key={value}
-                  className={activeQueue === value ? "workspace-queue-tab workspace-queue-tab--active" : "workspace-queue-tab"}
+                  className={`workspace-queue-tab workspace-queue-tab--${value}${activeQueue === value ? " workspace-queue-tab--active" : ""}`}
                   type="button"
+                  aria-pressed={activeQueue === value}
                   onClick={() => setActiveQueue(value)}
                 >
                   <span>{label}</span>
@@ -795,7 +836,7 @@ export default function ReportsWorkspacePage() {
               title="Needs attention"
               description="Reports with tests required, focused review, unresolved conditions or blocking risk."
                   groups={needsAttention}
-                  emptyCopy="No blocked or attention-required PRs match this filter."
+                  emptyCopy={ATTENTION_EMPTY_COPY[activeQueue]}
                   copyFeedback={copyFeedback}
                   conditionProgressByGroup={conditionProgressByGroup}
                   selectedGroupKey={selectedGroupKey}
@@ -811,7 +852,7 @@ export default function ReportsWorkspacePage() {
                   title="Ready / reviewed"
                   description="Reports marked ready, reviewed, archived or currently approved by the latest local run."
                   groups={ready}
-                  emptyCopy="No ready PRs match this filter yet."
+                  emptyCopy={READY_EMPTY_COPY[activeQueue]}
                   copyFeedback={copyFeedback}
                   conditionProgressByGroup={conditionProgressByGroup}
                   selectedGroupKey={selectedGroupKey}

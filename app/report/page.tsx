@@ -117,6 +117,7 @@ type ReadinessTimelineEvent = {
   relatedItem?: string;
   current?: boolean;
 };
+type StudioHumanDecision = "Ready to merge" | "Tests required" | "Review required" | "Blocked" | "Approved with accepted risk";
 
 type StoredReport = {
   report: Report;
@@ -154,6 +155,7 @@ const copyMergeSummaryLabels: Record<CopyState, string> = {
 };
 
 const timelineFilters: TimelineFilter[] = ["All", "Decision", "Evidence", "Tests", "Ownership", "Human actions"];
+const studioDecisionOptions: StudioHumanDecision[] = ["Ready to merge", "Tests required", "Review required", "Blocked", "Approved with accepted risk"];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -274,6 +276,36 @@ function decisionPanelInputLabel(value: string) {
   return inputSourceLabel(value);
 }
 
+function studioDecisionFromReviewState(status: ReviewStatus): StudioHumanDecision {
+  if (status === "Ready to merge" || status === "Reviewed") return "Ready to merge";
+  if (status === "Tests requested") return "Tests required";
+  if (status === "Review required") return "Review required";
+  if (status === "Blocked") return "Blocked";
+  return "Review required";
+}
+
+function reviewStatusFromStudioDecision(decision: StudioHumanDecision): ReviewStatus {
+  if (decision === "Ready to merge" || decision === "Approved with accepted risk") return "Ready to merge";
+  if (decision === "Tests required") return "Tests requested";
+  if (decision === "Review required") return "Review required";
+  if (decision === "Blocked") return "Blocked";
+  return "Needs work";
+}
+
+function studioDecisionLabel(decision: StudioHumanDecision, acceptedRiskReason: string) {
+  if (decision !== "Approved with accepted risk") return decision;
+  const reason = acceptedRiskReason.trim();
+  return reason ? `${decision}: ${reason}` : decision;
+}
+
+function reportNextAction(report: Report, conditions: string[], operationalStatus: string) {
+  if (conditions.length > 0) return "Clear merge conditions";
+  if (report.missingTests.length > 0) return "Add focused tests";
+  if (operationalStatus === "ATTENTION") return "Review operational readiness";
+  if (report.findings.length > 0) return "Complete focused review";
+  return "Complete normal review";
+}
+
 function timelineTime(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Unknown time";
@@ -294,7 +326,7 @@ function timelineProvenanceForSource(source: ReportSource): TimelineProvenance {
 function timelineCategoryForStoredEvent(event: DecisionHistoryEvent): TimelineEventCategory {
   if (event.type === "condition-cleared" || event.type === "condition-reopened") return "Evidence";
   if (event.type === "ownership-changed") return "Ownership";
-  if (event.type === "review-state-changed" || event.type === "recommendation-assigned") return "Decision";
+  if (event.type === "review-state-changed" || event.type === "recommendation-assigned" || event.type === "human-decision-recorded" || event.type === "accepted-risk-recorded") return "Decision";
   if (event.type === "review-action-updated" || event.type === "merge-summary-copied" || event.type === "reviewer-note-updated") return "Human actions";
   return "Decision";
 }
@@ -303,7 +335,8 @@ function timelineMovementForStoredEvent(event: DecisionHistoryEvent): ReadinessM
   if (event.type === "condition-cleared") return "Condition cleared";
   if (event.type === "condition-reopened") return "Condition reopened";
   if (event.type === "ownership-changed") return "Ownership changed";
-  if (event.type === "review-state-changed" || event.type === "recommendation-assigned") return "Recommendation changed";
+  if (event.type === "review-state-changed" || event.type === "recommendation-assigned" || event.type === "human-decision-recorded") return "Recommendation changed";
+  if (event.type === "accepted-risk-recorded") return "Readiness increased";
   if (event.type === "review-action-updated") {
     if (event.nextState === "Done" || event.nextState === "Not needed") return "Readiness increased";
     if (event.nextState === "Open" || event.nextState === "In progress") return "Readiness decreased";
@@ -316,6 +349,7 @@ function timelineAreaForStoredEvent(event: DecisionHistoryEvent) {
   if (event.type === "ownership-changed") return "Reviewer ownership";
   if (event.type === "review-action-updated") return "Review actions";
   if (event.type === "merge-summary-copied") return "Decision handoff";
+  if (event.type === "human-decision-recorded" || event.type === "accepted-risk-recorded") return "Decision Studio";
   if (event.type === "reviewer-note-updated") return "Reviewer note";
   return "Decision";
 }
@@ -326,6 +360,8 @@ function humaniseStoredTimelineTitle(event: DecisionHistoryEvent) {
   if (event.type === "ownership-changed") return "Reviewer ownership changed";
   if (event.type === "review-action-updated") return "Review action updated";
   if (event.type === "review-state-changed") return "Human decision recorded";
+  if (event.type === "human-decision-recorded") return "Human decision recorded";
+  if (event.type === "accepted-risk-recorded") return "Accepted risk recorded";
   return event.title;
 }
 
@@ -1360,11 +1396,13 @@ function slackHandoffToText({
   ownerLabel,
   conditions,
   actionProgress,
+  humanDecision,
 }: {
   report: Report;
   ownerLabel: string;
   conditions: string[];
   actionProgress: ActionProgress;
+  humanDecision?: string;
 }) {
   const topBlocker = conditions[0]
     ?? report.findings[0]?.title
@@ -1388,6 +1426,7 @@ function slackHandoffToText({
     `Operational signal: ${operationalAttention}`,
     `Reviewer focus: ${reviewerFocus}`,
     `Action progress: ${actionProgress.openBlockers} open blockers; ${actionProgress.requiredResolved}/${actionProgress.requiredTotal} required actions resolved`,
+    ...(humanDecision ? [`Human decision: ${humanDecision}`] : []),
     `Next action: ${actionProgress.readinessConclusion}`,
     "",
     "Copy/export only. Lintel did not post this to Slack.",
@@ -1442,6 +1481,9 @@ export default function ReportPage() {
   const [selectedFindingIndex, setSelectedFindingIndex] = useState<number | null>(null);
   const [timelineFilter, setTimelineFilter] = useState<TimelineFilter>("All");
   const [selectedTimelineEventId, setSelectedTimelineEventId] = useState<string | null>(null);
+  const [studioDecision, setStudioDecision] = useState<StudioHumanDecision>("Review required");
+  const [acceptedRiskReason, setAcceptedRiskReason] = useState("");
+  const [studioDecisionState, setStudioDecisionState] = useState<CopyState>("idle");
   const [includeLocalNoteInMergeSummary, setIncludeLocalNoteInMergeSummary] = useState(false);
   const [quickActionsOpen, setQuickActionsOpen] = useState(false);
   const [quickActionMessage, setQuickActionMessage] = useState<{ state: QuickActionMessageState; text: string } | null>(null);
@@ -1453,6 +1495,7 @@ export default function ReportPage() {
   const mergeSummaryCopyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const downloadResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const quickActionResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const studioDecisionResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const noteHistoryBaselineRef = useRef("");
 
   useEffect(() => {
@@ -1487,6 +1530,7 @@ export default function ReportPage() {
     if (mergeSummaryCopyResetTimer.current) clearTimeout(mergeSummaryCopyResetTimer.current);
     if (downloadResetTimer.current) clearTimeout(downloadResetTimer.current);
     if (quickActionResetTimer.current) clearTimeout(quickActionResetTimer.current);
+    if (studioDecisionResetTimer.current) clearTimeout(studioDecisionResetTimer.current);
   }, []);
 
   useEffect(() => {
@@ -1563,6 +1607,14 @@ export default function ReportPage() {
   const qualityStatus = report.reportQuality?.status ?? "Not assessed";
   const suggestedOwners = suggestedReviewerOwners(report);
   const displayedOwner = ownerDisplay(reviewState.owner, suggestedOwners);
+  const studioDecisionText = studioDecisionLabel(studioDecision, acceptedRiskReason);
+  const studioReviewState: ReportReviewState = {
+    ...reviewState,
+    status: reviewStatusFromStudioDecision(studioDecision),
+    note: studioDecision === "Approved with accepted risk" && acceptedRiskReason.trim()
+      ? `${reviewState.note.trim()}${reviewState.note.trim() ? "\n\n" : ""}Accepted risk reason: ${acceptedRiskReason.trim()}`
+      : reviewState.note,
+  };
   const reviewerFocusSummary = supportedReviewerFocus
     ? supportedReviewerFocus.length > 0
       ? `${supportedReviewerFocus.length} ${supportedReviewerFocus.length === 1 ? "area" : "areas"} / ${supportedReviewerFocus[0].area}`
@@ -1593,6 +1645,8 @@ export default function ReportPage() {
     status: actionStatusOverrides[action.key] ?? action.defaultStatus,
   }));
   const reviewActionProgress = actionProgressSummary(reviewActions);
+  const reportTopBlocker = displayedConditions[0] ?? report.findings[0]?.title ?? "No merge conditions detected.";
+  const reportNextDecisionAction = reportNextAction(report, displayedConditions, operationalStatus);
   const readinessTimeline = buildReadinessTimeline({
     report,
     source,
@@ -1612,12 +1666,13 @@ export default function ReportPage() {
     ownerLabel: displayedOwner,
     conditions: displayedConditions,
     actionProgress: reviewActionProgress,
+    humanDecision: studioDecisionText,
   });
   const mergeSummaryMarkdown = mergeSummaryToMarkdown(report, {
     sourceLabel: sourceLabels[source],
-    reviewState,
+    reviewState: studioReviewState,
     includeLocalNote: includeLocalNoteInMergeSummary,
-    actionProgress: `${reviewActionProgress.openBlockers} open blockers; ${reviewActionProgress.requiredResolved}/${reviewActionProgress.requiredTotal} required actions resolved. ${reviewActionProgress.readinessConclusion}`,
+    actionProgress: `${reviewActionProgress.openBlockers} open blockers; ${reviewActionProgress.requiredResolved}/${reviewActionProgress.requiredTotal} required actions resolved. Human decision: ${studioDecisionText}. ${reviewActionProgress.readinessConclusion}`,
   });
   const blockerSurfaceCount = affectedSurfaces.filter((surface) => surface.status === "Blocker").length;
   const confirmationSurfaceCount = affectedSurfaces.filter((surface) => surface.status === "Attention" || surface.status === "Watch").length;
@@ -1659,10 +1714,14 @@ export default function ReportPage() {
     try {
       const savedState = readReviewState(window.localStorage, report);
       setReviewState(savedState);
+      setStudioDecision(studioDecisionFromReviewState(savedState.status));
+      setAcceptedRiskReason("");
       noteHistoryBaselineRef.current = savedState.note;
     } catch {
       const fallbackState = defaultReviewState(report);
       setReviewState(fallbackState);
+      setStudioDecision(studioDecisionFromReviewState(fallbackState.status));
+      setAcceptedRiskReason("");
       noteHistoryBaselineRef.current = fallbackState.note;
     }
   }, [report]);
@@ -1832,6 +1891,10 @@ export default function ReportPage() {
     showQuickActionMessage("success", `Jumped to ${label}.`);
   }
 
+  function openDecisionStudio() {
+    quickJumpTo("export", "Decision Studio", "decision-studio-title");
+  }
+
   function handleReportTabKeyDown(event: KeyboardEvent<HTMLElement>) {
     if (!(event.target instanceof HTMLElement) || event.target.getAttribute("role") !== "tab") return;
 
@@ -1902,6 +1965,40 @@ export default function ReportPage() {
   async function handleQuickCopySlackHandoff() {
     const copied = await writeToClipboard(slackHandoffText);
     showQuickActionMessage(copied ? "success" : "failed", copied ? "Slack handoff copied." : "Copy failed.");
+  }
+
+  function saveStudioDecision() {
+    if (studioDecision === "Approved with accepted risk" && acceptedRiskReason.trim().length === 0) {
+      setStudioDecisionState("failed");
+      if (studioDecisionResetTimer.current) clearTimeout(studioDecisionResetTimer.current);
+      studioDecisionResetTimer.current = setTimeout(() => setStudioDecisionState("idle"), 2_000);
+      return;
+    }
+
+    const previousStatus = reviewState.status;
+    const nextStatus = reviewStatusFromStudioDecision(studioDecision);
+    const savedState = updateReviewState(studioReviewState);
+
+    recordDecisionEvent({
+      type: studioDecision === "Approved with accepted risk" ? "accepted-risk-recorded" : "human-decision-recorded",
+      title: studioDecision === "Approved with accepted risk" ? "Accepted risk recorded" : "Human decision recorded",
+      detail: studioDecision === "Approved with accepted risk"
+        ? `Approved with accepted risk. Reason: ${acceptedRiskReason.trim()}`
+        : `Human decision recorded in Decision Studio: ${studioDecision}.`,
+      previousState: previousStatus,
+      nextState: studioDecision,
+      label: "Local",
+    });
+
+    if (previousStatus !== savedState.status && studioDecision !== "Approved with accepted risk") {
+      recordDecisionEvent(reviewStatusChangeEvent(previousStatus, savedState.status));
+    } else if (previousStatus !== nextStatus && studioDecision === "Approved with accepted risk") {
+      recordDecisionEvent(reviewStatusChangeEvent(previousStatus, nextStatus));
+    }
+
+    setStudioDecisionState("copied");
+    if (studioDecisionResetTimer.current) clearTimeout(studioDecisionResetTimer.current);
+    studioDecisionResetTimer.current = setTimeout(() => setStudioDecisionState("idle"), 2_000);
   }
 
   function handleDownloadMarkdown() {
@@ -2050,6 +2147,10 @@ export default function ReportPage() {
               <button type="button" onClick={() => quickJumpTo("export", "Export")}>
                 <strong>Jump to Export</strong>
                 <span>Copy and download</span>
+              </button>
+              <button type="button" onClick={openDecisionStudio}>
+                <strong>Open Decision Studio</strong>
+                <span>Final decision</span>
               </button>
             </div>
           </section>
@@ -2901,6 +3002,101 @@ export default function ReportPage() {
               </div>
               <SourceBadge source={source} />
             </div>
+
+            <section className="decision-studio" aria-labelledby="decision-studio-title">
+              <div className="decision-studio-header">
+                <div>
+                  <span className="card-kicker">FINAL DECISION</span>
+                  <h3 id="decision-studio-title">Merge Decision Studio</h3>
+                  <p>Record the local human decision before copying a GitHub or Slack handoff. This stays on this device.</p>
+                </div>
+                <span className={`review-status review-status--${studioReviewState.status.toLowerCase().replaceAll(" ", "-")}`}>{studioDecision}</span>
+              </div>
+
+              <div className="decision-studio-grid">
+                <article>
+                  <span>Recommendation</span>
+                  <strong>{verdict.recommendation.replaceAll("_", " ")}</strong>
+                </article>
+                <article>
+                  <span>Readiness score</span>
+                  <strong>{verdict.riskScore}/100</strong>
+                </article>
+                <article>
+                  <span>Risk level</span>
+                  <strong>{verdict.riskLevel}</strong>
+                </article>
+                <article>
+                  <span>Reviewer owner</span>
+                  <strong>{displayedOwner}</strong>
+                </article>
+                <article>
+                  <span>Open conditions</span>
+                  <strong>{openConditionCount}</strong>
+                </article>
+                <article>
+                  <span>Cleared conditions</span>
+                  <strong>{clearedConditionCount}</strong>
+                </article>
+              </div>
+
+              <div className="decision-studio-context">
+                <article>
+                  <span>Top blocker</span>
+                  <p>{reportTopBlocker}</p>
+                </article>
+                <article>
+                  <span>Next action</span>
+                  <p>{reportNextDecisionAction}</p>
+                </article>
+              </div>
+
+              <div className="decision-studio-controls">
+                <fieldset>
+                  <legend>Human decision</legend>
+                  <div className="decision-studio-options">
+                    {studioDecisionOptions.map((option) => (
+                      <label key={option}>
+                        <input
+                          type="radio"
+                          name="studio-decision"
+                          value={option}
+                          checked={studioDecision === option}
+                          onChange={() => setStudioDecision(option)}
+                        />
+                        <span>{option}</span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+
+                {studioDecision === "Approved with accepted risk" && (
+                  <label className="decision-studio-reason">
+                    <span>Accepted risk reason</span>
+                    <textarea
+                      value={acceptedRiskReason}
+                      rows={3}
+                      maxLength={700}
+                      required
+                      onChange={(event) => setAcceptedRiskReason(event.target.value)}
+                      placeholder="Explain what risk is being accepted and why it is acceptable for this merge."
+                    />
+                  </label>
+                )}
+
+                <div className="decision-studio-actions">
+                  <button
+                    type="button"
+                    onClick={saveStudioDecision}
+                    disabled={studioDecision === "Approved with accepted risk" && acceptedRiskReason.trim().length === 0}
+                  >
+                    {studioDecisionState === "copied" ? "Decision saved" : studioDecisionState === "failed" ? "Reason required" : "Save human decision"}
+                  </button>
+                  <p>GitHub and Slack previews below reflect: <strong>{studioDecisionText}</strong></p>
+                </div>
+              </div>
+            </section>
+
             <div className="report-export-grid">
               <article>
                 <h3>Copy conditions</h3>
@@ -2988,6 +3184,25 @@ export default function ReportPage() {
               </div>
 
               <pre className="merge-summary-preview" aria-label="Generated merge-readiness Markdown preview">{mergeSummaryMarkdown}</pre>
+            </div>
+
+            <div className="merge-summary-builder" aria-label="Slack handoff builder">
+              <div className="merge-summary-builder-header">
+                <div>
+                  <span className="card-kicker">SLACK HANDOFF</span>
+                  <h3>Team-channel handoff</h3>
+                  <p>Preview the same final decision in a concise Slack-ready format. This is copy/export only.</p>
+                </div>
+                <button
+                  className="copy-summary-button"
+                  type="button"
+                  onClick={handleQuickCopySlackHandoff}
+                  aria-live="polite"
+                >
+                  Copy Slack handoff
+                </button>
+              </div>
+              <pre className="merge-summary-preview" aria-label="Generated Slack handoff preview">{slackHandoffText}</pre>
             </div>
           </section>
 
@@ -3094,6 +3309,12 @@ export default function ReportPage() {
             </section>
 
             <div className="report-decision-panel-actions">
+              <button
+                type="button"
+                onClick={openDecisionStudio}
+              >
+                Open Decision Studio
+              </button>
               <button
                 type="button"
                 onClick={() => setActiveTab("export")}

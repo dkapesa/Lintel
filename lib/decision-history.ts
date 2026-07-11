@@ -13,7 +13,9 @@ export type DecisionHistoryEventType =
   | "merge-summary-copied"
   | "reviewer-note-updated"
   | "ownership-changed"
-  | "review-action-updated";
+  | "review-action-updated"
+  | "human-decision-recorded"
+  | "accepted-risk-recorded";
 
 export type DecisionHistoryEvent = {
   id: string;

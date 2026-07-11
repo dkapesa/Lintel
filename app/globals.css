@@ -1195,9 +1195,41 @@ button { font:inherit; }
 .timeline-event-explanation { display:grid; gap:5px; margin-top:12px; padding-top:12px; border-top:1px solid var(--dline); }
 .timeline-event-explanation p, .timeline-event-empty p { margin:0; color:var(--dtext); font-size:11px; line-height:1.6; overflow-wrap:anywhere; }
 .timeline-event-empty { display:grid; gap:8px; min-height:220px; align-content:center; }
+.decision-studio { display:grid; gap:16px; margin:18px 0; padding:18px; border:1px solid var(--dline); border-radius:14px; background:var(--dpanel); }
+.decision-studio-header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
+.decision-studio-header h3 { margin:4px 0 5px; color:var(--dink); font-size:18px; line-height:1.2; letter-spacing:-.035em; }
+.decision-studio-header p { margin:0; color:var(--dtext); font-size:11px; line-height:1.55; }
+.decision-studio-grid { display:grid; grid-template-columns:repeat(6, minmax(0, 1fr)); gap:8px; }
+.decision-studio-grid article, .decision-studio-context article { min-width:0; padding:10px; border:1px solid #202226; border-radius:10px; background:var(--dpanel2); }
+.decision-studio-grid span, .decision-studio-context span, .decision-studio-reason > span { display:block; margin-bottom:6px; color:var(--dmuted); font-size:8px; font-weight:850; letter-spacing:.08em; text-transform:uppercase; }
+.decision-studio-grid strong { display:block; color:#d6dade; font:12px var(--dmono); line-height:1.35; overflow-wrap:anywhere; }
+.decision-studio-context { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.decision-studio-context p { margin:0; color:var(--dtext); font-size:11px; line-height:1.55; }
+.decision-studio-controls { display:grid; gap:13px; padding-top:14px; border-top:1px solid var(--dline); }
+.decision-studio-controls fieldset { min-width:0; margin:0; padding:0; border:0; }
+.decision-studio-controls legend { margin:0 0 8px; color:var(--dmuted); font-size:8px; font-weight:850; letter-spacing:.08em; text-transform:uppercase; }
+.decision-studio-options { display:flex; flex-wrap:wrap; gap:7px; }
+.decision-studio-options label { min-height:32px; padding:0 9px; border:1px solid var(--dline); border-radius:999px; display:inline-flex; align-items:center; gap:7px; background:var(--dpanel2); color:var(--dtext); font-size:9px; font-weight:800; cursor:pointer; }
+.decision-studio-options label:has(input:checked) { border-color:rgba(139,169,212,.45); background:#1a1d21; color:#fff; box-shadow:var(--shadow-selected); }
+.decision-studio-options input { accent-color:#b8cfec; }
+.decision-studio-reason { display:grid; gap:6px; }
+.decision-studio-reason textarea { width:100%; min-height:86px; padding:10px; border:1px solid var(--dline); border-radius:9px; background:var(--dpanel2); color:var(--dink); font:11px Inter, sans-serif; line-height:1.55; resize:vertical; }
+.decision-studio-reason textarea:focus-visible { outline:2px solid #6b9fd4; outline-offset:2px; }
+.decision-studio-actions { display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
+.decision-studio-actions button { min-height:34px; padding:0 11px; border:1px solid #ededee; border-radius:7px; background:#ededee; color:#0b0c0d; font-size:9px; font-weight:850; cursor:pointer; }
+.decision-studio-actions button:disabled { border-color:var(--dline); background:var(--dpanel2); color:var(--dmuted); cursor:not-allowed; opacity:.7; }
+.decision-studio-actions p { margin:0; color:var(--dtext); font-size:10px; line-height:1.45; }
+.decision-studio-actions strong { color:#d6dade; }
 
 @media (max-width: 980px) {
   .report-decision-panel, .workspace-preview { max-height:none; overflow:visible; }
   .decision-timeline-workspace { grid-template-columns:1fr; }
   .timeline-event-inspector { position:static; }
+  .decision-studio-grid, .decision-studio-context { grid-template-columns:1fr 1fr; }
+}
+
+@media (max-width: 680px) {
+  .decision-studio-header { flex-direction:column; }
+  .decision-studio-grid, .decision-studio-context { grid-template-columns:1fr; }
+  .decision-studio-actions button { width:100%; }
 }

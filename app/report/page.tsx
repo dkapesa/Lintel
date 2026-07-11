@@ -98,6 +98,25 @@ type ReviewActionItem = {
   reason: string;
 };
 type ActionProgress = ReturnType<typeof actionProgressSummary>;
+type TimelineEventCategory = "Decision" | "Evidence" | "Tests" | "Ownership" | "Human actions";
+type TimelineFilter = "All" | TimelineEventCategory;
+type TimelineProvenance = "Deterministic analysis" | "Model-assisted analysis" | "Human reviewer" | "Local user action" | "CI or test evidence";
+type ReadinessMovement = "Readiness increased" | "Readiness decreased" | "Recommendation changed" | "Condition cleared" | "Condition reopened" | "Evidence strengthened" | "Evidence weakened" | "Ownership changed" | "Current state";
+type ReadinessTimelineEvent = {
+  id: string;
+  title: string;
+  timestamp: string;
+  actor: string;
+  provenance: TimelineProvenance;
+  category: TimelineEventCategory;
+  summary: string;
+  area: string;
+  previousState?: string;
+  nextState?: string;
+  movement?: ReadinessMovement;
+  relatedItem?: string;
+  current?: boolean;
+};
 
 type StoredReport = {
   report: Report;
@@ -133,6 +152,8 @@ const copyMergeSummaryLabels: Record<CopyState, string> = {
   copied: "PR comment copied",
   failed: "Copy failed",
 };
+
+const timelineFilters: TimelineFilter[] = ["All", "Decision", "Evidence", "Tests", "Ownership", "Human actions"];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -257,6 +278,259 @@ function timelineTime(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Unknown time";
   return date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+}
+
+function timelineBaseTimestamp(history: DecisionHistoryEvent[]) {
+  return history.find((event) => event.type === "report-generated")?.timestamp
+    ?? history[history.length - 1]?.timestamp
+    ?? new Date().toISOString();
+}
+
+function timelineProvenanceForSource(source: ReportSource): TimelineProvenance {
+  if (source === "ai") return "Model-assisted analysis";
+  return "Deterministic analysis";
+}
+
+function timelineCategoryForStoredEvent(event: DecisionHistoryEvent): TimelineEventCategory {
+  if (event.type === "condition-cleared" || event.type === "condition-reopened") return "Evidence";
+  if (event.type === "ownership-changed") return "Ownership";
+  if (event.type === "review-state-changed" || event.type === "recommendation-assigned") return "Decision";
+  if (event.type === "review-action-updated" || event.type === "merge-summary-copied" || event.type === "reviewer-note-updated") return "Human actions";
+  return "Decision";
+}
+
+function timelineMovementForStoredEvent(event: DecisionHistoryEvent): ReadinessMovement | undefined {
+  if (event.type === "condition-cleared") return "Condition cleared";
+  if (event.type === "condition-reopened") return "Condition reopened";
+  if (event.type === "ownership-changed") return "Ownership changed";
+  if (event.type === "review-state-changed" || event.type === "recommendation-assigned") return "Recommendation changed";
+  if (event.type === "review-action-updated") {
+    if (event.nextState === "Done" || event.nextState === "Not needed") return "Readiness increased";
+    if (event.nextState === "Open" || event.nextState === "In progress") return "Readiness decreased";
+  }
+  return undefined;
+}
+
+function timelineAreaForStoredEvent(event: DecisionHistoryEvent) {
+  if (event.type === "condition-cleared" || event.type === "condition-reopened") return "Merge contract";
+  if (event.type === "ownership-changed") return "Reviewer ownership";
+  if (event.type === "review-action-updated") return "Review actions";
+  if (event.type === "merge-summary-copied") return "Decision handoff";
+  if (event.type === "reviewer-note-updated") return "Reviewer note";
+  return "Decision";
+}
+
+function humaniseStoredTimelineTitle(event: DecisionHistoryEvent) {
+  if (event.type === "condition-cleared") return "Merge condition cleared";
+  if (event.type === "condition-reopened") return "Merge condition reopened";
+  if (event.type === "ownership-changed") return "Reviewer ownership changed";
+  if (event.type === "review-action-updated") return "Review action updated";
+  if (event.type === "review-state-changed") return "Human decision recorded";
+  return event.title;
+}
+
+function buildReadinessTimeline({
+  report,
+  source,
+  history,
+  conditions,
+  clearedConditionCount,
+  openConditionCount,
+  evidenceLedger,
+  reviewActions,
+  ownerLabel,
+}: {
+  report: Report;
+  source: ReportSource;
+  history: DecisionHistoryEvent[];
+  conditions: string[];
+  clearedConditionCount: number;
+  openConditionCount: number;
+  evidenceLedger: ReturnType<typeof buildEvidenceLedger>;
+  reviewActions: Array<ReviewActionItem & { status: ReviewActionStatus }>;
+  ownerLabel: string;
+}): ReadinessTimelineEvent[] {
+  const baseTimestamp = timelineBaseTimestamp(history);
+  const analysisProvenance = timelineProvenanceForSource(source);
+  const actor = source === "ai"
+    ? "Baseline + model-assisted analysis"
+    : source === "demo"
+      ? "Demo report"
+      : "Baseline analysis";
+  const events: ReadinessTimelineEvent[] = [
+    {
+      id: "current-decision",
+      title: "Current merge-readiness state",
+      timestamp: history[0]?.timestamp ?? baseTimestamp,
+      actor: "Lintel workspace",
+      provenance: "Local user action",
+      category: "Decision",
+      summary: `${report.verdict.recommendation.replaceAll("_", " ")} with ${report.verdict.riskLevel} risk, ${openConditionCount} open conditions and ${ownerLabel} as the current owner cue.`,
+      area: "Current decision",
+      previousState: `${conditions.length} total conditions`,
+      nextState: `${openConditionCount} open / ${clearedConditionCount} cleared`,
+      movement: "Current state",
+      relatedItem: report.pr.title,
+      current: true,
+    },
+    {
+      id: "analysis-generated",
+      title: "Initial analysis generated",
+      timestamp: baseTimestamp,
+      actor,
+      provenance: analysisProvenance,
+      category: "Decision",
+      summary: "Lintel created the initial merge-readiness decision from the available PR input. Raw diff content is not stored in this history.",
+      area: "Report generation",
+      nextState: report.verdict.recommendation.replaceAll("_", " "),
+      movement: "Recommendation changed",
+      relatedItem: report.pr.repository,
+    },
+    {
+      id: "readiness-score-assigned",
+      title: "Readiness score assigned",
+      timestamp: baseTimestamp,
+      actor,
+      provenance: analysisProvenance,
+      category: "Decision",
+      summary: `${report.verdict.riskLevel} risk was assigned from the current findings, missing evidence, conditions and operational readiness signals.`,
+      area: "Readiness score",
+      previousState: "Not assessed",
+      nextState: `${report.verdict.riskScore}/100`,
+      movement: report.verdict.riskLevel === "LOW" ? "Readiness increased" : "Readiness decreased",
+      relatedItem: report.verdict.summary,
+    },
+  ];
+
+  for (const finding of report.findings.slice(0, 8)) {
+    events.push({
+      id: `finding-${finding.title}`,
+      title: "Finding opened",
+      timestamp: baseTimestamp,
+      actor,
+      provenance: finding.provenance === "Model assisted" ? "Model-assisted analysis" : analysisProvenance,
+      category: "Evidence",
+      summary: finding.evidence,
+      area: finding.category,
+      nextState: finding.severity,
+      movement: "Readiness decreased",
+      relatedItem: finding.title,
+    });
+  }
+
+  for (const condition of conditions.slice(0, 8)) {
+    events.push({
+      id: `condition-opened-${condition}`,
+      title: "Merge condition opened",
+      timestamp: baseTimestamp,
+      actor,
+      provenance: analysisProvenance,
+      category: "Evidence",
+      summary: condition,
+      area: "Merge contract",
+      previousState: "No condition",
+      nextState: "Open",
+      movement: "Readiness decreased",
+      relatedItem: condition,
+    });
+  }
+
+  for (const missingTest of report.missingTests.slice(0, 8)) {
+    events.push({
+      id: `missing-test-${missingTest}`,
+      title: "Missing test added",
+      timestamp: baseTimestamp,
+      actor,
+      provenance: "CI or test evidence",
+      category: "Tests",
+      summary: missingTest,
+      area: "Test plan",
+      previousState: "Not covered",
+      nextState: "Missing evidence",
+      movement: "Evidence weakened",
+      relatedItem: missingTest,
+    });
+  }
+
+  for (const evidence of evidenceLedger.found.slice(0, 5)) {
+    events.push({
+      id: `evidence-found-${evidence.label}`,
+      title: "Evidence added",
+      timestamp: baseTimestamp,
+      actor,
+      provenance: analysisProvenance,
+      category: "Evidence",
+      summary: evidence.detail,
+      area: evidence.relation,
+      nextState: evidence.impact,
+      movement: "Evidence strengthened",
+      relatedItem: evidence.label,
+    });
+  }
+
+  for (const evidence of evidenceLedger.missing.slice(0, 5)) {
+    events.push({
+      id: `evidence-missing-${evidence.label}-${evidence.detail}`,
+      title: "Evidence gap identified",
+      timestamp: baseTimestamp,
+      actor,
+      provenance: analysisProvenance,
+      category: evidence.relation === "Test plan" ? "Tests" : "Evidence",
+      summary: evidence.detail,
+      area: evidence.relation,
+      nextState: evidence.impact,
+      movement: "Evidence weakened",
+      relatedItem: evidence.label,
+    });
+  }
+
+  for (const action of reviewActions.filter((item) => actionIsResolved(item.status)).slice(0, 6)) {
+    events.push({
+      id: `action-resolved-${action.key}`,
+      title: "Action completed",
+      timestamp: baseTimestamp,
+      actor: "Local reviewer",
+      provenance: "Local user action",
+      category: "Human actions",
+      summary: action.reason,
+      area: action.source,
+      previousState: "Open",
+      nextState: action.status,
+      movement: "Readiness increased",
+      relatedItem: action.title,
+    });
+  }
+
+  for (const event of history) {
+    events.push({
+      id: `stored-${event.id}`,
+      title: humaniseStoredTimelineTitle(event),
+      timestamp: event.timestamp,
+      actor: event.label === "Report" ? actor : "Local reviewer",
+      provenance: event.label === "Report" ? analysisProvenance : "Local user action",
+      category: timelineCategoryForStoredEvent(event),
+      summary: event.detail,
+      area: timelineAreaForStoredEvent(event),
+      previousState: event.previousState,
+      nextState: event.nextState,
+      movement: timelineMovementForStoredEvent(event),
+      relatedItem: event.detail,
+    });
+  }
+
+  const seen = new Set<string>();
+  return events
+    .filter((event) => {
+      const key = `${event.title}|${event.timestamp}|${event.area}|${event.summary}|${event.previousState ?? ""}|${event.nextState ?? ""}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => {
+      if (a.current) return -1;
+      if (b.current) return 1;
+      return Date.parse(b.timestamp) - Date.parse(a.timestamp);
+    });
 }
 
 function RecommendationBadge({ recommendation }: { recommendation: Recommendation }) {
@@ -1166,6 +1440,8 @@ export default function ReportPage() {
   const [clearedConditionKeys, setClearedConditionKeys] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<ReportTab>("overview");
   const [selectedFindingIndex, setSelectedFindingIndex] = useState<number | null>(null);
+  const [timelineFilter, setTimelineFilter] = useState<TimelineFilter>("All");
+  const [selectedTimelineEventId, setSelectedTimelineEventId] = useState<string | null>(null);
   const [includeLocalNoteInMergeSummary, setIncludeLocalNoteInMergeSummary] = useState(false);
   const [quickActionsOpen, setQuickActionsOpen] = useState(false);
   const [quickActionMessage, setQuickActionMessage] = useState<{ state: QuickActionMessageState; text: string } | null>(null);
@@ -1236,11 +1512,12 @@ export default function ReportPage() {
     function handleReportEscape(event: globalThis.KeyboardEvent) {
       if (event.key !== "Escape" || isReportTextEntry(event.target)) return;
       if (selectedFindingIndex !== null) setSelectedFindingIndex(null);
+      if (selectedTimelineEventId !== null) setSelectedTimelineEventId(null);
     }
 
     window.addEventListener("keydown", handleReportEscape);
     return () => window.removeEventListener("keydown", handleReportEscape);
-  }, [selectedFindingIndex]);
+  }, [selectedFindingIndex, selectedTimelineEventId]);
 
   useEffect(() => {
     function handleTourTab(event: Event) {
@@ -1316,6 +1593,20 @@ export default function ReportPage() {
     status: actionStatusOverrides[action.key] ?? action.defaultStatus,
   }));
   const reviewActionProgress = actionProgressSummary(reviewActions);
+  const readinessTimeline = buildReadinessTimeline({
+    report,
+    source,
+    history: decisionHistory,
+    conditions: displayedConditions,
+    clearedConditionCount,
+    openConditionCount,
+    evidenceLedger,
+    reviewActions,
+    ownerLabel: displayedOwner,
+  });
+  const filteredTimeline = readinessTimeline.filter((event) => timelineFilter === "All" || event.category === timelineFilter);
+  const selectedTimelineEvent = readinessTimeline.find((event) => event.id === selectedTimelineEventId) ?? null;
+  const readinessTimelineSignature = readinessTimeline.map((event) => event.id).join("\n");
   const slackHandoffText = slackHandoffToText({
     report,
     ownerLabel: displayedOwner,
@@ -1339,7 +1630,7 @@ export default function ReportPage() {
   const reportTabs: Array<{ id: ReportTab; label: string; indicator: string }> = [
     { id: "overview", label: "Overview", indicator: `${displayedConditions.length}` },
     { id: "actions", label: "Actions", indicator: `${reviewActionProgress.openBlockers}` },
-    { id: "timeline", label: "Timeline", indicator: `${decisionHistory.length}` },
+    { id: "timeline", label: "Timeline", indicator: `${readinessTimeline.length}` },
     { id: "evidence", label: "Evidence", indicator: `${evidenceLedger.missing.length}` },
     { id: "blast-radius", label: "Surfaces", indicator: `${affectedSurfaces.length}` },
     { id: "findings", label: "Findings", indicator: `${report.findings.length}` },
@@ -1391,6 +1682,13 @@ export default function ReportPage() {
       setActionStatusOverrides({});
     }
   }, [decisionHistoryKey, actionSignature]);
+
+  useEffect(() => {
+    const eventIds = new Set(readinessTimelineSignature.split("\n").filter(Boolean));
+    setSelectedTimelineEventId((current) => (
+      current && eventIds.has(current) ? current : null
+    ));
+  }, [readinessTimelineSignature]);
 
   function recordDecisionEvent(event: Parameters<typeof appendDecisionHistoryEvent>[2]) {
     try {
@@ -2049,21 +2347,54 @@ export default function ReportPage() {
                 <span>Last local update</span>
                 <strong>{lastDecisionUpdate ? timelineTime(lastDecisionUpdate) : "No local changes yet"}</strong>
               </article>
+              <article>
+                <span>Timeline events</span>
+                <strong>{readinessTimeline.length}</strong>
+              </article>
             </div>
 
             <p className="timeline-local-note">This is local-only decision history for the current browser. It is not team audit logging and is not sent to an API.</p>
 
-            <ol className="decision-timeline">
-              {decisionHistory.map((event) => (
-                <li key={event.id}>
+            <div className="timeline-filter-bar" aria-label="Timeline filters">
+              {timelineFilters.map((filter) => (
+                <button
+                  key={filter}
+                  type="button"
+                  className={timelineFilter === filter ? "timeline-filter timeline-filter--active" : "timeline-filter"}
+                  aria-pressed={timelineFilter === filter}
+                  onClick={() => {
+                    setTimelineFilter(filter);
+                    setSelectedTimelineEventId(null);
+                  }}
+                >
+                  {filter}
+                  <span>{filter === "All" ? readinessTimeline.length : readinessTimeline.filter((event) => event.category === filter).length}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="decision-timeline-workspace">
+            <ol className="decision-timeline" aria-label="Readiness evolution events">
+              {filteredTimeline.map((event) => (
+                <li className={event.current ? "decision-timeline-item decision-timeline-item--current" : "decision-timeline-item"} key={event.id}>
                   <div className="decision-timeline-marker" aria-hidden="true" />
-                  <article>
+                  <button
+                    className={selectedTimelineEventId === event.id ? "decision-timeline-event decision-timeline-event--selected" : "decision-timeline-event"}
+                    type="button"
+                    aria-pressed={selectedTimelineEventId === event.id}
+                    onClick={() => setSelectedTimelineEventId(event.id)}
+                  >
                     <div className="decision-timeline-header">
                       <div>
                         <h3>{event.title}</h3>
                         <time dateTime={event.timestamp}>{timelineTime(event.timestamp)}</time>
                       </div>
-                      <span>{event.label}</span>
+                      <span>{event.provenance}</span>
+                    </div>
+                    <div className="decision-timeline-meta">
+                      <span>{event.category}</span>
+                      <span>{event.actor}</span>
+                      {event.movement && <strong>{event.movement}</strong>}
                     </div>
                     {(event.previousState || event.nextState) && (
                       <div className="decision-timeline-state">
@@ -2072,11 +2403,48 @@ export default function ReportPage() {
                         {event.nextState && <span>{event.nextState}</span>}
                       </div>
                     )}
-                    <p>{event.detail}</p>
-                  </article>
+                    <p>{event.summary}</p>
+                  </button>
                 </li>
               ))}
             </ol>
+              <aside className="timeline-event-inspector" aria-label="Timeline event details">
+                {selectedTimelineEvent ? (
+                  <>
+                    <div className="timeline-event-inspector-header">
+                      <div>
+                        <span className="card-kicker">EVENT INSPECTOR</span>
+                        <h3>{selectedTimelineEvent.title}</h3>
+                      </div>
+                      <button type="button" onClick={() => setSelectedTimelineEventId(null)}>Close</button>
+                    </div>
+                    <dl className="timeline-event-detail-grid">
+                      <div><dt>Timestamp</dt><dd><time dateTime={selectedTimelineEvent.timestamp}>{timelineTime(selectedTimelineEvent.timestamp)}</time></dd></div>
+                      <div><dt>Actor / source</dt><dd>{selectedTimelineEvent.actor}</dd></div>
+                      <div><dt>Provenance</dt><dd>{selectedTimelineEvent.provenance}</dd></div>
+                      <div><dt>Report area</dt><dd>{selectedTimelineEvent.area}</dd></div>
+                      <div><dt>Previous state</dt><dd>{selectedTimelineEvent.previousState ?? "Not recorded"}</dd></div>
+                      <div><dt>New state</dt><dd>{selectedTimelineEvent.nextState ?? "Not recorded"}</dd></div>
+                      <div><dt>Decision impact</dt><dd>{selectedTimelineEvent.movement ?? "Context recorded"}</dd></div>
+                    </dl>
+                    <div className="timeline-event-explanation">
+                      <span>Explanation</span>
+                      <p>{selectedTimelineEvent.summary}</p>
+                    </div>
+                    <div className="timeline-event-explanation">
+                      <span>Related item</span>
+                      <p>{selectedTimelineEvent.relatedItem ?? "No directly related condition, finding, test or reviewer was recorded."}</p>
+                    </div>
+                  </>
+                ) : (
+                  <div className="timeline-event-empty">
+                    <span className="card-kicker">EVENT INSPECTOR</span>
+                    <h3>Select a timeline event</h3>
+                    <p>Inspect the event source, state movement, related report area and why it matters to the current merge-readiness decision.</p>
+                  </div>
+                )}
+              </aside>
+            </div>
           </section>
             </div>
           )}

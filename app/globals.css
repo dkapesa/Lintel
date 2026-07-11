@@ -1168,7 +1168,36 @@ button { font:inherit; }
 .review-action-card--status-done, .review-action-card--status-not-needed { border-color:rgba(114,200,160,.28); background:rgba(72,170,120,.08); }
 .review-action-card--status-done .review-action-card-header > strong, .review-action-card--status-not-needed .review-action-card-header > strong { color:var(--dgreen); background:var(--dgreen-soft); }
 .review-action-card--status-in-progress { border-color:rgba(139,169,212,.3); }
+.timeline-filter-bar { display:flex; flex-wrap:wrap; gap:7px; margin:16px 0 18px; }
+.timeline-filter { min-height:30px; padding:0 8px; border:1px solid var(--dline); border-radius:7px; display:inline-flex; align-items:center; gap:7px; background:var(--dpanel); color:var(--dtext); font-size:9px; font-weight:800; cursor:pointer; }
+.timeline-filter span { min-width:20px; height:18px; padding:0 5px; border-radius:999px; display:inline-flex; align-items:center; justify-content:center; background:#202327; color:var(--dmuted); font:8px var(--dmono); }
+.timeline-filter:hover, .timeline-filter--active { border-color:rgba(139,169,212,.42); background:#1a1d21; color:#fff; }
+.timeline-filter--active span { background:rgba(139,169,212,.16); color:#b8cfec; }
+.timeline-filter:focus-visible { outline:2px solid #6b9fd4; outline-offset:2px; }
+.decision-timeline-workspace { display:grid; grid-template-columns:minmax(0, 1fr) minmax(280px, 360px); gap:18px; align-items:start; margin-top:8px; }
+.decision-timeline-event { width:100%; min-width:0; padding:15px 16px; border:1px solid var(--dline); border-radius:12px; background:var(--dpanel); color:inherit; cursor:pointer; text-align:left; }
+.decision-timeline-event:hover, .decision-timeline-event--selected { border-color:rgba(139,169,212,.45); background:#171a1e; box-shadow:var(--shadow-selected); }
+.decision-timeline-event:focus-visible { outline:2px solid #6b9fd4; outline-offset:2px; }
+.decision-timeline-item--current .decision-timeline-marker { background:#b8cfec; }
+.decision-timeline-item--current .decision-timeline-event { border-color:rgba(139,169,212,.42); }
+.decision-timeline-meta { display:flex; flex-wrap:wrap; gap:6px; margin-top:9px; }
+.decision-timeline-meta span, .decision-timeline-meta strong { padding:4px 6px; border:1px solid var(--dline); border-radius:999px; background:var(--dpanel2); color:var(--dtext); font-size:8px; font-weight:850; letter-spacing:.04em; }
+.decision-timeline-meta strong { color:#b8cfec; }
+.timeline-event-inspector { position:sticky; top:92px; min-width:0; padding:16px; border:1px solid var(--dline); border-radius:14px; background:var(--dpanel); box-shadow:var(--shadow-card); }
+.timeline-event-inspector-header { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+.timeline-event-inspector-header h3, .timeline-event-empty h3 { margin:4px 0 0; color:var(--dink); font-size:16px; line-height:1.25; letter-spacing:-.03em; }
+.timeline-event-inspector-header button { min-height:30px; padding:0 8px; border:1px solid var(--dline); border-radius:7px; background:var(--dpanel2); color:var(--dtext); font-size:9px; font-weight:750; cursor:pointer; }
+.timeline-event-inspector-header button:hover { border-color:#383d43; color:var(--dink); }
+.timeline-event-detail-grid { display:grid; gap:8px; margin:14px 0 0; }
+.timeline-event-detail-grid div { min-width:0; padding:9px; border:1px solid #202226; border-radius:9px; background:var(--dpanel2); }
+.timeline-event-detail-grid dt, .timeline-event-explanation span { margin:0 0 4px; color:var(--dmuted); font-size:8px; font-weight:850; letter-spacing:.08em; text-transform:uppercase; }
+.timeline-event-detail-grid dd { margin:0; color:#d6dade; font-size:10px; line-height:1.4; overflow-wrap:anywhere; }
+.timeline-event-explanation { display:grid; gap:5px; margin-top:12px; padding-top:12px; border-top:1px solid var(--dline); }
+.timeline-event-explanation p, .timeline-event-empty p { margin:0; color:var(--dtext); font-size:11px; line-height:1.6; overflow-wrap:anywhere; }
+.timeline-event-empty { display:grid; gap:8px; min-height:220px; align-content:center; }
 
 @media (max-width: 980px) {
   .report-decision-panel, .workspace-preview { max-height:none; overflow:visible; }
+  .decision-timeline-workspace { grid-template-columns:1fr; }
+  .timeline-event-inspector { position:static; }
 }

@@ -35,6 +35,30 @@ type GitHubImportResponse = {
   deletions?: number;
 };
 
+type GitHubWorkspaceStatus = {
+  connected: boolean;
+  identity?: string;
+  error?: string;
+};
+
+type GitHubWorkspaceRepository = {
+  owner: string;
+  name: string;
+  fullName: string;
+  private: boolean;
+  updatedAt?: string;
+};
+
+type GitHubWorkspacePullRequest = {
+  number: number;
+  title: string;
+  author?: string;
+  state?: string;
+  baseBranch?: string;
+  headBranch?: string;
+  updatedAt?: string;
+};
+
 type ImportStatus = {
   type: "loading" | "success" | "error";
   message: string;
@@ -75,6 +99,39 @@ function importErrorMessage(value: unknown) {
   return typeof value.error === "string" ? value.error : null;
 }
 
+function isGitHubWorkspaceStatus(value: unknown): value is GitHubWorkspaceStatus {
+  if (typeof value !== "object" || value === null || !("connected" in value) || typeof value.connected !== "boolean") return false;
+  return true;
+}
+
+function isRepositoryListResponse(value: unknown): value is { repositories: GitHubWorkspaceRepository[] } {
+  if (typeof value !== "object" || value === null || !("repositories" in value) || !Array.isArray(value.repositories)) return false;
+  return value.repositories.every((repo) => (
+    typeof repo === "object"
+    && repo !== null
+    && "owner" in repo
+    && typeof repo.owner === "string"
+    && "name" in repo
+    && typeof repo.name === "string"
+    && "fullName" in repo
+    && typeof repo.fullName === "string"
+    && "private" in repo
+    && typeof repo.private === "boolean"
+  ));
+}
+
+function isPullRequestListResponse(value: unknown): value is { pullRequests: GitHubWorkspacePullRequest[] } {
+  if (typeof value !== "object" || value === null || !("pullRequests" in value) || !Array.isArray(value.pullRequests)) return false;
+  return value.pullRequests.every((pr) => (
+    typeof pr === "object"
+    && pr !== null
+    && "number" in pr
+    && typeof pr.number === "number"
+    && "title" in pr
+    && typeof pr.title === "string"
+  ));
+}
+
 function historySourceLabel(source: ReportHistoryEntry["source"]) {
   return source === "ai" ? "Baseline + model-assisted" : "Baseline only";
 }
@@ -93,6 +150,14 @@ export default function NewReportPage() {
   const [error, setError] = useState<string | null>(null);
   const [importStatus, setImportStatus] = useState<ImportStatus | null>(null);
   const [importedPullRequest, setImportedPullRequest] = useState<GitHubImportResponse | null>(null);
+  const [githubImportMode, setGitHubImportMode] = useState<"public-url" | "connected" | null>(null);
+  const [githubWorkspaceStatus, setGitHubWorkspaceStatus] = useState<GitHubWorkspaceStatus | null>(null);
+  const [isLoadingRepositories, setIsLoadingRepositories] = useState(false);
+  const [isLoadingPullRequests, setIsLoadingPullRequests] = useState(false);
+  const [repositories, setRepositories] = useState<GitHubWorkspaceRepository[]>([]);
+  const [repositorySearch, setRepositorySearch] = useState("");
+  const [selectedRepository, setSelectedRepository] = useState<GitHubWorkspaceRepository | null>(null);
+  const [pullRequests, setPullRequests] = useState<GitHubWorkspacePullRequest[]>([]);
   const [githubUrl, setGitHubUrl] = useState("");
   const [title, setTitle] = useState("");
   const [repository, setRepository] = useState("");
@@ -104,6 +169,9 @@ export default function NewReportPage() {
   const technologyValueRef = useRef("");
   const technologyEditedRef = useRef(false);
   const selectedReviewModeDescription = reviewProfileDescription(reviewProfile);
+  const filteredRepositories = repositories.filter((repo) => (
+    repo.fullName.toLowerCase().includes(repositorySearch.trim().toLowerCase())
+  ));
 
   function updateTechnology(value: string, manuallyEdited: boolean) {
     technologyValueRef.current = value;
@@ -119,6 +187,33 @@ export default function NewReportPage() {
     }
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadGitHubStatus() {
+      try {
+        const response = await fetch("/api/github-workspace?action=status", { cache: "no-store" });
+        const payload: unknown = await response.json();
+        if (cancelled) return;
+        if (!response.ok) {
+          setGitHubWorkspaceStatus({ connected: false, error: importErrorMessage(payload) ?? "GitHub workspace status could not be checked." });
+          return;
+        }
+        if (!isGitHubWorkspaceStatus(payload)) {
+          setGitHubWorkspaceStatus({ connected: false, error: "GitHub workspace status could not be read." });
+          return;
+        }
+        setGitHubWorkspaceStatus(payload);
+        if (payload.connected) loadRepositories();
+      } catch {
+        if (!cancelled) setGitHubWorkspaceStatus({ connected: false, error: "GitHub workspace status could not be checked." });
+      }
+    }
+
+    loadGitHubStatus();
+    return () => { cancelled = true; };
+  }, []);
+
   function useSample(sample: ReportInput) {
     setTitle(sample.title);
     setRepository(sample.repository);
@@ -127,10 +222,12 @@ export default function NewReportPage() {
     setInputSource("sample");
     setImportStatus(null);
     setImportedPullRequest(null);
+    setGitHubImportMode(null);
   }
 
   function clearGitHubImport() {
     setImportedPullRequest(null);
+    setGitHubImportMode(null);
     setGitHubUrl("");
     setTitle("");
     setRepository("");
@@ -142,8 +239,99 @@ export default function NewReportPage() {
 
   function changeGitHubImport() {
     setImportedPullRequest(null);
+    setGitHubImportMode(null);
     setImportStatus(null);
     if (inputSource === "github-pr") setInputSource("pasted-diff");
+  }
+
+  function changeConnectedRepository() {
+    setImportedPullRequest(null);
+    setGitHubImportMode(null);
+    setSelectedRepository(null);
+    setPullRequests([]);
+    setImportStatus(null);
+    if (inputSource === "github-pr") setInputSource("pasted-diff");
+  }
+
+  function disconnectConnectedSelection() {
+    changeConnectedRepository();
+    setRepositorySearch("");
+  }
+
+  async function loadRepositories() {
+    setIsLoadingRepositories(true);
+
+    try {
+      const response = await fetch("/api/github-workspace?action=repositories", { cache: "no-store" });
+      const payload: unknown = await response.json();
+      if (!response.ok) throw new Error(importErrorMessage(payload) ?? "Repositories could not be fetched.");
+      if (!isRepositoryListResponse(payload)) throw new Error("GitHub returned an invalid repository list.");
+      setRepositories(payload.repositories);
+      setImportStatus(payload.repositories.length === 0 ? { type: "error", message: "No repositories are available to this GitHub token. Manual paste and public URL import are still available." } : null);
+    } catch (repoError) {
+      setImportStatus({ type: "error", message: repoError instanceof Error ? repoError.message : "Repositories could not be fetched." });
+    } finally {
+      setIsLoadingRepositories(false);
+    }
+  }
+
+  async function loadPullRequests(repo: GitHubWorkspaceRepository) {
+    setSelectedRepository(repo);
+    setPullRequests([]);
+    setImportedPullRequest(null);
+    setGitHubImportMode(null);
+    setIsLoadingPullRequests(true);
+    setImportStatus({ type: "loading", message: `Fetching open pull requests for ${repo.fullName}...` });
+
+    try {
+      const response = await fetch(`/api/github-workspace?action=pulls&owner=${encodeURIComponent(repo.owner)}&repo=${encodeURIComponent(repo.name)}`, { cache: "no-store" });
+      const payload: unknown = await response.json();
+      if (!response.ok) throw new Error(importErrorMessage(payload) ?? "Open pull requests could not be fetched.");
+      if (!isPullRequestListResponse(payload)) throw new Error("GitHub returned an invalid pull request list.");
+      setPullRequests(payload.pullRequests);
+      setImportStatus(payload.pullRequests.length === 0
+        ? { type: "error", message: `${repo.fullName} has no open pull requests. Manual paste and public URL import are still available.` }
+        : { type: "success", message: `Choose an open pull request from ${repo.fullName}.` });
+    } catch (prError) {
+      setImportStatus({ type: "error", message: prError instanceof Error ? prError.message : "Open pull requests could not be fetched." });
+    } finally {
+      setIsLoadingPullRequests(false);
+    }
+  }
+
+  async function importConnectedPullRequest(repo: GitHubWorkspaceRepository, pr: GitHubWorkspacePullRequest) {
+    setIsFetchingDiff(true);
+    setImportStatus({ type: "loading", message: `Importing ${repo.fullName} #${pr.number}...` });
+
+    try {
+      const response = await fetch("/api/github-workspace", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ owner: repo.owner, repo: repo.name, number: pr.number, private: repo.private }),
+      });
+      const payload: unknown = await response.json();
+      if (!response.ok) throw new Error(importErrorMessage(payload) ?? "The pull request could not be imported.");
+      if (!isGitHubImportResponse(payload)) throw new Error("GitHub returned an invalid import response.");
+
+      setImportedPullRequest(payload);
+      setGitHubImportMode("connected");
+      setRepository(payload.repository);
+      setDiff(payload.diff);
+      setInputSource("github-pr");
+      const inferredTechnology = inferStack(payload.diff);
+      if (inferredTechnology && (!technologyEditedRef.current || !technologyValueRef.current.trim())) {
+        updateTechnology(inferredTechnology, false);
+      }
+      if (payload.title?.trim()) setTitle(payload.title.trim());
+      setError(null);
+      setImportStatus({ type: "success", message: "Pull request imported from connected GitHub. Review the context and run the readiness review when ready." });
+    } catch (importError) {
+      setImportStatus({ type: "error", message: importError instanceof Error ? importError.message : "The pull request could not be imported." });
+      setImportedPullRequest(null);
+      setGitHubImportMode(null);
+    } finally {
+      setIsFetchingDiff(false);
+    }
   }
 
   async function handleFetchDiff() {
@@ -169,6 +357,7 @@ export default function NewReportPage() {
       if (!isGitHubImportResponse(payload)) throw new Error("GitHub returned an invalid import response.");
 
       setImportedPullRequest(payload);
+      setGitHubImportMode("public-url");
       setRepository(payload.repository);
       setDiff(payload.diff);
       setInputSource("github-pr");
@@ -313,6 +502,95 @@ export default function NewReportPage() {
         </section>
 
         <form className="report-form" onSubmit={handleSubmit}>
+          <section className="connected-github" aria-labelledby="connected-github-title">
+            <div className="connected-github-header">
+              <div>
+                <span className="card-kicker">CONNECTED SOURCE</span>
+                <h2 id="connected-github-title">GitHub workspace</h2>
+                <p>
+                  {githubWorkspaceStatus?.connected
+                    ? `Connected as ${githubWorkspaceStatus.identity ?? "GitHub token"}. Choose a repository and open pull request.`
+                    : "Set GITHUB_TOKEN locally to browse repositories. Public URL import, samples and manual paste still work."}
+                </p>
+              </div>
+              <span className={githubWorkspaceStatus?.connected ? "connected-github-state connected-github-state--on" : "connected-github-state"}>
+                {githubWorkspaceStatus?.connected ? "Connected" : "Not configured"}
+              </span>
+            </div>
+
+            {githubWorkspaceStatus?.connected ? (
+              <div className="connected-github-body">
+                <label className="connected-github-search">
+                  <span>Repository search</span>
+                  <input
+                    type="search"
+                    value={repositorySearch}
+                    onChange={(event) => setRepositorySearch(event.target.value)}
+                    placeholder="Filter loaded repositories"
+                  />
+                </label>
+                <button type="button" onClick={loadRepositories} disabled={isLoadingRepositories || isGenerating}>
+                  {isLoadingRepositories ? "Loading repositories..." : "Refresh repositories"}
+                </button>
+
+                <div className="connected-github-columns">
+                  <section aria-label="Repositories">
+                    <h3>Repositories</h3>
+                    {repositories.length === 0 && !isLoadingRepositories ? (
+                      <p className="connected-github-empty">No repositories loaded for this token.</p>
+                    ) : (
+                      <ul className="connected-github-list">
+                        {filteredRepositories.slice(0, 40).map((repo) => (
+                          <li key={repo.fullName}>
+                            <button
+                              type="button"
+                              className={selectedRepository?.fullName === repo.fullName ? "connected-github-item connected-github-item--selected" : "connected-github-item"}
+                              onClick={() => loadPullRequests(repo)}
+                              disabled={isLoadingPullRequests || isGenerating}
+                            >
+                              <strong>{repo.fullName}</strong>
+                              <span>{repo.private ? "Private" : "Public"} repository</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </section>
+
+                  <section aria-label="Open pull requests">
+                    <h3>{selectedRepository ? `Open PRs in ${selectedRepository.fullName}` : "Open pull requests"}</h3>
+                    {!selectedRepository ? (
+                      <p className="connected-github-empty">Choose a repository to load open pull requests.</p>
+                    ) : pullRequests.length === 0 && !isLoadingPullRequests ? (
+                      <p className="connected-github-empty">No open pull requests found for this repository.</p>
+                    ) : (
+                      <ul className="connected-github-list">
+                        {pullRequests.map((pr) => (
+                          <li key={pr.number}>
+                            <button
+                              type="button"
+                              className="connected-github-item"
+                              onClick={() => importConnectedPullRequest(selectedRepository, pr)}
+                              disabled={isFetchingDiff || isGenerating}
+                            >
+                              <strong>#{pr.number} {pr.title}</strong>
+                              <span>{pr.author ?? "Unknown author"} / {pr.baseBranch ?? "base"} ← {pr.headBranch ?? "head"}{pr.updatedAt ? ` / updated ${new Date(pr.updatedAt).toLocaleDateString()}` : ""}</span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </section>
+                </div>
+                <p className="github-import-help">The token stays server-side. Raw diffs are fetched transiently for the selected PR and are not stored in local report history.</p>
+              </div>
+            ) : (
+              <p className="github-import-help">
+                {githubWorkspaceStatus?.error ?? "Connected GitHub browsing is optional for local development."}
+              </p>
+            )}
+          </section>
+
           <div className="github-import">
             {importedPullRequest ? (
               <section className="github-pr-preview" aria-labelledby="github-pr-preview-title">
@@ -322,7 +600,7 @@ export default function NewReportPage() {
                     <h2 id="github-pr-preview-title">{importedPullRequest.repository} #{importedPullRequest.number}</h2>
                     <p>{importedPullRequest.title ?? title}</p>
                   </div>
-                  <span className="github-pr-public-status">Public repository</span>
+                  <span className="github-pr-public-status">{importedPullRequest.publicRepository ? "Public repository" : "Private repository"}</span>
                 </div>
                 <dl className="github-pr-preview-grid">
                   <div>
@@ -351,8 +629,18 @@ export default function NewReportPage() {
                   </div>
                 </dl>
                 <div className="github-pr-preview-actions">
-                  <button type="button" onClick={changeGitHubImport} disabled={isGenerating}>Change pull request</button>
-                  <button type="button" onClick={clearGitHubImport} disabled={isGenerating}>Clear import</button>
+                  {githubImportMode === "connected" ? (
+                    <>
+                      {selectedRepository && <button type="button" onClick={() => { setImportedPullRequest(null); setGitHubImportMode(null); if (inputSource === "github-pr") setInputSource("pasted-diff"); }} disabled={isGenerating}>Choose another pull request</button>}
+                      <button type="button" onClick={changeConnectedRepository} disabled={isGenerating}>Change repository</button>
+                      <button type="button" onClick={disconnectConnectedSelection} disabled={isGenerating}>Disconnect from this selection</button>
+                    </>
+                  ) : (
+                    <>
+                      <button type="button" onClick={changeGitHubImport} disabled={isGenerating}>Change pull request</button>
+                      <button type="button" onClick={clearGitHubImport} disabled={isGenerating}>Clear import</button>
+                    </>
+                  )}
                   <a href={importedPullRequest.url} target="_blank" rel="noreferrer">Open on GitHub</a>
                 </div>
                 <p className="github-import-help">Review mode and fields remain editable. Raw diffs are used for analysis and are not saved in local report history.</p>

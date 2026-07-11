@@ -224,7 +224,7 @@ export default function ReviewOperationsPage() {
         </div>
       </aside>
 
-      <main className="workspace-main operations-main">
+      <main className="workspace-main operations-main" data-tour="review-operations">
         <header className="workspace-header workspace-header--app operations-header">
           <div className="workspace-header-copy">
             <span className="eyebrow">LOCAL REVIEW OPERATIONS</span>

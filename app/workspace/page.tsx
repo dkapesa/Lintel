@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { GuidedTourStartButton } from "../guided-tour";
 import {
   conditionKey,
   readConditionProgress,
@@ -449,7 +450,7 @@ function WorkspacePreviewPanel({
   const displayedOwner = ownerDisplay(group.reviewState.owner, suggestedOwners);
 
   return (
-    <aside className="workspace-preview" aria-label="Selected report preview">
+    <aside className="workspace-preview" aria-label="Selected report preview" data-tour="selected-pr">
       <div className="workspace-preview-header">
         <span className="workspace-preview-kicker">Decision preview</span>
         <span className={`workspace-recommendation workspace-recommendation--${entry.metadata.recommendation.toLowerCase()}`}>
@@ -763,7 +764,7 @@ export default function ReportsWorkspacePage() {
         </div>
       </aside>
 
-      <main className="workspace-main">
+      <main className="workspace-main" data-tour="risk-inbox">
         <header className="workspace-header workspace-header--app">
           <div className="workspace-header-copy">
             <span className="eyebrow">LOCAL MERGE-READINESS OPERATIONS</span>
@@ -779,6 +780,7 @@ export default function ReportsWorkspacePage() {
             </div>
           </div>
           <div className="workspace-header-actions">
+            <GuidedTourStartButton className="workspace-tour-action" />
             {history.length > 0 && <button type="button" onClick={clearHistory}>Clear history</button>}
             <Link className="workspace-primary-action" href="/new">Check a pull request</Link>
           </div>

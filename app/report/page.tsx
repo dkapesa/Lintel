@@ -1226,6 +1226,18 @@ export default function ReportPage() {
     return () => window.removeEventListener("keydown", handleQuickActionShortcut);
   }, []);
 
+  useEffect(() => {
+    function handleTourTab(event: Event) {
+      const tab = (event as CustomEvent<string>).detail;
+      if (["overview", "actions", "timeline", "evidence", "blast-radius", "findings", "tests", "operations", "review-focus", "changed-files", "export"].includes(tab)) {
+        setActiveTab(tab as ReportTab);
+      }
+    }
+
+    window.addEventListener("lintel:tour-tab", handleTourTab);
+    return () => window.removeEventListener("lintel:tour-tab", handleTourTab);
+  }, []);
+
   const { report, source } = displayedReport;
   const { pr, verdict } = report;
   const supportedReviewerFocus = pruneUnsupportedReviewerFocus(report);
@@ -1858,6 +1870,7 @@ export default function ReportPage() {
             <div
               className="report-tab-panel"
               id="report-panel-actions"
+              data-tour="review-actions"
               role="tabpanel"
               aria-labelledby="report-tab-actions"
             >
@@ -2061,7 +2074,7 @@ export default function ReportPage() {
             </div>
           </section>
 
-          <section className="section-block report-merge-contract" aria-labelledby="merge-contract-title">
+          <section className="section-block report-merge-contract" aria-labelledby="merge-contract-title" data-tour="merge-contract">
             <div className="section-heading">
               <div>
                 <span className="card-kicker">MERGE CONTRACT</span>
@@ -2157,6 +2170,7 @@ export default function ReportPage() {
             <div
               className="report-tab-panel"
               id="report-panel-findings"
+              data-tour="report-findings"
               role="tabpanel"
               aria-labelledby="report-tab-findings"
             >
@@ -2277,6 +2291,7 @@ export default function ReportPage() {
             <div
               className="report-tab-panel"
               id="report-panel-tests"
+              data-tour="report-tests"
               role="tabpanel"
               aria-labelledby="report-tab-tests"
             >
@@ -2433,6 +2448,7 @@ export default function ReportPage() {
             <div
               className="report-tab-panel"
               id="report-panel-export"
+              data-tour="report-export"
               role="tabpanel"
               aria-labelledby="report-tab-export"
             >

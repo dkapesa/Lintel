@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "./design-system.css";
+import GuidedTour from "./guided-tour";
 
 export const metadata: Metadata = {
   title: "Lintel — Decide what’s ready to merge",
@@ -10,8 +11,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
-      <body>{children}</body>
+    <html lang="en" data-scroll-behavior="smooth">
+      <body><GuidedTour>{children}</GuidedTour></body>
     </html>
   );
 }

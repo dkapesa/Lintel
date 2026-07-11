@@ -36,6 +36,10 @@ const TOUR_STEPS: TourStep[] = [
 type TourContextValue = { startTour: () => void; hasSeenTour: boolean };
 const TourContext = createContext<TourContextValue | null>(null);
 
+export function useGuidedTour() {
+  return useContext(TourContext);
+}
+
 export function GuidedTourStartButton({ className }: { className?: string }) {
   const context = useContext(TourContext);
   if (!context) return null;

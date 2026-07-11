@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { type KeyboardEvent, useEffect, useRef, useState } from "react";
+import { useGuidedTour } from "../guided-tour";
 import {
   conditionKey,
   conditionProgressSummary,
@@ -187,6 +188,11 @@ async function writeToClipboard(value: string) {
   } finally {
     if (clipboardTimeout) clearTimeout(clipboardTimeout);
   }
+}
+
+function isReportTextEntry(target: EventTarget | null) {
+  return target instanceof HTMLElement
+    && !!target.closest("input, textarea, select, button, a, [contenteditable='true']");
 }
 
 function downloadMarkdown(value: string, filename: string) {
@@ -1148,6 +1154,7 @@ function AffectedSurfaceCard({ surface }: { surface: AffectedSurface }) {
 }
 
 export default function ReportPage() {
+  const guidedTour = useGuidedTour();
   const [displayedReport, setDisplayedReport] = useState<{ report: Report; source: ReportSource }>({
     report: demoReport,
     source: "demo",
@@ -1207,10 +1214,9 @@ export default function ReportPage() {
   }, []);
 
   useEffect(() => {
-    function handleQuickActionShortcut(event: KeyboardEvent) {
+    function handleQuickActionShortcut(event: globalThis.KeyboardEvent) {
       const isQuickActionShortcut = (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k";
-      const target = event.target instanceof HTMLElement ? event.target : null;
-      const isTextEntry = !!target?.closest("input, textarea, select, [contenteditable='true']");
+      const isTextEntry = isReportTextEntry(event.target);
 
       if (isQuickActionShortcut && !isTextEntry) {
         event.preventDefault();
@@ -1225,6 +1231,16 @@ export default function ReportPage() {
     window.addEventListener("keydown", handleQuickActionShortcut);
     return () => window.removeEventListener("keydown", handleQuickActionShortcut);
   }, []);
+
+  useEffect(() => {
+    function handleReportEscape(event: globalThis.KeyboardEvent) {
+      if (event.key !== "Escape" || isReportTextEntry(event.target)) return;
+      if (selectedFindingIndex !== null) setSelectedFindingIndex(null);
+    }
+
+    window.addEventListener("keydown", handleReportEscape);
+    return () => window.removeEventListener("keydown", handleReportEscape);
+  }, [selectedFindingIndex]);
 
   useEffect(() => {
     function handleTourTab(event: Event) {
@@ -1502,9 +1518,47 @@ export default function ReportPage() {
     showQuickActionMessage("success", `Marked ${status}.`);
   }
 
-  function quickJumpTo(tab: ReportTab, label: string) {
+  function focusReportTab(tab: ReportTab) {
+    window.requestAnimationFrame(() => {
+      document.getElementById(`report-tab-${tab}`)?.focus();
+    });
+  }
+
+  function quickJumpTo(tab: ReportTab, label: string, targetId?: string) {
     setActiveTab(tab);
+    window.setTimeout(() => {
+      if (targetId) {
+        document.getElementById(targetId)?.scrollIntoView({ block: "start", behavior: "smooth" });
+      }
+    }, 0);
     showQuickActionMessage("success", `Jumped to ${label}.`);
+  }
+
+  function handleReportTabKeyDown(event: KeyboardEvent<HTMLElement>) {
+    if (!(event.target instanceof HTMLElement) || event.target.getAttribute("role") !== "tab") return;
+
+    const currentIndex = reportTabs.findIndex((tab) => tab.id === activeTab);
+    let nextIndex = currentIndex;
+
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+      event.preventDefault();
+      nextIndex = (currentIndex + 1) % reportTabs.length;
+    } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+      event.preventDefault();
+      nextIndex = (currentIndex - 1 + reportTabs.length) % reportTabs.length;
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      nextIndex = 0;
+    } else if (event.key === "End") {
+      event.preventDefault();
+      nextIndex = reportTabs.length - 1;
+    }
+
+    if (nextIndex !== currentIndex) {
+      const nextTab = reportTabs[nextIndex].id;
+      setActiveTab(nextTab);
+      focusReportTab(nextTab);
+    }
   }
 
   async function handleCopySummary() {
@@ -1643,6 +1697,14 @@ export default function ReportPage() {
               )}
             </div>
             <div className="quick-actions-grid">
+              <button type="button" onClick={() => { window.location.assign("/workspace"); }}>
+                <strong>Go to Risk inbox</strong>
+                <span>Return to queue</span>
+              </button>
+              <button type="button" onClick={() => guidedTour?.startTour()}>
+                <strong>Start guided tour</strong>
+                <span>Explore workflow</span>
+              </button>
               <button type="button" onClick={() => quickSetReviewStatus("Ready to merge")}>
                 <strong>Ready to merge</strong>
                 <span>Mark local state</span>
@@ -1675,6 +1737,14 @@ export default function ReportPage() {
                 <strong>Jump to Timeline</strong>
                 <span>Decision history</span>
               </button>
+              <button type="button" onClick={() => quickJumpTo("findings", "Findings")}>
+                <strong>Jump to Findings</strong>
+                <span>Evidence-backed risks</span>
+              </button>
+              <button type="button" onClick={() => quickJumpTo("evidence", "Merge contract", "merge-contract-title")}>
+                <strong>Jump to Merge contract</strong>
+                <span>Conditions before merge</span>
+              </button>
               <button type="button" onClick={() => quickJumpTo("blast-radius", "Blast radius")}>
                 <strong>Jump to Blast radius</strong>
                 <span>Affected surfaces</span>
@@ -1689,7 +1759,7 @@ export default function ReportPage() {
 
         <div className="report-working-layout">
           <div className="report-content">
-          <nav className="report-tabs" aria-label="Report sections" role="tablist">
+          <nav className="report-tabs" aria-label="Report sections" role="tablist" onKeyDown={handleReportTabKeyDown}>
             {reportTabs.map((tab) => (
               <button
                 key={tab.id}
@@ -1905,7 +1975,10 @@ export default function ReportPage() {
             {reviewActions.length > 0 ? (
               <div className="review-action-list">
                 {reviewActions.map((action) => (
-                  <article className={`review-action-card review-action-card--${action.priority.toLowerCase().replaceAll(" ", "-")}`} key={action.key}>
+                  <article
+                    className={`review-action-card review-action-card--${action.priority.toLowerCase().replaceAll(" ", "-")} review-action-card--status-${action.status.toLowerCase().replaceAll(" ", "-")}`}
+                    key={action.key}
+                  >
                     <div className="review-action-card-header">
                       <div>
                         <span>{action.source}</span>

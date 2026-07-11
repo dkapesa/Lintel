@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import { GuidedTourStartButton } from "../guided-tour";
 import {
   conditionKey,
@@ -46,6 +46,8 @@ const QUEUES = [
   ["ready", "Ready to merge"],
   ["reviewed", "Reviewed"],
 ] as const;
+
+const SELECTED_WORKSPACE_GROUP_STORAGE_KEY = "lintel.workspaceSelectedGroup.v1";
 
 type WorkspaceQueue = (typeof QUEUES)[number][0];
 type CopyFeedback = { key: string; state: "copied" | "failed" } | null;
@@ -225,11 +227,17 @@ async function writeToClipboard(value: string) {
   }
 }
 
+function isWorkspaceTextEntry(target: EventTarget | null) {
+  return target instanceof HTMLElement
+    && !!target.closest("input, textarea, select, button, a, [contenteditable='true']");
+}
+
 function WorkspaceReportCard({
   group,
   copyFeedback,
   conditionProgressLabel,
   isSelected,
+  setCardRef,
   onSelect,
   onOpen,
   onCopyConditions,
@@ -241,6 +249,7 @@ function WorkspaceReportCard({
   copyFeedback: CopyFeedback;
   conditionProgressLabel: string;
   isSelected: boolean;
+  setCardRef: (key: string, element: HTMLElement | null) => void;
   onSelect: (group: WorkspaceGroup) => void;
   onOpen: (entry: ReportHistoryEntry) => void;
   onCopyConditions: (group: WorkspaceGroup) => void;
@@ -264,13 +273,27 @@ function WorkspaceReportCard({
       className={`workspace-inbox-card workspace-inbox-card--${entry.metadata.recommendation.toLowerCase()}${isSelected ? " workspace-inbox-card--selected" : ""}`}
       role="button"
       tabIndex={0}
+      ref={(element) => setCardRef(group.key, element)}
+      data-workspace-group-key={group.key}
       aria-label={`Preview ${entry.metadata.title}`}
       aria-selected={isSelected}
+      aria-current={isSelected ? "true" : undefined}
       onClick={() => onSelect(group)}
       onKeyDown={(event) => {
         if (event.target !== event.currentTarget) return;
-        if (event.key === "Enter" || event.key === " ") {
+        if (event.key === "Enter") {
           event.preventDefault();
+          event.stopPropagation();
+          if (isSelected) {
+            onOpen(entry);
+          } else {
+            onSelect(group);
+          }
+        }
+
+        if (event.key === " ") {
+          event.preventDefault();
+          event.stopPropagation();
           onSelect(group);
         }
       }}
@@ -355,6 +378,7 @@ function WorkspaceSection({
   copyFeedback,
   conditionProgressByGroup,
   selectedGroupKey,
+  setCardRef,
   onSelect,
   onOpen,
   onCopyConditions,
@@ -369,6 +393,7 @@ function WorkspaceSection({
   copyFeedback: CopyFeedback;
   conditionProgressByGroup: Record<string, string>;
   selectedGroupKey: string | null;
+  setCardRef: (key: string, element: HTMLElement | null) => void;
   onSelect: (group: WorkspaceGroup) => void;
   onOpen: (entry: ReportHistoryEntry) => void;
   onCopyConditions: (group: WorkspaceGroup) => void;
@@ -395,6 +420,7 @@ function WorkspaceSection({
               copyFeedback={copyFeedback}
               conditionProgressLabel={conditionProgressByGroup[group.key] ?? "No merge conditions detected."}
               isSelected={selectedGroupKey === group.key}
+              setCardRef={setCardRef}
               onSelect={onSelect}
               onOpen={onOpen}
               onCopyConditions={onCopyConditions}
@@ -551,6 +577,7 @@ export default function ReportsWorkspacePage() {
   const [copyFeedback, setCopyFeedback] = useState<CopyFeedback>(null);
   const [error, setError] = useState<string | null>(null);
   const copyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cardRefs = useRef<Record<string, HTMLElement | null>>({});
 
   useEffect(() => {
     try {
@@ -617,12 +644,70 @@ export default function ReportsWorkspacePage() {
       return;
     }
 
-    setSelectedGroupKey((current) => (
-      current && visibleGroups.some((group) => group.key === current)
-        ? current
-        : visibleGroups[0].key
-    ));
+    setSelectedGroupKey((current) => {
+      if (current && visibleGroups.some((group) => group.key === current)) return current;
+
+      try {
+        const stored = window.localStorage.getItem(SELECTED_WORKSPACE_GROUP_STORAGE_KEY);
+        if (stored && visibleGroups.some((group) => group.key === stored)) return stored;
+      } catch {
+        // Local selection persistence is optional.
+      }
+
+      return visibleGroups[0].key;
+    });
   }, [visibleGroups]);
+
+  function setCardRef(key: string, element: HTMLElement | null) {
+    cardRefs.current[key] = element;
+  }
+
+  function focusWorkspaceCard(key: string) {
+    window.requestAnimationFrame(() => {
+      const card = cardRefs.current[key];
+      if (!card) return;
+      card.focus({ preventScroll: true });
+      card.scrollIntoView({ block: "nearest", inline: "nearest" });
+    });
+  }
+
+  function selectWorkspaceGroup(group: WorkspaceGroup, focusRow = false) {
+    setSelectedGroupKey(group.key);
+
+    try {
+      window.localStorage.setItem(SELECTED_WORKSPACE_GROUP_STORAGE_KEY, group.key);
+    } catch {
+      // Local selection persistence is optional.
+    }
+
+    if (focusRow) focusWorkspaceCard(group.key);
+  }
+
+  function handleWorkspaceInboxKeyDown(event: KeyboardEvent<HTMLElement>) {
+    if (isWorkspaceTextEntry(event.target)) return;
+    if (visibleGroups.length === 0) return;
+
+    const currentIndex = Math.max(visibleGroups.findIndex((group) => group.key === selectedGroupKey), 0);
+
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      const direction = event.key === "ArrowDown" ? 1 : -1;
+      const nextIndex = Math.min(Math.max(currentIndex + direction, 0), visibleGroups.length - 1);
+      selectWorkspaceGroup(visibleGroups[nextIndex], true);
+      return;
+    }
+
+    if (event.key === "Enter") {
+      event.preventDefault();
+      openReport(visibleGroups[currentIndex].latest);
+      return;
+    }
+
+    if (event.key === "Escape") {
+      if (copyFeedback) setCopyFeedback(null);
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    }
+  }
 
   function openReport(entry: ReportHistoryEntry) {
     try {
@@ -714,6 +799,13 @@ export default function ReportsWorkspacePage() {
       });
       removeReviewState(window.localStorage, group.key);
       removeDecisionHistory(window.localStorage, group.key);
+      try {
+        if (window.localStorage.getItem(SELECTED_WORKSPACE_GROUP_STORAGE_KEY) === group.key) {
+          window.localStorage.removeItem(SELECTED_WORKSPACE_GROUP_STORAGE_KEY);
+        }
+      } catch {
+        // Local selection persistence is optional.
+      }
       setError(null);
     } catch {
       setError("This report group could not be deleted.");
@@ -726,6 +818,7 @@ export default function ReportsWorkspacePage() {
       setReviewStates({});
       clearReviewStates(window.localStorage);
       clearDecisionHistory(window.localStorage);
+      window.localStorage.removeItem(SELECTED_WORKSPACE_GROUP_STORAGE_KEY);
       setError(null);
     } catch {
       setError("Report history could not be cleared.");
@@ -789,7 +882,12 @@ export default function ReportsWorkspacePage() {
         {error && <p className="workspace-error" role="alert">{error}</p>}
 
         {history.length > 0 ? (
-          <section className="workspace-inbox" aria-label="Local merge-readiness inbox">
+          <section
+            className="workspace-inbox"
+            aria-label="Local merge-readiness inbox"
+            tabIndex={0}
+            onKeyDown={handleWorkspaceInboxKeyDown}
+          >
             <div className="workspace-triage-strip" aria-label="Workspace summary">
               <article className={needsAttentionCount > 0 ? "workspace-triage-card workspace-triage-card--attention" : "workspace-triage-card"}>
                 <span>Needs attention</span><strong>{needsAttentionCount}</strong><p>blocked, tests or review</p>
@@ -814,6 +912,7 @@ export default function ReportsWorkspacePage() {
               <button type="button" onClick={() => setActiveQueue("needs-review")}>Needs review</button>
               <button type="button" onClick={() => setActiveQueue("operational-risk")}>Operational risk</button>
               <button type="button" onClick={() => setActiveQueue("ready")}>Ready</button>
+              <button type="button" onClick={() => { if (selectedGroup) openReport(selectedGroup.latest); }} disabled={!selectedGroup}>Open selected</button>
               <Link href="/new">Check PR</Link>
             </div>
 
@@ -842,7 +941,8 @@ export default function ReportsWorkspacePage() {
                   copyFeedback={copyFeedback}
                   conditionProgressByGroup={conditionProgressByGroup}
                   selectedGroupKey={selectedGroupKey}
-                  onSelect={(group) => setSelectedGroupKey(group.key)}
+                  setCardRef={setCardRef}
+                  onSelect={(group) => selectWorkspaceGroup(group)}
                   onOpen={openReport}
                   onCopyConditions={copyConditions}
                   onDeleteGroup={deleteGroup}
@@ -858,7 +958,8 @@ export default function ReportsWorkspacePage() {
                   copyFeedback={copyFeedback}
                   conditionProgressByGroup={conditionProgressByGroup}
                   selectedGroupKey={selectedGroupKey}
-                  onSelect={(group) => setSelectedGroupKey(group.key)}
+                  setCardRef={setCardRef}
+                  onSelect={(group) => selectWorkspaceGroup(group)}
                   onOpen={openReport}
                   onCopyConditions={copyConditions}
                   onDeleteGroup={deleteGroup}

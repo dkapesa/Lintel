@@ -298,6 +298,19 @@ function studioDecisionLabel(decision: StudioHumanDecision, acceptedRiskReason: 
   return reason ? `${decision}: ${reason}` : decision;
 }
 
+function studioDecisionNote(reviewState: ReportReviewState, decision: StudioHumanDecision, acceptedRiskReason: string) {
+  if (decision !== "Approved with accepted risk") return reviewState.note;
+
+  const reason = acceptedRiskReason.trim();
+  if (!reason) return reviewState.note;
+
+  const acceptedRiskLine = `Accepted risk reason: ${reason}`;
+  const currentNote = reviewState.note.trim();
+  if (currentNote.includes(acceptedRiskLine)) return reviewState.note;
+
+  return `${currentNote}${currentNote ? "\n\n" : ""}${acceptedRiskLine}`;
+}
+
 function reportNextAction(report: Report, conditions: string[], operationalStatus: string) {
   if (conditions.length > 0) return "Clear merge conditions";
   if (report.missingTests.length > 0) return "Add focused tests";
@@ -1611,9 +1624,7 @@ export default function ReportPage() {
   const studioReviewState: ReportReviewState = {
     ...reviewState,
     status: reviewStatusFromStudioDecision(studioDecision),
-    note: studioDecision === "Approved with accepted risk" && acceptedRiskReason.trim()
-      ? `${reviewState.note.trim()}${reviewState.note.trim() ? "\n\n" : ""}Accepted risk reason: ${acceptedRiskReason.trim()}`
-      : reviewState.note,
+    note: studioDecisionNote(reviewState, studioDecision, acceptedRiskReason),
   };
   const reviewerFocusSummary = supportedReviewerFocus
     ? supportedReviewerFocus.length > 0
@@ -1976,8 +1987,7 @@ export default function ReportPage() {
     }
 
     const previousStatus = reviewState.status;
-    const nextStatus = reviewStatusFromStudioDecision(studioDecision);
-    const savedState = updateReviewState(studioReviewState);
+    updateReviewState(studioReviewState);
 
     recordDecisionEvent({
       type: studioDecision === "Approved with accepted risk" ? "accepted-risk-recorded" : "human-decision-recorded",
@@ -1989,12 +1999,6 @@ export default function ReportPage() {
       nextState: studioDecision,
       label: "Local",
     });
-
-    if (previousStatus !== savedState.status && studioDecision !== "Approved with accepted risk") {
-      recordDecisionEvent(reviewStatusChangeEvent(previousStatus, savedState.status));
-    } else if (previousStatus !== nextStatus && studioDecision === "Approved with accepted risk") {
-      recordDecisionEvent(reviewStatusChangeEvent(previousStatus, nextStatus));
-    }
 
     setStudioDecisionState("copied");
     if (studioDecisionResetTimer.current) clearTimeout(studioDecisionResetTimer.current);

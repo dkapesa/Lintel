@@ -20,6 +20,17 @@ type GitHubPullRequest = {
 
 type UnknownRecord = Record<string, unknown>;
 
+type PullRequestMetadata = {
+  title?: string;
+  author?: string;
+  state?: string;
+  baseBranch?: string;
+  headBranch?: string;
+  changedFiles?: number;
+  additions?: number;
+  deletions?: number;
+};
+
 function jsonResponse(body: UnknownRecord, status = 200) {
   return Response.json(body, { status, headers: NO_STORE_HEADERS });
 }
@@ -79,7 +90,19 @@ async function readTextWithLimit(response: Response) {
   return { text, exceeded: text.length > MAX_DIFF_CHARS };
 }
 
-async function fetchPullRequestTitle(metadataUrl: string, signal: AbortSignal) {
+function stringValue(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function numberValue(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : undefined;
+}
+
+function nestedRecord(value: unknown) {
+  return typeof value === "object" && value !== null ? value as UnknownRecord : null;
+}
+
+async function fetchPullRequestMetadata(metadataUrl: string, signal: AbortSignal): Promise<PullRequestMetadata> {
   try {
     const response = await fetch(metadataUrl, {
       headers: {
@@ -92,15 +115,27 @@ async function fetchPullRequestTitle(metadataUrl: string, signal: AbortSignal) {
       signal,
     });
 
-    if (!response.ok) return undefined;
+    if (!response.ok) return {};
     const payload: unknown = await response.json();
-    if (typeof payload !== "object" || payload === null || !("title" in payload)) return undefined;
-    if (typeof payload.title !== "string") return undefined;
+    const record = nestedRecord(payload);
+    if (!record) return {};
 
-    const title = payload.title.trim();
-    return title ? title.slice(0, 500) : undefined;
+    const user = nestedRecord(record.user);
+    const base = nestedRecord(record.base);
+    const head = nestedRecord(record.head);
+
+    return {
+      title: stringValue(record.title)?.slice(0, 500),
+      author: stringValue(user?.login)?.slice(0, 100),
+      state: stringValue(record.state)?.slice(0, 40),
+      baseBranch: stringValue(base?.ref)?.slice(0, 250),
+      headBranch: stringValue(head?.ref)?.slice(0, 250),
+      changedFiles: numberValue(record.changed_files),
+      additions: numberValue(record.additions),
+      deletions: numberValue(record.deletions),
+    };
   } catch {
-    return undefined;
+    return {};
   }
 }
 
@@ -166,11 +201,11 @@ export async function POST(request: Request) {
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
   try {
-    const titlePromise = fetchPullRequestTitle(metadataUrl, controller.signal);
+    const metadataPromise = fetchPullRequestMetadata(metadataUrl, controller.signal);
     const response = await fetchGitHubDiff(diffUrl, controller.signal);
 
     if (response.status === 404) {
-      return jsonResponse({ error: "This public pull request could not be found." }, 404);
+      return jsonResponse({ error: "This pull request could not be found or is not publicly accessible." }, 404);
     }
     if (response.status === 403 || response.status === 429) {
       return jsonResponse({ error: "GitHub rate-limited this request. Please try again later." }, 429);
@@ -187,11 +222,16 @@ export async function POST(request: Request) {
       return jsonResponse({ error: "GitHub returned an empty or invalid pull request diff." }, 502);
     }
 
-    const title = await titlePromise;
+    const metadata = await metadataPromise;
     return jsonResponse({
       repository: `${owner}/${repository}`,
+      owner,
+      repo: repository,
+      number: Number(number),
+      url: `https://github.com/${owner}/${repository}/pull/${number}`,
+      publicRepository: true,
       diff,
-      ...(title ? { title } : {}),
+      ...metadata,
     });
   } catch {
     if (controller.signal.aborted) {

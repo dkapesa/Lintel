@@ -87,6 +87,19 @@ button { font:inherit; }
 .github-import-status--loading { color:#a6abb0; background:#1b1e21; }
 .github-import-status--success { color:#6fcf9e; background:var(--green-soft); }
 .github-import-status--error { color:#e08a7a; background:rgba(206,100,80,.14); }
+.github-pr-preview { border:1px solid var(--color-border-primary, #272b30); border-radius:var(--radius-panel, 14px); background:var(--color-surface-secondary, #111315); padding:16px; }
+.github-pr-preview-header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:14px; }
+.github-pr-preview-header h2 { margin:4px 0 6px; font-size:18px; line-height:1.15; letter-spacing:-.03em; }
+.github-pr-preview-header p { margin:0; color:var(--color-text-secondary, #a6abb0); line-height:1.5; }
+.github-pr-public-status { flex:0 0 auto; padding:5px 8px; border:1px solid var(--color-border-primary, #272b30); border-radius:999px; color:var(--color-text-primary, #ededee); font-size:10px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; }
+.github-pr-preview-grid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:10px; margin:0; }
+.github-pr-preview-grid div { min-width:0; padding:10px; border:1px solid var(--color-border-primary, #272b30); border-radius:10px; background:var(--color-surface-subtle, #15181b); }
+.github-pr-preview-grid dt { margin:0 0 5px; color:var(--color-text-muted, #787f87); font-size:9px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; }
+.github-pr-preview-grid dd { margin:0; color:var(--color-text-primary, #ededee); font-size:12px; font-weight:700; overflow-wrap:anywhere; }
+.github-pr-preview-actions { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-top:14px; }
+.github-pr-preview-actions button, .github-pr-preview-actions a { min-height:32px; padding:0 10px; border:1px solid var(--color-border-primary, #272b30); border-radius:8px; display:inline-flex; align-items:center; justify-content:center; background:transparent; color:var(--color-text-primary, #ededee); font-size:10px; font-weight:800; cursor:pointer; }
+.github-pr-preview-actions button:hover, .github-pr-preview-actions a:hover { border-color:var(--color-border-strong, #42484f); }
+.github-pr-preview-actions button:disabled { opacity:.55; cursor:not-allowed; }
 .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:22px 18px; }
 .form-field { display:grid; gap:8px; }
 .form-field--wide { grid-column:1 / -1; }
@@ -120,6 +133,8 @@ button { font:inherit; }
   .report-form { padding:20px; border-radius:13px; }
   .github-import { margin-bottom:20px; padding-bottom:20px; }
   .github-import-row { grid-template-columns:1fr; }
+  .github-pr-preview-header { flex-direction:column; }
+  .github-pr-preview-grid { grid-template-columns:1fr; }
   .fetch-diff-button { width:100%; }
   .form-grid { grid-template-columns:1fr; gap:18px; }
   .form-field--wide { grid-column:auto; }

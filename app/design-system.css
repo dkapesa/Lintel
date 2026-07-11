@@ -1,0 +1,375 @@
+/* V5.6 shared visual foundation. Milestone layout rules remain in globals.css. */
+:root {
+  color-scheme: light;
+
+  /* Semantic colour roles */
+  --color-page-primary: #fbfcfa;
+  --color-surface-secondary: #f7f8f6;
+  --color-panel-elevated: #ffffff;
+  --color-surface-subtle: #f1f4f1;
+  --color-border-primary: #e1e6e2;
+  --color-border-strong: #c9d2cd;
+  --color-text-primary: #17201d;
+  --color-text-secondary: #53615b;
+  --color-text-muted: #7d8782;
+  --color-accent: #1e6b57;
+  --color-focus-ring: #6fa98f;
+  --color-ready: #1e6b57;
+  --color-ready-soft: #e4f1eb;
+  --color-tests-required: #95641b;
+  --color-tests-required-soft: #fbefd9;
+  --color-review-required: #466e91;
+  --color-review-required-soft: #e8eff6;
+  --color-blocker: #a64b25;
+  --color-blocker-soft: #f9e6dc;
+  --color-security: #75516f;
+  --color-security-soft: #f3eaf2;
+
+  /* Internal application palette, kept separate from the active light theme */
+  --app-page-primary: #0f1613;
+  --app-surface-secondary: #161f1b;
+  --app-panel-elevated: #1b2620;
+  --app-surface-subtle: #121a16;
+  --app-border-primary: #26312b;
+  --app-border-strong: #3e4b44;
+  --app-text-primary: #e9efeb;
+  --app-text-secondary: #a7b4ad;
+  --app-text-muted: #7c8a83;
+  --app-text-faint: #66746d;
+  --app-ready: #7fd8ae;
+  --app-ready-soft: rgba(58, 170, 124, 0.16);
+  --app-warning: #e2bd76;
+  --app-warning-soft: rgba(196, 148, 54, 0.16);
+  --app-information: #9db8d2;
+  --app-information-soft: rgba(106, 142, 178, 0.16);
+  --app-danger: #eb9a70;
+  --app-danger-soft: rgba(200, 98, 54, 0.16);
+
+  /* Spacing and layout rhythm */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-section: 48px;
+  --page-gutter: clamp(26px, 4vw, 68px);
+  --card-padding: 24px;
+
+  /* Shape, controls, motion, and elevation */
+  --radius-xs: 4px;
+  --radius-sm: 7px;
+  --radius-control: 8px;
+  --radius-card: 12px;
+  --radius-panel: 14px;
+  --radius-large: 16px;
+  --radius-pill: 999px;
+  --control-height-sm: 32px;
+  --control-height-md: 36px;
+  --control-height-lg: 42px;
+  --transition-fast: 130ms ease;
+  --transition-base: 160ms ease;
+  --shadow-card: 0 10px 28px rgba(28, 45, 38, 0.06);
+  --shadow-panel: 0 18px 48px rgba(28, 45, 38, 0.1);
+  --shadow-selected: 0 10px 24px rgba(28, 45, 38, 0.12);
+
+  /* Type roles */
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "DM Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
+  --type-body: 13px;
+  --type-helper: 11px;
+  --type-meta: 10px;
+  --type-label: 9px;
+
+  /* Compatibility aliases used by the existing light surfaces */
+  --ink: var(--color-text-primary);
+  --muted: var(--color-text-muted);
+  --line: var(--color-border-primary);
+  --soft: var(--color-surface-secondary);
+  --canvas: var(--color-page-primary);
+  --green: var(--color-accent);
+  --green-soft: var(--color-ready-soft);
+  --amber: var(--color-tests-required);
+  --amber-soft: var(--color-tests-required-soft);
+  --orange: var(--color-blocker);
+  --orange-soft: var(--color-blocker-soft);
+  --blue: var(--color-review-required);
+  --sidebar: #17201d;
+
+  /* Dark aliases remain available for existing components during migration. */
+  --dcanvas: var(--app-page-primary);
+  --dpanel: var(--app-surface-secondary);
+  --dpanel2: var(--app-panel-elevated);
+  --dline: var(--app-border-primary);
+  --dline2: var(--app-border-strong);
+  --dink: var(--app-text-primary);
+  --dtext: var(--app-text-secondary);
+  --dmuted: var(--app-text-muted);
+  --dfaint: var(--app-text-faint);
+  --dgreen: var(--app-ready);
+  --dgreen-soft: var(--app-ready-soft);
+  --damber: var(--app-warning);
+  --damber-soft: var(--app-warning-soft);
+  --dorange: var(--app-danger);
+  --dorange-soft: var(--app-danger-soft);
+  --dblue: var(--app-information);
+  --dblue-soft: var(--app-information-soft);
+  --dred: #e58f8f;
+  --dred-soft: rgba(192, 74, 74, 0.16);
+  --dwarm-soft: rgba(178, 148, 76, 0.14);
+  --dglass: rgba(22, 31, 27, 0.92);
+  --dmono: var(--font-mono);
+}
+
+/* Internal application theme uses the same semantic roles. */
+.app-shell {
+  color-scheme: dark;
+  --color-page-primary: var(--app-page-primary);
+  --color-surface-secondary: var(--app-surface-secondary);
+  --color-panel-elevated: var(--app-panel-elevated);
+  --color-surface-subtle: var(--app-surface-subtle);
+  --color-border-primary: var(--app-border-primary);
+  --color-border-strong: var(--app-border-strong);
+  --color-text-primary: var(--app-text-primary);
+  --color-text-secondary: var(--app-text-secondary);
+  --color-text-muted: var(--app-text-muted);
+  --color-accent: var(--app-ready);
+  --color-focus-ring: #58b98d;
+  --color-ready: var(--app-ready);
+  --color-ready-soft: var(--app-ready-soft);
+  --color-tests-required: var(--app-warning);
+  --color-tests-required-soft: var(--app-warning-soft);
+  --color-review-required: var(--app-information);
+  --color-review-required-soft: var(--app-information-soft);
+  --color-blocker: var(--app-danger);
+  --color-blocker-soft: var(--app-danger-soft);
+  --color-security: #d6a3d0;
+  --color-security-soft: rgba(149, 91, 142, 0.16);
+  --shadow-card: 0 10px 28px rgba(2, 6, 5, 0.32);
+  --shadow-panel: 0 16px 42px rgba(2, 6, 5, 0.4);
+  --shadow-selected: 0 10px 24px rgba(2, 6, 5, 0.5), inset 0 0 0 1px rgba(140, 219, 187, 0.14);
+
+  /* Compatibility aliases used throughout the current application CSS */
+  --dcanvas: var(--color-page-primary);
+  --dpanel: var(--color-surface-secondary);
+  --dpanel2: var(--color-panel-elevated);
+  --dline: var(--color-border-primary);
+  --dline2: var(--color-border-strong);
+  --dink: var(--color-text-primary);
+  --dtext: var(--color-text-secondary);
+  --dmuted: var(--color-text-muted);
+  --dfaint: var(--app-text-faint);
+  --dgreen: var(--color-ready);
+  --dgreen-soft: var(--color-ready-soft);
+  --damber: var(--color-tests-required);
+  --damber-soft: var(--color-tests-required-soft);
+  --dorange: var(--color-blocker);
+  --dorange-soft: var(--color-blocker-soft);
+  --dblue: var(--color-review-required);
+  --dblue-soft: var(--color-review-required-soft);
+  --dmono: var(--font-mono);
+}
+
+/* Shared type hierarchy */
+body {
+  font-family: var(--font-sans);
+}
+
+:where(.landing-hero-v5 h1, .new-intro h1, .workspace-header h1, .report-header h1, .settings-header h1, .action-header h1, .slack-header h1, .operations-header h1, .policies-header h1) {
+  text-wrap: balance;
+}
+
+:where(.section-heading h2, .landing-section-heading h2, .workspace-section-heading h2, .settings-section-heading h2, .operations-section-heading h2) {
+  line-height: 1.2;
+  text-wrap: balance;
+}
+
+:where(.card-kicker, .header-overline, .eyebrow, .workspace-preview-kicker, .workspace-section-kicker, .finding-detail-panel h4, .report-local-review-state label, .review-action-card-header span, .review-action-meta span) {
+  font-family: var(--font-mono);
+  font-size: var(--type-label);
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+:where(.report-meta, .workspace-report-repository, .workspace-preview-repo, .history-repository, .file-row code, .finding code, .finding-detail-grid code, .merge-summary-preview, .action-yaml-preview, .slack-handoff-preview, time) {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+:where(.score-row strong, .workspace-preview-risk strong, .landing-preview-score strong, .workspace-triage-strip strong, .evidence-summary-grid strong, .surface-summary-grid strong, .action-progress-grid strong, .timeline-summary-grid strong) {
+  font-variant-numeric: tabular-nums;
+}
+
+:where(.file-row code, .finding-detail-grid code, .workspace-report-repository, .workspace-preview-repo, .report-meta) {
+  overflow-wrap: anywhere;
+}
+
+/* Consistent keyboard, disabled, and pressed states */
+:where(a, button, input, textarea, select, [role="button"], [tabindex]):focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+:where(button, input, textarea, select):disabled {
+  opacity: 0.58;
+}
+
+:where(.landing-button, .fetch-diff-button, .generate-button, .app-shell button, .app-shell [role="button"]):active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+:where(.landing-button, .fetch-diff-button, .generate-button, .history-delete, .report-history-heading button, .app-shell button, .app-shell a, .app-shell [role="button"], .app-shell select) {
+  transition: color var(--transition-base), background-color var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base), opacity var(--transition-fast), transform var(--transition-fast);
+}
+
+/* Light-surface controls and form primitives */
+:where(.landing-button, .fetch-diff-button, .generate-button, .report-history-heading button, .history-delete, .sample-picker select) {
+  border-radius: var(--radius-control);
+}
+
+:where(.form-field input, .form-field textarea, .form-field select, .sample-picker select) {
+  border-color: var(--color-border-primary);
+  background-color: var(--color-page-primary);
+}
+
+:where(.form-field input, .form-field textarea, .form-field select, .sample-picker select):hover:not(:disabled) {
+  border-color: var(--color-border-strong);
+}
+
+:where(.form-field input, .form-field textarea, .form-field select, .sample-picker select):focus {
+  border-color: var(--color-focus-ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-focus-ring) 18%, transparent);
+}
+
+/* Shared dark controls */
+:where(.app-shell .copy-summary-button, .app-shell .download-markdown-button, .app-shell .copy-conditions-button, .app-shell .icon-button, .app-shell .workspace-primary-action, .app-shell .workspace-secondary-action, .app-shell .workspace-header-actions button, .app-shell .workspace-row-actions button, .app-shell .workspace-preview-actions button, .app-shell .report-decision-panel-actions button, .app-shell .report-decision-panel-actions a, .app-shell .report-export-grid button, .app-shell .report-export-grid a, .app-shell .quick-actions-grid button, .app-shell .settings-doc-links a, .app-shell .operations-link-row a) {
+  border-radius: var(--radius-control);
+}
+
+:where(.app-shell .copy-summary-button, .app-shell .download-markdown-button, .app-shell .copy-conditions-button, .app-shell .icon-button, .app-shell .workspace-secondary-action, .app-shell .workspace-header-actions button, .app-shell .workspace-row-actions button, .app-shell .workspace-preview-actions button, .app-shell .report-decision-panel-actions button, .app-shell .report-decision-panel-actions a, .app-shell .report-export-grid button, .app-shell .report-export-grid a, .app-shell .quick-actions-grid button, .app-shell .settings-doc-links a, .app-shell .operations-link-row a):hover:not(:disabled) {
+  border-color: var(--color-border-strong);
+}
+
+/* Tabs, navigation, and selectable rows share one interaction language */
+:where(.app-shell .nav-item, .app-shell .report-tab, .app-shell .workspace-queue-tab, .app-shell .workspace-inbox-card, .app-shell .finding--selectable) {
+  transition: color var(--transition-base), background-color var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base);
+}
+
+:where(.app-shell .report-tab--active, .app-shell .workspace-queue-tab--active) {
+  border-color: color-mix(in srgb, var(--color-accent) 42%, transparent);
+  box-shadow: var(--shadow-selected);
+}
+
+:where(.app-shell .workspace-inbox-card--selected, .app-shell .finding--selected) {
+  border-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
+  box-shadow: var(--shadow-selected);
+}
+
+/* Cards, panels, inspector surfaces, and code surfaces */
+:where(.report-form, .report-history, .landing-report-preview, .landing-limitations, .landing-feature-grid article, .landing-trust-grid article) {
+  border-color: var(--color-border-primary);
+}
+
+:where(.landing-feature-grid article, .landing-trust-grid article, .report-history-list li) {
+  border-radius: var(--radius-card);
+}
+
+:where(.report-form, .landing-report-preview, .landing-limitations) {
+  border-radius: var(--radius-large);
+}
+
+:where(.app-shell .score-card, .app-shell .summary-card, .app-shell .review-card, .app-shell .suggested-test, .app-shell .operational-panel, .app-shell .reviewer-focus-item, .app-shell .ownership-cue-grid article, .app-shell .report-merge-contract, .app-shell .review-action-card, .app-shell .workspace-inbox-card, .app-shell .workspace-triage-card) {
+  border-color: var(--color-border-primary);
+  border-radius: var(--radius-card);
+}
+
+:where(.app-shell .finding-detail-panel, .app-shell .workspace-preview, .app-shell .report-decision-panel, .app-shell .quick-actions-panel, .app-shell .workspace-table-wrap) {
+  border-color: var(--color-border-primary);
+  border-radius: var(--radius-panel);
+}
+
+:where(.app-shell .finding-detail-panel, .app-shell .report-decision-panel) {
+  box-shadow: var(--shadow-panel);
+}
+
+:where(.app-shell .merge-summary-preview, .app-shell .action-yaml-preview, .app-shell .slack-handoff-preview, .landing-action-yaml) {
+  border-radius: var(--radius-card);
+  font-family: var(--font-mono);
+}
+
+/* Badges and state labels retain text labels as well as colour. */
+:where(.source-badge, .recommendation, .risk-badge, .severity, .review-status, .surface-status, .test-priority, .policy-gate-level, .quality-status, .workspace-recommendation, .evidence-impact, .finding-provenance, .report-header-chip, .workspace-card-signals > *) {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+:where(.source-badge, .condition-progress, .report-header-chip, .workspace-card-signals > *) {
+  border-radius: var(--radius-pill);
+}
+
+:where(.recommendation, .risk-badge, .severity, .review-status, .surface-status, .test-priority, .policy-gate-level, .quality-status, .workspace-recommendation, .evidence-impact, .finding-provenance) {
+  border-radius: var(--radius-xs);
+}
+
+/* Empty states and callouts use a consistent inset treatment. */
+:where(.section-empty, .missing-tests-empty, .merge-conditions-clear, .merge-contract-clear, .reviewer-focus-empty, .reviewer-focus-legacy, .quality-pass, .quality-legacy, .workspace-section-empty, .workspace-empty) {
+  border-radius: var(--radius-card);
+}
+
+@media (max-width: 900px) {
+  :root {
+    --page-gutter: 26px;
+    --space-section: 40px;
+  }
+
+  .app-shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  :is(.main-content, .workspace-main, .settings-main, .operations-main, .policies-main, .action-main, .slack-main) {
+    min-width: 0;
+  }
+
+  :where(.report-tabs, .workspace-queue-tabs) {
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: thin;
+  }
+}
+
+@media (max-width: 680px) {
+  :root {
+    --page-gutter: 20px;
+    --card-padding: 20px;
+    --space-section: 36px;
+  }
+
+  :where(.report-tabs, .workspace-queue-tabs) {
+    padding-bottom: var(--space-2);
+  }
+
+  :where(.app-shell .workspace-inbox-card, .app-shell .report-decision-panel, .app-shell .finding-detail-panel) {
+    border-radius: var(--radius-card);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

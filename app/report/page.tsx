@@ -372,6 +372,95 @@ function deltaRecommendationMovement(delta: ReadinessDelta) {
   return `${delta.previousRecommendation.replaceAll("_", " ")} → ${delta.currentRecommendation.replaceAll("_", " ")}`;
 }
 
+/* Higher rank = closer to merge. Used only for presentation direction, not classification. */
+const evolutionRecommendationRank: Record<Recommendation, number> = { BLOCK: 0, TESTS_REQUIRED: 1, REVIEW_REQUIRED: 2, APPROVE: 3 };
+const evolutionRiskRank: Record<RiskLevel, number> = { CRITICAL: -1, HIGH: 0, MEDIUM: 1, LOW: 2 };
+
+type EvolutionDirection = "better" | "worse" | "same";
+
+function evolutionDirection(previous: number | undefined, current: number): EvolutionDirection {
+  if (previous === undefined || previous === current) return "same";
+  return current > previous ? "better" : "worse";
+}
+
+type DeltaEvolutionSource = Pick<
+  ReadinessDelta,
+  "previousHeadSha" | "currentHeadSha" | "previousScore" | "currentScore"
+  | "previousRecommendation" | "currentRecommendation" | "previousRiskLevel" | "currentRiskLevel"
+  | "classification" | "generatedAt"
+>;
+
+function EvolutionMovement({ label, previous, current, direction, changeChip }: {
+  label: string;
+  previous?: string;
+  current: string;
+  direction: EvolutionDirection;
+  changeChip?: string;
+}) {
+  return (
+    <div className={`delta-movement delta-movement--${direction}`}>
+      <dt>{label}</dt>
+      <dd>
+        {previous !== undefined && previous !== current && (
+          <>
+            <span className="delta-before">{previous}</span>
+            <span aria-hidden="true">→</span>
+          </>
+        )}
+        <strong>{current}</strong>
+        {changeChip && <span className="delta-change-chip">{changeChip}</span>}
+      </dd>
+    </div>
+  );
+}
+
+function DeltaEvolutionHeader({ source }: { source: DeltaEvolutionSource }) {
+  const scoreChange = source.previousScore === undefined ? undefined : source.currentScore - source.previousScore;
+
+  return (
+    <div className={`delta-evolution delta-evolution--${source.classification}`}>
+      <div className="delta-evolution-lead">
+        <span className={`delta-classification delta-classification--${source.classification}`}>
+          {classificationLabel(source.classification)}
+        </span>
+        <span className="delta-evolution-sha">
+          {source.previousHeadSha
+            ? <>{shortSha(source.previousHeadSha)} <span aria-hidden="true">→</span> {shortSha(source.currentHeadSha)}</>
+            : shortSha(source.currentHeadSha)}
+        </span>
+        <time dateTime={source.generatedAt}>Analysed {timelineTime(source.generatedAt)}</time>
+      </div>
+      <dl className="delta-evolution-movements">
+        <EvolutionMovement
+          label="Score"
+          previous={source.previousScore === undefined ? undefined : String(source.previousScore)}
+          current={source.previousScore === undefined ? `${source.currentScore}/100` : String(source.currentScore)}
+          direction={evolutionDirection(source.previousScore, source.currentScore)}
+          changeChip={scoreChange !== undefined && scoreChange !== 0 ? `${scoreChange > 0 ? "+" : ""}${scoreChange}` : undefined}
+        />
+        <EvolutionMovement
+          label="Recommendation"
+          previous={source.previousRecommendation?.replaceAll("_", " ")}
+          current={source.currentRecommendation.replaceAll("_", " ")}
+          direction={evolutionDirection(
+            source.previousRecommendation ? evolutionRecommendationRank[source.previousRecommendation] : undefined,
+            evolutionRecommendationRank[source.currentRecommendation],
+          )}
+        />
+        <EvolutionMovement
+          label="Risk"
+          previous={source.previousRiskLevel}
+          current={source.currentRiskLevel}
+          direction={evolutionDirection(
+            source.previousRiskLevel ? evolutionRiskRank[source.previousRiskLevel] : undefined,
+            evolutionRiskRank[source.currentRiskLevel],
+          )}
+        />
+      </dl>
+    </div>
+  );
+}
+
 function reviewDiffItems(diff: ReviewDiff) {
   return [...diff.findings, ...diff.evidence, ...diff.testGaps, ...diff.mergeConditions];
 }
@@ -403,49 +492,113 @@ function reviewDiffSectionItems(items: ReviewDiffItem[], filter: (typeof reviewD
   return items.filter((item) => reviewDiffFilterMatches(item, filter));
 }
 
+const reviewDiffFieldLabels: Record<string, string> = {
+  severity: "Severity",
+  blockerState: "Blocking state",
+  evidence: "Evidence",
+  action: "Action",
+  file: "File",
+  provenance: "Provenance",
+  status: "Status",
+  state: "State",
+  priority: "Priority",
+  detail: "Detail",
+  clearanceRequirement: "Clearance requirement",
+};
+
+function reviewDiffFieldLabel(field: string) {
+  return reviewDiffFieldLabels[field] ?? field;
+}
+
 function ReviewDiffRow({ item }: { item: ReviewDiffItem }) {
-  const primaryChange = item.changes?.[0];
+  const [expanded, setExpanded] = useState(false);
+  const changes = item.changes ?? [];
+  const expandable = changes.length > 0;
+  const stateMoved = Boolean(item.previousState && item.currentState && item.previousState !== item.currentState);
+
+  const rowBody = (
+    <>
+      <span className={`review-diff-status review-diff-status--${item.status}`}>{reviewDiffStatusLabel(item.status)}</span>
+      <span className="review-diff-row-main">
+        <strong>{item.title}</strong>
+        <span className="review-diff-row-meta">
+          {item.category}
+          {expandable && ` · ${changes.length} field ${changes.length === 1 ? "change" : "changes"}`}
+        </span>
+      </span>
+      <span className="review-diff-row-state">
+        {stateMoved ? (
+          <>
+            <span className="review-diff-before">{item.previousState}</span>
+            <span aria-hidden="true">→</span>
+            <strong>{item.currentState}</strong>
+          </>
+        ) : (
+          <strong>{item.currentState ?? item.previousState ?? "—"}</strong>
+        )}
+      </span>
+      <span className="review-diff-row-chevron" aria-hidden="true">{expandable ? (expanded ? "▾" : "▸") : ""}</span>
+    </>
+  );
 
   return (
-    <tr>
-      <td><span className={`review-diff-status review-diff-status--${item.status}`}>{reviewDiffStatusLabel(item.status)}</span></td>
-      <td>
-        <strong>{item.title}</strong>
-        {primaryChange && <span>{primaryChange.field}: {primaryChange.previous ?? "Not present"} → {primaryChange.current ?? "Not present"}</span>}
-      </td>
-      <td>{item.category}</td>
-      <td>{item.previousState ?? "—"}</td>
-      <td>{item.currentState ?? "—"}</td>
-    </tr>
+    <li className={expanded ? "review-diff-row review-diff-row--expanded" : "review-diff-row"}>
+      {expandable ? (
+        <button
+          type="button"
+          className="review-diff-row-line"
+          aria-expanded={expanded}
+          onClick={() => setExpanded((value) => !value)}
+        >
+          {rowBody}
+        </button>
+      ) : (
+        <div className="review-diff-row-line">{rowBody}</div>
+      )}
+      {expandable && expanded && (
+        <dl className="review-diff-row-changes">
+          {changes.map((change) => (
+            <div key={change.field}>
+              <dt>{reviewDiffFieldLabel(change.field)}</dt>
+              <dd className={change.field === "file" ? "review-diff-code" : undefined}>
+                <span className="review-diff-before">{change.previous ?? "Not present"}</span>
+                <span aria-hidden="true">→</span>
+                <strong>{change.current ?? "Not present"}</strong>
+              </dd>
+            </div>
+          ))}
+        </dl>
+      )}
+    </li>
   );
 }
 
-function ReviewDiffTable({ title, items, filter }: { title: string; items: ReviewDiffItem[]; filter: (typeof reviewDiffFilters)[number] }) {
+function reviewDiffStatusBreakdown(items: ReviewDiffItem[]) {
+  const order: ReviewDiffStatus[] = ["reopened", "added", "changed", "cleared", "unchanged"];
+  return order
+    .map((status) => ({ status, count: items.filter((item) => item.status === status).length }))
+    .filter((entry) => entry.count > 0);
+}
+
+function ReviewDiffSection({ title, items, filter }: { title: string; items: ReviewDiffItem[]; filter: (typeof reviewDiffFilters)[number] }) {
   const visibleItems = reviewDiffSectionItems(items, filter);
+  const breakdown = reviewDiffStatusBreakdown(items);
 
   return (
     <section className="review-diff-section" aria-labelledby={`review-diff-${title.toLowerCase().replaceAll(" ", "-")}`}>
       <div className="review-diff-section-header">
         <h3 id={`review-diff-${title.toLowerCase().replaceAll(" ", "-")}`}>{title}</h3>
-        <span>{visibleItems.length} shown / {items.length} total</span>
+        <span className="review-diff-section-counts">
+          {breakdown.length === 0
+            ? "No items"
+            : breakdown.map((entry) => `${entry.count} ${reviewDiffStatusLabel(entry.status).toLowerCase()}`).join(" · ")}
+          {filter !== "All" && ` · ${visibleItems.length} shown`}
+        </span>
       </div>
       {visibleItems.length > 0 ? (
-        <div className="review-diff-table-wrap">
-          <table className="review-diff-table">
-            <thead>
-              <tr>
-                <th>Status</th>
-                <th>Item</th>
-                <th>Category</th>
-                <th>Previous</th>
-                <th>Current</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleItems.map((item) => <ReviewDiffRow item={item} key={item.key} />)}
-            </tbody>
-          </table>
-        </div>
+        <ul className="review-diff-rows">
+          {visibleItems.map((item) => <ReviewDiffRow item={item} key={item.key} />)}
+        </ul>
       ) : (
         <p className="section-empty">No {title.toLowerCase()} items match this filter.</p>
       )}
@@ -471,8 +624,8 @@ function deltaTimelineEvent(delta: ReadinessDelta): ReadinessTimelineEvent {
     provenance: "Deterministic analysis",
     category: "Decision",
     summary: delta.classification === "initial"
-      ? `Initial automated baseline at ${shortSha(delta.currentHeadSha)}.`
-      : `${deltaClassificationLabel(delta)}: ${deltaScoreMovement(delta)} score movement, ${delta.clearedMergeConditions.length} cleared conditions, ${openedCount} opened or reopened conditions.`,
+      ? `Initial automated baseline at ${shortSha(delta.currentHeadSha)}. Review Diff becomes available after the next completed analysis.`
+      : `${deltaClassificationLabel(delta)} since ${shortSha(delta.previousHeadSha)}: score ${delta.previousScore ?? "—"} → ${delta.currentScore}, ${delta.clearedMergeConditions.length} cleared, ${openedCount} opened or reopened. Recommendation ${deltaRecommendationMovement(delta)}.`,
     area: "Readiness Delta",
     previousState: delta.previousHeadSha ? `${shortSha(delta.previousHeadSha)} / ${delta.previousScore ?? "unknown"}` : "No previous completed run",
     nextState: `${shortSha(delta.currentHeadSha)} / ${delta.currentScore}`,
@@ -1833,6 +1986,22 @@ export default function ReportPage() {
     reviewActions,
     ownerLabel: displayedOwner,
   });
+  const latestHumanDecisionEvent = decisionHistory.find((event) => (
+    event.type === "human-decision-recorded" || event.type === "accepted-risk-recorded"
+  ));
+  const staleHumanDecision = latestHumanDecisionEvent
+    && readinessDelta
+    && readinessDelta.classification !== "initial"
+    && Date.parse(latestHumanDecisionEvent.timestamp) < Date.parse(readinessDelta.generatedAt)
+    ? latestHumanDecisionEvent
+    : null;
+  const staleDecisionNotice = staleHumanDecision && readinessDelta ? (
+    <p className="delta-stale-warning" role="status">
+      <strong>Decision predates latest commit.</strong> “{staleHumanDecision.title}” was recorded {timelineTime(staleHumanDecision.timestamp)},
+      before the analysis at <code>{shortSha(readinessDelta.currentHeadSha)}</code>. Re-confirm it against the current head.
+    </p>
+  ) : null;
+
   const readinessTimeline = readinessDelta
     ? [deltaTimelineEvent(readinessDelta), ...baseReadinessTimeline]
     : baseReadinessTimeline;
@@ -2450,72 +2619,96 @@ export default function ReportPage() {
                 <div>
                   <span className="card-kicker">READINESS DELTA</span>
                   <h2 id="readiness-delta-title">
-                    {readinessDelta.classification === "initial" ? "Initial readiness baseline" : "What changed since the previous analysis"}
+                    {readinessDelta.classification === "initial" ? "Initial readiness baseline" : "Since previous analysis"}
                   </h2>
                 </div>
                 <div className="readiness-delta-heading-actions">
-                  <span className="section-count">{deltaClassificationLabel(readinessDelta)}</span>
                   {reviewDiff && <button type="button" onClick={() => setActiveTab("review-diff")}>View Review Diff</button>}
                 </div>
               </div>
 
-              <div className="readiness-delta-summary">
-                <article>
-                  <span>Readiness score</span>
-                  <strong>
-                    {readinessDelta.previousScore === undefined
-                      ? `${readinessDelta.currentScore}/100`
-                      : `${readinessDelta.previousScore} → ${readinessDelta.currentScore}`}
-                  </strong>
-                  <p>{deltaScoreMovement(readinessDelta)}</p>
-                </article>
-                <article>
-                  <span>Recommendation</span>
-                  <strong>{deltaRecommendationMovement(readinessDelta)}</strong>
-                  <p>{readinessDelta.recommendationChanged ? "Recommendation changed" : "Recommendation unchanged"}</p>
-                </article>
-                <article>
-                  <span>Head SHA</span>
-                  <strong>
-                    {readinessDelta.previousHeadSha
-                      ? `${shortSha(readinessDelta.previousHeadSha)} → ${shortSha(readinessDelta.currentHeadSha)}`
-                      : shortSha(readinessDelta.currentHeadSha)}
-                  </strong>
-                  <p>{timelineTime(readinessDelta.generatedAt)}</p>
-                </article>
-                <article>
-                  <span>Still open</span>
-                  <strong>{readinessDelta.unchangedOpenMergeConditions.length}</strong>
-                  <p>Unresolved merge conditions</p>
-                </article>
-              </div>
+              {staleDecisionNotice}
+
+              {readinessDelta.deltaFailureCategory && (
+                <p className="delta-failure-note" role="status">
+                  Comparison incomplete — {readinessDelta.deltaFailureCategory.replaceAll("_", " ")}. The current report remains available.
+                </p>
+              )}
+
+              <DeltaEvolutionHeader source={readinessDelta} />
 
               {readinessDelta.classification !== "initial" ? (
-                <div className="readiness-delta-lists">
-                  <article>
-                    <h3>Cleared</h3>
-                    {readinessDelta.clearedMergeConditions.length > 0
-                      ? <ul>{readinessDelta.clearedMergeConditions.slice(0, 4).map((condition) => <li key={condition}>{condition}</li>)}</ul>
-                      : <p>No cleared merge conditions detected.</p>}
-                  </article>
-                  <article>
-                    <h3>Opened or reopened</h3>
-                    {[...readinessDelta.openedMergeConditions, ...readinessDelta.reopenedMergeConditions].length > 0
-                      ? <ul>{[...readinessDelta.openedMergeConditions, ...readinessDelta.reopenedMergeConditions].slice(0, 4).map((condition) => <li key={condition}>{condition}</li>)}</ul>
-                      : <p>No new merge conditions detected.</p>}
-                  </article>
-                  <article>
-                    <h3>Blockers</h3>
-                    {readinessDelta.addedBlockers.length > 0 || readinessDelta.clearedBlockers.length > 0 ? (
-                      <ul>
-                        {readinessDelta.clearedBlockers.slice(0, 3).map((blocker) => <li key={`cleared-${blocker}`}>Cleared: {blocker}</li>)}
-                        {readinessDelta.addedBlockers.slice(0, 3).map((blocker) => <li key={`added-${blocker}`}>Added: {blocker}</li>)}
-                      </ul>
-                    ) : <p>No blocker movement detected.</p>}
-                  </article>
-                </div>
+                <>
+                  <div className="delta-count-row" aria-label="Movement since previous analysis">
+                    <span className={readinessDelta.clearedMergeConditions.length > 0 ? "delta-count delta-count--good" : "delta-count"}>
+                      <strong>{readinessDelta.clearedMergeConditions.length}</strong> Cleared
+                    </span>
+                    <span className={readinessDelta.openedMergeConditions.length > 0 ? "delta-count delta-count--bad" : "delta-count"}>
+                      <strong>{readinessDelta.openedMergeConditions.length}</strong> Opened
+                    </span>
+                    {readinessDelta.reopenedMergeConditions.length > 0 && (
+                      <span className="delta-count delta-count--bad">
+                        <strong>{readinessDelta.reopenedMergeConditions.length}</strong> Reopened
+                      </span>
+                    )}
+                    <span className={readinessDelta.unchangedOpenMergeConditions.length > 0 ? "delta-count delta-count--warn" : "delta-count"}>
+                      <strong>{readinessDelta.unchangedOpenMergeConditions.length}</strong> Still open
+                    </span>
+                    <span className={readinessDelta.addedBlockers.length > 0 ? "delta-count delta-count--bad" : readinessDelta.clearedBlockers.length > 0 ? "delta-count delta-count--good" : "delta-count"}>
+                      <strong>+{readinessDelta.addedBlockers.length} / −{readinessDelta.clearedBlockers.length}</strong> Blockers
+                    </span>
+                    <span className={readinessDelta.addedTestOrEvidenceGaps.length > 0 ? "delta-count delta-count--bad" : readinessDelta.clearedTestOrEvidenceGaps.length > 0 ? "delta-count delta-count--good" : "delta-count"}>
+                      <strong>+{readinessDelta.addedTestOrEvidenceGaps.length} / −{readinessDelta.clearedTestOrEvidenceGaps.length}</strong> Test / evidence gaps
+                    </span>
+                  </div>
+
+                  {readinessDelta.classification === "unchanged" && (
+                    <p className="readiness-delta-note">New commit analysed — no material change to the merge decision.</p>
+                  )}
+
+                  <div className="readiness-delta-lists">
+                    <article>
+                      <h3>Cleared</h3>
+                      {readinessDelta.clearedMergeConditions.length > 0 ? (
+                        <>
+                          <ul>{readinessDelta.clearedMergeConditions.slice(0, 3).map((condition) => <li key={condition}>{condition}</li>)}</ul>
+                          {readinessDelta.clearedMergeConditions.length > 3 && (
+                            reviewDiff
+                              ? <button className="readiness-delta-more" type="button" onClick={() => setActiveTab("review-diff")}>+{readinessDelta.clearedMergeConditions.length - 3} more in Review Diff</button>
+                              : <p>+{readinessDelta.clearedMergeConditions.length - 3} more</p>
+                          )}
+                        </>
+                      ) : <p>No cleared merge conditions.</p>}
+                    </article>
+                    <article>
+                      <h3>Opened or reopened</h3>
+                      {[...readinessDelta.openedMergeConditions, ...readinessDelta.reopenedMergeConditions].length > 0 ? (
+                        <>
+                          <ul>{[...readinessDelta.openedMergeConditions, ...readinessDelta.reopenedMergeConditions].slice(0, 3).map((condition) => <li key={condition}>{condition}</li>)}</ul>
+                          {[...readinessDelta.openedMergeConditions, ...readinessDelta.reopenedMergeConditions].length > 3 && (
+                            reviewDiff
+                              ? <button className="readiness-delta-more" type="button" onClick={() => setActiveTab("review-diff")}>+{[...readinessDelta.openedMergeConditions, ...readinessDelta.reopenedMergeConditions].length - 3} more in Review Diff</button>
+                              : <p>+{[...readinessDelta.openedMergeConditions, ...readinessDelta.reopenedMergeConditions].length - 3} more</p>
+                          )}
+                        </>
+                      ) : <p>No new merge conditions.</p>}
+                    </article>
+                    <article>
+                      <h3>Blocker movement</h3>
+                      {readinessDelta.addedBlockers.length > 0 || readinessDelta.clearedBlockers.length > 0 ? (
+                        <ul>
+                          {readinessDelta.clearedBlockers.slice(0, 2).map((blocker) => <li key={`cleared-${blocker}`}>Cleared: {blocker}</li>)}
+                          {readinessDelta.addedBlockers.slice(0, 2).map((blocker) => <li key={`added-${blocker}`}>Added: {blocker}</li>)}
+                        </ul>
+                      ) : <p>No blocker movement.</p>}
+                    </article>
+                  </div>
+                </>
               ) : (
-                <p className="readiness-delta-note">This is the first completed automated analysis for this pull request. Future head-SHA analyses will show improved, regressed, mixed or unchanged movement here.</p>
+                <p className="readiness-delta-note">
+                  This is the first completed automated analysis for this pull request. Review Diff becomes available after the next
+                  completed head-SHA analysis, and this section will then show improved, regressed, mixed or unchanged movement.
+                </p>
               )}
             </section>
           )}
@@ -2826,41 +3019,15 @@ export default function ReportPage() {
 
             {reviewDiff ? (
               <>
-                <div className="review-diff-header-grid" aria-label="Review Diff summary">
-                  <article>
-                    <span>Head SHA</span>
-                    <strong>{shortSha(reviewDiff.previousHeadSha)} → {shortSha(reviewDiff.currentHeadSha)}</strong>
-                  </article>
-                  <article>
-                    <span>Readiness score</span>
-                    <strong>{reviewDiff.previousScore ?? "—"} → {reviewDiff.currentScore}</strong>
-                  </article>
-                  <article>
-                    <span>Recommendation</span>
-                    <strong>{reviewDiff.previousRecommendation?.replaceAll("_", " ") ?? "—"} → {reviewDiff.currentRecommendation.replaceAll("_", " ")}</strong>
-                  </article>
-                  <article>
-                    <span>Risk</span>
-                    <strong>{reviewDiff.previousRiskLevel ?? "—"} → {reviewDiff.currentRiskLevel}</strong>
-                  </article>
-                  <article>
-                    <span>Generated</span>
-                    <strong>{timelineTime(reviewDiff.generatedAt)}</strong>
-                  </article>
-                  <article>
-                    <span>Classification</span>
-                    <strong>{reviewDiff.classification}</strong>
-                  </article>
-                </div>
+                {staleDecisionNotice}
 
-                <div className="review-diff-summary-grid" aria-label="Review Diff counts">
-                  <article><span>Findings added</span><strong>{reviewDiff.findings.filter((item) => item.status === "added" || item.status === "reopened").length}</strong></article>
-                  <article><span>Findings cleared</span><strong>{reviewDiff.findings.filter((item) => item.status === "cleared").length}</strong></article>
-                  <article><span>Items changed</span><strong>{reviewDiffChangedCount(reviewDiff)}</strong></article>
-                  <article><span>Conditions still open</span><strong>{reviewDiff.mergeConditions.filter((item) => item.status === "unchanged" || item.status === "added" || item.status === "reopened").length}</strong></article>
-                  <article><span>Evidence added</span><strong>{reviewDiff.evidence.filter((item) => item.status === "added" || item.status === "reopened").length}</strong></article>
-                  <article><span>Test gaps cleared</span><strong>{reviewDiff.testGaps.filter((item) => item.status === "cleared").length}</strong></article>
-                </div>
+                {reviewDiff.failureCategory && (
+                  <p className="delta-failure-note" role="status">
+                    Comparison incomplete — {reviewDiff.failureCategory.replaceAll("_", " ")}. Items below may not reflect the full change.
+                  </p>
+                )}
+
+                <DeltaEvolutionHeader source={reviewDiff} />
 
                 <div className="review-diff-filter-bar" aria-label="Review Diff filters">
                   {reviewDiffActiveFilters.map((filter) => (
@@ -2881,17 +3048,23 @@ export default function ReportPage() {
                   <p className="section-empty section-empty--positive">No structured Review Diff items match this filter.</p>
                 ) : (
                   <div className="review-diff-sections">
-                    <ReviewDiffTable title="Findings" items={reviewDiff.findings} filter={reviewDiffFilter} />
-                    <ReviewDiffTable title="Evidence" items={reviewDiff.evidence} filter={reviewDiffFilter} />
-                    <ReviewDiffTable title="Tests" items={reviewDiff.testGaps} filter={reviewDiffFilter} />
-                    <ReviewDiffTable title="Merge conditions" items={reviewDiff.mergeConditions} filter={reviewDiffFilter} />
+                    <ReviewDiffSection title="Findings" items={reviewDiff.findings} filter={reviewDiffFilter} />
+                    <ReviewDiffSection title="Evidence" items={reviewDiff.evidence} filter={reviewDiffFilter} />
+                    <ReviewDiffSection title="Tests" items={reviewDiff.testGaps} filter={reviewDiffFilter} />
+                    <ReviewDiffSection title="Merge conditions" items={reviewDiff.mergeConditions} filter={reviewDiffFilter} />
                   </div>
                 )}
               </>
             ) : readinessDelta?.classification === "initial" ? (
-              <p className="section-empty">This is the initial readiness baseline. Review Diff becomes available after the next completed head-SHA analysis for the same pull request.</p>
+              <div className="review-diff-placeholder">
+                <DeltaEvolutionHeader source={readinessDelta} />
+                <p className="section-empty">This is the initial readiness baseline. Review Diff becomes available after the next completed head-SHA analysis for the same pull request.</p>
+              </div>
             ) : readinessDelta ? (
-              <p className="section-empty">Readiness Delta is available, but the detailed Review Diff was not stored for this run. The current report remains available.</p>
+              <div className="review-diff-placeholder">
+                <DeltaEvolutionHeader source={readinessDelta} />
+                <p className="section-empty">Readiness Delta is available, but the detailed item comparison was not stored for this run — this can happen for older records. The current report remains available.</p>
+              </div>
             ) : (
               <p className="section-empty">No automated run history is attached to this report. Review Diff is available for GitHub App automated re-analyses.</p>
             )}

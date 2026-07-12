@@ -1,495 +1,562 @@
 import Link from "next/link";
+import LandingNav from "./landing-nav";
 
-const workflow = [
+/* W1 landing. Lintel's signature motif: repository and evidence paths
+   converging on a single decision node. Decorative only — semantic colour
+   stays inside product frames. */
+function Topology({ variant }: { variant: "hero" | "cta" }) {
+  return (
+    <svg
+      className={`lp-topology lp-topology--${variant}`}
+      viewBox="0 0 1440 800"
+      preserveAspectRatio="xMidYMid slice"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <g fill="none" stroke="currentColor" strokeWidth="1.25">
+        <path d="M-40 110 C 300 130, 660 210, 1046 314" opacity="0.55" />
+        <path d="M-40 318 C 340 306, 700 314, 1044 322" opacity="0.8" />
+        <path d="M-40 560 C 320 544, 720 430, 1046 330" />
+        <path d="M-40 716 C 380 700, 780 520, 1050 340" opacity="0.65" />
+        <path d="M220 -40 C 470 90, 820 210, 1042 310" opacity="0.45" />
+        <path d="M1076 320 C 1200 322, 1320 326, 1480 328" opacity="0.7" />
+        <path d="M1074 314 C 1180 268, 1300 224, 1480 190" opacity="0.45" />
+        <path d="M1074 330 C 1180 380, 1300 428, 1480 462" opacity="0.4" />
+      </g>
+      <g fill="currentColor">
+        <circle cx="520" cy="186" r="3" opacity="0.7" />
+        <circle cx="560" cy="310" r="2.5" opacity="0.8" />
+        <circle cx="640" cy="470" r="3" opacity="0.8" />
+        <circle cx="812" cy="238" r="2.5" opacity="0.6" />
+        <circle cx="880" cy="560" r="2.5" opacity="0.55" />
+        <circle cx="1240" cy="324" r="2.5" opacity="0.6" />
+        <circle cx="1300" cy="224" r="2" opacity="0.45" />
+      </g>
+      <g fill="none" stroke="currentColor" strokeWidth="1.5">
+        <rect x="1049" y="311" width="22" height="22" transform="rotate(45 1060 322)" />
+        <rect x="1055" y="317" width="10" height="10" transform="rotate(45 1060 322)" opacity="0.6" />
+      </g>
+    </svg>
+  );
+}
+
+const failureModes = [
   {
-    title: "Analyze the pull request",
-    description:
-      "Paste a diff or import a public GitHub PR. Deterministic checks read the change for risky paths, missing tests and contract changes.",
-    visual: (
-      <div className="lp-mini">
-        <code>+ retry(fetch_discount_code)</code>
-        <code>- raise ProviderError</code>
-        <span className="lp-chip lp-chip--amber">HIGH RISK · 78/100</span>
-      </div>
-    ),
+    id: "01",
+    title: "The dangerous path was never tested",
+    detail: "The happy path is covered. The retry that fires twice against a payment provider is not.",
   },
   {
-    title: "Inspect evidence and blockers",
-    description:
-      "Every finding carries concise evidence and a provenance label — rule detected or model assisted — so you can see why it was raised.",
-    visual: (
-      <div className="lp-mini">
-        <div className="lp-row"><code>Retry may duplicate side effects</code><span className="lp-chip">RULE</span></div>
-        <div className="lp-row"><code>No duplicate-redemption test</code><span className="lp-chip">RULE</span></div>
-      </div>
-    ),
+    id: "02",
+    title: "Operational recovery remains unverified",
+    detail: "Rollback, timeout and failure handling are assumed to work — nothing in the change proves they do.",
   },
   {
-    title: "Clear the merge contract",
-    description:
-      "Risky changes get a short list of conditions to meet before merge. A checklist, not a lecture.",
-    visual: (
-      <div className="lp-mini">
-        <div className="lp-check lp-check--done"><i aria-hidden="true" /><code>Prove retries are idempotent</code></div>
-        <div className="lp-check lp-check--done"><i aria-hidden="true" /><code>Add provider-failure test</code></div>
-        <div className="lp-check"><i aria-hidden="true" /><code>Confirm rollback path</code></div>
-      </div>
-    ),
+    id: "03",
+    title: "Assumptions were declared but not supported",
+    detail: "The builder states the change is safe under load. No evidence in the diff supports the claim.",
   },
   {
-    title: "Share the decision",
-    description:
-      "Copy a ready-to-paste GitHub PR comment or a Slack-style handoff so the decision travels with the change.",
-    visual: (
-      <div className="lp-mini">
-        <code>### Lintel merge-readiness report</code>
-        <code>**Recommendation:** TESTS_REQUIRED</code>
-        <span className="lp-chip lp-chip--mint">COPY-READY MARKDOWN</span>
-      </div>
-    ),
+    id: "04",
+    title: "The code changed after a previous approval",
+    detail: "A new commit landed after review. The earlier approval silently covers code nobody has read.",
   },
   {
-    title: "Track readiness patterns",
-    description:
-      "The review operations dashboard shows how decisions, risk levels and blockers accumulate across your local reports.",
-    visual: (
-      <div className="lp-mini">
-        <div className="lp-bar"><span>Ready</span><em><i className="lp-bar--mint" style={{ width: "62%" }} /></em></div>
-        <div className="lp-bar"><span>Tests</span><em><i className="lp-bar--amber" style={{ width: "34%" }} /></em></div>
-        <div className="lp-bar"><span>Blocked</span><em><i className="lp-bar--orange" style={{ width: "14%" }} /></em></div>
-      </div>
-    ),
+    id: "05",
+    title: "Unresolved conditions were lost across iterations",
+    detail: "Conditions raised in round one disappear into the comment thread by round three.",
   },
 ] as const;
 
-const features = [
+const workflowSteps = [
   {
-    tag: "INBOX",
-    title: "Risk inbox",
-    description: "Every analysed pull request lands in one queue, ranked by risk, with review states your team controls.",
-    href: "/workspace",
-    cta: "Open the inbox",
-    peek: (
-      <>
-        <div className="lp-row"><code>PR #482 · redemption-api</code><span className="lp-chip lp-chip--orange">HIGH</span></div>
-        <div className="lp-row"><code>PR #479 · session-api</code><span className="lp-chip lp-chip--amber">MEDIUM</span></div>
-      </>
-    ),
+    id: "01",
+    title: "Connect GitHub",
+    detail: "Connect once. Credentials stay server-side; the browser never holds a token.",
   },
   {
-    tag: "LEDGER",
-    title: "Evidence ledger",
-    description: "Findings are backed by concrete evidence and provenance labels, so reviewers know what produced each one.",
-    href: "/report",
-    cta: "See it in a report",
-    peek: (
-      <>
-        <div className="lp-row"><code>Retry may duplicate side effects</code><span className="lp-chip">RULE DETECTED</span></div>
-        <div className="lp-row"><code>Fallback masks failure signal</code><span className="lp-chip lp-chip--blue">MODEL ASSISTED</span></div>
-      </>
-    ),
+    id: "02",
+    title: "Choose a pull request",
+    detail: "Pick from live repositories and open pull requests instead of describing them.",
   },
   {
-    tag: "CONTRACT",
-    title: "Merge contract",
-    description: "The conditions a change must meet before merge, tracked as an explicit checklist instead of a comment thread.",
-    href: "/report",
-    cta: "See it in a report",
-    peek: (
-      <>
-        <div className="lp-check lp-check--done"><i aria-hidden="true" /><code>Prove retries are idempotent</code></div>
-        <div className="lp-check"><i aria-hidden="true" /><code>Add provider-failure test</code></div>
-      </>
-    ),
+    id: "03",
+    title: "Inspect its context",
+    detail: "Title, branches, changed files and builder declarations arrive with the selection.",
   },
   {
-    tag: "BLAST RADIUS",
-    title: "Blast radius",
-    description: "A map of the surfaces a change touches — payments, auth, APIs — so reviewers see how far a mistake could travel.",
-    href: "/report",
-    cta: "See it in a report",
-    peek: (
-      <div className="lp-chips">
-        <span className="lp-chip lp-chip--orange">PAYMENTS</span>
-        <span className="lp-chip lp-chip--amber">PROVIDER API</span>
-        <span className="lp-chip">RETRY PATH</span>
-      </div>
-    ),
+    id: "04",
+    title: "Run a readiness review",
+    detail: "Deterministic checks always run. Model assistance is optional and labelled.",
   },
-  {
-    tag: "POLICY",
-    title: "Review policies & merge gates",
-    description: "Policy profiles define what your team blocks on, and apply it consistently to every report.",
-    href: "/review-policies",
-    cta: "Browse policies",
-    peek: (
-      <div className="lp-chips">
-        <span className="lp-chip lp-chip--orange">2 REQUIRED</span>
-        <span className="lp-chip lp-chip--amber">3 RECOMMENDED</span>
-        <span className="lp-chip lp-chip--blue">3 OPTIONAL</span>
-      </div>
-    ),
-  },
-  {
-    tag: "OWNERSHIP",
-    title: "Reviewer ownership",
-    description: "Each report routes attention to the discipline that should look at it, with one clear primary owner.",
-    href: "/report",
-    cta: "See it in a report",
-    peek: (
-      <>
-        <div className="lp-row"><code>Primary owner</code><span className="lp-chip lp-chip--blue">SECURITY REVIEWER</span></div>
-        <div className="lp-row"><code>Focus</code><span className="lp-chip">BACKEND RELIABILITY</span></div>
-      </>
-    ),
-  },
-  {
-    tag: "GITHUB",
-    title: "GitHub PR comment",
-    description: "One structured comment for the pull request conversation. No line-by-line noise.",
-    href: "/github-action",
-    cta: "Preview the comment",
-    peek: (
-      <>
-        <code>### Lintel merge-readiness report</code>
-        <code>**Recommendation:** TESTS_REQUIRED</code>
-      </>
-    ),
-  },
-  {
-    tag: "SLACK",
-    title: "Slack handoff",
-    description: "A compact, copy-ready summary for the channel where the merge decision actually gets made.",
-    href: "/slack-handoff",
-    cta: "Preview the handoff",
-    peek: (
-      <>
-        <code>TESTS_REQUIRED · HIGH risk</code>
-        <code>Next action: add retry/idempotency tests</code>
-      </>
-    ),
-  },
-  {
-    tag: "OPERATIONS",
-    title: "Review operations",
-    description: "A dashboard of decisions, risk trends and readiness patterns across your local report history.",
-    href: "/review-operations",
-    cta: "Open the dashboard",
-    peek: (
-      <>
-        <div className="lp-bar"><span>Ready</span><em><i className="lp-bar--mint" style={{ width: "58%" }} /></em></div>
-        <div className="lp-bar"><span>Tests</span><em><i className="lp-bar--amber" style={{ width: "30%" }} /></em></div>
-      </>
-    ),
-  },
+] as const;
+
+const inspectables = [
+  ["Score explanation", "Why 67 and not 90: which findings and gaps move the readiness score."],
+  ["Findings and evidence", "Each finding carries concrete evidence and a provenance label — rule-detected or model-assisted."],
+  ["Readiness conditions", "What must happen before merge, tracked as explicit conditions instead of a comment thread."],
+  ["Reviewer focus", "Where a human reviewer should spend attention first, and why."],
 ] as const;
 
 const trustPoints = [
-  [
-    "Local-first by design",
-    "Reports are generated and stored on your machine. No account, no upload, no server-side history in the current prototype.",
-  ],
-  [
-    "Deterministic baseline",
-    "Every report starts from deterministic checks over the diff. The same input produces the same baseline findings.",
-  ],
-  [
-    "Model-assisted, optionally",
-    "Model analysis can improve synthesis and wording on top of the baseline. Findings keep their provenance labels either way.",
-  ],
-  [
-    "Raw-diff-free history",
-    "Local report history stores decisions and findings, not raw diffs. Your code does not linger in a report archive.",
-  ],
-  [
-    "CI-safe by architecture",
-    "The planned private-repo path is a GitHub Action that runs inside your CI, so diffs never leave your infrastructure.",
-  ],
+  ["Credentials stay server-side", "GitHub credentials are held by the server integration. The browser never receives a token."],
+  ["Raw diffs are processed transiently", "Diffs are read to produce a report, then discarded. The report is the stored artifact."],
+  ["No raw diffs in local history", "Local report history keeps findings, conditions and decisions — not your code."],
+  ["Deterministic fallback", "If model analysis is unavailable or declined, the deterministic ruleset still produces a full report."],
+  ["Model provenance is visible", "Every finding is labelled rule-detected or model-assisted. Nothing hides its origin."],
+  ["Human decisions are explicit", "Recorded outcomes and reasoned overrides — never a silent automatic approval."],
 ] as const;
 
-const actionYaml: ReadonlyArray<{ text: string; comment?: boolean }> = [
-  { text: "# .github/workflows/lintel.yml", comment: true },
-  { text: "name: lintel-merge-readiness" },
-  { text: "on: [pull_request]" },
-  { text: "" },
-  { text: "jobs:" },
-  { text: "  readiness:" },
-  { text: "    runs-on: ubuntu-latest" },
-  { text: "    steps:" },
-  { text: "      - uses: actions/checkout@v4" },
-  { text: "      - name: Lintel readiness report" },
-  { text: "        uses: lintel/readiness-action@v1" },
-  { text: "        with:" },
-  { text: "          comment: single        # one comment, updated in place" },
-  { text: "          inline-comments: off   # no line-by-line noise" },
-  { text: "          block-merge: false     # advisory by default in v1" },
-];
+const decisionOutcomes = [
+  { label: "Ready to merge", note: "Conditions cleared, evidence supports the change." },
+  { label: "Tests required", note: "Specific coverage must exist before this moves forward.", selected: true },
+  { label: "Review required", note: "A named discipline needs to look before any decision." },
+  { label: "Blocked", note: "An unresolved risk stops the change where it stands." },
+  { label: "Approved with accepted risk", note: "Explicit override — requires a written reason that stays with the decision." },
+] as const;
 
 export default function Home() {
   return (
-    <main className="landing-page">
-      <header className="landing-nav">
-        <Link className="landing-brand" href="/" aria-label="Lintel home">
+    <main className="lp">
+      <a className="lp-skip" href="#lp-main">Skip to content</a>
+      <LandingNav />
+
+      <div id="lp-main">
+        {/* 1 — Hero: product-forward split. The decision console is the proof. */}
+        <section className="lp-hero" aria-labelledby="lp-hero-title">
+          <Topology variant="hero" />
+          <div className="lp-hero-grid">
+            <div className="lp-hero-copy">
+              <p className="lp-eyebrow">Engineering verification for human and agent code</p>
+              <h1 id="lp-hero-title" className="lp-serif">
+                Agents create code.<br />
+                Lintel verifies what is ready.
+              </h1>
+              <p className="lp-lede">
+                Lintel turns a pull request into inspectable evidence, unresolved conditions and a clear
+                engineering decision — before a risky change moves forward.
+              </p>
+              <div className="lp-actions">
+                <Link className="lp-btn lp-btn--primary" href="/new">Review a pull request</Link>
+                <Link className="lp-btn lp-btn--ghost" href="/workspace">Explore the workspace</Link>
+              </div>
+            </div>
+
+            <div
+              className="lp-console"
+              role="img"
+              aria-label="Lintel readiness review with sample data: pull request 482 selected, recommendation tests required, readiness score 67 of 100 up from 48 since the previous head, one blocker, one cleared condition, a next action, and an awaiting human decision state"
+            >
+              <div className="lp-console-bar">
+                <span className="lp-console-dots" aria-hidden="true"><i /><i /><i /></span>
+                <code>lintel — readiness review</code>
+                <span className="lp-console-run"><code>run_0918</code> · SAMPLE DATA</span>
+              </div>
+              <div className="lp-console-main" aria-hidden="true">
+                <div className="lp-console-pr-line">
+                  <code>hollis/checkout-service · PR #482 · head 8d04f2a</code>
+                  <span className="lp-chip lp-chip--blue">SELECTED</span>
+                </div>
+                <h2>Add retry handling for failed refund submissions</h2>
+                <div className="lp-console-verdict-row">
+                  <span className="lp-chip lp-chip--amber">TESTS REQUIRED</span>
+                  <div className="lp-console-delta">
+                    <span className="lp-delta-score"><s>48</s> <i aria-hidden="true">→</i> 67</span>
+                    <span className="lp-chip lp-chip--green">IMPROVED</span>
+                  </div>
+                  <strong>67<span>/100</span></strong>
+                </div>
+                <ul className="lp-console-rows">
+                  <li className="lp-row--blocker">
+                    <span className="lp-chip lp-chip--red">BLOCKER</span>
+                    <p>Refund retry can submit duplicate provider requests</p>
+                  </li>
+                  <li className="lp-row--cleared">
+                    <span className="lp-chip lp-chip--green">CLEARED</span>
+                    <p>Timeout-path coverage added at head 8d04f2a</p>
+                  </li>
+                  <li>
+                    <span className="lp-chip">NEXT ACTION</span>
+                    <p>Prove refund retries are idempotent before merge</p>
+                  </li>
+                </ul>
+                <div className="lp-console-foot">
+                  <span>HUMAN DECISION</span>
+                  <p>Awaiting engineer — record it in the Decision Studio</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 2 — The verification problem */}
+        <section className="lp-problem" aria-labelledby="lp-problem-title">
+          <div className="lp-problem-copy">
+            <p className="lp-eyebrow">The verification problem</p>
+            <h2 id="lp-problem-title" className="lp-serif">CI green does not mean the change is ready.</h2>
+            <p>
+              Coding agents and faster tooling produce more change than teams can carefully read. A passing
+              pipeline confirms the checks that exist — it says nothing about the checks that were never
+              written, the failure modes nobody considered, or the conditions that quietly went unresolved.
+            </p>
+            <p>
+              Verification and engineering judgment have to keep pace with creation. Lintel gives that
+              judgment structure without taking it away from the engineer.
+            </p>
+          </div>
+          <ol className="lp-failures">
+            {failureModes.map((mode) => (
+              <li key={mode.id}>
+                <code>{mode.id}</code>
+                <div>
+                  <h3>{mode.title}</h3>
+                  <p>{mode.detail}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        {/* 3 — Connected workflow */}
+        <section className="lp-workflow" aria-labelledby="lp-workflow-title">
+          <div className="lp-section-head">
+            <p className="lp-eyebrow">Connected workflow</p>
+            <h2 id="lp-workflow-title">Start with the pull request, not a blank prompt.</h2>
+            <p>
+              Lintel connects to GitHub and retrieves the context a review needs — repository, branches,
+              changed files, builder declarations — so you never re-paste and re-explain a change to get an
+              opinion on it.
+            </p>
+          </div>
+          <div
+            className="lp-workbench"
+            role="img"
+            aria-label="The connected review workbench with sample data: a repositories pane, a pull requests pane with one selected, and a change brief with a run readiness review action"
+          >
+            <div className="lp-workbench-pane" aria-hidden="true">
+              <h3>Repositories</h3>
+              <div className="lp-workbench-item"><code>hollis/checkout-service</code><span className="lp-chip lp-chip--blue">CONNECTED</span></div>
+              <div className="lp-workbench-item"><code>hollis/session-api</code></div>
+              <div className="lp-workbench-item"><code>hollis/notifications</code></div>
+            </div>
+            <div className="lp-workbench-pane" aria-hidden="true">
+              <h3>Pull requests</h3>
+              <div className="lp-workbench-item lp-workbench-item--active">
+                <code>#482</code>
+                <p>Add retry handling for failed refund submissions</p>
+              </div>
+              <div className="lp-workbench-item"><code>#486</code><p>Rotate webhook signing secrets</p></div>
+            </div>
+            <div className="lp-workbench-pane lp-workbench-pane--brief" aria-hidden="true">
+              <h3>Change brief</h3>
+              <dl>
+                <div><dt>Branches</dt><dd><code>retry-refunds → main</code></dd></div>
+                <div><dt>Changed files</dt><dd><code>6 files · +214 −38</code></dd></div>
+                <div><dt>Producer</dt><dd><code>agent-assisted · declared</code></dd></div>
+              </dl>
+              <span className="lp-workbench-cta">Run readiness review</span>
+            </div>
+          </div>
+          <ol className="lp-steps">
+            {workflowSteps.map((step) => (
+              <li key={step.id}>
+                <code>{step.id}</code>
+                <h3>{step.title}</h3>
+                <p>{step.detail}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        {/* 4 — Inspectable decision */}
+        <section className="lp-inspect" aria-labelledby="lp-inspect-title">
+          <div className="lp-inspect-copy">
+            <p className="lp-eyebrow">Inspectable decision</p>
+            <h2 id="lp-inspect-title">A recommendation you can inspect.</h2>
+            <p>
+              Lintel does not return a bare approve-or-reject answer. The recommendation sits on top of an
+              inspectable structure — open any part of it and see what produced it.
+            </p>
+            <ul className="lp-inspect-list">
+              {inspectables.map(([term, detail]) => (
+                <li key={term}>
+                  <strong>{term}</strong>
+                  <span>{detail}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div
+            className="lp-report"
+            role="img"
+            aria-label="A readiness report excerpt with sample data: recommendation tests required with score explanation, a finding with evidence and a rule-detected provenance label, a missing test, affected surfaces, readiness conditions and reviewer focus"
+          >
+            <div className="lp-report-head" aria-hidden="true">
+              <div>
+                <span className="lp-kicker">RECOMMENDATION</span>
+                <strong>TESTS REQUIRED</strong>
+              </div>
+              <p>Score 67/100 — held back by one unresolved blocker and one missing test on the retry path.</p>
+            </div>
+            <div className="lp-report-block" aria-hidden="true">
+              <span className="lp-kicker">FINDING</span>
+              <h3>Refund retry can submit duplicate provider requests</h3>
+              <p className="lp-report-evidence">
+                <code>refund_worker.py</code> retries <code>submit_refund()</code> without an idempotency
+                key; the provider treats each attempt as a new submission.
+              </p>
+              <div className="lp-report-tags">
+                <span className="lp-chip">RULE DETECTED</span>
+                <span className="lp-chip lp-chip--red">HIGH IMPACT</span>
+              </div>
+            </div>
+            <div className="lp-report-block" aria-hidden="true">
+              <span className="lp-kicker">MISSING TEST</span>
+              <p>Duplicate-submission test for a retried refund against a slow provider response.</p>
+            </div>
+            <div className="lp-report-block" aria-hidden="true">
+              <span className="lp-kicker">AFFECTED SURFACES</span>
+              <div className="lp-report-tags">
+                <span className="lp-chip lp-chip--red">PAYMENTS</span>
+                <span className="lp-chip lp-chip--amber">PROVIDER API</span>
+                <span className="lp-chip">RETRY PATH</span>
+              </div>
+            </div>
+            <div className="lp-report-block" aria-hidden="true">
+              <span className="lp-kicker">READINESS CONDITIONS</span>
+              <ul className="lp-conditions">
+                <li className="lp-condition--open"><i aria-hidden="true" /><p>Prove refund retries are idempotent</p></li>
+                <li className="lp-condition--done"><i aria-hidden="true" /><p>Cover the provider-timeout path</p></li>
+              </ul>
+            </div>
+            <div className="lp-report-block lp-report-block--split" aria-hidden="true">
+              <div>
+                <span className="lp-kicker">REVIEWER FOCUS</span>
+                <p>Backend reliability — retry semantics first.</p>
+              </div>
+              <div>
+                <span className="lp-kicker">NEXT ACTION</span>
+                <p>Add the idempotency test, then re-run.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* 5 — Change over time */}
+        <section className="lp-delta" aria-labelledby="lp-delta-title">
+          <div className="lp-section-head lp-section-head--center">
+            <p className="lp-eyebrow">Readiness Delta</p>
+            <h2 id="lp-delta-title" className="lp-serif">See what changed after every commit.</h2>
+            <p>
+              Every new commit re-opens the question. The Readiness Delta and Review Diff show exactly what a
+              push cleared, what it opened, and what still blocks — so conditions never get lost between
+              iterations.
+            </p>
+          </div>
+          <div
+            className="lp-delta-board"
+            role="img"
+            aria-label="Readiness Delta with sample data: score improved from 48 to 67. Cleared: timeout-path coverage and recovery evidence. Opened: API contract concern. Still blocking: retry idempotency."
+          >
+            <div className="lp-delta-score-row" aria-hidden="true">
+              <span className="lp-delta-big"><s>48</s><i>→</i><em>67</em></span>
+              <span className="lp-chip lp-chip--green">IMPROVED</span>
+              <code>3f2c41e → 8d04f2a · run_0917 → run_0918</code>
+            </div>
+            <div className="lp-delta-cols" aria-hidden="true">
+              <div className="lp-delta-col lp-delta-col--cleared">
+                <h3><span className="lp-dot lp-dot--green" />Cleared</h3>
+                <ul>
+                  <li>Timeout-path coverage</li>
+                  <li>Recovery evidence</li>
+                </ul>
+              </div>
+              <div className="lp-delta-col lp-delta-col--opened">
+                <h3><span className="lp-dot lp-dot--red" />Opened</h3>
+                <ul>
+                  <li>API contract concern</li>
+                </ul>
+              </div>
+              <div className="lp-delta-col lp-delta-col--blocking">
+                <h3><span className="lp-dot lp-dot--amber" />Still blocking</h3>
+                <ul>
+                  <li>Retry idempotency</li>
+                </ul>
+              </div>
+            </div>
+            <p className="lp-delta-note" aria-hidden="true">
+              A recommendation that changed after approval is a signal, not a footnote. Lintel re-analyses on
+              every head change and shows the difference as a structured Review Diff.
+            </p>
+          </div>
+        </section>
+
+        {/* 6 — Change Passport */}
+        <section className="lp-passport" aria-labelledby="lp-passport-title">
+          <div className="lp-section-head">
+            <p className="lp-eyebrow">Change Passport</p>
+            <h2 id="lp-passport-title">
+              Know what the builder claimed.<br />Verify what the change actually proves.
+            </h2>
+            <p>
+              Human- and agent-produced changes arrive with declarations: intent, claimed validation,
+              assumptions, known limitations. Lintel records them — and checks them against what the change
+              itself shows. Declarations are never trusted automatically.
+            </p>
+          </div>
+          <div className="lp-passport-compare">
+            <div className="lp-passport-panel">
+              <h3><span className="lp-kicker">DECLARED BY BUILDER</span><code>agent-assisted · imported from PR body</code></h3>
+              <ul>
+                <li><span>Task intent</span><p>Make failed refund submissions retry safely.</p></li>
+                <li><span>Claimed validation</span><p>“Unit tests added for the retry wrapper.”</p></li>
+                <li><span>Assumption</span><p>“Provider API tolerates repeated submissions.”</p></li>
+                <li><span>Known limitation</span><p>Batch refunds are out of scope for this change.</p></li>
+                <li><span>Unresolved uncertainty</span><p>Behaviour under provider rate-limiting is untested.</p></li>
+              </ul>
+            </div>
+            <div className="lp-passport-panel lp-passport-panel--observed">
+              <h3><span className="lp-kicker">OBSERVED BY LINTEL</span><code>compared against the diff</code></h3>
+              <ul>
+                <li>
+                  <span className="lp-chip lp-chip--green">SUPPORTED</span>
+                  <p>Retry-wrapper unit tests exist and exercise the failure path.</p>
+                </li>
+                <li>
+                  <span className="lp-chip lp-chip--amber">UNVERIFIED</span>
+                  <p>Nothing in the change supports the repeated-submission assumption.</p>
+                </li>
+                <li>
+                  <span className="lp-chip lp-chip--amber">UNDECLARED</span>
+                  <p>The change also touches the reconciliation report surface.</p>
+                </li>
+                <li>
+                  <span className="lp-chip lp-chip--red">UNRESOLVED</span>
+                  <p>Rate-limiting uncertainty matches an open readiness condition.</p>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        {/* 7 — Decision provenance */}
+        <section className="lp-provenance" aria-labelledby="lp-provenance-title">
+          <div className="lp-provenance-head">
+            <p className="lp-eyebrow">Canonical review run</p>
+            <h2 id="lp-provenance-title">Every decision has provenance.</h2>
+            <p>
+              Each review is recorded as a canonical run — source, configuration and result, all
+              fingerprinted — so “where did this decision come from?” always has an answer.
+            </p>
+          </div>
+          <dl className="lp-manifest">
+            <div><dt>source</dt><dd><code>github-app · hollis/checkout-service#482</code></dd></div>
+            <div><dt>commits</dt><dd><code>base 41c09a2 → head 8d04f2a</code></dd></div>
+            <div><dt>review mode</dt><dd><code>standard</code></dd></div>
+            <div><dt>ruleset / generator</dt><dd><code>6.3 / 6.4</code></dd></div>
+            <div>
+              <dt>analysis source</dt>
+              <dd><span className="lp-chip lp-chip--violet">MODEL-ASSISTED</span> <code>deterministic baseline always runs</code></dd>
+            </div>
+            <div><dt>fingerprints</dt><dd><code>input 9c41…7e2 · config 77ab…c09 · result 5f0e…9c4</code></dd></div>
+            <div><dt>reproducibility</dt><dd><span className="lp-chip lp-chip--green">EXACT</span> <code>same input, same baseline result</code></dd></div>
+          </dl>
+        </section>
+
+        {/* 8 — Human authority */}
+        <section className="lp-authority" aria-labelledby="lp-authority-title">
+          <div className="lp-authority-copy">
+            <p className="lp-eyebrow">Human authority</p>
+            <h2 id="lp-authority-title" className="lp-serif">
+              Lintel presents the evidence.<br />Engineers make the decision.
+            </h2>
+            <p>
+              The final call is recorded by a person, in the Decision Studio, with the evidence in front of
+              them. Overrides are allowed — and they are explicit: accepting a risk requires a written reason
+              that stays attached to the decision.
+            </p>
+          </div>
+          <div
+            className="lp-studio"
+            role="img"
+            aria-label="Decision Studio outcomes with sample data: ready to merge, tests required which is selected, review required, blocked, and approved with accepted risk which requires a written reason"
+          >
+            <div className="lp-studio-head" aria-hidden="true">
+              <span className="lp-kicker">FINAL DECISION</span>
+              <code>recorded by the engineer</code>
+            </div>
+            <ul aria-hidden="true">
+              {decisionOutcomes.map((outcome) => (
+                <li key={outcome.label} className={"selected" in outcome && outcome.selected ? "lp-studio-option lp-studio-option--selected" : "lp-studio-option"}>
+                  <i aria-hidden="true" />
+                  <div>
+                    <strong>{outcome.label}</strong>
+                    <p>{outcome.note}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        {/* 9 — Trust and data handling */}
+        <section className="lp-trust" aria-labelledby="lp-trust-title">
+          <div className="lp-section-head">
+            <p className="lp-eyebrow">Trust and data handling</p>
+            <h2 id="lp-trust-title">Narrow claims, all of them checkable.</h2>
+            <p>
+              Lintel is an early-stage product and describes itself precisely. These are the current
+              implementation facts — the <Link className="lp-link" href="/docs/security-model.md">security model</Link> spells
+              out the rest.
+            </p>
+          </div>
+          <ul className="lp-trust-list">
+            {trustPoints.map(([title, detail]) => (
+              <li key={title}>
+                <h3>{title}</h3>
+                <p>{detail}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        {/* 10 — Final action */}
+        <section className="lp-final" aria-labelledby="lp-final-title">
+          <Topology variant="cta" />
+          <p className="lp-eyebrow">Next step</p>
+          <h2 id="lp-final-title" className="lp-serif">Review your next pull request with more confidence.</h2>
+          <p>
+            Bring a change you are unsure about. Leave with evidence, unresolved conditions and a decision
+            you can stand behind.
+          </p>
+          <div className="lp-actions">
+            <Link className="lp-btn lp-btn--primary" href="/new">Review a pull request</Link>
+            <Link className="lp-btn lp-btn--ghost" href="/workspace">Explore the workspace</Link>
+          </div>
+        </section>
+      </div>
+
+      <footer className="lp-footer">
+        <div className="lp-footer-brand">
           <span className="brand-mark" aria-hidden="true" />
           <span>Lintel</span>
-        </Link>
-        <div className="landing-nav-actions">
+          <p>Engineering verification for human- and agent-produced change. Early-stage prototype.</p>
+        </div>
+        <nav aria-label="Product">
+          <h3>Product</h3>
+          <Link href="/new">New review</Link>
           <Link href="/workspace">Risk inbox</Link>
+          <Link href="/review-operations">Review operations</Link>
+          <Link href="/review-policies">Review policies</Link>
+        </nav>
+        <nav aria-label="Integrations and documentation">
+          <h3>Reference</h3>
           <Link href="/github-action">GitHub Action</Link>
+          <Link href="/slack-handoff">Slack handoff</Link>
+          <Link href="/settings">Analysis settings</Link>
           <Link href="/docs/security-model.md">Security model</Link>
-          <Link className="landing-button landing-button--small" href="/new">Check a pull request</Link>
-        </div>
-      </header>
-
-      <section className="landing-hero-v5">
-        <span className="eyebrow">LOCAL-FIRST MERGE-READINESS WORKSPACE</span>
-        <h1>Decide what’s ready to merge.</h1>
-        <p>
-          Lintel turns a pull request into a clear merge-readiness decision: the risks, the missing tests, the
-          evidence behind them, and the conditions to clear before merge. Plain language for the team. Full depth
-          for the reviewer.
-        </p>
-        <div className="landing-actions">
-          <Link className="landing-button" href="/workspace">Open risk inbox <span aria-hidden="true">-&gt;</span></Link>
-          <Link className="landing-button landing-button--secondary" href="/new">Check a pull request</Link>
-        </div>
-        <div className="landing-trust-links landing-trust-links--center" aria-label="Trust and privacy notes">
-          <span>Local-first workspace</span>
-          <span>Raw-diff-free history</span>
-          <Link href="/docs/security-model.md">Read security model</Link>
-        </div>
-      </section>
-
-      <section className="hero-mockup-wrap" aria-label="Preview of the Lintel workspace: risk inbox, readiness report, evidence ledger, merge contract and PR comment">
-        <div className="hero-mockup">
-          <div className="hero-mockup-titlebar">
-            <span className="hero-mockup-dots" aria-hidden="true"><i /><i /><i /></span>
-            <span className="hero-mockup-title">lintel — risk inbox</span>
-            <span className="hero-mockup-env">LOCAL WORKSPACE</span>
-          </div>
-          <div className="hero-mockup-body">
-            <aside className="hero-mockup-inbox">
-              <div className="hero-mockup-inbox-head">
-                <strong>Risk inbox</strong>
-                <span>3 open</span>
-              </div>
-              <div className="hero-mockup-pr hero-mockup-pr--active">
-                <code>PR #482</code>
-                <p>Add fallback for failed discount-code retrieval</p>
-                <span className="mockup-risk mockup-risk--high">HIGH</span>
-              </div>
-              <div className="hero-mockup-pr">
-                <code>PR #479</code>
-                <p>Rotate webhook signing secrets</p>
-                <span className="mockup-risk mockup-risk--medium">MEDIUM</span>
-              </div>
-              <div className="hero-mockup-pr">
-                <code>PR #477</code>
-                <p>Format display names consistently</p>
-                <span className="mockup-risk mockup-risk--low">LOW</span>
-              </div>
-            </aside>
-            <div className="hero-mockup-report">
-              <div className="hero-mockup-tabs" aria-hidden="true">
-                <span className="hero-mockup-tab hero-mockup-tab--active">Overview</span>
-                <span className="hero-mockup-tab">Evidence ledger</span>
-                <span className="hero-mockup-tab">Merge contract</span>
-                <span className="hero-mockup-tab">Blast radius</span>
-              </div>
-              <div className="hero-mockup-headline">
-                <div>
-                  <code>acme/redemption-api · PR #482</code>
-                  <h2>Add fallback handling for failed discount-code retrieval</h2>
-                </div>
-                <div className="hero-mockup-score">
-                  <strong>62<span>/100</span></strong>
-                  <em>TESTS REQUIRED</em>
-                </div>
-              </div>
-              <div className="hero-mockup-columns">
-                <div className="hero-mockup-panel">
-                  <h3>Evidence ledger</h3>
-                  <ul>
-                    <li>
-                      <p>Retry path can re-trigger customer-facing side effects</p>
-                      <span>RULE DETECTED</span>
-                    </li>
-                    <li>
-                      <p>No test covers a duplicate redemption on retry</p>
-                      <span>RULE DETECTED</span>
-                    </li>
-                    <li>
-                      <p>Fallback masks the upstream failure signal</p>
-                      <span>MODEL ASSISTED</span>
-                    </li>
-                  </ul>
-                </div>
-                <div className="hero-mockup-panel">
-                  <h3>Merge contract</h3>
-                  <ul className="hero-mockup-contract">
-                    <li className="hero-mockup-contract--open">
-                      <i aria-hidden="true" />
-                      <p>Prove retries cannot create duplicate redemptions</p>
-                    </li>
-                    <li className="hero-mockup-contract--open">
-                      <i aria-hidden="true" />
-                      <p>Add a test for discount-code retrieval failure</p>
-                    </li>
-                    <li className="hero-mockup-contract--done">
-                      <i aria-hidden="true" />
-                      <p>Confirm rollback path for the new fallback</p>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-              <div className="hero-mockup-share">
-                <div className="hero-mockup-comment">
-                  <span>PR COMMENT PREVIEW</span>
-                  <code>### Lintel merge-readiness report</code>
-                  <code>**Recommendation:** TESTS_REQUIRED · High risk</code>
-                  <code>2 conditions open before merge · evidence attached</code>
-                </div>
-                <div className="hero-mockup-comment">
-                  <span>SLACK HANDOFF PREVIEW</span>
-                  <code>TESTS_REQUIRED · HIGH risk · acme/redemption-api</code>
-                  <code>Top blocker: retries may duplicate redemptions</code>
-                  <code>Next action: add retry/idempotency tests</code>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section className="landing-problem landing-problem--v5" aria-labelledby="landing-problem-title">
-        <div>
-          <span className="eyebrow">THE PROBLEM</span>
-        </div>
-        <div>
-          <h2 id="landing-problem-title">Code is getting easier to write. Merging it is still a judgment call.</h2>
-          <p>
-            AI coding tools create more changes, faster, than teams can carefully review. Every one of those changes
-            still ends in the same question: is this safe to merge? That decision still needs engineering judgment —
-            Lintel exists to give that judgment structure, not to replace the people making it.
-          </p>
-          <p>
-            A green CI run means the checks that exist passed. It says nothing about the tests that were never
-            written, the failure modes nobody considered, or what happens when a retry fires twice in production.
-            Passing CI is not the same as being ready to merge.
-          </p>
-          <div className="landing-problem-compare" aria-label="What CI sees compared with what Lintel sees">
-            <div className="problem-compare-card">
-              <span>WHAT CI SEES</span>
-              <strong className="problem-compare-ok">✓ All checks passed</strong>
-              <code>build ✓ · lint ✓ · tests 214 passed</code>
-            </div>
-            <div className="problem-compare-card problem-compare-card--lintel">
-              <span>WHAT LINTEL SEES</span>
-              <code>7 missing tests · 2 open merge gates</code>
-              <code>Blast radius: payments · provider API</code>
-              <code>Next action: prove retries are idempotent</code>
-            </div>
-          </div>
-          <p className="landing-problem-tagline">Agents create code. Lintel decides what is ready to merge.</p>
-        </div>
-      </section>
-
-      <section className="landing-section" aria-labelledby="how-lintel-works">
-        <div className="landing-section-heading">
-          <span className="eyebrow">WORKFLOW</span>
-          <h2 id="how-lintel-works">From pull request to a defensible merge decision.</h2>
-        </div>
-        <ol className="landing-flow landing-flow--visual">
-          {workflow.map((step, index) => (
-            <li key={step.title}>
-              <span>0{index + 1}</span>
-              <h3>{step.title}</h3>
-              <p>{step.description}</p>
-              <div className="landing-flow-visual" aria-hidden="true">{step.visual}</div>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      <section className="landing-section" aria-labelledby="lintel-features">
-        <div className="landing-section-heading">
-          <span className="eyebrow">WHAT IS IN THE WORKSPACE</span>
-          <h2 id="lintel-features">Everything is built around the merge decision.</h2>
-        </div>
-        <div className="landing-feature-grid">
-          {features.map((feature) => (
-            <article key={feature.title}>
-              <div className="lp-mini landing-feature-peek" aria-hidden="true">{feature.peek}</div>
-              <span className="landing-feature-tag">{feature.tag}</span>
-              <h3>{feature.title}</h3>
-              <p>{feature.description}</p>
-              <Link href={feature.href}>{feature.cta} <span aria-hidden="true">-&gt;</span></Link>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="landing-section" aria-labelledby="trust-title">
-        <div className="landing-section-heading landing-section-heading--wide">
-          <span className="eyebrow">TRUST &amp; SECURITY</span>
-          <h2 id="trust-title">Built local-first, so trying it costs nothing.</h2>
-          <p>
-            Lintel is an early-stage prototype and says so. What it promises today is deliberately narrow — and
-            deliberately verifiable.
-          </p>
-        </div>
-        <div className="landing-trust-grid">
-          {trustPoints.map(([title, description]) => (
-            <article key={title}>
-              <h3>{title}</h3>
-              <p>{description}</p>
-            </article>
-          ))}
-          <article className="landing-trust-more">
-            <h3>Read the details</h3>
-            <p>The security model spells out what the prototype does — and does not — promise. Analysis settings show exactly what runs where.</p>
-            <div>
-              <Link className="landing-text-link" href="/docs/security-model.md">Security model <span aria-hidden="true">-&gt;</span></Link>
-              <Link className="landing-text-link" href="/settings">Analysis settings <span aria-hidden="true">-&gt;</span></Link>
-            </div>
-          </article>
-        </div>
-      </section>
-
-      <section className="landing-section landing-action" aria-labelledby="action-title">
-        <div className="landing-action-copy">
-          <span className="eyebrow">IN YOUR CI</span>
-          <h2 id="action-title">One comment per pull request. Nothing louder.</h2>
-          <p>
-            The planned GitHub Action posts a single merge-readiness comment on the pull request and updates it in
-            place. No inline comment spam across the diff, and no merge blocking by default in v1 — the decision
-            stays with your team.
-          </p>
-          <p className="landing-action-note">
-            The Action is a prototype blueprint: the comment format and workflow are real, the published action is
-            not live yet.
-          </p>
-          <div className="landing-action-links">
-            <Link className="landing-text-link" href="/github-action">Preview the PR comment <span aria-hidden="true">-&gt;</span></Link>
-            <Link className="landing-text-link" href="/docs/cli-github-action-blueprint.md">Read the blueprint <span aria-hidden="true">-&gt;</span></Link>
-          </div>
-        </div>
-        <pre className="landing-action-yaml"><code>{actionYaml.map((line, index) => (
-          <span key={index} className={line.comment ? "yaml-comment" : undefined}>{line.text}{"\n"}</span>
-        ))}</code></pre>
-      </section>
-
-      <section className="landing-final-cta">
-        <div>
-          <span className="eyebrow">CHECK THE NEXT PR</span>
-          <h2>Start with one PR. Leave with a merge decision.</h2>
-          <p>Run Lintel on a pull request you are unsure about, or explore a full sample report first.</p>
-        </div>
-        <div className="landing-actions">
-          <Link className="landing-button landing-button--light" href="/new">Check a pull request <span aria-hidden="true">-&gt;</span></Link>
-          <Link className="landing-button landing-button--ghost" href="/report">See a full report</Link>
-        </div>
-      </section>
+        </nav>
+      </footer>
     </main>
   );
 }

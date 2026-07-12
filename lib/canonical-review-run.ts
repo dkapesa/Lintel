@@ -1,9 +1,9 @@
 import type { Report } from "./mock-report";
 import type { ReportInput } from "./report-generator";
 
-export const CANONICAL_RUN_SCHEMA_VERSION = "1.0";
+export const CANONICAL_RUN_SCHEMA_VERSION = "1.1";
 export const REPORT_SCHEMA_VERSION = "1.0";
-export const REPORT_GENERATOR_VERSION = "6.3";
+export const REPORT_GENERATOR_VERSION = "6.4";
 export const DETERMINISTIC_RULESET_VERSION = "6.3";
 
 export type CanonicalRunSourceType = "github-app" | "github-pr" | "manual" | "sample" | "demo";
@@ -42,6 +42,14 @@ export type CanonicalReviewRunManifest = {
   provider?: string;
   model?: string;
   modelConfiguration?: Record<string, string | number | boolean>;
+  changePassport?: {
+    passportId: string;
+    schemaVersion: string;
+    source: string;
+    producerType: string;
+    completeness: string;
+    fingerprint: string;
+  };
   previousRunId?: string;
   processingState: "completed" | "failed" | "historical";
   createdAt: string;
@@ -116,6 +124,14 @@ export function reviewInputFingerprint(input: ReportInput, metadata?: {
     technology: input.technology,
     diff: input.diff,
     reviewMode: input.reviewProfile ?? "standard",
+    changePassport: input.changePassport ? {
+      passportId: input.changePassport.passportId,
+      schemaVersion: input.changePassport.schemaVersion,
+      source: input.changePassport.source,
+      producerType: input.changePassport.producerType,
+      completeness: input.changePassport.completeness,
+      fingerprint: input.changePassport.fingerprint,
+    } : undefined,
   });
 }
 
@@ -210,6 +226,14 @@ export function createCanonicalReviewRunManifest({
     provider,
     model,
     modelConfiguration: model ? { store: false, maxOutputTokens: 8000 } : undefined,
+    changePassport: input.changePassport ? {
+      passportId: input.changePassport.passportId,
+      schemaVersion: input.changePassport.schemaVersion,
+      source: input.changePassport.source,
+      producerType: input.changePassport.producerType,
+      completeness: input.changePassport.completeness,
+      fingerprint: input.changePassport.fingerprint,
+    } : undefined,
     previousRunId,
     processingState: "completed",
     createdAt,

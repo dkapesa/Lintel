@@ -1,4 +1,5 @@
 import { createCanonicalReviewRunManifest, type CanonicalAnalysisSource } from "../../../lib/canonical-review-run";
+import { normalizeChangePassport, type ChangePassportSource } from "../../../lib/change-passport";
 import { generateReport, type ReportInput, type ReportInputSource } from "../../../lib/report-generator";
 import { normaliseReport, REPORT_JSON_SCHEMA } from "../../../lib/report-normalizer";
 import { isReviewProfile, reviewProfileDescription, reviewProfileLabel } from "../../../lib/review-profiles";
@@ -20,6 +21,14 @@ function requiredString(value: unknown, maxLength: number) {
   const trimmed = value.trim();
   if (!trimmed || trimmed.length > maxLength) return null;
   return trimmed;
+}
+
+function changePassportSource(value: unknown, inputSource: ReportInputSource): ChangePassportSource {
+  if (isRecord(value) && typeof value.source === "string") {
+    if (value.source === "manual" || value.source === "github-pr-body" || value.source === "sample" || value.source === "api") return value.source;
+  }
+  if (inputSource === "sample") return "sample";
+  return inputSource === "github-pr" ? "api" : "manual";
 }
 
 function responseWithReport(
@@ -217,6 +226,7 @@ export async function POST(request: Request) {
   const pullRequestNumber = typeof body.pullRequestNumber === "number" && Number.isInteger(body.pullRequestNumber) && body.pullRequestNumber > 0
     ? body.pullRequestNumber
     : undefined;
+  const changePassport = normalizeChangePassport(body.changePassport, changePassportSource(body.changePassport, inputSource)) ?? undefined;
 
   if (!title || !repository || !technology || !diff?.trim()) {
     return Response.json({ error: "Title, repository, technology and diff are required." }, { status: 400 });
@@ -225,7 +235,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "The submitted diff is too large." }, { status: 413 });
   }
 
-  const input: ReportInput = { title, repository, technology, diff, inputSource, reviewProfile };
+  const input: ReportInput = { title, repository, technology, diff, inputSource, reviewProfile, changePassport };
   const baseline = generateReport(input);
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   const model = process.env.OPENAI_MODEL?.trim();

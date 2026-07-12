@@ -8,6 +8,7 @@ import {
   type CanonicalRunVerificationRecord,
   type CanonicalRunSourceType,
 } from "./canonical-review-run";
+import type { ChangePassport } from "./change-passport";
 import type { Report } from "./mock-report";
 import { createReadinessDelta, createReviewDiff, type AnalysisRunSnapshot, type ReadinessDelta } from "./readiness-delta";
 import type { ReportInput } from "./report-generator";
@@ -79,6 +80,7 @@ export type GitHubPullRequestRecord = {
 export type GitHubAnalysisRunRecord = AnalysisRunSnapshot & {
   installationId: number;
   canonicalRun?: CanonicalReviewRunManifest;
+  changePassport?: ChangePassport;
   verifications?: CanonicalRunVerificationRecord[];
 };
 
@@ -349,6 +351,7 @@ function completedRunFromReport(
     report,
     analysisSource: "deterministic",
     canonicalRun,
+    changePassport: options?.input?.changePassport,
     completedAt,
   };
 }

@@ -1,3 +1,5 @@
+import { parseChangePassportBlock } from "../../../lib/change-passport";
+
 export const runtime = "nodejs";
 
 export const MAX_DIFF_CHARS = 200_000;
@@ -29,6 +31,7 @@ type PullRequestMetadata = {
   changedFiles?: number;
   additions?: number;
   deletions?: number;
+  changePassport?: ReturnType<typeof parseChangePassportBlock>;
 };
 
 function jsonResponse(body: UnknownRecord, status = 200) {
@@ -133,6 +136,7 @@ async function fetchPullRequestMetadata(metadataUrl: string, signal: AbortSignal
       changedFiles: numberValue(record.changed_files),
       additions: numberValue(record.additions),
       deletions: numberValue(record.deletions),
+      changePassport: parseChangePassportBlock(record.body),
     };
   } catch {
     return {};

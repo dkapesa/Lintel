@@ -1,3 +1,4 @@
+import { normalizeChangePassport } from "./change-passport";
 import type { ReportInput } from "./report-generator";
 
 export const CLEAN_APPROVE_SAMPLE = {
@@ -152,6 +153,20 @@ export const PAYMENT_REFUND_SAMPLE = {
 +    });
 +  }
 +}`,
+  changePassport: normalizeChangePassport({
+    producerType: "agent",
+    taskIntent: "Retry refund creation when the payment gateway times out.",
+    producer: {
+      tool: "Cursor",
+      model: "example-model",
+    },
+    changeSummary: "Adds a second refund attempt after a gateway timeout and records the refund response.",
+    claimedSurfaces: ["Payments/domain logic"],
+    claimedValidation: ["npm test -- refund-service"],
+    assumptions: ["The gateway honours the existing idempotency key."],
+    unresolvedUncertainty: ["A timeout may occur after the provider accepted the refund request."],
+    handoffNotes: "Review refund idempotency, timeout recovery and duplicate side-effect handling.",
+  }, "sample") ?? undefined,
 } satisfies ReportInput;
 
 export const API_CONTRACT_SAMPLE = {
@@ -242,7 +257,7 @@ export type PrSample = {
   input: ReportInput;
 };
 
-export const PR_SAMPLES = [
+export const PR_SAMPLES: PrSample[] = [
   { id: "clean-utility", name: "Clean utility change", input: CLEAN_APPROVE_SAMPLE },
   { id: "provider-retry", name: "Provider failure / retry risk", input: RISKY_TESTS_REQUIRED_SAMPLE },
   { id: "auth-session", name: "Auth/session change", input: AUTH_SESSION_SAMPLE },
@@ -251,4 +266,4 @@ export const PR_SAMPLES = [
   { id: "api-contract", name: "API contract change", input: API_CONTRACT_SAMPLE },
   { id: "logging-privacy", name: "Logging/privacy risk", input: LOGGING_PRIVACY_SAMPLE },
   { id: "frontend-analytics", name: "Frontend analytics/type change", input: FRONTEND_ANALYTICS_SAMPLE },
-] satisfies PrSample[];
+];

@@ -1,3 +1,5 @@
+import { parseChangePassportBlock } from "../../../lib/change-passport";
+
 export const runtime = "nodejs";
 
 const MAX_DIFF_CHARS = 200_000;
@@ -163,6 +165,7 @@ function importPayload(metadata: unknown, diff: string, owner: string, repo: str
     changedFiles: numberValue(pr.changed_files),
     additions: numberValue(pr.additions),
     deletions: numberValue(pr.deletions),
+    changePassport: parseChangePassportBlock(pr.body),
   };
 }
 

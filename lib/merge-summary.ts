@@ -10,6 +10,7 @@ type MergeSummaryOptions = {
   reviewState: ReportReviewState;
   includeLocalNote: boolean;
   actionProgress?: string;
+  passportSummary?: string;
 };
 
 function safeMarkdownText(value: string) {
@@ -106,6 +107,7 @@ export function mergeSummaryToMarkdown(report: Report, options: MergeSummaryOpti
     `**Source:** ${safeMarkdownText(options.sourceLabel)}`,
     `**Review mode:** ${safeMarkdownText(reviewProfileLabel(report.pr.reviewProfile))}`,
     `**Review policy:** ${safeMarkdownText(policy.label)} (${safeMarkdownText(policyGateSummary(policy))})`,
+    ...(options.passportSummary ? [`**Change Passport:** ${safeMarkdownText(options.passportSummary)}`] : []),
     "",
     "### Top blockers",
     bulletList(topBlockers(report), "No blockers detected.", 4),

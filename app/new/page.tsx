@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { createCanonicalReviewRunManifest, type CanonicalReviewRunManifest } from "../../lib/canonical-review-run";
+import { normalizeChangePassport, type ChangePassport, type ChangePassportProducerType } from "../../lib/change-passport";
 import { generateReport, GENERATED_REPORT_STORAGE_KEY, type ReportInput, type ReportInputSource } from "../../lib/report-generator";
 import { addReportToHistory, clearReportHistory, deleteReportFromHistory, readReportHistory, type ReportHistoryEntry } from "../../lib/report-history";
 import type { Report } from "../../lib/mock-report";
@@ -20,6 +21,7 @@ type StoredReport = {
   readinessDelta?: ReadinessDelta;
   reviewDiff?: ReviewDiff;
   canonicalRun?: CanonicalReviewRunManifest;
+  changePassport?: ChangePassport;
   verificationTarget?: { pullRequestId: string; runId: string };
   initialTab?: "review-diff";
 };
@@ -40,6 +42,7 @@ type GitHubImportResponse = {
   changedFiles?: number;
   additions?: number;
   deletions?: number;
+  changePassport?: ChangePassport;
 };
 
 type GitHubWorkspaceStatus = {
@@ -107,6 +110,7 @@ type GitHubAppPullRequest = {
   latestReport?: Report;
   reportSource?: "deterministic";
   canonicalRun?: CanonicalReviewRunManifest;
+  changePassport?: ChangePassport;
   latestDelta?: ReadinessDelta;
   latestReviewDiff?: ReviewDiff;
   deltaFailureCategory?: string;
@@ -226,6 +230,13 @@ function arrayField<T>(value: unknown, field: string): T[] {
   return (value as Record<string, T[]>)[field];
 }
 
+function linesFromTextarea(value: string) {
+  return value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
 function historySourceLabel(source: ReportHistoryEntry["source"]) {
   return source === "ai" ? "Baseline + model-assisted" : "Baseline only";
 }
@@ -310,6 +321,17 @@ export default function NewReportPage() {
   const [diff, setDiff] = useState("");
   const [inputSource, setInputSource] = useState<ReportInputSource>("pasted-diff");
   const [reviewProfile, setReviewProfile] = useState<ReviewProfile>("standard");
+  const [passportOpen, setPassportOpen] = useState(false);
+  const [passportProducerType, setPassportProducerType] = useState<ChangePassportProducerType>("unknown");
+  const [passportTaskIntent, setPassportTaskIntent] = useState("");
+  const [passportTool, setPassportTool] = useState("");
+  const [passportModel, setPassportModel] = useState("");
+  const [passportChangeSummary, setPassportChangeSummary] = useState("");
+  const [passportValidation, setPassportValidation] = useState("");
+  const [passportAssumptions, setPassportAssumptions] = useState("");
+  const [passportLimitations, setPassportLimitations] = useState("");
+  const [passportUncertainty, setPassportUncertainty] = useState("");
+  const [passportHandoffNotes, setPassportHandoffNotes] = useState("");
   const [history, setHistory] = useState<ReportHistoryEntry[]>([]);
   const [activeSource, setActiveSource] = useState<ChangeSource>("connected");
   const [selectedRepoKey, setSelectedRepoKey] = useState<string | null>(null);
@@ -361,6 +383,23 @@ export default function NewReportPage() {
   const selectedSample = selectedSampleId
     ? PR_SAMPLES.find((sample) => sample.id === selectedSampleId) ?? null
     : null;
+  const manualChangePassport = passportOpen
+    ? normalizeChangePassport({
+      producerType: passportProducerType,
+      taskIntent: passportTaskIntent,
+      changeSummary: passportChangeSummary,
+      producer: { tool: passportTool, model: passportModel },
+      claimedValidation: linesFromTextarea(passportValidation),
+      assumptions: linesFromTextarea(passportAssumptions),
+      knownLimitations: linesFromTextarea(passportLimitations),
+      unresolvedUncertainty: linesFromTextarea(passportUncertainty),
+      handoffNotes: passportHandoffNotes,
+    }, "manual")
+    : null;
+  const selectedChangePassport = importedPullRequest?.changePassport
+    ?? selectedSample?.input.changePassport
+    ?? manualChangePassport
+    ?? undefined;
 
   const tokenConnected = githubWorkspaceStatus?.connected === true;
   const appAuthenticated = githubAppStatus?.authenticated === true;
@@ -426,12 +465,27 @@ export default function NewReportPage() {
     setError(null);
   }
 
+  function clearManualPassport() {
+    setPassportOpen(false);
+    setPassportProducerType("unknown");
+    setPassportTaskIntent("");
+    setPassportTool("");
+    setPassportModel("");
+    setPassportChangeSummary("");
+    setPassportValidation("");
+    setPassportAssumptions("");
+    setPassportLimitations("");
+    setPassportUncertainty("");
+    setPassportHandoffNotes("");
+  }
+
   function clearSample() {
     setSelectedSampleId(null);
     setTitle("");
     setRepository("");
     updateTechnology("", false);
     setDiff("");
+    clearManualPassport();
     if (inputSource === "sample") setInputSource("pasted-diff");
   }
 
@@ -443,6 +497,7 @@ export default function NewReportPage() {
     setRepository("");
     updateTechnology("", false);
     setDiff("");
+    clearManualPassport();
     setImportStatus(null);
     if (inputSource === "github-pr") setInputSource("pasted-diff");
   }
@@ -631,6 +686,7 @@ export default function NewReportPage() {
         readinessDelta: pr.latestDelta,
         reviewDiff: pr.latestReviewDiff,
         canonicalRun: pr.canonicalRun,
+        changePassport: pr.changePassport,
         verificationTarget: pr.canonicalRun ? { pullRequestId: pr.id, runId: pr.canonicalRun.runId } : undefined,
         initialTab,
       }));
@@ -704,6 +760,7 @@ export default function NewReportPage() {
       diff,
       inputSource,
       reviewProfile,
+      changePassport: selectedChangePassport,
     };
 
     try {
@@ -746,9 +803,9 @@ export default function NewReportPage() {
         });
       }
 
-      sessionStorage.setItem(GENERATED_REPORT_STORAGE_KEY, JSON.stringify({ report: generatedReport, source, canonicalRun }));
+      sessionStorage.setItem(GENERATED_REPORT_STORAGE_KEY, JSON.stringify({ report: generatedReport, source, canonicalRun, changePassport: selectedChangePassport }));
       try {
-        setHistory(addReportToHistory(window.localStorage, generatedReport, source, canonicalRun));
+        setHistory(addReportToHistory(window.localStorage, generatedReport, source, canonicalRun, selectedChangePassport));
       } catch {
         // Report generation remains usable when persistent browser storage is unavailable.
       }
@@ -761,7 +818,7 @@ export default function NewReportPage() {
 
   function openHistoryReport(entry: ReportHistoryEntry) {
     try {
-      sessionStorage.setItem(GENERATED_REPORT_STORAGE_KEY, JSON.stringify({ report: entry.report, source: entry.source, canonicalRun: entry.canonicalRun }));
+      sessionStorage.setItem(GENERATED_REPORT_STORAGE_KEY, JSON.stringify({ report: entry.report, source: entry.source, canonicalRun: entry.canonicalRun, changePassport: entry.changePassport }));
       router.push("/report");
     } catch {
       setError("This saved report could not be opened. Please try again.");
@@ -1370,6 +1427,71 @@ export default function NewReportPage() {
                   <p className="github-import-help">Built-in scenarios with realistic diffs. Use them to inspect a full readiness report without sharing code.</p>
                 </div>
               )}
+
+              <details className="change-passport-input" open={passportOpen} onToggle={(event) => setPassportOpen(event.currentTarget.open)}>
+                <summary>
+                  <span>Add Change Passport</span>
+                  <small>Optional builder-declared context. It never clears blockers or changes the recommendation.</small>
+                </summary>
+                {importedPullRequest?.changePassport || selectedSample?.input.changePassport ? (
+                  <div className="passport-import-note">
+                    <strong>Passport supplied by {importedPullRequest?.changePassport ? "PR body" : "sample scenario"}.</strong>
+                    <span>{selectedChangePassport?.completeness ?? "partial"} · Producer {selectedChangePassport?.producerType ?? "unknown"}</span>
+                  </div>
+                ) : (
+                  <div className="passport-form-grid">
+                    <label className="form-field">
+                      <span>Producer type</span>
+                      <select value={passportProducerType} onChange={(event) => setPassportProducerType(event.target.value as ChangePassportProducerType)}>
+                        <option value="unknown">Unknown</option>
+                        <option value="human">Human</option>
+                        <option value="agent">Agent</option>
+                        <option value="mixed">Mixed</option>
+                      </select>
+                    </label>
+                    <label className="form-field">
+                      <span>Tool</span>
+                      <input value={passportTool} onChange={(event) => setPassportTool(event.target.value)} placeholder="Cursor, Claude Code, Codex" />
+                    </label>
+                    <label className="form-field">
+                      <span>Model</span>
+                      <input value={passportModel} onChange={(event) => setPassportModel(event.target.value)} placeholder="Optional model name" />
+                    </label>
+                    <label className="form-field form-field--wide">
+                      <span>Task intent</span>
+                      <input value={passportTaskIntent} onChange={(event) => setPassportTaskIntent(event.target.value)} placeholder="What was the change meant to accomplish?" />
+                    </label>
+                    <label className="form-field form-field--wide">
+                      <span>Change summary</span>
+                      <textarea rows={3} value={passportChangeSummary} onChange={(event) => setPassportChangeSummary(event.target.value)} placeholder="Builder-declared summary of the implementation." />
+                    </label>
+                    <label className="form-field form-field--wide">
+                      <span>Claimed validation</span>
+                      <textarea rows={3} value={passportValidation} onChange={(event) => setPassportValidation(event.target.value)} placeholder="One command or validation claim per line. Use 'none' if none was run." />
+                    </label>
+                    <label className="form-field form-field--wide">
+                      <span>Assumptions</span>
+                      <textarea rows={3} value={passportAssumptions} onChange={(event) => setPassportAssumptions(event.target.value)} placeholder="One assumption per line. Use 'none' if there are no known assumptions." />
+                    </label>
+                    <label className="form-field form-field--wide">
+                      <span>Known limitations</span>
+                      <textarea rows={3} value={passportLimitations} onChange={(event) => setPassportLimitations(event.target.value)} placeholder="Known constraints or omitted cases." />
+                    </label>
+                    <label className="form-field form-field--wide">
+                      <span>Unresolved uncertainty</span>
+                      <textarea rows={3} value={passportUncertainty} onChange={(event) => setPassportUncertainty(event.target.value)} placeholder="One uncertainty per line. Use 'none' if none is known." />
+                    </label>
+                    <label className="form-field form-field--wide">
+                      <span>Reviewer handoff notes</span>
+                      <textarea rows={3} value={passportHandoffNotes} onChange={(event) => setPassportHandoffNotes(event.target.value)} placeholder="What should the reviewer pay attention to?" />
+                    </label>
+                    <div className="passport-form-footer">
+                      <span>{manualChangePassport ? `Passport ${manualChangePassport.completeness}; fingerprint ${manualChangePassport.fingerprint.slice(0, 8)}` : "No retained passport yet."}</span>
+                      <button type="button" onClick={clearManualPassport}>Clear passport</button>
+                    </div>
+                  </div>
+                )}
+              </details>
             </div>
 
             {showInspector && (

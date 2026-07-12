@@ -2,6 +2,7 @@
 
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { useGuidedTour } from "../guided-tour";
+import { compareChangePassport, passportHandoffSummary, type ChangePassport, type ChangePassportComparison } from "../../lib/change-passport";
 import {
   conditionKey,
   conditionProgressSummary,
@@ -132,6 +133,7 @@ type StoredReport = {
   readinessDelta?: ReadinessDelta;
   reviewDiff?: ReviewDiff;
   canonicalRun?: CanonicalReviewRunManifest;
+  changePassport?: ChangePassport;
   verificationTarget?: { pullRequestId: string; runId: string };
   initialTab?: ReportTab;
 };
@@ -222,6 +224,16 @@ function isCanonicalRun(value: unknown): value is CanonicalReviewRunManifest {
     && typeof value.resultFingerprint === "string"
     && typeof value.analysisSource === "string"
     && typeof value.reproducibility === "string";
+}
+
+function isChangePassport(value: unknown): value is ChangePassport {
+  return isRecord(value)
+    && typeof value.passportId === "string"
+    && typeof value.schemaVersion === "string"
+    && typeof value.producerType === "string"
+    && typeof value.source === "string"
+    && typeof value.completeness === "string"
+    && typeof value.fingerprint === "string";
 }
 
 function isVerificationTarget(value: unknown): value is { pullRequestId: string; runId: string } {
@@ -1765,12 +1777,14 @@ function slackHandoffToText({
   conditions,
   actionProgress,
   humanDecision,
+  passportSummary,
 }: {
   report: Report;
   ownerLabel: string;
   conditions: string[];
   actionProgress: ActionProgress;
   humanDecision?: string;
+  passportSummary?: string;
 }) {
   const topBlocker = conditions[0]
     ?? report.findings[0]?.title
@@ -1794,11 +1808,39 @@ function slackHandoffToText({
     `Operational signal: ${operationalAttention}`,
     `Reviewer focus: ${reviewerFocus}`,
     `Action progress: ${actionProgress.openBlockers} open blockers; ${actionProgress.requiredResolved}/${actionProgress.requiredTotal} required actions resolved`,
+    ...(passportSummary ? [`Change Passport: ${passportSummary}`] : []),
     ...(humanDecision ? [`Human decision: ${humanDecision}`] : []),
     `Next action: ${actionProgress.readinessConclusion}`,
     "",
     "Copy/export only. Lintel did not post this to Slack.",
   ].join("\n");
+}
+
+function PassportList({ title, items, empty }: { title: string; items: string[]; empty: string }) {
+  return (
+    <article>
+      <h3>{title}</h3>
+      {items.length > 0 ? <ul>{items.map((item) => <li key={item}>{item}</li>)}</ul> : <p>{empty}</p>}
+    </article>
+  );
+}
+
+function PassportObservations({ title, items, empty }: { title: string; items: ChangePassportComparison["supportedDeclarations"]; empty: string }) {
+  return (
+    <article>
+      <h3>{title}</h3>
+      {items.length > 0 ? (
+        <ul>
+          {items.map((item) => (
+            <li key={`${item.state}-${item.label}-${item.detail}`}>
+              <strong>{item.label}</strong>
+              <span>{item.detail}</span>
+            </li>
+          ))}
+        </ul>
+      ) : <p>{empty}</p>}
+    </article>
+  );
 }
 
 function EvidenceLedgerCard({ item }: { item: EvidenceLedgerItem }) {
@@ -1843,6 +1885,7 @@ export default function ReportPage() {
   const [readinessDelta, setReadinessDelta] = useState<ReadinessDelta | null>(null);
   const [reviewDiff, setReviewDiff] = useState<ReviewDiff | null>(null);
   const [canonicalRun, setCanonicalRun] = useState<CanonicalReviewRunManifest | null>(historicalCanonicalRunManifest(demoReport, "demo"));
+  const [changePassport, setChangePassport] = useState<ChangePassport | null>(null);
   const [verificationTarget, setVerificationTarget] = useState<{ pullRequestId: string; runId: string } | null>(null);
   const [verificationResult, setVerificationResult] = useState<CanonicalRunVerificationRecord | null>(null);
   const [isVerifyingRun, setIsVerifyingRun] = useState(false);
@@ -1888,6 +1931,7 @@ export default function ReportPage() {
         setReadinessDelta(isReadinessDelta(parsedReport.readinessDelta) ? parsedReport.readinessDelta : null);
         setReviewDiff(isReviewDiff(parsedReport.reviewDiff) ? parsedReport.reviewDiff : null);
         setCanonicalRun(isCanonicalRun(parsedReport.canonicalRun) ? parsedReport.canonicalRun : historicalCanonicalRunManifest(parsedReport.report, "github-pr"));
+        setChangePassport(isChangePassport(parsedReport.changePassport) ? parsedReport.changePassport : null);
         setVerificationTarget(isVerificationTarget(parsedReport.verificationTarget) ? parsedReport.verificationTarget : null);
         setVerificationResult(null);
         if (parsedReport.initialTab === "review-diff") setActiveTab("review-diff");
@@ -1899,6 +1943,7 @@ export default function ReportPage() {
         setReadinessDelta(null);
         setReviewDiff(null);
         setCanonicalRun(historicalCanonicalRunManifest(parsedReport, "manual"));
+        setChangePassport(null);
         setVerificationTarget(null);
         setVerificationResult(null);
         return;
@@ -2069,18 +2114,22 @@ export default function ReportPage() {
   const filteredTimeline = readinessTimeline.filter((event) => timelineFilter === "All" || event.category === timelineFilter);
   const selectedTimelineEvent = readinessTimeline.find((event) => event.id === selectedTimelineEventId) ?? null;
   const readinessTimelineSignature = readinessTimeline.map((event) => event.id).join("\n");
+  const passportComparison = compareChangePassport(changePassport, report);
+  const passportSummary = passportHandoffSummary(changePassport, passportComparison);
   const slackHandoffText = slackHandoffToText({
     report,
     ownerLabel: displayedOwner,
     conditions: displayedConditions,
     actionProgress: reviewActionProgress,
     humanDecision: studioDecisionText,
+    passportSummary,
   });
   const mergeSummaryMarkdown = mergeSummaryToMarkdown(report, {
     sourceLabel: sourceLabels[source],
     reviewState: studioReviewState,
     includeLocalNote: includeLocalNoteInMergeSummary,
     actionProgress: `${reviewActionProgress.openBlockers} open blockers; ${reviewActionProgress.requiredResolved}/${reviewActionProgress.requiredTotal} required actions resolved. Human decision: ${studioDecisionText}. ${reviewActionProgress.readinessConclusion}`,
+    passportSummary,
   });
   const blockerSurfaceCount = affectedSurfaces.filter((surface) => surface.status === "Blocker").length;
   const confirmationSurfaceCount = affectedSurfaces.filter((surface) => surface.status === "Attention" || surface.status === "Watch").length;
@@ -2814,6 +2863,56 @@ export default function ReportPage() {
               )}
             </section>
           )}
+
+          <section className="section-block change-passport" aria-labelledby="change-passport-title">
+            <div className="section-heading">
+              <div>
+                <span className="card-kicker">DECLARED CONTEXT</span>
+                <h2 id="change-passport-title">Change Passport</h2>
+                <p>Builder-declared context. Lintel does not treat these claims as verified evidence.</p>
+              </div>
+              <span className="section-count">{changePassport ? changePassport.completeness : "Absent"}</span>
+            </div>
+
+            {changePassport ? (
+              <>
+                <div className="passport-summary-grid">
+                  <article><span>Producer</span><strong>{changePassport.producerType}</strong></article>
+                  <article><span>Tool / model</span><strong>{[changePassport.producer?.tool, changePassport.producer?.model].filter(Boolean).join(" / ") || "Not supplied"}</strong></article>
+                  <article><span>Source</span><strong>{changePassport.source}</strong></article>
+                  <article><span>Validation claims</span><strong>{changePassport.claimedValidation.length + changePassport.claimedTests.length}</strong></article>
+                  <article><span>Assumptions</span><strong>{changePassport.assumptions.length}</strong></article>
+                  <article><span>Uncertainty</span><strong>{changePassport.unresolvedUncertainty.length}</strong></article>
+                </div>
+
+                <div className="passport-callout">
+                  <strong>{changePassport.taskIntent ?? "No task intent supplied."}</strong>
+                  <span>{passportComparison.summary}</span>
+                </div>
+
+                <details className="passport-details">
+                  <summary>Inspect declared context and Lintel observations</summary>
+                  <div className="passport-detail-grid">
+                    <PassportList title="Change summary" items={changePassport.changeSummary ? [changePassport.changeSummary] : []} empty="No change summary supplied." />
+                    <PassportList title="Claimed files and surfaces" items={[...changePassport.claimedFiles, ...changePassport.claimedSurfaces]} empty="No files or affected surfaces declared." />
+                    <PassportList title="Tests and validation" items={[...changePassport.claimedTests, ...changePassport.claimedValidation]} empty="No validation declared." />
+                    <PassportList title="Assumptions and constraints" items={[...changePassport.assumptions, ...changePassport.constraints]} empty="No assumptions or constraints declared." />
+                    <PassportList title="Known limitations" items={changePassport.knownLimitations} empty="No known limitations declared." />
+                    <PassportList title="Unresolved uncertainty" items={changePassport.unresolvedUncertainty} empty="No unresolved uncertainty declared." />
+                    <PassportList title="Reviewer handoff" items={changePassport.handoffNotes ? [changePassport.handoffNotes] : []} empty="No reviewer handoff note supplied." />
+                    <PassportObservations title="Supported declarations" items={passportComparison.supportedDeclarations} empty="No declarations were directly supported by structured report signals." />
+                    <PassportObservations title="Unverified declarations" items={passportComparison.unverifiedDeclarations} empty="No unverified declarations recorded." />
+                    <PassportObservations title="Observed but not declared" items={passportComparison.observedButUndeclared} empty="No undeclared concerns observed by Lintel." />
+                  </div>
+                </details>
+              </>
+            ) : (
+              <div className="passport-empty">
+                <strong>No Change Passport was supplied for this change.</strong>
+                <p>Passport absence is not automatic proof of risk. It only means the builder did not provide structured intent, validation, assumptions or uncertainty for this review.</p>
+              </div>
+            )}
+          </section>
 
           {canonicalRun && (
             <section className="section-block run-provenance" aria-labelledby="run-provenance-title">

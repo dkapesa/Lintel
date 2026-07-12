@@ -78,6 +78,7 @@ export async function GET(request: Request) {
         latestReport: record.latestReport,
         reportSource: record.reportSource,
         canonicalRun: record.analysisRuns?.[0]?.canonicalRun,
+        changePassport: record.analysisRuns?.[0]?.changePassport,
         latestDelta: record.analysisRuns?.[0]?.delta,
         latestReviewDiff: record.analysisRuns?.[0]?.reviewDiff,
         deltaFailureCategory: record.analysisRuns?.[0]?.deltaFailureCategory,
@@ -124,6 +125,7 @@ export async function GET(request: Request) {
       pullRequestId,
       runId: run.runId,
       canonicalRun: run.canonicalRun,
+      changePassport: run.changePassport,
       verifications: run.verifications ?? [],
       reproducibility: run.canonicalRun?.reproducibility ?? "historical-schema",
     });

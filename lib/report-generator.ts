@@ -1,4 +1,5 @@
 import type { FindingSeverity, Report, RiskLevel } from "./mock-report";
+import type { ChangePassport } from "./change-passport";
 import { assessReportQuality, pruneUnsupportedReviewerFocus } from "./report-quality";
 import type { ReviewProfile } from "./review-profiles";
 
@@ -13,6 +14,7 @@ export type ReportInput = {
   diff: string;
   inputSource?: ReportInputSource;
   reviewProfile?: ReviewProfile;
+  changePassport?: ChangePassport;
 };
 
 type RiskSignal = {

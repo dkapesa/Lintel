@@ -1,5 +1,6 @@
 import type { Report } from "./mock-report";
 import { fingerprintPrefix, type CanonicalReviewRunManifest } from "./canonical-review-run";
+import { compareChangePassport, passportHandoffSummary, type ChangePassport } from "./change-passport";
 import { shortSha, type ReadinessDelta } from "./readiness-delta";
 import { decisionConditions, deduplicateReportItems, pruneUnsupportedReviewerFocus } from "./report-quality";
 
@@ -89,9 +90,12 @@ function deltaSection(delta?: ReadinessDelta) {
   ];
 }
 
-export function githubDecisionCommentBody(report: Report, options: { headSha: string; analysedAt: string; reportUrl?: string; delta?: ReadinessDelta; canonicalRun?: CanonicalReviewRunManifest }) {
+export function githubDecisionCommentBody(report: Report, options: { headSha: string; analysedAt: string; reportUrl?: string; delta?: ReadinessDelta; canonicalRun?: CanonicalReviewRunManifest; changePassport?: ChangePassport }) {
   const recommendation = report.verdict.recommendation.replaceAll("_", " ");
   const shortSha = options.headSha.slice(0, 7);
+  const passportSummary = options.changePassport
+    ? passportHandoffSummary(options.changePassport, compareChangePassport(options.changePassport, report))
+    : undefined;
 
   return [
     LINTEL_COMMENT_MARKER,
@@ -106,6 +110,7 @@ export function githubDecisionCommentBody(report: Report, options: { headSha: st
       `**Review run:** \`${safeMarkdownText(fingerprintPrefix(options.canonicalRun.runId))}\``,
       `**Analysis source:** ${safeMarkdownText(options.canonicalRun.analysisSource)}`,
     ] : []),
+    ...(passportSummary ? [`**Change Passport:** ${safeMarkdownText(passportSummary)}`] : []),
     "",
     "### Top blockers",
     bulletList(topBlockers(report), "No blockers detected.", 4),

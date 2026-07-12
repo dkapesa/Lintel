@@ -1,4 +1,5 @@
 import type { CanonicalReviewRunManifest } from "./canonical-review-run";
+import type { ChangePassport } from "./change-passport";
 import type { Report } from "./mock-report";
 import { reviewProfileLabel } from "./review-profiles";
 
@@ -11,6 +12,7 @@ export type ReportHistoryEntry = {
   report: Report;
   source: ReportHistorySource;
   canonicalRun?: CanonicalReviewRunManifest;
+  changePassport?: ChangePassport;
   inputLabel: string;
   createdAt: string;
   metadata: {
@@ -61,6 +63,7 @@ function historyEntry(value: unknown): ReportHistoryEntry | null {
     report: value.report,
     source: value.source,
     canonicalRun: isRecord(value.canonicalRun) ? value.canonicalRun as CanonicalReviewRunManifest : undefined,
+    changePassport: isRecord(value.changePassport) ? value.changePassport as ChangePassport : undefined,
     inputLabel: reportInputLabel(value.report),
     createdAt: value.createdAt,
     metadata: {
@@ -103,6 +106,7 @@ export function addReportToHistory(
   report: Report,
   source: ReportHistorySource,
   canonicalRun?: CanonicalReviewRunManifest,
+  changePassport?: ChangePassport,
 ) {
   const existing = readReportHistory(storage);
   if (hasRawDiff(report)) return existing;
@@ -115,6 +119,7 @@ export function addReportToHistory(
     report,
     source,
     canonicalRun,
+    changePassport,
     inputLabel: reportInputLabel(report),
     createdAt,
     metadata: {

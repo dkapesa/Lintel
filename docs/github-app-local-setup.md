@@ -142,6 +142,44 @@ Manual pasted-diff runs are traceable by manifest and report fingerprint, but th
 
 For GitHub App automated deterministic runs, Lintel can attempt a local verification. Verification re-fetches the current PR metadata and diff through the installation token, re-runs deterministic analysis when the stored head SHA still matches, and compares the reproduced result fingerprint to the canonical result fingerprint. Verification creates a new verification record and never mutates the original canonical run.
 
+## Change Passport
+
+Lintel can attach an optional Change Passport to manual, sample, public PR and GitHub App reviews.
+
+A Change Passport is builder-declared context, not verified evidence. It may describe producer type, tool/model context, task intent, change summary, claimed validation, assumptions, known limitations, unresolved uncertainty and reviewer handoff notes.
+
+GitHub PR bodies may include one fenced block:
+
+````
+```lintel-change-passport
+{
+  "producerType": "agent",
+  "taskIntent": "Prevent duplicate refund creation after timeouts",
+  "producer": {
+    "tool": "Cursor",
+    "model": "example-model"
+  },
+  "changeSummary": "Adds bounded retries around refund creation.",
+  "claimedTests": [
+    "npm test -- refund-service"
+  ],
+  "assumptions": [
+    "The provider honours the existing idempotency key."
+  ],
+  "unresolvedUncertainty": [
+    "A timeout may occur after the provider accepted the request."
+  ],
+  "handoffNotes": "Review idempotency and timeout recovery."
+}
+```
+````
+
+Lintel parses only the marked block, validates supported fields, enforces text and item limits, ignores unsupported fields and safely ignores malformed JSON. Missing or malformed passports do not fail PR analysis.
+
+The canonical review-run manifest stores only safe passport provenance: passport ID, schema version, source, producer type, completeness and fingerprint. The complete normalized passport is stored only with the local report/run record. Raw diffs, prompts, transcripts, hidden reasoning, credentials and tokens are never retained as passport data.
+
+Passport claims do not alter readiness scoring, recommendations, blockers or merge conditions. Lintel compares declarations with structured report signals using deterministic field matching and labels claims as supported, unverified, declared, observed by Lintel but undeclared, or not applicable.
+
 ## Repository enable and disable
 
 The local GitHub App management surface can enable or disable installed repositories for Lintel processing.

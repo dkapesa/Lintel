@@ -24,6 +24,7 @@ import {
 } from "../../../../lib/github-app-webhook";
 import { generateReport, type ReportInput } from "../../../../lib/report-generator";
 import { inferStack } from "../../../../lib/stack-inference";
+import { parseChangePassportBlock } from "../../../../lib/change-passport";
 
 export const runtime = "nodejs";
 
@@ -159,6 +160,7 @@ async function processPullRequest(payload: unknown, deliveryId: string) {
   const metadata: unknown = await metadataResponse.json();
   const pullRequest = record(metadata);
   const title = stringValue(pullRequest?.title) ?? `Pull request #${envelope.pullRequestNumber}`;
+  const changePassport = parseChangePassportBlock(pullRequest?.body) ?? undefined;
 
   const diffResponse = await installationFetch(
     `/repos/${envelope.repositoryOwner}/${envelope.repositoryName}/pulls/${envelope.pullRequestNumber}`,
@@ -188,6 +190,7 @@ async function processPullRequest(payload: unknown, deliveryId: string) {
       diff,
       inputSource: "github-pr",
       reviewProfile: "standard",
+      changePassport,
     };
     const report = generateReport(input);
     const completedRecord = await completePullRequestAnalysis(processingRecord.id, report, {
@@ -205,6 +208,7 @@ async function processPullRequest(payload: unknown, deliveryId: string) {
         analysedAt: new Date().toISOString(),
         delta: completedRecord.analysisRuns?.[0]?.delta,
         canonicalRun: completedRecord.analysisRuns?.[0]?.canonicalRun,
+        changePassport,
       });
       const published = await publishGitHubDecisionComment({
         owner: envelope.repositoryOwner,

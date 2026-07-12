@@ -107,6 +107,41 @@ The Review Diff is not a source-code diff. It does not fetch or persist raw diff
 
 The local API exposes the latest Review Diff and run-specific Review Diff data from the `.lintel-data` store. Old V6.0 records and initial analyses remain readable, but they may not have a detailed Review Diff until a new completed head-SHA analysis is stored.
 
+## Canonical review runs and reproducibility
+
+Each completed review can carry a canonical run manifest. The manifest records safe provenance metadata:
+
+- run ID and schema version
+- source type, repository, PR number and safe source URL where available
+- base and head SHA where available
+- input, configuration and result fingerprints
+- review mode and policy profile
+- report generator, deterministic ruleset and report schema versions
+- analysis source: deterministic, model, fallback or demo
+- provider/model names where applicable
+- previous run relationship
+- processing timestamps
+- reproducibility classification
+
+The manifest never stores raw diffs, prompts containing source code, API keys, GitHub tokens, authorization headers, webhook secrets or hidden model reasoning.
+
+Fingerprints are deterministic hashes over normalized safe snapshots. Raw diffs may be hashed transiently while a review is being generated, but the raw diff is not retained in the manifest or local report history.
+
+Reproducibility classifications are explicit:
+
+- exact
+- traceable
+- source-unavailable
+- configuration-unavailable
+- manual-input-not-retained
+- historical-schema
+- drift-detected
+- failed
+
+Manual pasted-diff runs are traceable by manifest and report fingerprint, but they are not replayable because the raw manual input is intentionally not retained. Model-assisted runs are traceable, not promised to reproduce exactly.
+
+For GitHub App automated deterministic runs, Lintel can attempt a local verification. Verification re-fetches the current PR metadata and diff through the installation token, re-runs deterministic analysis when the stored head SHA still matches, and compares the reproduced result fingerprint to the canonical result fingerprint. Verification creates a new verification record and never mutates the original canonical run.
+
 ## Repository enable and disable
 
 The local GitHub App management surface can enable or disable installed repositories for Lintel processing.

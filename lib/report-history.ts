@@ -1,3 +1,4 @@
+import type { CanonicalReviewRunManifest } from "./canonical-review-run";
 import type { Report } from "./mock-report";
 import { reviewProfileLabel } from "./review-profiles";
 
@@ -9,6 +10,7 @@ export type ReportHistorySource = "ai" | "deterministic";
 export type ReportHistoryEntry = {
   report: Report;
   source: ReportHistorySource;
+  canonicalRun?: CanonicalReviewRunManifest;
   inputLabel: string;
   createdAt: string;
   metadata: {
@@ -58,6 +60,7 @@ function historyEntry(value: unknown): ReportHistoryEntry | null {
   return {
     report: value.report,
     source: value.source,
+    canonicalRun: isRecord(value.canonicalRun) ? value.canonicalRun as CanonicalReviewRunManifest : undefined,
     inputLabel: reportInputLabel(value.report),
     createdAt: value.createdAt,
     metadata: {
@@ -99,6 +102,7 @@ export function addReportToHistory(
   storage: Storage,
   report: Report,
   source: ReportHistorySource,
+  canonicalRun?: CanonicalReviewRunManifest,
 ) {
   const existing = readReportHistory(storage);
   if (hasRawDiff(report)) return existing;
@@ -110,6 +114,7 @@ export function addReportToHistory(
   const entry: ReportHistoryEntry = {
     report,
     source,
+    canonicalRun,
     inputLabel: reportInputLabel(report),
     createdAt,
     metadata: {

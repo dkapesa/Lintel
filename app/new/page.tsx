@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { createCanonicalReviewRunManifest, type CanonicalReviewRunManifest } from "../../lib/canonical-review-run";
 import { generateReport, GENERATED_REPORT_STORAGE_KEY, type ReportInput, type ReportInputSource } from "../../lib/report-generator";
 import { addReportToHistory, clearReportHistory, deleteReportFromHistory, readReportHistory, type ReportHistoryEntry } from "../../lib/report-history";
 import type { Report } from "../../lib/mock-report";
@@ -18,6 +19,8 @@ type StoredReport = {
   source: ReportSource;
   readinessDelta?: ReadinessDelta;
   reviewDiff?: ReviewDiff;
+  canonicalRun?: CanonicalReviewRunManifest;
+  verificationTarget?: { pullRequestId: string; runId: string };
   initialTab?: "review-diff";
 };
 
@@ -103,6 +106,7 @@ type GitHubAppPullRequest = {
   failureCategory?: string;
   latestReport?: Report;
   reportSource?: "deterministic";
+  canonicalRun?: CanonicalReviewRunManifest;
   latestDelta?: ReadinessDelta;
   latestReviewDiff?: ReviewDiff;
   deltaFailureCategory?: string;
@@ -626,6 +630,8 @@ export default function NewReportPage() {
         source: pr.reportSource ?? "deterministic",
         readinessDelta: pr.latestDelta,
         reviewDiff: pr.latestReviewDiff,
+        canonicalRun: pr.canonicalRun,
+        verificationTarget: pr.canonicalRun ? { pullRequestId: pr.id, runId: pr.canonicalRun.runId } : undefined,
         initialTab,
       }));
       router.push("/report");
@@ -703,12 +709,17 @@ export default function NewReportPage() {
     try {
       let generatedReport: Report;
       let source: ReportSource;
+      let canonicalRun: CanonicalReviewRunManifest | undefined;
 
       try {
         const response = await fetch("/api/generate-report", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(input),
+          body: JSON.stringify({
+            ...input,
+            sourceUrl: importedPullRequest?.url,
+            pullRequestNumber: importedPullRequest?.number,
+          }),
         });
 
         if (response.status === 413) {
@@ -722,14 +733,22 @@ export default function NewReportPage() {
         if (!isReportResponse(payload)) throw new Error("Invalid report response");
         generatedReport = payload.report;
         source = payload.source;
+        canonicalRun = payload.canonicalRun;
       } catch {
         generatedReport = generateReport(input);
         source = "deterministic";
+        canonicalRun = createCanonicalReviewRunManifest({
+          input,
+          report: generatedReport,
+          analysisSource: "fallback",
+          sourceUrl: importedPullRequest?.url,
+          pullRequestNumber: importedPullRequest?.number,
+        });
       }
 
-      sessionStorage.setItem(GENERATED_REPORT_STORAGE_KEY, JSON.stringify({ report: generatedReport, source }));
+      sessionStorage.setItem(GENERATED_REPORT_STORAGE_KEY, JSON.stringify({ report: generatedReport, source, canonicalRun }));
       try {
-        setHistory(addReportToHistory(window.localStorage, generatedReport, source));
+        setHistory(addReportToHistory(window.localStorage, generatedReport, source, canonicalRun));
       } catch {
         // Report generation remains usable when persistent browser storage is unavailable.
       }
@@ -742,7 +761,7 @@ export default function NewReportPage() {
 
   function openHistoryReport(entry: ReportHistoryEntry) {
     try {
-      sessionStorage.setItem(GENERATED_REPORT_STORAGE_KEY, JSON.stringify({ report: entry.report, source: entry.source }));
+      sessionStorage.setItem(GENERATED_REPORT_STORAGE_KEY, JSON.stringify({ report: entry.report, source: entry.source, canonicalRun: entry.canonicalRun }));
       router.push("/report");
     } catch {
       setError("This saved report could not be opened. Please try again.");

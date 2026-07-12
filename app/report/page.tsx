@@ -10,6 +10,12 @@ import {
   writeConditionProgress,
 } from "../../lib/condition-progress";
 import {
+  fingerprintPrefix,
+  historicalCanonicalRunManifest,
+  type CanonicalReviewRunManifest,
+  type CanonicalRunVerificationRecord,
+} from "../../lib/canonical-review-run";
+import {
   appendDecisionHistoryEvent,
   decisionHistoryKeyForReport,
   ensureDecisionHistory,
@@ -125,6 +131,8 @@ type StoredReport = {
   source: GeneratedReportSource;
   readinessDelta?: ReadinessDelta;
   reviewDiff?: ReviewDiff;
+  canonicalRun?: CanonicalReviewRunManifest;
+  verificationTarget?: { pullRequestId: string; runId: string };
   initialTab?: ReportTab;
 };
 
@@ -201,6 +209,35 @@ function isReviewDiff(value: unknown): value is ReviewDiff {
     && Array.isArray(value.evidence)
     && Array.isArray(value.testGaps)
     && Array.isArray(value.mergeConditions);
+}
+
+function isCanonicalRun(value: unknown): value is CanonicalReviewRunManifest {
+  return isRecord(value)
+    && typeof value.runId === "string"
+    && typeof value.schemaVersion === "string"
+    && typeof value.sourceType === "string"
+    && typeof value.repository === "string"
+    && typeof value.inputFingerprint === "string"
+    && typeof value.configurationFingerprint === "string"
+    && typeof value.resultFingerprint === "string"
+    && typeof value.analysisSource === "string"
+    && typeof value.reproducibility === "string";
+}
+
+function isVerificationTarget(value: unknown): value is { pullRequestId: string; runId: string } {
+  return isRecord(value)
+    && typeof value.pullRequestId === "string"
+    && typeof value.runId === "string";
+}
+
+function isVerificationRecord(value: unknown): value is CanonicalRunVerificationRecord {
+  return isRecord(value)
+    && typeof value.id === "string"
+    && typeof value.runId === "string"
+    && typeof value.createdAt === "string"
+    && typeof value.sourceMatched === "boolean"
+    && typeof value.configurationMatched === "boolean"
+    && typeof value.reproducibility === "string";
 }
 
 async function writeToClipboard(value: string) {
@@ -486,6 +523,15 @@ function reviewDiffCount(diff: ReviewDiff, status: ReviewDiffStatus) {
 
 function reviewDiffChangedCount(diff: ReviewDiff) {
   return reviewDiffItems(diff).filter((item) => item.status === "changed").length;
+}
+
+function reproducibilityLabel(value: string) {
+  return value.replaceAll("-", " ");
+}
+
+function verificationLabel(value: boolean | undefined) {
+  if (value === undefined) return "Not checked";
+  return value ? "Matched" : "Changed";
 }
 
 function reviewDiffSectionItems(items: ReviewDiffItem[], filter: (typeof reviewDiffFilters)[number]) {
@@ -1796,6 +1842,10 @@ export default function ReportPage() {
   });
   const [readinessDelta, setReadinessDelta] = useState<ReadinessDelta | null>(null);
   const [reviewDiff, setReviewDiff] = useState<ReviewDiff | null>(null);
+  const [canonicalRun, setCanonicalRun] = useState<CanonicalReviewRunManifest | null>(historicalCanonicalRunManifest(demoReport, "demo"));
+  const [verificationTarget, setVerificationTarget] = useState<{ pullRequestId: string; runId: string } | null>(null);
+  const [verificationResult, setVerificationResult] = useState<CanonicalRunVerificationRecord | null>(null);
+  const [isVerifyingRun, setIsVerifyingRun] = useState(false);
   const [copyState, setCopyState] = useState<CopyState>("idle");
   const [conditionsCopyState, setConditionsCopyState] = useState<CopyState>("idle");
   const [mergeSummaryCopyState, setMergeSummaryCopyState] = useState<CopyState>("idle");
@@ -1837,6 +1887,9 @@ export default function ReportPage() {
         setDisplayedReport(parsedReport);
         setReadinessDelta(isReadinessDelta(parsedReport.readinessDelta) ? parsedReport.readinessDelta : null);
         setReviewDiff(isReviewDiff(parsedReport.reviewDiff) ? parsedReport.reviewDiff : null);
+        setCanonicalRun(isCanonicalRun(parsedReport.canonicalRun) ? parsedReport.canonicalRun : historicalCanonicalRunManifest(parsedReport.report, "github-pr"));
+        setVerificationTarget(isVerificationTarget(parsedReport.verificationTarget) ? parsedReport.verificationTarget : null);
+        setVerificationResult(null);
         if (parsedReport.initialTab === "review-diff") setActiveTab("review-diff");
         return;
       }
@@ -1845,6 +1898,9 @@ export default function ReportPage() {
         setDisplayedReport({ report: parsedReport, source: "deterministic" });
         setReadinessDelta(null);
         setReviewDiff(null);
+        setCanonicalRun(historicalCanonicalRunManifest(parsedReport, "manual"));
+        setVerificationTarget(null);
+        setVerificationResult(null);
         return;
       }
 
@@ -2320,6 +2376,52 @@ export default function ReportPage() {
     showQuickActionMessage(copied ? "success" : "failed", copied ? "Slack handoff copied." : "Copy failed.");
   }
 
+  async function handleVerifyRun() {
+    if (!verificationTarget || isVerifyingRun) return;
+    setIsVerifyingRun(true);
+
+    try {
+      const response = await fetch("/api/github-app", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "verify-run",
+          pullRequestId: verificationTarget.pullRequestId,
+          runId: verificationTarget.runId,
+        }),
+      });
+      const payload: unknown = await response.json();
+      const verification = isRecord(payload) && isVerificationRecord(payload.verification)
+        ? payload.verification
+        : null;
+      if (!response.ok || !verification) throw new Error("verification_failed");
+
+      setVerificationResult(verification);
+      recordDecisionEvent({
+        type: verification.reproducibility === "drift-detected" ? "review-action-updated" : "human-decision-recorded",
+        title: verification.reproducibility === "drift-detected" ? "Run drift detected" : "Canonical run verified",
+        detail: verification.details,
+        previousState: "Unverified",
+        nextState: verification.reproducibility,
+        label: "Local",
+      });
+    } catch {
+      const failed: CanonicalRunVerificationRecord = {
+        id: `verify_failed_${Date.now().toString(36)}`,
+        runId: verificationTarget.runId,
+        createdAt: new Date().toISOString(),
+        sourceMatched: false,
+        configurationMatched: false,
+        reproducibility: "failed",
+        failureCategory: "verification_request_failed",
+        details: "Run verification could not be completed from this browser session.",
+      };
+      setVerificationResult(failed);
+    } finally {
+      setIsVerifyingRun(false);
+    }
+  }
+
   function saveStudioDecision() {
     if (studioDecision === "Approved with accepted risk" && acceptedRiskReason.trim().length === 0) {
       setStudioDecisionState("failed");
@@ -2709,6 +2811,62 @@ export default function ReportPage() {
                   This is the first completed automated analysis for this pull request. Review Diff becomes available after the next
                   completed head-SHA analysis, and this section will then show improved, regressed, mixed or unchanged movement.
                 </p>
+              )}
+            </section>
+          )}
+
+          {canonicalRun && (
+            <section className="section-block run-provenance" aria-labelledby="run-provenance-title">
+              <div className="section-heading">
+                <div>
+                  <span className="card-kicker">RUN PROVENANCE</span>
+                  <h2 id="run-provenance-title">Canonical review run</h2>
+                </div>
+                <span className="section-count">{reproducibilityLabel(canonicalRun.reproducibility)}</span>
+              </div>
+
+              <div className="run-provenance-grid">
+                <article><span>Run ID</span><strong>{fingerprintPrefix(canonicalRun.runId)}</strong></article>
+                <article><span>Source</span><strong>{canonicalRun.sourceType}</strong></article>
+                <article><span>Head SHA</span><strong>{shortSha(canonicalRun.headSha)}</strong></article>
+                <article><span>Review mode</span><strong>{reviewProfileLabel(canonicalRun.reviewMode)}</strong></article>
+                <article><span>Analysis source</span><strong>{canonicalRun.analysisSource}</strong></article>
+                <article><span>Ruleset / generator</span><strong>{canonicalRun.deterministicRulesetVersion} / {canonicalRun.generatorVersion}</strong></article>
+                <article><span>Provider / model</span><strong>{canonicalRun.provider || canonicalRun.model ? `${canonicalRun.provider ?? "provider"} / ${canonicalRun.model ?? "model"}` : "Not used"}</strong></article>
+                <article><span>Completed</span><strong>{canonicalRun.completedAt ? timelineTime(canonicalRun.completedAt) : "Unknown"}</strong></article>
+              </div>
+
+              <dl className="run-fingerprint-grid" aria-label="Canonical run fingerprints">
+                <div><dt>Input</dt><dd>{fingerprintPrefix(canonicalRun.inputFingerprint)}</dd></div>
+                <div><dt>Configuration</dt><dd>{fingerprintPrefix(canonicalRun.configurationFingerprint)}</dd></div>
+                <div><dt>Result</dt><dd>{fingerprintPrefix(canonicalRun.resultFingerprint)}</dd></div>
+                <div><dt>Previous run</dt><dd>{fingerprintPrefix(canonicalRun.previousRunId)}</dd></div>
+              </dl>
+
+              {canonicalRun.reproducibilityLimitation && <p className="run-provenance-note">{canonicalRun.reproducibilityLimitation}</p>}
+
+              <div className="run-provenance-actions">
+                <button type="button" onClick={handleVerifyRun} disabled={!verificationTarget || isVerifyingRun}>
+                  {isVerifyingRun ? "Verifying..." : verificationTarget ? "Verify run" : "Verification unavailable"}
+                </button>
+                <span>{verificationTarget ? "Server-side deterministic replay is available for this GitHub App run." : "This run can be traced, but cannot be replayed from retained source in the browser."}</span>
+              </div>
+
+              {verificationResult && (
+                <div className={`run-verification-result run-verification-result--${verificationResult.reproducibility}`}>
+                  <div>
+                    <span className="card-kicker">VERIFICATION RESULT</span>
+                    <strong>{reproducibilityLabel(verificationResult.reproducibility)}</strong>
+                  </div>
+                  <dl>
+                    <div><dt>Source</dt><dd>{verificationLabel(verificationResult.sourceMatched)}</dd></div>
+                    <div><dt>Configuration</dt><dd>{verificationLabel(verificationResult.configurationMatched)}</dd></div>
+                    <div><dt>Result</dt><dd>{verificationLabel(verificationResult.resultMatched)}</dd></div>
+                    <div><dt>Checked</dt><dd>{timelineTime(verificationResult.createdAt)}</dd></div>
+                  </dl>
+                  <p>{verificationResult.details}</p>
+                  {verificationResult.failureCategory && <p>Failure category: {verificationResult.failureCategory.replaceAll("_", " ")}</p>}
+                </div>
               )}
             </section>
           )}

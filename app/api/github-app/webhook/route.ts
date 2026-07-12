@@ -190,7 +190,12 @@ async function processPullRequest(payload: unknown, deliveryId: string) {
       reviewProfile: "standard",
     };
     const report = generateReport(input);
-    const completedRecord = await completePullRequestAnalysis(processingRecord.id, report);
+    const completedRecord = await completePullRequestAnalysis(processingRecord.id, report, {
+      input,
+      sourceType: "github-app",
+      analysisSource: "deterministic",
+      sourceUrl: `https://github.com/${envelope.repositoryOwner}/${envelope.repositoryName}/pull/${envelope.pullRequestNumber}`,
+    });
     await updateDeliveryState(deliveryId, "completed", undefined, processingRecord.id);
 
     if (completedRecord && completedRecord.latestPublishedHeadSha !== envelope.headSha) {
@@ -199,6 +204,7 @@ async function processPullRequest(payload: unknown, deliveryId: string) {
         headSha: envelope.headSha,
         analysedAt: new Date().toISOString(),
         delta: completedRecord.analysisRuns?.[0]?.delta,
+        canonicalRun: completedRecord.analysisRuns?.[0]?.canonicalRun,
       });
       const published = await publishGitHubDecisionComment({
         owner: envelope.repositoryOwner,

@@ -1,3 +1,4 @@
+import { createCanonicalReviewRunManifest, type CanonicalAnalysisSource } from "../../../lib/canonical-review-run";
 import { generateReport, type ReportInput, type ReportInputSource } from "../../../lib/report-generator";
 import { normaliseReport, REPORT_JSON_SCHEMA } from "../../../lib/report-normalizer";
 import { isReviewProfile, reviewProfileDescription, reviewProfileLabel } from "../../../lib/review-profiles";
@@ -21,9 +22,27 @@ function requiredString(value: unknown, maxLength: number) {
   return trimmed;
 }
 
-function responseWithReport(report: ReturnType<typeof generateReport>, source: "ai" | "deterministic") {
+function responseWithReport(
+  report: ReturnType<typeof generateReport>,
+  source: "ai" | "deterministic",
+  input: ReportInput,
+  analysisSource: CanonicalAnalysisSource,
+  provider?: string,
+  model?: string,
+  metadata?: { sourceUrl?: string; pullRequestNumber?: number },
+) {
+  const manifest = createCanonicalReviewRunManifest({
+    input,
+    report,
+    analysisSource,
+    provider,
+    model,
+    sourceUrl: metadata?.sourceUrl,
+    pullRequestNumber: metadata?.pullRequestNumber,
+  });
+
   return Response.json(
-    { report, source },
+    { report, source, canonicalRun: manifest },
     { headers: { "Cache-Control": "no-store" } },
   );
 }
@@ -192,6 +211,12 @@ export async function POST(request: Request) {
     ? body.inputSource
     : "pasted-diff";
   const reviewProfile = isReviewProfile(body.reviewProfile) ? body.reviewProfile : "standard";
+  const sourceUrl = typeof body.sourceUrl === "string" && /^https:\/\/github\.com\/[^/\s]+\/[^/\s]+\/pull\/\d+/.test(body.sourceUrl)
+    ? body.sourceUrl
+    : undefined;
+  const pullRequestNumber = typeof body.pullRequestNumber === "number" && Number.isInteger(body.pullRequestNumber) && body.pullRequestNumber > 0
+    ? body.pullRequestNumber
+    : undefined;
 
   if (!title || !repository || !technology || !diff?.trim()) {
     return Response.json({ error: "Title, repository, technology and diff are required." }, { status: 400 });
@@ -205,11 +230,13 @@ export async function POST(request: Request) {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   const model = process.env.OPENAI_MODEL?.trim();
 
-  if (!apiKey || !model) return responseWithReport(baseline, "deterministic");
+  if (!apiKey || !model) return responseWithReport(baseline, "deterministic", input, "deterministic", undefined, undefined, { sourceUrl, pullRequestNumber });
 
   const generated = await generateWithOpenAI(input, baseline, apiKey, model);
-  if (!generated) return responseWithReport(baseline, "deterministic");
+  if (!generated) return responseWithReport(baseline, "deterministic", input, "fallback", "openai", model, { sourceUrl, pullRequestNumber });
 
   const report = normaliseReport(generated, baseline);
-  return report ? responseWithReport(report, "ai") : responseWithReport(baseline, "deterministic");
+  return report
+    ? responseWithReport(report, "ai", input, "model", "openai", model, { sourceUrl, pullRequestNumber })
+    : responseWithReport(baseline, "deterministic", input, "fallback", "openai", model, { sourceUrl, pullRequestNumber });
 }

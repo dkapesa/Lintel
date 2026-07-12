@@ -1,7 +1,16 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
+import {
+  createCanonicalReviewRunManifest,
+  historicalCanonicalRunManifest,
+  type CanonicalAnalysisSource,
+  type CanonicalReviewRunManifest,
+  type CanonicalRunVerificationRecord,
+  type CanonicalRunSourceType,
+} from "./canonical-review-run";
 import type { Report } from "./mock-report";
 import { createReadinessDelta, createReviewDiff, type AnalysisRunSnapshot, type ReadinessDelta } from "./readiness-delta";
+import type { ReportInput } from "./report-generator";
 
 export type GitHubWebhookProcessingState = "received" | "processing" | "completed" | "failed" | "ignored";
 export type GitHubCommentPublishingState = "not_published" | "publishing" | "completed" | "failed";
@@ -69,6 +78,8 @@ export type GitHubPullRequestRecord = {
 
 export type GitHubAnalysisRunRecord = AnalysisRunSnapshot & {
   installationId: number;
+  canonicalRun?: CanonicalReviewRunManifest;
+  verifications?: CanonicalRunVerificationRecord[];
 };
 
 export type GitHubDeliveryRecord = {
@@ -292,13 +303,39 @@ function legacyRunFromRecord(record: GitHubPullRequestRecord): GitHubAnalysisRun
     riskLevel: record.latestReport.verdict.riskLevel,
     report: record.latestReport,
     analysisSource: record.reportSource ?? "deterministic",
+    canonicalRun: historicalCanonicalRunManifest(record.latestReport, "github-app"),
     completedAt: record.updatedAt,
   };
 }
 
-function completedRunFromReport(record: GitHubPullRequestRecord, report: Report, completedAt: string): GitHubAnalysisRunRecord {
+function completedRunFromReport(
+  record: GitHubPullRequestRecord,
+  report: Report,
+  completedAt: string,
+  options?: CompleteAnalysisOptions,
+): GitHubAnalysisRunRecord {
+  const runId = stableRunId(record.id, record.headSha);
+  const canonicalRun = options?.input
+    ? createCanonicalReviewRunManifest({
+      input: options.input,
+      report,
+      sourceType: options.sourceType ?? "github-app",
+      analysisSource: options.analysisSource ?? "deterministic",
+      runId,
+      previousRunId: options.previousRunId,
+      sourceUrl: options.sourceUrl,
+      baseSha: record.baseSha,
+      headSha: record.headSha,
+      pullRequestNumber: record.number,
+      provider: options.provider,
+      model: options.model,
+      createdAt: completedAt,
+      completedAt,
+    })
+    : historicalCanonicalRunManifest(report, "github-app");
+
   return {
-    runId: stableRunId(record.id, record.headSha),
+    runId,
     installationId: record.installationId,
     repositoryId: record.repositoryId,
     owner: record.owner,
@@ -311,11 +348,22 @@ function completedRunFromReport(record: GitHubPullRequestRecord, report: Report,
     riskLevel: report.verdict.riskLevel,
     report,
     analysisSource: "deterministic",
+    canonicalRun,
     completedAt,
   };
 }
 
-export async function completePullRequestAnalysis(id: string, report: Report) {
+type CompleteAnalysisOptions = {
+  input?: ReportInput;
+  sourceType?: CanonicalRunSourceType;
+  analysisSource?: CanonicalAnalysisSource;
+  sourceUrl?: string;
+  provider?: string;
+  model?: string;
+  previousRunId?: string;
+};
+
+export async function completePullRequestAnalysis(id: string, report: Report, options?: CompleteAnalysisOptions) {
   return updateStore((data) => {
     const record = data.pullRequests[id];
     if (!record) return null;
@@ -343,7 +391,10 @@ export async function completePullRequestAnalysis(id: string, report: Report) {
       : existingRuns;
     const previousRun = comparisonHistory[0] ?? null;
     const earlierRuns = comparisonHistory.slice(1);
-    const currentRun = completedRunFromReport(record, report, timestamp);
+    const currentRun = completedRunFromReport(record, report, timestamp, {
+      ...options,
+      previousRunId: previousRun?.runId,
+    });
 
     try {
       currentRun.delta = createReadinessDelta(previousRun, currentRun, earlierRuns, timestamp);
@@ -363,6 +414,21 @@ export async function completePullRequestAnalysis(id: string, report: Report) {
     record.commentFailureCategory = undefined;
     record.updatedAt = timestamp;
     return record;
+  });
+}
+
+export async function addRunVerification(
+  pullRequestId: string,
+  runId: string,
+  verification: CanonicalRunVerificationRecord,
+) {
+  return updateStore((data) => {
+    const record = data.pullRequests[pullRequestId];
+    const run = record?.analysisRuns?.find((item) => item.runId === runId);
+    if (!record || !run) return null;
+    run.verifications = [verification, ...(run.verifications ?? [])].slice(0, 20);
+    record.updatedAt = now();
+    return run;
   });
 }
 

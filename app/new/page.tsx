@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { generateReport, GENERATED_REPORT_STORAGE_KEY, type ReportInput, type ReportInputSource } from "../../lib/report-generator";
 import { addReportToHistory, clearReportHistory, deleteReportFromHistory, readReportHistory, type ReportHistoryEntry } from "../../lib/report-history";
 import type { Report } from "../../lib/mock-report";
@@ -138,6 +138,17 @@ type ImportStatus = {
   message: string;
 };
 
+type ChangeSource = "connected" | "public-url" | "manual" | "sample";
+
+type MergedRepository = {
+  key: string;
+  owner: string;
+  name: string;
+  fullName: string;
+  tokenRepo?: GitHubWorkspaceRepository;
+  appRepo?: GitHubAppRepository;
+};
+
 function isReportResponse(value: unknown): value is StoredReport {
   if (typeof value !== "object" || value === null || !("report" in value) || !("source" in value)) return false;
   const report = value.report;
@@ -240,6 +251,33 @@ function deltaIndicatorWithSha(delta?: ReadinessDelta, failureCategory?: string)
   return `${label} (${shortSha(delta.previousHeadSha)} → ${shortSha(delta.currentHeadSha)})`;
 }
 
+function humanizeCategory(value?: string) {
+  return value ? value.replaceAll("_", " ") : "";
+}
+
+function analysisStateLabel(pr: GitHubAppPullRequest) {
+  if (pr.state === "processing") return "Analysis processing";
+  if (pr.state === "failed") return pr.failureCategory ? `Analysis failed — ${humanizeCategory(pr.failureCategory)}` : "Analysis failed";
+  if (pr.state === "completed") return "Analysis complete";
+  return humanizeCategory(pr.state) || "Unknown";
+}
+
+function commentStateLabel(pr: GitHubAppPullRequest) {
+  const state = pr.commentPublishingState;
+  if (!state || state === "not_published") return "Not published";
+  if (state === "publishing") return "Publishing";
+  if (state === "completed") return "Published";
+  if (state === "failed") return pr.commentFailureCategory ? `Publishing failed — ${humanizeCategory(pr.commentFailureCategory)}` : "Publishing failed";
+  return humanizeCategory(state);
+}
+
+const SOURCE_LABELS: Record<ChangeSource, string> = {
+  connected: "Connected GitHub",
+  "public-url": "Public PR URL",
+  manual: "Manual diff",
+  sample: "Sample review",
+};
+
 export default function NewReportPage() {
   const router = useRouter();
   const [isGenerating, setIsGenerating] = useState(false);
@@ -269,12 +307,61 @@ export default function NewReportPage() {
   const [inputSource, setInputSource] = useState<ReportInputSource>("pasted-diff");
   const [reviewProfile, setReviewProfile] = useState<ReviewProfile>("standard");
   const [history, setHistory] = useState<ReportHistoryEntry[]>([]);
+  const [activeSource, setActiveSource] = useState<ChangeSource>("connected");
+  const [selectedRepoKey, setSelectedRepoKey] = useState<string | null>(null);
+  const [selectedAutomatedPrId, setSelectedAutomatedPrId] = useState<string | null>(null);
+  const [selectedSampleId, setSelectedSampleId] = useState<string | null>(null);
   const technologyValueRef = useRef("");
   const technologyEditedRef = useRef(false);
   const selectedReviewModeDescription = reviewProfileDescription(reviewProfile);
-  const filteredRepositories = repositories.filter((repo) => (
+
+  const mergedRepositories = useMemo(() => {
+    const map = new Map<string, MergedRepository>();
+    for (const repo of repositories) {
+      const key = repo.fullName.toLowerCase();
+      map.set(key, { key, owner: repo.owner, name: repo.name, fullName: repo.fullName, tokenRepo: repo });
+    }
+    for (const repo of githubAppRepositories) {
+      const key = `${repo.owner}/${repo.name}`.toLowerCase();
+      const existing = map.get(key);
+      if (existing) {
+        existing.appRepo = repo;
+      } else {
+        map.set(key, { key, owner: repo.owner, name: repo.name, fullName: `${repo.owner}/${repo.name}`, appRepo: repo });
+      }
+    }
+    return [...map.values()].sort((a, b) => a.fullName.localeCompare(b.fullName));
+  }, [repositories, githubAppRepositories]);
+
+  const filteredRepositories = mergedRepositories.filter((repo) => (
     repo.fullName.toLowerCase().includes(repositorySearch.trim().toLowerCase())
   ));
+
+  const selectedRepo = selectedRepoKey
+    ? mergedRepositories.find((repo) => repo.key === selectedRepoKey) ?? null
+    : null;
+
+  const automatedPullRequests = useMemo(() => {
+    const list = selectedRepo
+      ? githubAppPullRequests.filter((pr) => `${pr.owner}/${pr.repository}`.toLowerCase() === selectedRepo.key)
+      : githubAppPullRequests;
+    return [...list].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  }, [githubAppPullRequests, selectedRepo]);
+
+  const selectedAppRepo = selectedRepo?.appRepo ?? null;
+
+  const selectedAutomatedPr = selectedAutomatedPrId
+    ? githubAppPullRequests.find((pr) => pr.id === selectedAutomatedPrId) ?? null
+    : null;
+
+  const selectedSample = selectedSampleId
+    ? PR_SAMPLES.find((sample) => sample.id === selectedSampleId) ?? null
+    : null;
+
+  const tokenConnected = githubWorkspaceStatus?.connected === true;
+  const appAuthenticated = githubAppStatus?.authenticated === true;
+  const githubAvailable = tokenConnected || appAuthenticated || githubAppRepositories.length > 0 || githubAppPullRequests.length > 0;
+  const hasLoadedChange = diff.trim().length > 0;
 
   function updateTechnology(value: string, manuallyEdited: boolean) {
     technologyValueRef.current = value;
@@ -321,7 +408,8 @@ export default function NewReportPage() {
     return () => { cancelled = true; };
   }, []);
 
-  function useSample(sample: ReportInput) {
+  function applySample(sampleId: string, sample: ReportInput) {
+    setSelectedSampleId(sampleId);
     setTitle(sample.title);
     setRepository(sample.repository);
     updateTechnology(sample.technology, false);
@@ -330,6 +418,17 @@ export default function NewReportPage() {
     setImportStatus(null);
     setImportedPullRequest(null);
     setGitHubImportMode(null);
+    setSelectedAutomatedPrId(null);
+    setError(null);
+  }
+
+  function clearSample() {
+    setSelectedSampleId(null);
+    setTitle("");
+    setRepository("");
+    updateTechnology("", false);
+    setDiff("");
+    if (inputSource === "sample") setInputSource("pasted-diff");
   }
 
   function clearGitHubImport() {
@@ -355,6 +454,7 @@ export default function NewReportPage() {
     setImportedPullRequest(null);
     setGitHubImportMode(null);
     setSelectedRepository(null);
+    setSelectedRepoKey(null);
     setPullRequests([]);
     setImportStatus(null);
     if (inputSource === "github-pr") setInputSource("pasted-diff");
@@ -374,7 +474,7 @@ export default function NewReportPage() {
       if (!response.ok) throw new Error(importErrorMessage(payload) ?? "Repositories could not be fetched.");
       if (!isRepositoryListResponse(payload)) throw new Error("GitHub returned an invalid repository list.");
       setRepositories(payload.repositories);
-      setImportStatus(payload.repositories.length === 0 ? { type: "error", message: "No repositories are available to this GitHub token. Manual paste and public URL import are still available." } : null);
+      setImportStatus(payload.repositories.length === 0 ? { type: "error", message: "No repositories are available to this GitHub token. Public PR URL, manual diff and sample review remain available." } : null);
     } catch (repoError) {
       setImportStatus({ type: "error", message: repoError instanceof Error ? repoError.message : "Repositories could not be fetched." });
     } finally {
@@ -397,7 +497,7 @@ export default function NewReportPage() {
       if (!isPullRequestListResponse(payload)) throw new Error("GitHub returned an invalid pull request list.");
       setPullRequests(payload.pullRequests);
       setImportStatus(payload.pullRequests.length === 0
-        ? { type: "error", message: `${repo.fullName} has no open pull requests. Manual paste and public URL import are still available.` }
+        ? { type: "error", message: `${repo.fullName} has no open pull requests. Public PR URL, manual diff and sample review remain available.` }
         : { type: "success", message: `Choose an open pull request from ${repo.fullName}.` });
     } catch (prError) {
       setImportStatus({ type: "error", message: prError instanceof Error ? prError.message : "Open pull requests could not be fetched." });
@@ -406,8 +506,25 @@ export default function NewReportPage() {
     }
   }
 
+  function selectMergedRepository(entry: MergedRepository) {
+    setSelectedRepoKey(entry.key);
+    setSelectedAutomatedPrId(null);
+    if (entry.tokenRepo) {
+      loadPullRequests(entry.tokenRepo);
+    } else {
+      setSelectedRepository(null);
+      setPullRequests([]);
+      setImportedPullRequest(null);
+      setGitHubImportMode(null);
+      setImportStatus(null);
+      if (inputSource === "github-pr") setInputSource("pasted-diff");
+    }
+  }
+
   async function importConnectedPullRequest(repo: GitHubWorkspaceRepository, pr: GitHubWorkspacePullRequest) {
     setIsFetchingDiff(true);
+    setSelectedAutomatedPrId(null);
+    setSelectedSampleId(null);
     setImportStatus({ type: "loading", message: `Importing ${repo.fullName} #${pr.number}...` });
 
     try {
@@ -431,7 +548,7 @@ export default function NewReportPage() {
       }
       if (payload.title?.trim()) setTitle(payload.title.trim());
       setError(null);
-      setImportStatus({ type: "success", message: "Pull request imported from connected GitHub. Review the context and run the readiness review when ready." });
+      setImportStatus({ type: "success", message: "Pull request imported. Verify the change brief, then run the readiness review." });
     } catch (importError) {
       setImportStatus({ type: "error", message: importError instanceof Error ? importError.message : "The pull request could not be imported." });
       setImportedPullRequest(null);
@@ -471,6 +588,11 @@ export default function NewReportPage() {
     } finally {
       setIsLoadingGitHubApp(false);
     }
+  }
+
+  function refreshConnectedGitHub() {
+    if (githubWorkspaceStatus?.connected) loadRepositories();
+    loadGitHubAppManagement();
   }
 
   async function setGitHubAppRepositoryEnabled(repo: GitHubAppRepository, enabled: boolean) {
@@ -536,6 +658,8 @@ export default function NewReportPage() {
 
       setImportedPullRequest(payload);
       setGitHubImportMode("public-url");
+      setSelectedAutomatedPrId(null);
+      setSelectedSampleId(null);
       setRepository(payload.repository);
       setDiff(payload.diff);
       setInputSource("github-pr");
@@ -547,7 +671,7 @@ export default function NewReportPage() {
       setError(null);
       setImportStatus({
         type: "success",
-        message: "Pull request imported. Review the context and run the readiness review when ready.",
+        message: "Pull request imported. Verify the change brief, then run the readiness review.",
       });
     } catch (fetchError) {
       const message = fetchError instanceof Error ? fetchError.message : "The pull request could not be imported.";
@@ -560,15 +684,18 @@ export default function NewReportPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!diff.trim()) {
+      setError("Choose a pull request or paste a diff before running a readiness review.");
+      return;
+    }
     setIsGenerating(true);
     setError(null);
 
-    const formData = new FormData(event.currentTarget);
     const input: ReportInput = {
-      title: String(formData.get("title") ?? ""),
-      repository: String(formData.get("repository") ?? ""),
-      technology: String(formData.get("technology") ?? ""),
-      diff: String(formData.get("diff") ?? ""),
+      title,
+      repository,
+      technology,
+      diff,
       inputSource,
       reviewProfile,
     };
@@ -638,6 +765,238 @@ export default function NewReportPage() {
     }
   }
 
+  const tokenStatusChip = githubWorkspaceStatus === null
+    ? { label: "Checking", tone: "" }
+    : tokenConnected
+      ? { label: "Connected", tone: "state-chip--on" }
+      : { label: "Not configured", tone: "" };
+
+  const appStatusChip = githubAppStatus === null
+    ? { label: "Checking", tone: "" }
+    : appAuthenticated
+      ? { label: "Authenticated", tone: "state-chip--on" }
+      : githubAppStatus.configured
+        ? { label: "Auth failed", tone: "state-chip--warn" }
+        : { label: "Not configured", tone: "" };
+
+  const connectedRailCaption = githubWorkspaceStatus === null && githubAppStatus === null
+    ? "Checking connection..."
+    : tokenConnected && appAuthenticated
+      ? "Token and App connected"
+      : tokenConnected
+        ? `Connected as ${githubWorkspaceStatus?.identity ?? "GitHub token"}`
+        : appAuthenticated
+          ? `App authenticated${githubAppStatus?.name || githubAppStatus?.slug ? ` as ${githubAppStatus?.name ?? githubAppStatus?.slug}` : ""}`
+          : githubAppStatus?.configured
+            ? "App configured, not authenticated"
+            : "Not configured";
+
+  const commandTarget = selectedAutomatedPr
+    ? `${selectedAutomatedPr.owner}/${selectedAutomatedPr.repository} #${selectedAutomatedPr.number}`
+    : importedPullRequest
+      ? `${importedPullRequest.repository} #${importedPullRequest.number}`
+      : inputSource === "sample" && selectedSample
+        ? selectedSample.name
+        : hasLoadedChange
+          ? (repository.trim() || "Manual diff")
+          : "No change loaded";
+
+  const importStatusNotice = importStatus && (
+    <p
+      className={`github-import-status github-import-status--${importStatus.type}`}
+      role={importStatus.type === "error" ? "alert" : "status"}
+    >
+      {importStatus.message}
+    </p>
+  );
+
+  const briefContextFields = (
+    <div className="brief-fields">
+      <label className="brief-field">
+        <span>PR title</span>
+        <input name="title" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Pull request title" />
+      </label>
+      <label className="brief-field">
+        <span>Repository</span>
+        <input name="repository" value={repository} onChange={(event) => setRepository(event.target.value)} placeholder="owner/repository" className="brief-field-code" />
+      </label>
+      <label className="brief-field">
+        <span>Language / framework</span>
+        <input name="technology" value={technology} onChange={(event) => updateTechnology(event.target.value, true)} placeholder="Python / FastAPI" />
+      </label>
+    </div>
+  );
+
+  let inspector: ReactNode;
+  if (selectedAutomatedPr) {
+    const pr = selectedAutomatedPr;
+    inspector = (
+      <div className="change-brief" aria-label="Automated analysis brief">
+        <div className="brief-head">
+          <span className="card-kicker">Automated analysis</span>
+          <button type="button" className="brief-dismiss" onClick={() => setSelectedAutomatedPrId(null)}>Dismiss</button>
+        </div>
+        <h2 className="brief-id"><span className="wb-code">{pr.owner}/{pr.repository}</span> #{pr.number}</h2>
+        {pr.title && <p className="brief-title">{pr.title}</p>}
+        <dl className="brief-grid">
+          <div>
+            <dt>Analysis</dt>
+            <dd>{analysisStateLabel(pr)}</dd>
+          </div>
+          <div>
+            <dt>Head</dt>
+            <dd className="wb-code">{shortSha(pr.headSha)}</dd>
+          </div>
+          {pr.baseSha && (
+            <div>
+              <dt>Base</dt>
+              <dd className="wb-code">{shortSha(pr.baseSha)}</dd>
+            </div>
+          )}
+          {pr.latestReport && (
+            <div>
+              <dt>Latest result</dt>
+              <dd>{pr.latestReport.verdict.recommendation.replaceAll("_", " ")} · {pr.latestReport.verdict.riskScore}/100</dd>
+            </div>
+          )}
+          <div>
+            <dt>Readiness delta</dt>
+            <dd>{deltaIndicatorWithSha(pr.latestDelta, pr.deltaFailureCategory)}</dd>
+          </div>
+          <div>
+            <dt>PR comment</dt>
+            <dd>{commentStateLabel(pr)}</dd>
+          </div>
+          {pr.analysisRuns && pr.analysisRuns.length > 0 && (
+            <div>
+              <dt>Analysis runs</dt>
+              <dd>{pr.analysisRuns.length} recorded</dd>
+            </div>
+          )}
+        </dl>
+        <div className="brief-actions">
+          {pr.latestReport && <button type="button" onClick={() => openAutomatedReport(pr)}>Open latest report</button>}
+          {pr.latestReviewDiff && <button type="button" onClick={() => openAutomatedReport(pr, "review-diff")}>Open review diff</button>}
+          {pr.githubCommentHtmlUrl && <a href={pr.githubCommentHtmlUrl} target="_blank" rel="noreferrer">Comment on GitHub</a>}
+        </div>
+        <p className="brief-note">Automated analyses run from webhook events. To run a fresh readiness review here, import this pull request from open pull requests or by public URL.</p>
+      </div>
+    );
+  } else if (importedPullRequest) {
+    const pr = importedPullRequest;
+    inspector = (
+      <div className="change-brief" aria-label="Imported pull request brief">
+        <div className="brief-head">
+          <span className="card-kicker">{githubImportMode === "connected" ? "Connected pull request" : "Public pull request"}</span>
+          <span className="state-chip">{pr.publicRepository ? "Public" : "Private"}</span>
+        </div>
+        <h2 className="brief-id"><span className="wb-code">{pr.repository}</span> #{pr.number}</h2>
+        {(pr.title ?? title) && <p className="brief-title">{pr.title ?? title}</p>}
+        <dl className="brief-grid">
+          <div>
+            <dt>Author</dt>
+            <dd>{pr.author ?? "Unavailable without authentication"}</dd>
+          </div>
+          <div>
+            <dt>State</dt>
+            <dd>{pr.state ?? "Unknown"}</dd>
+          </div>
+          <div>
+            <dt>Branches</dt>
+            <dd className="wb-code">{pr.baseBranch ?? "base"} ← {pr.headBranch ?? "head"}</dd>
+          </div>
+          <div>
+            <dt>Changed files</dt>
+            <dd>{pr.changedFiles ?? "Unknown"}</dd>
+          </div>
+          <div>
+            <dt>Lines</dt>
+            <dd className="wb-code">
+              {typeof pr.additions === "number" ? `+${pr.additions}` : "+?"} / {typeof pr.deletions === "number" ? `−${pr.deletions}` : "−?"}
+            </dd>
+          </div>
+        </dl>
+        {briefContextFields}
+        <div className="brief-actions">
+          {githubImportMode === "connected" ? (
+            <>
+              {selectedRepository && (
+                <button
+                  type="button"
+                  onClick={() => { setImportedPullRequest(null); setGitHubImportMode(null); if (inputSource === "github-pr") setInputSource("pasted-diff"); }}
+                  disabled={isGenerating}
+                >
+                  Choose another pull request
+                </button>
+              )}
+              <button type="button" onClick={changeConnectedRepository} disabled={isGenerating}>Change repository</button>
+              <button type="button" onClick={disconnectConnectedSelection} disabled={isGenerating}>Clear selection</button>
+            </>
+          ) : (
+            <>
+              <button type="button" onClick={changeGitHubImport} disabled={isGenerating}>Change pull request</button>
+              <button type="button" onClick={clearGitHubImport} disabled={isGenerating}>Clear import</button>
+            </>
+          )}
+          <a href={pr.url} target="_blank" rel="noreferrer">Open on GitHub</a>
+        </div>
+        <p className="brief-note">Fields stay editable. The raw diff is analysed transiently and is not saved in local report history.</p>
+      </div>
+    );
+  } else if (activeSource === "sample" && selectedSample) {
+    inspector = (
+      <div className="change-brief" aria-label="Sample scenario brief">
+        <div className="brief-head">
+          <span className="card-kicker">Sample scenario</span>
+          <button type="button" className="brief-dismiss" onClick={clearSample}>Clear sample</button>
+        </div>
+        <h2 className="brief-id">{selectedSample.name}</h2>
+        <p className="brief-title">{selectedSample.input.title}</p>
+        <dl className="brief-grid">
+          <div>
+            <dt>Repository</dt>
+            <dd className="wb-code">{selectedSample.input.repository}</dd>
+          </div>
+          <div>
+            <dt>Stack</dt>
+            <dd>{selectedSample.input.technology}</dd>
+          </div>
+        </dl>
+        {briefContextFields}
+        <p className="brief-note">Sample scenarios use built-in diffs, so you can inspect a full readiness report without sharing code.</p>
+      </div>
+    );
+  } else {
+    const stepOneState = selectedRepoKey ? "done" : activeSource === "connected" ? "current" : "upcoming";
+    const stepTwoState = hasLoadedChange ? "done" : selectedRepoKey ? "current" : "upcoming";
+    const stepThreeState = hasLoadedChange ? "current" : "upcoming";
+    inspector = (
+      <div className="inspector-guide" aria-label="Review setup">
+        <span className="card-kicker">Review setup</span>
+        <ol className="guide-steps">
+          <li data-state={stepOneState}>
+            <strong>Choose a change source</strong>
+            <span>
+              {githubAvailable
+                ? "Connected GitHub lists repositories and pull requests Lintel already understands."
+                : "Connected GitHub is not configured. Public PR URL, manual diff and sample review are available now."}
+            </span>
+          </li>
+          <li data-state={stepTwoState}>
+            <strong>Verify the change brief</strong>
+            <span>Selected pull requests import their diff and context. Automated analyses open their latest recorded report.</span>
+          </li>
+          <li data-state={stepThreeState}>
+            <strong>Run readiness review</strong>
+            <span>Lintel produces a recommendation, risk band, missing tests and conditions before merge.</span>
+          </li>
+        </ol>
+      </div>
+    );
+  }
+
+  const showInspector = activeSource !== "manual";
+
   return (
     <main className="new-page">
       <header className="new-topbar">
@@ -654,357 +1013,374 @@ export default function NewReportPage() {
 
       <div className="new-content">
         <section className="new-intro">
-          <div className="new-intro-actions">
-            <span className="eyebrow">NEW REPORT</span>
-            <label className="sample-picker">
-              <span>Load sample</span>
-              <select
-                aria-label="Load sample pull request"
-                defaultValue=""
-                onChange={(event) => {
-                  const sample = PR_SAMPLES.find((item) => item.id === event.target.value);
-                  if (sample) useSample(sample.input);
-                  event.target.value = "";
-                }}
-              >
-                <option value="">Choose scenario</option>
-                {PR_SAMPLES.map((sample) => (
-                  <option key={sample.id} value={sample.id}>{sample.name}</option>
-                ))}
-              </select>
-            </label>
-          </div>
+          <span className="eyebrow">NEW REVIEW</span>
           <h1>Check merge readiness</h1>
-          <p>Paste the PR context and diff. Lintel turns it into a merge-readiness checklist: recommendation, risks, missing tests, reviewer focus and conditions before merge.</p>
+          <p>Choose a pull request Lintel already understands, or bring another change source.</p>
           <p className="new-trust-note">Local-first history stores generated reports, not raw diffs. <Link href="/docs/security-model.md">Read the security model.</Link></p>
         </section>
 
-        <form className="report-form" onSubmit={handleSubmit}>
-          <section className="connected-github" aria-labelledby="connected-github-title">
-            <div className="connected-github-header">
-              <div>
-                <span className="card-kicker">CONNECTED SOURCE</span>
-                <h2 id="connected-github-title">GitHub workspace</h2>
-                <p>
-                  {githubWorkspaceStatus?.connected
-                    ? `Connected as ${githubWorkspaceStatus.identity ?? "GitHub token"}. Choose a repository and open pull request.`
-                    : "Set GITHUB_TOKEN locally to browse repositories. Public URL import, samples and manual paste still work."}
-                </p>
-              </div>
-              <span className={githubWorkspaceStatus?.connected ? "connected-github-state connected-github-state--on" : "connected-github-state"}>
-                {githubWorkspaceStatus?.connected ? "Connected" : "Not configured"}
-              </span>
-            </div>
-
-            {githubWorkspaceStatus?.connected ? (
-              <div className="connected-github-body">
-                <label className="connected-github-search">
-                  <span>Repository search</span>
-                  <input
-                    type="search"
-                    value={repositorySearch}
-                    onChange={(event) => setRepositorySearch(event.target.value)}
-                    placeholder="Filter loaded repositories"
-                  />
-                </label>
-                <button type="button" onClick={loadRepositories} disabled={isLoadingRepositories || isGenerating}>
-                  {isLoadingRepositories ? "Loading repositories..." : "Refresh repositories"}
-                </button>
-
-                <div className="connected-github-columns">
-                  <section aria-label="Repositories">
-                    <h3>Repositories</h3>
-                    {repositories.length === 0 && !isLoadingRepositories ? (
-                      <p className="connected-github-empty">No repositories loaded for this token.</p>
-                    ) : (
-                      <ul className="connected-github-list">
-                        {filteredRepositories.slice(0, 40).map((repo) => (
-                          <li key={repo.fullName}>
-                            <button
-                              type="button"
-                              className={selectedRepository?.fullName === repo.fullName ? "connected-github-item connected-github-item--selected" : "connected-github-item"}
-                              onClick={() => loadPullRequests(repo)}
-                              disabled={isLoadingPullRequests || isGenerating}
-                            >
-                              <strong>{repo.fullName}</strong>
-                              <span>{repo.private ? "Private" : "Public"} repository</span>
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </section>
-
-                  <section aria-label="Open pull requests">
-                    <h3>{selectedRepository ? `Open PRs in ${selectedRepository.fullName}` : "Open pull requests"}</h3>
-                    {!selectedRepository ? (
-                      <p className="connected-github-empty">Choose a repository to load open pull requests.</p>
-                    ) : pullRequests.length === 0 && !isLoadingPullRequests ? (
-                      <p className="connected-github-empty">No open pull requests found for this repository.</p>
-                    ) : (
-                      <ul className="connected-github-list">
-                        {pullRequests.map((pr) => (
-                          <li key={pr.number}>
-                            <button
-                              type="button"
-                              className="connected-github-item"
-                              onClick={() => importConnectedPullRequest(selectedRepository, pr)}
-                              disabled={isFetchingDiff || isGenerating}
-                            >
-                              <strong>#{pr.number} {pr.title}</strong>
-                              <span>{pr.author ?? "Unknown author"} / {pr.baseBranch ?? "base"} ← {pr.headBranch ?? "head"}{pr.updatedAt ? ` / updated ${new Date(pr.updatedAt).toLocaleDateString()}` : ""}</span>
-                            </button>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </section>
-                </div>
-                <p className="github-import-help">The token stays server-side. Raw diffs are fetched transiently for the selected PR and are not stored in local report history.</p>
-              </div>
-            ) : (
-              <p className="github-import-help">
-                {githubWorkspaceStatus?.error ?? "Connected GitHub browsing is optional for local development."}
-              </p>
-            )}
-          </section>
-
-          <section className="github-app-management" aria-labelledby="github-app-management-title">
-            <div className="connected-github-header">
-              <div>
-                <span className="card-kicker">GITHUB APP MVP</span>
-                <h2 id="github-app-management-title">Automated PR analysis</h2>
-                <p>
-                  {githubAppStatus?.authenticated
-                    ? `Authenticated${githubAppStatus.name || githubAppStatus.slug ? ` as ${githubAppStatus.name ?? githubAppStatus.slug}` : ""}. Webhook analyses can publish one marked decision comment.`
-                    : "Configure the GitHub App environment to receive verified webhooks and publish one Lintel decision comment."}
-                </p>
-              </div>
-              <span className={githubAppStatus?.authenticated ? "connected-github-state connected-github-state--on" : "connected-github-state"}>
-                {githubAppStatus?.authenticated ? "Authenticated" : githubAppStatus?.configured ? "Configured" : "Not configured"}
-              </span>
-            </div>
-
-            <div className="github-app-grid">
-              <article>
-                <h3>Installations</h3>
-                {githubAppInstallations.length === 0 ? (
-                  <p className="connected-github-empty">{githubAppStatus?.error ?? "No installation webhooks received yet."}</p>
-                ) : (
-                  <ul className="connected-github-list">
-                    {githubAppInstallations.map((installation) => (
-                      <li key={installation.installationId} className="github-app-row">
-                        <strong>{installation.accountLogin ?? "GitHub installation"}</strong>
-                        <span>{installation.active ? "Active" : "Inactive"} / ID {installation.installationId}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </article>
-
-              <article>
-                <h3>Installed repositories</h3>
-                {githubAppRepositories.length === 0 ? (
-                  <p className="connected-github-empty">No installed repositories stored locally.</p>
-                ) : (
-                  <ul className="connected-github-list">
-                    {githubAppRepositories.slice(0, 8).map((repo) => (
-                      <li key={`${repo.installationId}:${repo.repositoryId}`} className="github-app-row">
-                        <div>
-                          <strong>{repo.owner}/{repo.name}</strong>
-                          <span>{repo.visibility} / {repo.active ? "installed" : "removed"} / {repo.enabled ? "enabled" : "disabled"}</span>
-                        </div>
-                        <button type="button" onClick={() => setGitHubAppRepositoryEnabled(repo, !repo.enabled)}>
-                          {repo.enabled ? "Disable" : "Enable"}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </article>
-
-              <article>
-                <h3>Webhook health</h3>
-                {githubAppDeliveries.length === 0 ? (
-                  <p className="connected-github-empty">No webhook deliveries stored locally.</p>
-                ) : (
-                  <ul className="connected-github-list">
-                    {githubAppDeliveries.slice(0, 5).map((delivery) => (
-                      <li key={delivery.deliveryId} className="github-app-row">
-                        <strong>{delivery.event}{delivery.action ? ` / ${delivery.action}` : ""}</strong>
-                        <span>{delivery.state}{delivery.failureCategory ? ` / ${delivery.failureCategory}` : ""} / {new Date(delivery.updatedAt).toLocaleString()}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </article>
-
-              <article>
-                <h3>Automated pull requests</h3>
-                {githubAppPullRequests.length === 0 ? (
-                  <p className="connected-github-empty">No automated pull-request analyses stored locally.</p>
-                ) : (
-                  <ul className="connected-github-list">
-                    {githubAppPullRequests.slice(0, 8).map((pr) => (
-                      <li key={pr.id} className="github-app-row">
-                        <div>
-                          <strong>{pr.owner}/{pr.repository} #{pr.number}{pr.title ? ` — ${pr.title}` : ""}</strong>
-                          <span>
-                            {pr.state} / head {pr.headSha.slice(0, 7)}{pr.baseSha ? ` / base ${pr.baseSha.slice(0, 7)}` : ""}
-                            {pr.latestReport ? ` / ${pr.latestReport.verdict.recommendation.replaceAll("_", " ")} ${pr.latestReport.verdict.riskScore}/100` : ""}
-                            {pr.commentPublishingState ? ` / comment ${pr.commentPublishingState}` : ""}
-                            {pr.commentFailureCategory ? ` / ${pr.commentFailureCategory}` : ""}
-                          </span>
-                        </div>
-                        <div className="github-app-row-actions">
-                          {pr.latestReviewDiff && <button type="button" onClick={() => openAutomatedReport(pr, "review-diff")}>{deltaIndicatorWithSha(pr.latestDelta, pr.deltaFailureCategory)}</button>}
-                          {!pr.latestReviewDiff && (pr.latestDelta || pr.deltaFailureCategory) && <span>{deltaIndicatorWithSha(pr.latestDelta, pr.deltaFailureCategory)}</span>}
-                          {pr.latestReport && <button type="button" onClick={() => openAutomatedReport(pr)}>Open report</button>}
-                          {pr.githubCommentHtmlUrl && <a href={pr.githubCommentHtmlUrl} target="_blank" rel="noreferrer">Comment</a>}
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </article>
-            </div>
-
-            <div className="github-app-footer">
-              <button type="button" onClick={loadGitHubAppManagement} disabled={isLoadingGitHubApp}>
-                {isLoadingGitHubApp ? "Refreshing..." : "Refresh GitHub App state"}
+        <form className="report-form review-workbench" onSubmit={handleSubmit}>
+          <div className={showInspector ? "workbench-body" : "workbench-body workbench-body--no-inspector"}>
+            <aside className="source-rail" aria-label="Change source">
+              <span className="source-rail-label" id="source-rail-primary">Primary source</span>
+              <button
+                type="button"
+                className={activeSource === "connected" ? "source-option source-option--primary source-option--active" : "source-option source-option--primary"}
+                aria-pressed={activeSource === "connected"}
+                onClick={() => setActiveSource("connected")}
+              >
+                <strong>Connected GitHub</strong>
+                <span>{connectedRailCaption}</span>
               </button>
-              <p className="github-import-help">GitHub App state is local MVP server data. Repository enable/disable changes only Lintel’s local processing state.</p>
-            </div>
-          </section>
+              <span className="source-rail-label">Other sources</span>
+              <button
+                type="button"
+                className={activeSource === "public-url" ? "source-option source-option--active" : "source-option"}
+                aria-pressed={activeSource === "public-url"}
+                onClick={() => setActiveSource("public-url")}
+              >
+                <strong>Public PR URL</strong>
+                <span>Import any public pull request</span>
+              </button>
+              <button
+                type="button"
+                className={activeSource === "manual" ? "source-option source-option--active" : "source-option"}
+                aria-pressed={activeSource === "manual"}
+                onClick={() => setActiveSource("manual")}
+              >
+                <strong>Manual diff</strong>
+                <span>Paste a diff directly</span>
+              </button>
+              <button
+                type="button"
+                className={activeSource === "sample" ? "source-option source-option--active" : "source-option"}
+                aria-pressed={activeSource === "sample"}
+                onClick={() => setActiveSource("sample")}
+              >
+                <strong>Sample review</strong>
+                <span>Built-in review scenarios</span>
+              </button>
+            </aside>
 
-          <div className="github-import">
-            {importedPullRequest ? (
-              <section className="github-pr-preview" aria-labelledby="github-pr-preview-title">
-                <div className="github-pr-preview-header">
-                  <div>
-                    <span className="card-kicker">PUBLIC GITHUB PR</span>
-                    <h2 id="github-pr-preview-title">{importedPullRequest.repository} #{importedPullRequest.number}</h2>
-                    <p>{importedPullRequest.title ?? title}</p>
+            <div className="workbench-main">
+              {activeSource === "connected" && (
+                <>
+                  <div className="connection-strip">
+                    <div className="connection-facts">
+                      <span className="connection-fact">
+                        <span className={`state-chip ${tokenStatusChip.tone}`.trim()}>{tokenStatusChip.label}</span>
+                        <span>
+                          Token workspace
+                          {tokenConnected ? <> — <span className="wb-code">{githubWorkspaceStatus?.identity ?? "GitHub token"}</span></> : " — set GITHUB_TOKEN to browse repositories"}
+                        </span>
+                      </span>
+                      <span className="connection-fact">
+                        <span className={`state-chip ${appStatusChip.tone}`.trim()}>{appStatusChip.label}</span>
+                        <span>
+                          GitHub App
+                          {appAuthenticated
+                            ? <> — <span className="wb-code">{githubAppStatus?.name ?? githubAppStatus?.slug ?? "authenticated"}</span></>
+                            : githubAppStatus?.configured
+                              ? ` — ${humanizeCategory(githubAppStatus.error) || "authentication failed"}`
+                              : " — configure the App environment for webhook analyses"}
+                        </span>
+                      </span>
+                      {githubAppInstallations.length > 0 && (
+                        <span className="connection-fact">
+                          <span className="state-chip state-chip--on">Installed</span>
+                          <span>
+                            {githubAppInstallations.map((installation) => (
+                              `${installation.accountLogin ?? `installation ${installation.installationId}`}${installation.active ? "" : " (inactive)"}`
+                            )).join(", ")}
+                          </span>
+                        </span>
+                      )}
+                    </div>
+                    <div className="connection-actions">
+                      <button type="button" onClick={refreshConnectedGitHub} disabled={isLoadingRepositories || isLoadingGitHubApp}>
+                        {isLoadingRepositories || isLoadingGitHubApp ? "Refreshing..." : "Refresh"}
+                      </button>
+                    </div>
                   </div>
-                  <span className="github-pr-public-status">{importedPullRequest.publicRepository ? "Public repository" : "Private repository"}</span>
-                </div>
-                <dl className="github-pr-preview-grid">
-                  <div>
-                    <dt>Author</dt>
-                    <dd>{importedPullRequest.author ?? "Unavailable without authentication"}</dd>
-                  </div>
-                  <div>
-                    <dt>State</dt>
-                    <dd>{importedPullRequest.state ?? "Unknown"}</dd>
-                  </div>
-                  <div>
-                    <dt>Branches</dt>
-                    <dd>{importedPullRequest.baseBranch ?? "base"} ← {importedPullRequest.headBranch ?? "head"}</dd>
-                  </div>
-                  <div>
-                    <dt>Changed files</dt>
-                    <dd>{importedPullRequest.changedFiles ?? "Unknown"}</dd>
-                  </div>
-                  <div>
-                    <dt>Additions</dt>
-                    <dd>{importedPullRequest.additions ?? "Unknown"}</dd>
-                  </div>
-                  <div>
-                    <dt>Deletions</dt>
-                    <dd>{importedPullRequest.deletions ?? "Unknown"}</dd>
-                  </div>
-                </dl>
-                <div className="github-pr-preview-actions">
-                  {githubImportMode === "connected" ? (
+
+                  {githubAvailable ? (
                     <>
-                      {selectedRepository && <button type="button" onClick={() => { setImportedPullRequest(null); setGitHubImportMode(null); if (inputSource === "github-pr") setInputSource("pasted-diff"); }} disabled={isGenerating}>Choose another pull request</button>}
-                      <button type="button" onClick={changeConnectedRepository} disabled={isGenerating}>Change repository</button>
-                      <button type="button" onClick={disconnectConnectedSelection} disabled={isGenerating}>Disconnect from this selection</button>
+                      <div className="wb-columns">
+                        <section className="wb-pane" aria-label="Repositories">
+                          <div className="wb-pane-header">
+                            <h3>Repositories</h3>
+                            <span className="wb-pane-count">{filteredRepositories.length}</span>
+                          </div>
+                          <div className="wb-search">
+                            <input
+                              type="search"
+                              value={repositorySearch}
+                              onChange={(event) => setRepositorySearch(event.target.value)}
+                              placeholder="Filter repositories"
+                              aria-label="Filter repositories"
+                            />
+                          </div>
+                          <div className="wb-pane-body">
+                            {isLoadingRepositories ? (
+                              <p className="wb-empty">Loading repositories...</p>
+                            ) : filteredRepositories.length === 0 ? (
+                              <p className="wb-empty">
+                                {mergedRepositories.length === 0
+                                  ? "No repositories available yet. Token repositories and App installations appear here."
+                                  : "No repositories match this filter."}
+                              </p>
+                            ) : (
+                              filteredRepositories.slice(0, 60).map((entry) => (
+                                <button
+                                  key={entry.key}
+                                  type="button"
+                                  className={selectedRepoKey === entry.key ? "wb-row wb-row--selected" : "wb-row"}
+                                  aria-pressed={selectedRepoKey === entry.key}
+                                  onClick={() => selectMergedRepository(entry)}
+                                  disabled={isLoadingPullRequests || isGenerating}
+                                >
+                                  <strong className="wb-code">{entry.fullName}</strong>
+                                  <span>
+                                    {entry.tokenRepo ? (entry.tokenRepo.private ? "Private" : "Public") : entry.appRepo?.visibility === "private" ? "Private" : "Public"}
+                                    {entry.appRepo ? ` · App ${entry.appRepo.enabled ? "enabled" : "disabled"}${entry.appRepo.active ? "" : " · removed"}` : ""}
+                                    {!entry.tokenRepo && entry.appRepo ? " · App-installed" : ""}
+                                  </span>
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        </section>
+
+                        <section className="wb-pane" aria-label="Pull requests">
+                          <div className="wb-pane-header">
+                            <h3>{selectedRepo ? <span className="wb-code">{selectedRepo.fullName}</span> : "Pull requests"}</h3>
+                            {selectedAppRepo && (
+                              <button
+                                type="button"
+                                className="wb-mini-action"
+                                onClick={() => setGitHubAppRepositoryEnabled(selectedAppRepo, !selectedAppRepo.enabled)}
+                              >
+                                {selectedAppRepo.enabled ? "Disable automated analysis" : "Enable automated analysis"}
+                              </button>
+                            )}
+                          </div>
+                          <div className="wb-pane-body">
+                            <div className="wb-group">
+                              <h4>Open pull requests</h4>
+                              {!selectedRepo ? (
+                                <p className="wb-empty">Choose a repository to load its open pull requests.</p>
+                              ) : !selectedRepo.tokenRepo ? (
+                                <p className="wb-empty">Open pull requests need the token workspace. This repository is known through the App installation only.</p>
+                              ) : isLoadingPullRequests ? (
+                                <p className="wb-empty">Loading open pull requests...</p>
+                              ) : pullRequests.length === 0 ? (
+                                <p className="wb-empty">No open pull requests in this repository.</p>
+                              ) : (
+                                pullRequests.map((pr) => (
+                                  <button
+                                    key={pr.number}
+                                    type="button"
+                                    className={importedPullRequest && githubImportMode === "connected" && importedPullRequest.number === pr.number ? "wb-row wb-row--selected" : "wb-row"}
+                                    onClick={() => selectedRepository && importConnectedPullRequest(selectedRepository, pr)}
+                                    disabled={isFetchingDiff || isGenerating}
+                                  >
+                                    <strong>#{pr.number} {pr.title}</strong>
+                                    <span>
+                                      {pr.author ?? "Unknown author"} · <span className="wb-code">{pr.baseBranch ?? "base"} ← {pr.headBranch ?? "head"}</span>
+                                      {pr.updatedAt ? ` · updated ${new Date(pr.updatedAt).toLocaleDateString()}` : ""}
+                                    </span>
+                                  </button>
+                                ))
+                              )}
+                            </div>
+
+                            <div className="wb-group">
+                              <h4>{selectedRepo ? "Automated analyses" : "Automated analyses · all repositories"}</h4>
+                              {isLoadingGitHubApp && automatedPullRequests.length === 0 ? (
+                                <p className="wb-empty">Loading automated analyses...</p>
+                              ) : automatedPullRequests.length === 0 ? (
+                                <p className="wb-empty">
+                                  {appAuthenticated
+                                    ? "No automated pull-request analyses recorded yet. They appear when the App receives pull request webhooks."
+                                    : "Automated analyses appear here once the GitHub App is configured and receiving webhooks."}
+                                </p>
+                              ) : (
+                                automatedPullRequests.slice(0, 12).map((pr) => (
+                                  <button
+                                    key={pr.id}
+                                    type="button"
+                                    className={selectedAutomatedPrId === pr.id ? "wb-row wb-row--selected" : "wb-row"}
+                                    aria-pressed={selectedAutomatedPrId === pr.id}
+                                    onClick={() => setSelectedAutomatedPrId(pr.id)}
+                                  >
+                                    <strong><span className="wb-code">{pr.owner}/{pr.repository}</span> #{pr.number}{pr.title ? ` — ${pr.title}` : ""}</strong>
+                                    <span>
+                                      {analysisStateLabel(pr)}
+                                      {pr.latestReport ? ` · ${pr.latestReport.verdict.recommendation.replaceAll("_", " ")} ${pr.latestReport.verdict.riskScore}/100` : ""}
+                                      {" · head "}
+                                      <span className="wb-code">{shortSha(pr.headSha)}</span>
+                                    </span>
+                                  </button>
+                                ))
+                              )}
+                            </div>
+                          </div>
+                        </section>
+                      </div>
+
+                      {importStatusNotice}
+
+                      <details className="connection-deliveries">
+                        <summary>Webhook activity ({githubAppDeliveries.length})</summary>
+                        {githubAppDeliveries.length === 0 ? (
+                          <p className="wb-empty">No webhook deliveries stored locally.</p>
+                        ) : (
+                          <ul>
+                            {githubAppDeliveries.slice(0, 5).map((delivery) => (
+                              <li key={delivery.deliveryId}>
+                                <span className="wb-code">{delivery.event}{delivery.action ? `/${delivery.action}` : ""}</span>
+                                <span>
+                                  {humanizeCategory(delivery.state)}
+                                  {delivery.failureCategory ? ` — ${humanizeCategory(delivery.failureCategory)}` : ""}
+                                  {" · "}
+                                  {new Date(delivery.updatedAt).toLocaleString()}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        <p className="pane-help">Repository enable and disable changes only Lintel&apos;s local processing state.</p>
+                      </details>
                     </>
                   ) : (
-                    <>
-                      <button type="button" onClick={changeGitHubImport} disabled={isGenerating}>Change pull request</button>
-                      <button type="button" onClick={clearGitHubImport} disabled={isGenerating}>Clear import</button>
-                    </>
+                    <div className="connection-setup">
+                      <h3>Connect GitHub to review live pull requests</h3>
+                      <p>Set <span className="wb-code">GITHUB_TOKEN</span> locally to browse repositories and import open pull requests. Configure the GitHub App environment to receive verified webhook analyses and publish one decision comment per pull request.</p>
+                      <p>Reviews do not depend on this connection — the other sources work now:</p>
+                      <div className="connection-setup-actions">
+                        <button type="button" onClick={() => setActiveSource("public-url")}>Public PR URL</button>
+                        <button type="button" onClick={() => setActiveSource("manual")}>Manual diff</button>
+                        <button type="button" onClick={() => setActiveSource("sample")}>Sample review</button>
+                      </div>
+                      {importStatusNotice}
+                    </div>
                   )}
-                  <a href={importedPullRequest.url} target="_blank" rel="noreferrer">Open on GitHub</a>
+                </>
+              )}
+
+              {activeSource === "public-url" && (
+                <div className="public-pane">
+                  <div className="github-import-row">
+                    <label className="form-field" htmlFor="github-pr-url">
+                      <span>Public GitHub PR URL</span>
+                      <input
+                        id="github-pr-url"
+                        type="url"
+                        inputMode="url"
+                        autoComplete="url"
+                        value={githubUrl}
+                        onChange={(event) => {
+                          setGitHubUrl(event.target.value);
+                          setImportStatus(null);
+                        }}
+                        placeholder="https://github.com/owner/repository/pull/123"
+                        aria-describedby="github-import-help"
+                      />
+                    </label>
+                    <button
+                      className="fetch-diff-button"
+                      type="button"
+                      onClick={handleFetchDiff}
+                      disabled={isFetchingDiff || isGenerating}
+                    >
+                      {isFetchingDiff ? "Importing..." : "Import pull request"}
+                    </button>
+                  </div>
+                  <p id="github-import-help" className="github-import-help">Public pull requests only. The imported diff is analysed transiently; manual diff entry remains available if import fails.</p>
+                  {importStatusNotice}
                 </div>
-                <p className="github-import-help">Review mode and fields remain editable. Raw diffs are used for analysis and are not saved in local report history.</p>
-              </section>
-            ) : (
-              <>
-                <div className="github-import-row">
-                  <label className="form-field" htmlFor="github-pr-url">
-                    <span>Public GitHub PR URL <small>Optional</small></span>
-                    <input
-                      id="github-pr-url"
-                      type="url"
-                      inputMode="url"
-                      autoComplete="url"
-                      value={githubUrl}
-                      onChange={(event) => {
-                        setGitHubUrl(event.target.value);
-                        setImportStatus(null);
-                      }}
-                      placeholder="https://github.com/owner/repository/pull/123"
-                      aria-describedby="github-import-help"
-                    />
-                  </label>
-                  <button
-                    className="fetch-diff-button"
-                    type="button"
-                    onClick={handleFetchDiff}
-                    disabled={isFetchingDiff || isGenerating}
-                  >
-                    {isFetchingDiff ? "Fetching..." : "Fetch diff"}
-                  </button>
+              )}
+
+              {activeSource === "manual" && (
+                <div className="manual-pane">
+                  <div className="form-grid">
+                    <label className="form-field form-field--wide">
+                      <span>PR title</span>
+                      <input name="title" required value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Add fallback handling for failed code retrieval" />
+                    </label>
+                    <label className="form-field">
+                      <span>Repository</span>
+                      <input name="repository" required value={repository} onChange={(event) => setRepository(event.target.value)} placeholder="acme/redemption-api" />
+                    </label>
+                    <label className="form-field">
+                      <span>Language / framework</span>
+                      <input name="technology" required value={technology} onChange={(event) => updateTechnology(event.target.value, true)} placeholder="Python / FastAPI" />
+                    </label>
+                    <label className="form-field form-field--wide">
+                      <span>PR diff</span>
+                      <textarea name="diff" required rows={16} value={diff} onChange={(event) => setDiff(event.target.value)} spellCheck={false} placeholder="Paste the pull request diff here. Raw diffs are analysed transiently and are not saved in local report history." />
+                    </label>
+                  </div>
+                  <p className="github-import-help">Your diff is sent for analysis when model-assisted generation is enabled. Lintel does not store the raw diff in local report history.</p>
                 </div>
-                <p id="github-import-help" className="github-import-help">Public pull requests only. Manual title, repository and diff entry remain available if import fails.</p>
-              </>
-            )}
-            {importStatus && (
-              <p
-                className={`github-import-status github-import-status--${importStatus.type}`}
-                role={importStatus.type === "error" ? "alert" : "status"}
-              >
-                {importStatus.message}
-              </p>
+              )}
+
+              {activeSource === "sample" && (
+                <div className="sample-pane">
+                  <section className="wb-pane" aria-label="Sample scenarios">
+                    <div className="wb-pane-header">
+                      <h3>Sample scenarios</h3>
+                      <span className="wb-pane-count">{PR_SAMPLES.length}</span>
+                    </div>
+                    <div className="wb-pane-body">
+                      {PR_SAMPLES.map((sample) => (
+                        <button
+                          key={sample.id}
+                          type="button"
+                          className={selectedSampleId === sample.id ? "wb-row wb-row--selected" : "wb-row"}
+                          aria-pressed={selectedSampleId === sample.id}
+                          onClick={() => applySample(sample.id, sample.input)}
+                          disabled={isGenerating}
+                        >
+                          <strong>{sample.name}</strong>
+                          <span><span className="wb-code">{sample.input.repository}</span> · {sample.input.technology}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                  <p className="github-import-help">Built-in scenarios with realistic diffs. Use them to inspect a full readiness report without sharing code.</p>
+                </div>
+              )}
+            </div>
+
+            {showInspector && (
+              <aside className="workbench-inspector" aria-label="Selected change">
+                {inspector}
+              </aside>
             )}
           </div>
 
-          <div className="form-grid">
-            <label className="form-field form-field--wide">
-              <span>PR title</span>
-              <input name="title" required value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Add fallback handling for failed code retrieval" />
-            </label>
-            <label className="form-field">
-              <span>Repository</span>
-              <input name="repository" required value={repository} onChange={(event) => setRepository(event.target.value)} placeholder="acme/redemption-api" />
-            </label>
-            <label className="form-field">
-              <span>Language / framework</span>
-              <input name="technology" required value={technology} onChange={(event) => updateTechnology(event.target.value, true)} placeholder="Python / FastAPI" />
-            </label>
-            <label className="form-field form-field--wide review-profile-field">
-              <span>Review mode <small>Optional</small></span>
-              <select name="reviewProfile" value={reviewProfile} onChange={(event) => setReviewProfile(event.target.value as ReviewProfile)}>
-                {REVIEW_PROFILES.map((profile) => <option key={profile.id} value={profile.id}>{profile.label}</option>)}
-              </select>
-              <small className="review-mode-description">{selectedReviewModeDescription}</small>
-            </label>
-            <label className="form-field form-field--wide">
-              <span>PR diff</span>
-              <textarea name="diff" required rows={16} value={diff} onChange={(event) => setDiff(event.target.value)} spellCheck={false} placeholder="Paste the pull request diff here. Raw diffs are analysed transiently and are not saved in local report history." />
-            </label>
-          </div>
-
-          {error && <p className="form-error" role="alert">{error}</p>}
-
-          <div className="form-footer">
-            <p>Your diff is sent for analysis when model-assisted generation is enabled. Lintel does not store the raw diff in local report history.</p>
-            <button className="generate-button" type="submit" disabled={isGenerating || isFetchingDiff}>
-              {isGenerating ? "Generating…" : importedPullRequest ? "Run readiness review" : "Generate Report"}<span aria-hidden="true">→</span>
-            </button>
+          <div className="command-dock">
+            {error && <p className="form-error" role="alert">{error}</p>}
+            <div className="command-bar">
+              <div className="command-context">
+                <span className="command-source">{SOURCE_LABELS[activeSource]}</span>
+                <span className="command-target">{commandTarget}</span>
+              </div>
+              <label className="command-mode">
+                <span>Review mode</span>
+                <select name="reviewProfile" value={reviewProfile} onChange={(event) => setReviewProfile(event.target.value as ReviewProfile)}>
+                  {REVIEW_PROFILES.map((profile) => <option key={profile.id} value={profile.id}>{profile.label}</option>)}
+                </select>
+                <small className="review-mode-description">{selectedReviewModeDescription}</small>
+              </label>
+              <div className="command-run">
+                {!hasLoadedChange && <span className="command-hint">Load a change to enable the review</span>}
+                <button className="generate-button" type="submit" disabled={isGenerating || isFetchingDiff || !hasLoadedChange}>
+                  {isGenerating ? "Running review…" : "Run readiness review"}<span aria-hidden="true">→</span>
+                </button>
+              </div>
+            </div>
           </div>
         </form>
 

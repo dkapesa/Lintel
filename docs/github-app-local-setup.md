@@ -19,7 +19,7 @@ Use placeholder-free real values only in local environment files. Do not commit 
 Private keys may be stored with escaped newlines:
 
 ```env
-GITHUB_APP_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----"
+GITHUB_APP_PRIVATE_KEY="<escaped private key with \\n newlines>"
 ```
 
 ## Development GitHub App settings
@@ -29,12 +29,14 @@ Create a GitHub App for local testing and configure:
 - Webhook URL: your public HTTPS tunnel URL ending in `/api/github-app/webhook`
 - Webhook secret: the same value as `GITHUB_WEBHOOK_SECRET`
 - Repository permissions:
-  - Contents: read
-  - Pull requests: read
+  - Contents: read-only
+  - Pull requests: read and write
 - Subscribe to events:
   - Installation
   - Installation repositories
   - Pull request
+
+Pull requests write permission is used only to create or update one Lintel conversation comment on each pull request. Lintel does not request contents write, administration, checks write, actions write or merge permissions for this MVP.
 
 For local testing, use an HTTPS tunnel such as ngrok or Cloudflare Tunnel to forward to your local Next.js server.
 
@@ -50,8 +52,29 @@ For verified webhook deliveries, Lintel:
 6. Fetches pull-request metadata and diff.
 7. Runs the existing deterministic readiness generator.
 8. Stores the completed report for later display/comment delivery work.
+9. Creates or updates one pull-request conversation comment marked with:
+
+```md
+<!-- lintel:merge-readiness -->
+```
+
+Lintel looks for this marker before creating a new comment. It never edits or deletes comments that do not contain the marker.
 
 Raw webhook payloads, installation tokens and raw diffs are not persisted.
+
+## Repository enable and disable
+
+The local GitHub App management surface can enable or disable installed repositories for Lintel processing.
+
+This changes only Lintel’s local `.lintel-data` state. It does not alter the GitHub App installation, repository permissions or GitHub settings.
+
+Disabled repositories remain visible and historical analyses remain available. Future relevant PR webhook events are acknowledged without analysis or comment publishing until the repository is re-enabled.
+
+## Comment behaviour
+
+After a completed analysis, Lintel posts or updates one marked pull-request comment containing the merge-readiness decision, blockers, missing tests, conditions before merge, reviewer focus and next action.
+
+Lintel does not block merging by default and does not post inline comments.
 
 ## Local MVP limitation
 

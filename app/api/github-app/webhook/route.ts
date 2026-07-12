@@ -1,8 +1,12 @@
 import { createInstallationToken, installationFetch, installationFetchError } from "../../../../lib/github-app-auth";
+import { githubDecisionCommentBody, publishGitHubDecisionComment } from "../../../../lib/github-app-comments";
 import {
   completePullRequestAnalysis,
+  completeCommentPublishing,
   failPullRequestAnalysis,
+  failCommentPublishing,
   findCompletedAnalysis,
+  markCommentPublishing,
   markPullRequestProcessing,
   markRepositoryRemoved,
   recordDelivery,
@@ -186,8 +190,35 @@ async function processPullRequest(payload: unknown, deliveryId: string) {
       reviewProfile: "standard",
     };
     const report = generateReport(input);
-    await completePullRequestAnalysis(processingRecord.id, report);
+    const completedRecord = await completePullRequestAnalysis(processingRecord.id, report);
     await updateDeliveryState(deliveryId, "completed", undefined, processingRecord.id);
+
+    if (completedRecord && completedRecord.latestPublishedHeadSha !== envelope.headSha) {
+      await markCommentPublishing(processingRecord.id);
+      const body = githubDecisionCommentBody(report, {
+        headSha: envelope.headSha,
+        analysedAt: new Date().toISOString(),
+      });
+      const published = await publishGitHubDecisionComment({
+        owner: envelope.repositoryOwner,
+        repo: envelope.repositoryName,
+        number: envelope.pullRequestNumber,
+        token: token.value,
+        body,
+        storedCommentId: completedRecord.githubCommentId,
+      });
+
+      if (published.ok) {
+        await completeCommentPublishing(processingRecord.id, {
+          commentId: published.commentId,
+          htmlUrl: published.htmlUrl,
+          headSha: envelope.headSha,
+        });
+      } else {
+        await failCommentPublishing(processingRecord.id, published.error);
+      }
+    }
+
     return jsonResponse({ ok: true, state: "completed" });
   } catch {
     await failPullRequestAnalysis(processingRecord.id, "report_generation_failure");

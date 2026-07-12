@@ -59,6 +59,63 @@ type GitHubWorkspacePullRequest = {
   updatedAt?: string;
 };
 
+type GitHubAppStatus = {
+  configured: boolean;
+  authenticated: boolean;
+  slug?: string;
+  name?: string;
+  error?: string;
+};
+
+type GitHubAppInstallation = {
+  installationId: number;
+  accountLogin?: string;
+  active: boolean;
+  updatedAt: string;
+};
+
+type GitHubAppRepository = {
+  installationId: number;
+  repositoryId: number;
+  owner: string;
+  name: string;
+  visibility: "public" | "private";
+  enabled: boolean;
+  active: boolean;
+  updatedAt: string;
+};
+
+type GitHubAppPullRequest = {
+  id: string;
+  installationId: number;
+  repositoryId: number;
+  owner: string;
+  repository: string;
+  number: number;
+  title?: string;
+  baseSha?: string;
+  headSha: string;
+  state: string;
+  failureCategory?: string;
+  latestReport?: Report;
+  reportSource?: "deterministic";
+  commentPublishingState?: string;
+  commentFailureCategory?: string;
+  githubCommentHtmlUrl?: string;
+  latestPublishedHeadSha?: string;
+  latestPublishedAt?: string;
+  updatedAt: string;
+};
+
+type GitHubAppDelivery = {
+  deliveryId: string;
+  event: string;
+  action?: string;
+  state: string;
+  failureCategory?: string;
+  updatedAt: string;
+};
+
 type ImportStatus = {
   type: "loading" | "success" | "error";
   message: string;
@@ -132,6 +189,11 @@ function isPullRequestListResponse(value: unknown): value is { pullRequests: Git
   ));
 }
 
+function arrayField<T>(value: unknown, field: string): T[] {
+  if (typeof value !== "object" || value === null || !(field in value) || !Array.isArray((value as Record<string, unknown>)[field])) return [];
+  return (value as Record<string, T[]>)[field];
+}
+
 function historySourceLabel(source: ReportHistoryEntry["source"]) {
   return source === "ai" ? "Baseline + model-assisted" : "Baseline only";
 }
@@ -158,6 +220,12 @@ export default function NewReportPage() {
   const [repositorySearch, setRepositorySearch] = useState("");
   const [selectedRepository, setSelectedRepository] = useState<GitHubWorkspaceRepository | null>(null);
   const [pullRequests, setPullRequests] = useState<GitHubWorkspacePullRequest[]>([]);
+  const [githubAppStatus, setGitHubAppStatus] = useState<GitHubAppStatus | null>(null);
+  const [githubAppInstallations, setGitHubAppInstallations] = useState<GitHubAppInstallation[]>([]);
+  const [githubAppRepositories, setGitHubAppRepositories] = useState<GitHubAppRepository[]>([]);
+  const [githubAppPullRequests, setGitHubAppPullRequests] = useState<GitHubAppPullRequest[]>([]);
+  const [githubAppDeliveries, setGitHubAppDeliveries] = useState<GitHubAppDelivery[]>([]);
+  const [isLoadingGitHubApp, setIsLoadingGitHubApp] = useState(false);
   const [githubUrl, setGitHubUrl] = useState("");
   const [title, setTitle] = useState("");
   const [repository, setRepository] = useState("");
@@ -185,6 +253,10 @@ export default function NewReportPage() {
     } catch {
       setHistory([]);
     }
+  }, []);
+
+  useEffect(() => {
+    loadGitHubAppManagement();
   }, []);
 
   useEffect(() => {
@@ -331,6 +403,71 @@ export default function NewReportPage() {
       setGitHubImportMode(null);
     } finally {
       setIsFetchingDiff(false);
+    }
+  }
+
+  async function loadGitHubAppManagement() {
+    setIsLoadingGitHubApp(true);
+
+    try {
+      const [statusResponse, installationsResponse, repositoriesResponse, pullRequestsResponse, deliveriesResponse] = await Promise.all([
+        fetch("/api/github-app?view=status", { cache: "no-store" }),
+        fetch("/api/github-app?view=installations", { cache: "no-store" }),
+        fetch("/api/github-app?view=repositories", { cache: "no-store" }),
+        fetch("/api/github-app?view=pull-requests", { cache: "no-store" }),
+        fetch("/api/github-app?view=deliveries", { cache: "no-store" }),
+      ]);
+
+      const [statusPayload, installationsPayload, repositoriesPayload, pullRequestsPayload, deliveriesPayload] = await Promise.all([
+        statusResponse.json() as Promise<GitHubAppStatus>,
+        installationsResponse.json() as Promise<unknown>,
+        repositoriesResponse.json() as Promise<unknown>,
+        pullRequestsResponse.json() as Promise<unknown>,
+        deliveriesResponse.json() as Promise<unknown>,
+      ]);
+
+      setGitHubAppStatus(statusPayload);
+      setGitHubAppInstallations(arrayField<GitHubAppInstallation>(installationsPayload, "installations"));
+      setGitHubAppRepositories(arrayField<GitHubAppRepository>(repositoriesPayload, "repositories"));
+      setGitHubAppPullRequests(arrayField<GitHubAppPullRequest>(pullRequestsPayload, "pullRequests"));
+      setGitHubAppDeliveries(arrayField<GitHubAppDelivery>(deliveriesPayload, "deliveries"));
+    } catch {
+      setGitHubAppStatus({ configured: false, authenticated: false, error: "local_store_unavailable" });
+    } finally {
+      setIsLoadingGitHubApp(false);
+    }
+  }
+
+  async function setGitHubAppRepositoryEnabled(repo: GitHubAppRepository, enabled: boolean) {
+    try {
+      const response = await fetch("/api/github-app", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "set-repository-enabled",
+          installationId: repo.installationId,
+          repositoryId: repo.repositoryId,
+          enabled,
+        }),
+      });
+      if (!response.ok) throw new Error("Repository state could not be updated.");
+      await loadGitHubAppManagement();
+    } catch {
+      setImportStatus({ type: "error", message: "Local GitHub App repository state could not be updated." });
+    }
+  }
+
+  function openAutomatedReport(pr: GitHubAppPullRequest) {
+    if (!pr.latestReport) {
+      setImportStatus({ type: "error", message: "This automated pull request does not have a completed report yet." });
+      return;
+    }
+
+    try {
+      sessionStorage.setItem(GENERATED_REPORT_STORAGE_KEY, JSON.stringify({ report: pr.latestReport, source: pr.reportSource ?? "deterministic" }));
+      router.push("/report");
+    } catch {
+      setImportStatus({ type: "error", message: "This automated report could not be opened locally." });
     }
   }
 
@@ -589,6 +726,112 @@ export default function NewReportPage() {
                 {githubWorkspaceStatus?.error ?? "Connected GitHub browsing is optional for local development."}
               </p>
             )}
+          </section>
+
+          <section className="github-app-management" aria-labelledby="github-app-management-title">
+            <div className="connected-github-header">
+              <div>
+                <span className="card-kicker">GITHUB APP MVP</span>
+                <h2 id="github-app-management-title">Automated PR analysis</h2>
+                <p>
+                  {githubAppStatus?.authenticated
+                    ? `Authenticated${githubAppStatus.name || githubAppStatus.slug ? ` as ${githubAppStatus.name ?? githubAppStatus.slug}` : ""}. Webhook analyses can publish one marked decision comment.`
+                    : "Configure the GitHub App environment to receive verified webhooks and publish one Lintel decision comment."}
+                </p>
+              </div>
+              <span className={githubAppStatus?.authenticated ? "connected-github-state connected-github-state--on" : "connected-github-state"}>
+                {githubAppStatus?.authenticated ? "Authenticated" : githubAppStatus?.configured ? "Configured" : "Not configured"}
+              </span>
+            </div>
+
+            <div className="github-app-grid">
+              <article>
+                <h3>Installations</h3>
+                {githubAppInstallations.length === 0 ? (
+                  <p className="connected-github-empty">{githubAppStatus?.error ?? "No installation webhooks received yet."}</p>
+                ) : (
+                  <ul className="connected-github-list">
+                    {githubAppInstallations.map((installation) => (
+                      <li key={installation.installationId} className="github-app-row">
+                        <strong>{installation.accountLogin ?? "GitHub installation"}</strong>
+                        <span>{installation.active ? "Active" : "Inactive"} / ID {installation.installationId}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </article>
+
+              <article>
+                <h3>Installed repositories</h3>
+                {githubAppRepositories.length === 0 ? (
+                  <p className="connected-github-empty">No installed repositories stored locally.</p>
+                ) : (
+                  <ul className="connected-github-list">
+                    {githubAppRepositories.slice(0, 8).map((repo) => (
+                      <li key={`${repo.installationId}:${repo.repositoryId}`} className="github-app-row">
+                        <div>
+                          <strong>{repo.owner}/{repo.name}</strong>
+                          <span>{repo.visibility} / {repo.active ? "installed" : "removed"} / {repo.enabled ? "enabled" : "disabled"}</span>
+                        </div>
+                        <button type="button" onClick={() => setGitHubAppRepositoryEnabled(repo, !repo.enabled)}>
+                          {repo.enabled ? "Disable" : "Enable"}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </article>
+
+              <article>
+                <h3>Webhook health</h3>
+                {githubAppDeliveries.length === 0 ? (
+                  <p className="connected-github-empty">No webhook deliveries stored locally.</p>
+                ) : (
+                  <ul className="connected-github-list">
+                    {githubAppDeliveries.slice(0, 5).map((delivery) => (
+                      <li key={delivery.deliveryId} className="github-app-row">
+                        <strong>{delivery.event}{delivery.action ? ` / ${delivery.action}` : ""}</strong>
+                        <span>{delivery.state}{delivery.failureCategory ? ` / ${delivery.failureCategory}` : ""} / {new Date(delivery.updatedAt).toLocaleString()}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </article>
+
+              <article>
+                <h3>Automated pull requests</h3>
+                {githubAppPullRequests.length === 0 ? (
+                  <p className="connected-github-empty">No automated pull-request analyses stored locally.</p>
+                ) : (
+                  <ul className="connected-github-list">
+                    {githubAppPullRequests.slice(0, 8).map((pr) => (
+                      <li key={pr.id} className="github-app-row">
+                        <div>
+                          <strong>{pr.owner}/{pr.repository} #{pr.number}{pr.title ? ` — ${pr.title}` : ""}</strong>
+                          <span>
+                            {pr.state} / head {pr.headSha.slice(0, 7)}{pr.baseSha ? ` / base ${pr.baseSha.slice(0, 7)}` : ""}
+                            {pr.latestReport ? ` / ${pr.latestReport.verdict.recommendation.replaceAll("_", " ")} ${pr.latestReport.verdict.riskScore}/100` : ""}
+                            {pr.commentPublishingState ? ` / comment ${pr.commentPublishingState}` : ""}
+                            {pr.commentFailureCategory ? ` / ${pr.commentFailureCategory}` : ""}
+                          </span>
+                        </div>
+                        <div className="github-app-row-actions">
+                          {pr.latestReport && <button type="button" onClick={() => openAutomatedReport(pr)}>Open report</button>}
+                          {pr.githubCommentHtmlUrl && <a href={pr.githubCommentHtmlUrl} target="_blank" rel="noreferrer">Comment</a>}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </article>
+            </div>
+
+            <div className="github-app-footer">
+              <button type="button" onClick={loadGitHubAppManagement} disabled={isLoadingGitHubApp}>
+                {isLoadingGitHubApp ? "Refreshing..." : "Refresh GitHub App state"}
+              </button>
+              <p className="github-import-help">GitHub App state is local MVP server data. Repository enable/disable changes only Lintel’s local processing state.</p>
+            </div>
           </section>
 
           <div className="github-import">

@@ -3,6 +3,7 @@ import path from "node:path";
 import type { Report } from "./mock-report";
 
 export type GitHubWebhookProcessingState = "received" | "processing" | "completed" | "failed" | "ignored";
+export type GitHubCommentPublishingState = "not_published" | "publishing" | "completed" | "failed";
 
 export type GitHubWebhookEnvelope = {
   deliveryId: string;
@@ -46,6 +47,7 @@ export type GitHubPullRequestRecord = {
   owner: string;
   repository: string;
   number: number;
+  title?: string;
   baseSha?: string;
   headSha: string;
   state: GitHubWebhookProcessingState;
@@ -53,6 +55,12 @@ export type GitHubPullRequestRecord = {
   latestReport?: Report;
   reportSource?: "deterministic";
   failureCategory?: string;
+  githubCommentId?: number;
+  githubCommentHtmlUrl?: string;
+  latestPublishedHeadSha?: string;
+  latestPublishedAt?: string;
+  commentPublishingState?: GitHubCommentPublishingState;
+  commentFailureCategory?: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -233,12 +241,19 @@ export async function markPullRequestProcessing(envelope: GitHubWebhookEnvelope)
       owner: envelope.repositoryOwner,
       repository: envelope.repositoryName,
       number: envelope.pullRequestNumber,
+      title: existing?.title,
       baseSha: envelope.baseSha,
       headSha: envelope.headSha,
       state: "processing",
       latestDeliveryId: envelope.deliveryId,
       latestReport: existing?.latestReport,
       reportSource: existing?.reportSource,
+      githubCommentId: existing?.githubCommentId,
+      githubCommentHtmlUrl: existing?.githubCommentHtmlUrl,
+      latestPublishedHeadSha: existing?.latestPublishedHeadSha,
+      latestPublishedAt: existing?.latestPublishedAt,
+      commentPublishingState: existing?.commentPublishingState ?? "not_published",
+      commentFailureCategory: existing?.commentFailureCategory,
       createdAt: existing?.createdAt ?? timestamp,
       updatedAt: timestamp,
     };
@@ -251,9 +266,12 @@ export async function completePullRequestAnalysis(id: string, report: Report) {
     const record = data.pullRequests[id];
     if (!record) return null;
     record.state = "completed";
+    record.title = report.pr.title;
     record.latestReport = report;
     record.reportSource = "deterministic";
     record.failureCategory = undefined;
+    record.commentPublishingState = record.latestPublishedHeadSha === record.headSha ? "completed" : "not_published";
+    record.commentFailureCategory = undefined;
     record.updatedAt = now();
     return record;
   });
@@ -266,6 +284,56 @@ export async function failPullRequestAnalysis(id: string | null, failureCategory
     if (!record) return null;
     record.state = "failed";
     record.failureCategory = failureCategory;
+    record.updatedAt = now();
+    return record;
+  });
+}
+
+export async function setRepositoryEnabled(installationId: number, repositoryId: number, enabled: boolean) {
+  return updateStore((data) => {
+    const record = data.repositories[repositoryKey(installationId, repositoryId)];
+    if (!record) return null;
+    record.enabled = enabled;
+    record.updatedAt = now();
+    return record;
+  });
+}
+
+export async function markCommentPublishing(id: string) {
+  return updateStore((data) => {
+    const record = data.pullRequests[id];
+    if (!record) return null;
+    record.commentPublishingState = "publishing";
+    record.commentFailureCategory = undefined;
+    record.updatedAt = now();
+    return record;
+  });
+}
+
+export async function completeCommentPublishing(
+  id: string,
+  metadata: { commentId: number; htmlUrl?: string; headSha: string },
+) {
+  return updateStore((data) => {
+    const record = data.pullRequests[id];
+    if (!record) return null;
+    record.githubCommentId = metadata.commentId;
+    record.githubCommentHtmlUrl = metadata.htmlUrl;
+    record.latestPublishedHeadSha = metadata.headSha;
+    record.latestPublishedAt = now();
+    record.commentPublishingState = "completed";
+    record.commentFailureCategory = undefined;
+    record.updatedAt = now();
+    return record;
+  });
+}
+
+export async function failCommentPublishing(id: string, failureCategory: string) {
+  return updateStore((data) => {
+    const record = data.pullRequests[id];
+    if (!record) return null;
+    record.commentPublishingState = "failed";
+    record.commentFailureCategory = failureCategory;
     record.updatedAt = now();
     return record;
   });

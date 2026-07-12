@@ -6,7 +6,7 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { generateReport, GENERATED_REPORT_STORAGE_KEY, type ReportInput, type ReportInputSource } from "../../lib/report-generator";
 import { addReportToHistory, clearReportHistory, deleteReportFromHistory, readReportHistory, type ReportHistoryEntry } from "../../lib/report-history";
 import type { Report } from "../../lib/mock-report";
-import { shortSha, type ReadinessDelta } from "../../lib/readiness-delta";
+import { shortSha, type ReadinessDelta, type ReviewDiff } from "../../lib/readiness-delta";
 import { PR_SAMPLES } from "../../lib/sample-pr-input";
 import { inferStack } from "../../lib/stack-inference";
 import { REVIEW_PROFILES, reviewProfileDescription, type ReviewProfile } from "../../lib/review-profiles";
@@ -17,6 +17,8 @@ type StoredReport = {
   report: Report;
   source: ReportSource;
   readinessDelta?: ReadinessDelta;
+  reviewDiff?: ReviewDiff;
+  initialTab?: "review-diff";
 };
 
 type GitHubImportResponse = {
@@ -102,6 +104,7 @@ type GitHubAppPullRequest = {
   latestReport?: Report;
   reportSource?: "deterministic";
   latestDelta?: ReadinessDelta;
+  latestReviewDiff?: ReviewDiff;
   deltaFailureCategory?: string;
   analysisRuns?: Array<{
     runId: string;
@@ -489,7 +492,7 @@ export default function NewReportPage() {
     }
   }
 
-  function openAutomatedReport(pr: GitHubAppPullRequest) {
+  function openAutomatedReport(pr: GitHubAppPullRequest, initialTab?: StoredReport["initialTab"]) {
     if (!pr.latestReport) {
       setImportStatus({ type: "error", message: "This automated pull request does not have a completed report yet." });
       return;
@@ -500,6 +503,8 @@ export default function NewReportPage() {
         report: pr.latestReport,
         source: pr.reportSource ?? "deterministic",
         readinessDelta: pr.latestDelta,
+        reviewDiff: pr.latestReviewDiff,
+        initialTab,
       }));
       router.push("/report");
     } catch {
@@ -847,12 +852,13 @@ export default function NewReportPage() {
                           <span>
                             {pr.state} / head {pr.headSha.slice(0, 7)}{pr.baseSha ? ` / base ${pr.baseSha.slice(0, 7)}` : ""}
                             {pr.latestReport ? ` / ${pr.latestReport.verdict.recommendation.replaceAll("_", " ")} ${pr.latestReport.verdict.riskScore}/100` : ""}
-                            {pr.latestDelta || pr.deltaFailureCategory ? ` / ${deltaIndicatorWithSha(pr.latestDelta, pr.deltaFailureCategory)}` : ""}
                             {pr.commentPublishingState ? ` / comment ${pr.commentPublishingState}` : ""}
                             {pr.commentFailureCategory ? ` / ${pr.commentFailureCategory}` : ""}
                           </span>
                         </div>
                         <div className="github-app-row-actions">
+                          {pr.latestReviewDiff && <button type="button" onClick={() => openAutomatedReport(pr, "review-diff")}>{deltaIndicatorWithSha(pr.latestDelta, pr.deltaFailureCategory)}</button>}
+                          {!pr.latestReviewDiff && (pr.latestDelta || pr.deltaFailureCategory) && <span>{deltaIndicatorWithSha(pr.latestDelta, pr.deltaFailureCategory)}</span>}
                           {pr.latestReport && <button type="button" onClick={() => openAutomatedReport(pr)}>Open report</button>}
                           {pr.githubCommentHtmlUrl && <a href={pr.githubCommentHtmlUrl} target="_blank" rel="noreferrer">Comment</a>}
                         </div>

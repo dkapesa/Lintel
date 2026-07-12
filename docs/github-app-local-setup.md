@@ -90,6 +90,23 @@ The first completed run is labelled as the initial readiness baseline. Later com
 
 Comparison is field-based and intentionally conservative. It does not perform line-by-line review diffs, fuzzy AI matching or AI-generated comparison text. If a comparison cannot be generated safely, the completed report remains available and the delta failure is recorded separately.
 
+## Review Diff
+
+For re-analyses after the initial baseline, Lintel also stores a focused Review Diff for the latest completed run when the immediately previous completed run is available.
+
+The Review Diff compares structured report objects only:
+
+- findings
+- evidence signals
+- missing or suggested tests
+- merge conditions
+
+Items are classified as added, cleared, changed, unchanged or reopened. Reopened is only used for merge conditions when bounded run history proves the condition existed earlier, disappeared from the immediately previous completed run, and returned in the current run.
+
+The Review Diff is not a source-code diff. It does not fetch or persist raw diffs, compare patch hunks, render line-level changes, or use model-generated comparison text. Field identity is deterministic and normalised to avoid treating whitespace or casing differences as meaningful changes.
+
+The local API exposes the latest Review Diff and run-specific Review Diff data from the `.lintel-data` store. Old V6.0 records and initial analyses remain readable, but they may not have a detailed Review Diff until a new completed head-SHA analysis is stored.
+
 ## Repository enable and disable
 
 The local GitHub App management surface can enable or disable installed repositories for Lintel processing.

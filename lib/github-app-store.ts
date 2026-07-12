@@ -1,7 +1,7 @@
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { Report } from "./mock-report";
-import { createReadinessDelta, type AnalysisRunSnapshot, type ReadinessDelta } from "./readiness-delta";
+import { createReadinessDelta, createReviewDiff, type AnalysisRunSnapshot, type ReadinessDelta } from "./readiness-delta";
 
 export type GitHubWebhookProcessingState = "received" | "processing" | "completed" | "failed" | "ignored";
 export type GitHubCommentPublishingState = "not_published" | "publishing" | "completed" | "failed";
@@ -347,6 +347,7 @@ export async function completePullRequestAnalysis(id: string, report: Report) {
 
     try {
       currentRun.delta = createReadinessDelta(previousRun, currentRun, earlierRuns, timestamp);
+      currentRun.reviewDiff = createReviewDiff(previousRun, currentRun, currentRun.delta, earlierRuns, timestamp) ?? undefined;
     } catch {
       currentRun.deltaFailureCategory = "delta_generation_failed";
     }

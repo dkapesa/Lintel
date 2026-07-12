@@ -66,6 +66,7 @@ export async function GET(request: Request) {
         latestReport: record.latestReport,
         reportSource: record.reportSource,
         latestDelta: record.analysisRuns?.[0]?.delta,
+        latestReviewDiff: record.analysisRuns?.[0]?.reviewDiff,
         deltaFailureCategory: record.analysisRuns?.[0]?.deltaFailureCategory,
         analysisRuns: record.analysisRuns?.map(analysisRunSummary) ?? [],
         commentPublishingState: record.commentPublishingState ?? "not_published",
@@ -95,6 +96,27 @@ export async function GET(request: Request) {
     const run = record?.analysisRuns?.find((item) => item.runId === runId);
     if (!record || !run) return jsonResponse({ error: "Analysis run was not found." }, 404);
     return jsonResponse({ pullRequestId, analysisRun: run });
+  }
+
+  if (view === "review-diff") {
+    const pullRequestId = url.searchParams.get("pullRequestId");
+    const runId = url.searchParams.get("runId");
+    if (!pullRequestId) return jsonResponse({ error: "pullRequestId is required." }, 400);
+    const record = store.pullRequests[pullRequestId];
+    if (!record) return jsonResponse({ error: "Automated pull-request record was not found." }, 404);
+    const run = runId
+      ? record.analysisRuns?.find((item) => item.runId === runId)
+      : record.analysisRuns?.[0];
+    if (!run) return jsonResponse({ error: "Completed analysis run was not found." }, 404);
+    if (!run.reviewDiff) {
+      return jsonResponse({
+        pullRequestId,
+        runId: run.runId,
+        available: false,
+        reason: run.delta?.classification === "initial" ? "initial_analysis" : run.deltaFailureCategory ?? "review_diff_unavailable",
+      });
+    }
+    return jsonResponse({ pullRequestId, runId: run.runId, available: true, reviewDiff: run.reviewDiff });
   }
 
   if (view === "deliveries") {

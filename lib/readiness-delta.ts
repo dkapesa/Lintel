@@ -30,6 +30,44 @@ export type ReadinessDelta = {
   deltaFailureCategory?: string;
 };
 
+export type ReviewDiffStatus = "added" | "cleared" | "changed" | "unchanged" | "reopened";
+
+export type ReviewDiffChange = {
+  field: string;
+  previous?: string;
+  current?: string;
+};
+
+export type ReviewDiffItem = {
+  key: string;
+  status: ReviewDiffStatus;
+  title: string;
+  category: string;
+  previousState?: string;
+  currentState?: string;
+  changes?: ReviewDiffChange[];
+};
+
+export type ReviewDiff = {
+  previousRunId?: string;
+  previousHeadSha?: string;
+  currentRunId: string;
+  currentHeadSha: string;
+  previousScore?: number;
+  currentScore: number;
+  previousRecommendation?: Recommendation;
+  currentRecommendation: Recommendation;
+  previousRiskLevel?: RiskLevel;
+  currentRiskLevel: RiskLevel;
+  classification: ReadinessDeltaClassification;
+  findings: ReviewDiffItem[];
+  evidence: ReviewDiffItem[];
+  testGaps: ReviewDiffItem[];
+  mergeConditions: ReviewDiffItem[];
+  generatedAt: string;
+  failureCategory?: string;
+};
+
 export type AnalysisRunSnapshot = {
   runId: string;
   repositoryId: number;
@@ -45,6 +83,7 @@ export type AnalysisRunSnapshot = {
   analysisSource: "deterministic";
   completedAt: string;
   delta?: ReadinessDelta;
+  reviewDiff?: ReviewDiff;
   deltaFailureCategory?: string;
 };
 
@@ -53,6 +92,14 @@ type ComparableItem = {
   label: string;
 };
 type Finding = Report["findings"][number];
+type SuggestedTest = Report["suggestedTests"][number];
+type ComparableRecord = {
+  key: string;
+  title: string;
+  category: string;
+  state?: string;
+  fields: Record<string, string | undefined>;
+};
 
 function normaliseComparisonText(value: string) {
   return value.toLowerCase().replace(/\s+/g, " ").trim();
@@ -92,6 +139,23 @@ function findingItem(finding: Finding): ComparableItem {
   };
 }
 
+function findingRecord(finding: Finding): ComparableRecord {
+  return {
+    key: `finding:${normaliseComparisonText(finding.category)}:${normaliseComparisonText(finding.file ?? "")}:${normaliseComparisonText(finding.title)}`,
+    title: finding.title,
+    category: finding.category,
+    state: finding.severity === "CRITICAL" || finding.severity === "HIGH" ? "Blocking" : "Advisory",
+    fields: {
+      severity: finding.severity,
+      blockerState: finding.severity === "CRITICAL" || finding.severity === "HIGH" ? "Blocking" : "Advisory",
+      evidence: finding.evidence,
+      action: finding.action,
+      file: finding.file,
+      provenance: finding.provenance,
+    },
+  };
+}
+
 function blockerItems(report: Report): ComparableItem[] {
   return report.findings.map(findingItem);
 }
@@ -104,6 +168,191 @@ function testGapItems(report: Report): ComparableItem[] {
     key: `gap:${normaliseComparisonText(gap)}`,
     label: gap,
   }));
+}
+
+function suggestedTestState(test: SuggestedTest) {
+  return test.priority ?? "Recommended";
+}
+
+function testGapRecords(report: Report): ComparableRecord[] {
+  const missing = report.missingTests.map((test) => ({
+    key: `test:missing:${normaliseComparisonText(test)}`,
+    title: test,
+    category: "Missing test",
+    state: "Missing",
+    fields: {
+      state: "Missing",
+      priority: "Required",
+      detail: test,
+    },
+  }));
+  const suggested = report.suggestedTests.map((test) => ({
+    key: `test:suggested:${normaliseComparisonText(test.title)}`,
+    title: test.title,
+    category: "Suggested test",
+    state: suggestedTestState(test),
+    fields: {
+      state: "Suggested",
+      priority: suggestedTestState(test),
+      detail: test.description,
+    },
+  }));
+
+  return [...missing, ...suggested];
+}
+
+function conditionRecords(report: Report): ComparableRecord[] {
+  return decisionConditions(report.conditionsBeforeMerge).map((condition) => ({
+    key: `condition:${normaliseComparisonText(condition)}`,
+    title: condition,
+    category: "Merge condition",
+    state: "Open",
+    fields: {
+      state: "Open",
+      clearanceRequirement: condition,
+    },
+  }));
+}
+
+function evidenceRecords(report: Report): ComparableRecord[] {
+  const records: ComparableRecord[] = [];
+
+  for (const finding of report.findings) {
+    records.push({
+      key: `evidence:finding:${normaliseComparisonText(finding.category)}:${normaliseComparisonText(finding.title)}`,
+      title: finding.title,
+      category: finding.category,
+      state: finding.provenance ?? "Rule detected",
+      fields: {
+        evidence: finding.evidence,
+        provenance: finding.provenance ?? "Rule detected",
+        status: finding.evidence ? "Present" : "Missing",
+      },
+    });
+  }
+
+  if (report.operationalReadiness) {
+    for (const signal of deduplicateReportItems(report.operationalReadiness.detectionSignals)) {
+      records.push({
+        key: `evidence:operational:detection:${normaliseComparisonText(signal)}`,
+        title: "Detection signal",
+        category: "Operational readiness",
+        state: "Present",
+        fields: { evidence: signal, status: "Present", provenance: "Rule detected" },
+      });
+    }
+    for (const gap of deduplicateReportItems(report.operationalReadiness.observabilityGaps)) {
+      records.push({
+        key: `evidence:operational:observability:${normaliseComparisonText(gap)}`,
+        title: "Observability evidence missing",
+        category: "Operational readiness",
+        state: "Missing",
+        fields: { evidence: gap, status: "Missing", provenance: "Rule detected" },
+      });
+    }
+    for (const recovery of deduplicateReportItems(report.operationalReadiness.recoveryOrRollback)) {
+      records.push({
+        key: `evidence:operational:recovery:${normaliseComparisonText(recovery)}`,
+        title: "Recovery evidence",
+        category: "Operational readiness",
+        state: report.operationalReadiness.status === "ATTENTION" ? "Needs confirmation" : "Present",
+        fields: { evidence: recovery, status: report.operationalReadiness.status === "ATTENTION" ? "Needs confirmation" : "Present", provenance: "Rule detected" },
+      });
+    }
+  }
+
+  for (const check of report.reportQuality?.checks ?? []) {
+    if (check.status === "WARNING") {
+      records.push({
+        key: `evidence:quality:${normaliseComparisonText(check.label)}`,
+        title: check.label,
+        category: "Report quality",
+        state: "Missing",
+        fields: { evidence: check.detail, status: "Warning", provenance: "Rule detected" },
+      });
+    }
+  }
+
+  return records;
+}
+
+function recordMap(records: ComparableRecord[]) {
+  const map = new Map<string, ComparableRecord>();
+  for (const record of records) {
+    if (!map.has(record.key)) map.set(record.key, record);
+  }
+  return map;
+}
+
+function fieldChanges(previous: ComparableRecord, current: ComparableRecord, fields: string[]) {
+  return fields.flatMap((field) => {
+    const previousValue = previous.fields[field]?.trim();
+    const currentValue = current.fields[field]?.trim();
+    if (normaliseComparisonText(previousValue ?? "") === normaliseComparisonText(currentValue ?? "")) return [];
+    return [{ field, previous: previousValue, current: currentValue }];
+  });
+}
+
+function compareRecordSet({
+  previous,
+  current,
+  changeFields,
+  reopenedKeys = new Set<string>(),
+}: {
+  previous: ComparableRecord[];
+  current: ComparableRecord[];
+  changeFields: string[];
+  reopenedKeys?: Set<string>;
+}): ReviewDiffItem[] {
+  const previousMap = recordMap(previous);
+  const currentMap = recordMap(current);
+  const keys = new Set([...previousMap.keys(), ...currentMap.keys()]);
+  const items: ReviewDiffItem[] = [];
+
+  for (const key of keys) {
+    const previousItem = previousMap.get(key);
+    const currentItem = currentMap.get(key);
+
+    if (!previousItem && currentItem) {
+      items.push({
+        key,
+        status: reopenedKeys.has(key) ? "reopened" : "added",
+        title: currentItem.title,
+        category: currentItem.category,
+        currentState: currentItem.state,
+      });
+      continue;
+    }
+
+    if (previousItem && !currentItem) {
+      items.push({
+        key,
+        status: "cleared",
+        title: previousItem.title,
+        category: previousItem.category,
+        previousState: previousItem.state,
+      });
+      continue;
+    }
+
+    if (previousItem && currentItem) {
+      const changes = fieldChanges(previousItem, currentItem, changeFields);
+      items.push({
+        key,
+        status: changes.length > 0 ? "changed" : "unchanged",
+        title: currentItem.title,
+        category: currentItem.category,
+        previousState: previousItem.state,
+        currentState: currentItem.state,
+        changes: changes.length > 0 ? changes : undefined,
+      });
+    }
+  }
+
+  return items.sort((a, b) => {
+    const order: Record<ReviewDiffStatus, number> = { reopened: 0, added: 1, changed: 2, cleared: 3, unchanged: 4 };
+    return order[a.status] - order[b.status] || a.category.localeCompare(b.category) || a.title.localeCompare(b.title);
+  });
 }
 
 const recommendationRank: Record<Recommendation, number> = {
@@ -247,6 +496,62 @@ export function createReadinessDelta(
       clearedBlockers: clearedBlockers.length,
       addedGaps: addedTestOrEvidenceGaps.length,
       clearedGaps: clearedTestOrEvidenceGaps.length,
+    }),
+    generatedAt,
+  };
+}
+
+export function createReviewDiff(
+  previousRun: AnalysisRunSnapshot | null,
+  currentRun: AnalysisRunSnapshot,
+  delta: ReadinessDelta,
+  earlierRuns: AnalysisRunSnapshot[] = [],
+  generatedAt = new Date().toISOString(),
+): ReviewDiff | null {
+  if (!previousRun) return null;
+
+  const historicalConditionKeys = new Set(
+    earlierRuns.flatMap((run) => conditionRecords(run.report).map((item) => item.key)),
+  );
+  const previousConditionKeys = new Set(conditionRecords(previousRun.report).map((item) => item.key));
+  const reopenedKeys = new Set(
+    conditionRecords(currentRun.report)
+      .filter((item) => historicalConditionKeys.has(item.key) && !previousConditionKeys.has(item.key))
+      .map((item) => item.key),
+  );
+
+  return {
+    previousRunId: previousRun.runId,
+    previousHeadSha: previousRun.headSha,
+    currentRunId: currentRun.runId,
+    currentHeadSha: currentRun.headSha,
+    previousScore: delta.previousScore,
+    currentScore: delta.currentScore,
+    previousRecommendation: delta.previousRecommendation,
+    currentRecommendation: delta.currentRecommendation,
+    previousRiskLevel: delta.previousRiskLevel,
+    currentRiskLevel: delta.currentRiskLevel,
+    classification: delta.classification,
+    findings: compareRecordSet({
+      previous: previousRun.report.findings.map(findingRecord),
+      current: currentRun.report.findings.map(findingRecord),
+      changeFields: ["severity", "blockerState", "evidence", "action", "file", "provenance"],
+    }),
+    evidence: compareRecordSet({
+      previous: evidenceRecords(previousRun.report),
+      current: evidenceRecords(currentRun.report),
+      changeFields: ["status", "evidence", "provenance"],
+    }),
+    testGaps: compareRecordSet({
+      previous: testGapRecords(previousRun.report),
+      current: testGapRecords(currentRun.report),
+      changeFields: ["state", "priority", "detail"],
+    }),
+    mergeConditions: compareRecordSet({
+      previous: conditionRecords(previousRun.report),
+      current: conditionRecords(currentRun.report),
+      changeFields: ["state", "clearanceRequirement"],
+      reopenedKeys,
     }),
     generatedAt,
   };

@@ -9,6 +9,20 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
   return Response.json(body, { status, headers: NO_STORE_HEADERS });
 }
 
+function analysisRunSummary(record: { runId: string; headSha: string; baseSha?: string; recommendation: string; readinessScore: number; riskLevel: string; completedAt: string; delta?: unknown; deltaFailureCategory?: string }) {
+  return {
+    runId: record.runId,
+    headSha: record.headSha,
+    baseSha: record.baseSha,
+    recommendation: record.recommendation,
+    readinessScore: record.readinessScore,
+    riskLevel: record.riskLevel,
+    completedAt: record.completedAt,
+    delta: record.delta,
+    deltaFailureCategory: record.deltaFailureCategory,
+  };
+}
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const view = url.searchParams.get("view") ?? "status";
@@ -51,6 +65,9 @@ export async function GET(request: Request) {
         failureCategory: record.failureCategory,
         latestReport: record.latestReport,
         reportSource: record.reportSource,
+        latestDelta: record.analysisRuns?.[0]?.delta,
+        deltaFailureCategory: record.analysisRuns?.[0]?.deltaFailureCategory,
+        analysisRuns: record.analysisRuns?.map(analysisRunSummary) ?? [],
         commentPublishingState: record.commentPublishingState ?? "not_published",
         commentFailureCategory: record.commentFailureCategory,
         githubCommentId: record.githubCommentId,
@@ -60,6 +77,24 @@ export async function GET(request: Request) {
         updatedAt: record.updatedAt,
       })),
     });
+  }
+
+  if (view === "analysis-runs") {
+    const pullRequestId = url.searchParams.get("pullRequestId");
+    if (!pullRequestId) return jsonResponse({ error: "pullRequestId is required." }, 400);
+    const record = store.pullRequests[pullRequestId];
+    if (!record) return jsonResponse({ error: "Automated pull-request record was not found." }, 404);
+    return jsonResponse({ pullRequestId, analysisRuns: record.analysisRuns?.map(analysisRunSummary) ?? [] });
+  }
+
+  if (view === "analysis-run") {
+    const pullRequestId = url.searchParams.get("pullRequestId");
+    const runId = url.searchParams.get("runId");
+    if (!pullRequestId || !runId) return jsonResponse({ error: "pullRequestId and runId are required." }, 400);
+    const record = store.pullRequests[pullRequestId];
+    const run = record?.analysisRuns?.find((item) => item.runId === runId);
+    if (!record || !run) return jsonResponse({ error: "Analysis run was not found." }, 404);
+    return jsonResponse({ pullRequestId, analysisRun: run });
   }
 
   if (view === "deliveries") {

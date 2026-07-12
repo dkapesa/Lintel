@@ -6,6 +6,7 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { generateReport, GENERATED_REPORT_STORAGE_KEY, type ReportInput, type ReportInputSource } from "../../lib/report-generator";
 import { addReportToHistory, clearReportHistory, deleteReportFromHistory, readReportHistory, type ReportHistoryEntry } from "../../lib/report-history";
 import type { Report } from "../../lib/mock-report";
+import { shortSha, type ReadinessDelta } from "../../lib/readiness-delta";
 import { PR_SAMPLES } from "../../lib/sample-pr-input";
 import { inferStack } from "../../lib/stack-inference";
 import { REVIEW_PROFILES, reviewProfileDescription, type ReviewProfile } from "../../lib/review-profiles";
@@ -15,6 +16,7 @@ type ReportSource = "ai" | "deterministic";
 type StoredReport = {
   report: Report;
   source: ReportSource;
+  readinessDelta?: ReadinessDelta;
 };
 
 type GitHubImportResponse = {
@@ -99,6 +101,18 @@ type GitHubAppPullRequest = {
   failureCategory?: string;
   latestReport?: Report;
   reportSource?: "deterministic";
+  latestDelta?: ReadinessDelta;
+  deltaFailureCategory?: string;
+  analysisRuns?: Array<{
+    runId: string;
+    headSha: string;
+    recommendation: string;
+    readinessScore: number;
+    riskLevel: string;
+    completedAt: string;
+    delta?: ReadinessDelta;
+    deltaFailureCategory?: string;
+  }>;
   commentPublishingState?: string;
   commentFailureCategory?: string;
   githubCommentHtmlUrl?: string;
@@ -203,6 +217,24 @@ function historyTime(value: string) {
     dateStyle: "medium",
     timeStyle: "short",
   });
+}
+
+function deltaIndicator(delta?: ReadinessDelta, failureCategory?: string) {
+  if (failureCategory) return `Delta unavailable: ${failureCategory}`;
+  if (!delta || delta.classification === "initial") return "Initial analysis";
+  if (delta.classification === "unchanged") return "No material change";
+  if (delta.classification === "mixed") return "Mixed";
+  if (typeof delta.scoreChange === "number" && delta.scoreChange !== 0) {
+    const sign = delta.scoreChange > 0 ? "+" : "";
+    return `${sign}${delta.scoreChange} ${delta.classification}`;
+  }
+  return delta.classification;
+}
+
+function deltaIndicatorWithSha(delta?: ReadinessDelta, failureCategory?: string) {
+  const label = deltaIndicator(delta, failureCategory);
+  if (!delta || !delta.previousHeadSha || delta.classification === "initial") return label;
+  return `${label} (${shortSha(delta.previousHeadSha)} → ${shortSha(delta.currentHeadSha)})`;
 }
 
 export default function NewReportPage() {
@@ -464,7 +496,11 @@ export default function NewReportPage() {
     }
 
     try {
-      sessionStorage.setItem(GENERATED_REPORT_STORAGE_KEY, JSON.stringify({ report: pr.latestReport, source: pr.reportSource ?? "deterministic" }));
+      sessionStorage.setItem(GENERATED_REPORT_STORAGE_KEY, JSON.stringify({
+        report: pr.latestReport,
+        source: pr.reportSource ?? "deterministic",
+        readinessDelta: pr.latestDelta,
+      }));
       router.push("/report");
     } catch {
       setImportStatus({ type: "error", message: "This automated report could not be opened locally." });
@@ -811,6 +847,7 @@ export default function NewReportPage() {
                           <span>
                             {pr.state} / head {pr.headSha.slice(0, 7)}{pr.baseSha ? ` / base ${pr.baseSha.slice(0, 7)}` : ""}
                             {pr.latestReport ? ` / ${pr.latestReport.verdict.recommendation.replaceAll("_", " ")} ${pr.latestReport.verdict.riskScore}/100` : ""}
+                            {pr.latestDelta || pr.deltaFailureCategory ? ` / ${deltaIndicatorWithSha(pr.latestDelta, pr.deltaFailureCategory)}` : ""}
                             {pr.commentPublishingState ? ` / comment ${pr.commentPublishingState}` : ""}
                             {pr.commentFailureCategory ? ` / ${pr.commentFailureCategory}` : ""}
                           </span>

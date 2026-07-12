@@ -198,6 +198,7 @@ async function processPullRequest(payload: unknown, deliveryId: string) {
       const body = githubDecisionCommentBody(report, {
         headSha: envelope.headSha,
         analysedAt: new Date().toISOString(),
+        delta: completedRecord.analysisRuns?.[0]?.delta,
       });
       const published = await publishGitHubDecisionComment({
         owner: envelope.repositoryOwner,

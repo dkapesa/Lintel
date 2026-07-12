@@ -1,4 +1,5 @@
 import type { Report } from "./mock-report";
+import { shortSha, type ReadinessDelta } from "./readiness-delta";
 import { decisionConditions, deduplicateReportItems, pruneUnsupportedReviewerFocus } from "./report-quality";
 
 export const LINTEL_COMMENT_MARKER = "<!-- lintel:merge-readiness -->";
@@ -53,7 +54,41 @@ function reviewerFocus(report: Report) {
   return pruneUnsupportedReviewerFocus(report)?.map((item) => `${item.priority}: ${item.area}`) ?? [];
 }
 
-export function githubDecisionCommentBody(report: Report, options: { headSha: string; analysedAt: string; reportUrl?: string }) {
+function deltaSection(delta?: ReadinessDelta) {
+  if (!delta) {
+    return [
+      "### Readiness delta",
+      "Initial readiness baseline for this automated analysis.",
+    ];
+  }
+
+  if (delta.classification === "initial" || delta.previousScore === undefined || !delta.previousHeadSha) {
+    return [
+      "### Readiness delta",
+      `Initial readiness baseline at \`${safeMarkdownText(shortSha(delta.currentHeadSha))}\`.`,
+    ];
+  }
+
+  const scoreChange = delta.scoreChange === undefined
+    ? "No score movement recorded"
+    : `${delta.previousScore} → ${delta.currentScore} (${delta.scoreChange > 0 ? "+" : ""}${delta.scoreChange})`;
+  const recommendation = delta.recommendationChanged
+    ? `${delta.previousRecommendation?.replaceAll("_", " ")} → ${delta.currentRecommendation.replaceAll("_", " ")}`
+    : delta.currentRecommendation.replaceAll("_", " ");
+  const stillOpenCount = delta.unchangedOpenMergeConditions.length + delta.openedMergeConditions.length + delta.reopenedMergeConditions.length;
+
+  return [
+    "### Readiness delta",
+    "Since the previous analysis:",
+    `- Readiness: ${safeMarkdownText(scoreChange)}`,
+    `- Recommendation: ${safeMarkdownText(recommendation)}`,
+    `- Cleared: ${delta.clearedMergeConditions.length} conditions`,
+    `- Opened: ${delta.openedMergeConditions.length + delta.reopenedMergeConditions.length} conditions`,
+    `- Still open: ${stillOpenCount} ${stillOpenCount === 1 ? "condition" : "conditions"}`,
+  ];
+}
+
+export function githubDecisionCommentBody(report: Report, options: { headSha: string; analysedAt: string; reportUrl?: string; delta?: ReadinessDelta }) {
   const recommendation = report.verdict.recommendation.replaceAll("_", " ");
   const shortSha = options.headSha.slice(0, 7);
 
@@ -75,6 +110,8 @@ export function githubDecisionCommentBody(report: Report, options: { headSha: st
     "",
     "### Conditions before merge",
     bulletList(decisionConditions(report.conditionsBeforeMerge), "No merge conditions detected.", 6),
+    "",
+    ...deltaSection(options.delta),
     "",
     "### Reviewer focus",
     bulletList(reviewerFocus(report), "No specialist reviewer focus detected.", 4),

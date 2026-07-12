@@ -20,6 +20,7 @@ import {
   type DecisionHistoryEvent,
 } from "../../lib/decision-history";
 import { mergeSummaryToMarkdown } from "../../lib/merge-summary";
+import { shortSha, type ReadinessDelta } from "../../lib/readiness-delta";
 import { GENERATED_REPORT_STORAGE_KEY } from "../../lib/report-generator";
 import { conditionsToMarkdown, findingProvenanceLabel, reportMarkdownFilename, reportToMarkdown, type ReportSourceLabel } from "../../lib/report-markdown";
 import type { FindingSeverity, Recommendation, Report, ReviewArea, RiskLevel } from "../../lib/mock-report";
@@ -122,6 +123,7 @@ type StudioHumanDecision = "Ready to merge" | "Tests required" | "Review require
 type StoredReport = {
   report: Report;
   source: GeneratedReportSource;
+  readinessDelta?: ReadinessDelta;
 };
 
 const sourceLabels: Record<ReportSource, ReportSourceLabel> = {
@@ -175,6 +177,16 @@ function isStoredReport(value: unknown): value is StoredReport {
   return isRecord(value)
     && (value.source === "ai" || value.source === "deterministic")
     && isReport(value.report);
+}
+
+function isReadinessDelta(value: unknown): value is ReadinessDelta {
+  return isRecord(value)
+    && typeof value.currentRunId === "string"
+    && typeof value.currentHeadSha === "string"
+    && typeof value.currentScore === "number"
+    && typeof value.currentRecommendation === "string"
+    && typeof value.currentRiskLevel === "string"
+    && typeof value.classification === "string";
 }
 
 async function writeToClipboard(value: string) {
@@ -323,6 +335,51 @@ function timelineTime(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Unknown time";
   return date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+}
+
+function deltaScoreMovement(delta: ReadinessDelta) {
+  if (delta.scoreChange === undefined) return "Initial baseline";
+  if (delta.scoreChange === 0) return "No score movement";
+  return `${delta.scoreChange > 0 ? "+" : ""}${delta.scoreChange}`;
+}
+
+function deltaClassificationLabel(delta: ReadinessDelta) {
+  if (delta.classification === "initial") return "Initial analysis";
+  if (delta.classification === "unchanged") return "No material change";
+  return delta.classification.charAt(0).toUpperCase() + delta.classification.slice(1);
+}
+
+function deltaRecommendationMovement(delta: ReadinessDelta) {
+  if (!delta.previousRecommendation || !delta.recommendationChanged) return delta.currentRecommendation.replaceAll("_", " ");
+  return `${delta.previousRecommendation.replaceAll("_", " ")} → ${delta.currentRecommendation.replaceAll("_", " ")}`;
+}
+
+function deltaTimelineEvent(delta: ReadinessDelta): ReadinessTimelineEvent {
+  const movement: ReadinessMovement = delta.classification === "improved"
+    ? "Readiness increased"
+    : delta.classification === "regressed"
+      ? "Readiness decreased"
+      : delta.recommendationChanged
+        ? "Recommendation changed"
+        : "Current state";
+  const openedCount = delta.openedMergeConditions.length + delta.reopenedMergeConditions.length;
+
+  return {
+    id: `commit-readiness-delta-${delta.currentRunId}`,
+    title: delta.classification === "initial" ? "Initial readiness baseline" : "Commit re-analysis completed",
+    timestamp: delta.generatedAt,
+    actor: "GitHub App automated analysis",
+    provenance: "Deterministic analysis",
+    category: "Decision",
+    summary: delta.classification === "initial"
+      ? `Initial automated baseline at ${shortSha(delta.currentHeadSha)}.`
+      : `${deltaClassificationLabel(delta)}: ${deltaScoreMovement(delta)} score movement, ${delta.clearedMergeConditions.length} cleared conditions, ${openedCount} opened or reopened conditions.`,
+    area: "Readiness Delta",
+    previousState: delta.previousHeadSha ? `${shortSha(delta.previousHeadSha)} / ${delta.previousScore ?? "unknown"}` : "No previous completed run",
+    nextState: `${shortSha(delta.currentHeadSha)} / ${delta.currentScore}`,
+    movement,
+    relatedItem: deltaRecommendationMovement(delta),
+  };
 }
 
 function timelineBaseTimestamp(history: DecisionHistoryEvent[]) {
@@ -1485,6 +1542,7 @@ export default function ReportPage() {
     report: demoReport,
     source: "demo",
   });
+  const [readinessDelta, setReadinessDelta] = useState<ReadinessDelta | null>(null);
   const [copyState, setCopyState] = useState<CopyState>("idle");
   const [conditionsCopyState, setConditionsCopyState] = useState<CopyState>("idle");
   const [mergeSummaryCopyState, setMergeSummaryCopyState] = useState<CopyState>("idle");
@@ -1523,11 +1581,13 @@ export default function ReportPage() {
 
       if (isStoredReport(parsedReport)) {
         setDisplayedReport(parsedReport);
+        setReadinessDelta(isReadinessDelta(parsedReport.readinessDelta) ? parsedReport.readinessDelta : null);
         return;
       }
 
       if (isReport(parsedReport)) {
         setDisplayedReport({ report: parsedReport, source: "deterministic" });
+        setReadinessDelta(null);
         return;
       }
 
@@ -1658,7 +1718,7 @@ export default function ReportPage() {
   const reviewActionProgress = actionProgressSummary(reviewActions);
   const reportTopBlocker = displayedConditions[0] ?? report.findings[0]?.title ?? "No merge conditions detected.";
   const reportNextDecisionAction = reportNextAction(report, displayedConditions, operationalStatus);
-  const readinessTimeline = buildReadinessTimeline({
+  const baseReadinessTimeline = buildReadinessTimeline({
     report,
     source,
     history: decisionHistory,
@@ -1669,6 +1729,9 @@ export default function ReportPage() {
     reviewActions,
     ownerLabel: displayedOwner,
   });
+  const readinessTimeline = readinessDelta
+    ? [deltaTimelineEvent(readinessDelta), ...baseReadinessTimeline]
+    : baseReadinessTimeline;
   const filteredTimeline = readinessTimeline.filter((event) => timelineFilter === "All" || event.category === timelineFilter);
   const selectedTimelineEvent = readinessTimeline.find((event) => event.id === selectedTimelineEventId) ?? null;
   const readinessTimelineSignature = readinessTimeline.map((event) => event.id).join("\n");
@@ -2270,6 +2333,79 @@ export default function ReportPage() {
               ))}
             </div>
           </section>
+
+          {readinessDelta && (
+            <section className={`section-block readiness-delta readiness-delta--${readinessDelta.classification}`} aria-labelledby="readiness-delta-title">
+              <div className="section-heading">
+                <div>
+                  <span className="card-kicker">READINESS DELTA</span>
+                  <h2 id="readiness-delta-title">
+                    {readinessDelta.classification === "initial" ? "Initial readiness baseline" : "What changed since the previous analysis"}
+                  </h2>
+                </div>
+                <span className="section-count">{deltaClassificationLabel(readinessDelta)}</span>
+              </div>
+
+              <div className="readiness-delta-summary">
+                <article>
+                  <span>Readiness score</span>
+                  <strong>
+                    {readinessDelta.previousScore === undefined
+                      ? `${readinessDelta.currentScore}/100`
+                      : `${readinessDelta.previousScore} → ${readinessDelta.currentScore}`}
+                  </strong>
+                  <p>{deltaScoreMovement(readinessDelta)}</p>
+                </article>
+                <article>
+                  <span>Recommendation</span>
+                  <strong>{deltaRecommendationMovement(readinessDelta)}</strong>
+                  <p>{readinessDelta.recommendationChanged ? "Recommendation changed" : "Recommendation unchanged"}</p>
+                </article>
+                <article>
+                  <span>Head SHA</span>
+                  <strong>
+                    {readinessDelta.previousHeadSha
+                      ? `${shortSha(readinessDelta.previousHeadSha)} → ${shortSha(readinessDelta.currentHeadSha)}`
+                      : shortSha(readinessDelta.currentHeadSha)}
+                  </strong>
+                  <p>{timelineTime(readinessDelta.generatedAt)}</p>
+                </article>
+                <article>
+                  <span>Still open</span>
+                  <strong>{readinessDelta.unchangedOpenMergeConditions.length}</strong>
+                  <p>Unresolved merge conditions</p>
+                </article>
+              </div>
+
+              {readinessDelta.classification !== "initial" ? (
+                <div className="readiness-delta-lists">
+                  <article>
+                    <h3>Cleared</h3>
+                    {readinessDelta.clearedMergeConditions.length > 0
+                      ? <ul>{readinessDelta.clearedMergeConditions.slice(0, 4).map((condition) => <li key={condition}>{condition}</li>)}</ul>
+                      : <p>No cleared merge conditions detected.</p>}
+                  </article>
+                  <article>
+                    <h3>Opened or reopened</h3>
+                    {[...readinessDelta.openedMergeConditions, ...readinessDelta.reopenedMergeConditions].length > 0
+                      ? <ul>{[...readinessDelta.openedMergeConditions, ...readinessDelta.reopenedMergeConditions].slice(0, 4).map((condition) => <li key={condition}>{condition}</li>)}</ul>
+                      : <p>No new merge conditions detected.</p>}
+                  </article>
+                  <article>
+                    <h3>Blockers</h3>
+                    {readinessDelta.addedBlockers.length > 0 || readinessDelta.clearedBlockers.length > 0 ? (
+                      <ul>
+                        {readinessDelta.clearedBlockers.slice(0, 3).map((blocker) => <li key={`cleared-${blocker}`}>Cleared: {blocker}</li>)}
+                        {readinessDelta.addedBlockers.slice(0, 3).map((blocker) => <li key={`added-${blocker}`}>Added: {blocker}</li>)}
+                      </ul>
+                    ) : <p>No blocker movement detected.</p>}
+                  </article>
+                </div>
+              ) : (
+                <p className="readiness-delta-note">This is the first completed automated analysis for this pull request. Future head-SHA analyses will show improved, regressed, mixed or unchanged movement here.</p>
+              )}
+            </section>
+          )}
 
           <section className="merge-conditions" aria-labelledby="merge-conditions-title">
             <div className="section-heading">
@@ -3054,6 +3190,12 @@ export default function ReportPage() {
                   <p>{reportNextDecisionAction}</p>
                 </article>
               </div>
+
+              {readinessDelta && readinessDelta.classification !== "initial" && (
+                <p className="decision-studio-delta-note">
+                  Latest automated re-analysis is for head {shortSha(readinessDelta.currentHeadSha)}. Local human decisions remain local and should be re-confirmed when the PR head changes.
+                </p>
+              )}
 
               <div className="decision-studio-controls">
                 <fieldset>

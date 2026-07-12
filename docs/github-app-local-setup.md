@@ -62,6 +62,34 @@ Lintel looks for this marker before creating a new comment. It never edits or de
 
 Raw webhook payloads, installation tokens and raw diffs are not persisted.
 
+## Commit-aware re-review
+
+When the same pull request is analysed at a new head SHA, Lintel keeps the previous completed analysis and stores a bounded completed-run history for that PR.
+
+Each completed run stores only safe report data needed for comparison:
+
+- run ID
+- repository and pull-request identity
+- base and head SHA
+- recommendation
+- readiness score and risk level
+- completed normalised report
+- analysis source
+- completion timestamp
+- deterministic Readiness Delta where available
+
+The local MVP keeps the latest 20 completed runs per pull request. It does not persist raw diffs, raw webhook payloads, GitHub tokens, App JWTs or authorization headers.
+
+The first completed run is labelled as the initial readiness baseline. Later completed runs compare against the most recent earlier completed run for the same PR. The delta is deterministic and compares structured report fields such as recommendation, score, risk level, merge conditions, findings and missing tests. It classifies movement as:
+
+- initial
+- improved
+- regressed
+- mixed
+- unchanged
+
+Comparison is field-based and intentionally conservative. It does not perform line-by-line review diffs, fuzzy AI matching or AI-generated comparison text. If a comparison cannot be generated safely, the completed report remains available and the delta failure is recorded separately.
+
 ## Repository enable and disable
 
 The local GitHub App management surface can enable or disable installed repositories for Lintel processing.

@@ -4,6 +4,7 @@ import { buildBuilderVerifierAssessment, builderVerifierHandoffSummary } from ".
 import { compareChangePassport, passportHandoffSummary, type ChangePassport } from "./change-passport";
 import { assumptionHandoffSummary, buildEvidenceHierarchy, evidenceHandoffSummary } from "./evidence-hierarchy";
 import { buildMergeContract, mergeContractSummary } from "./merge-contract";
+import { buildVerificationPack, verificationPackHandoffSummary } from "./verification-pack";
 import { shortSha, type ReadinessDelta } from "./readiness-delta";
 import { decisionConditions, deduplicateReportItems, pruneUnsupportedReviewerFocus } from "./report-quality";
 
@@ -127,6 +128,16 @@ export function githubDecisionCommentBody(report: Report, options: { headSha: st
     reviewMode: report.pr.reviewProfile ?? "standard",
     createdAt: options.analysedAt,
   });
+  const verificationPack = buildVerificationPack({
+    report,
+    canonicalRun: options.canonicalRun,
+    changePassport: options.changePassport,
+    evidenceHierarchy,
+    builderVerifier,
+    mergeContract,
+    readinessDelta: options.delta,
+    createdAt: options.analysedAt,
+  });
 
   return [
     LINTEL_COMMENT_MARKER,
@@ -146,6 +157,7 @@ export function githubDecisionCommentBody(report: Report, options: { headSha: st
     `**Assumptions:** ${safeMarkdownText(assumptionHandoffSummary(evidenceHierarchy))}`,
     `**Verification boundary:** ${safeMarkdownText(builderVerifierHandoffSummary(builderVerifier))}`,
     `**Merge Contract:** ${safeMarkdownText(mergeContractSummary(mergeContract))}`,
+    `**Verification Pack:** ${safeMarkdownText(verificationPackHandoffSummary(verificationPack))}`,
     "",
     "### Top blockers",
     bulletList(topBlockers(report), "No blockers detected.", 4),

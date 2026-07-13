@@ -7,6 +7,7 @@ import AppShell from "../app-shell";
 import { createCanonicalReviewRunManifest, type CanonicalReviewRunManifest } from "../../lib/canonical-review-run";
 import { normalizeChangePassport, type ChangePassport, type ChangePassportProducerType } from "../../lib/change-passport";
 import { buildMergeContract, type MergeContract } from "../../lib/merge-contract";
+import { buildVerificationPack, type VerificationPack } from "../../lib/verification-pack";
 import { generateReport, GENERATED_REPORT_STORAGE_KEY, type ReportInput, type ReportInputSource } from "../../lib/report-generator";
 import { addReportToHistory, clearReportHistory, deleteReportFromHistory, readReportHistory, type ReportHistoryEntry } from "../../lib/report-history";
 import type { Report } from "../../lib/mock-report";
@@ -25,6 +26,7 @@ type StoredReport = {
   canonicalRun?: CanonicalReviewRunManifest;
   changePassport?: ChangePassport;
   mergeContract?: MergeContract;
+  verificationPack?: VerificationPack;
   verificationTarget?: { pullRequestId: string; runId: string };
   initialTab?: "review-diff";
 };
@@ -115,6 +117,7 @@ type GitHubAppPullRequest = {
   canonicalRun?: CanonicalReviewRunManifest;
   changePassport?: ChangePassport;
   mergeContract?: MergeContract;
+  verificationPack?: VerificationPack;
   latestDelta?: ReadinessDelta;
   latestReviewDiff?: ReviewDiff;
   deltaFailureCategory?: string;
@@ -182,6 +185,17 @@ function isMergeContract(value: unknown): value is MergeContract {
     && typeof value.schemaVersion === "string"
     && "clauses" in value
     && Array.isArray(value.clauses);
+}
+
+function isVerificationPack(value: unknown): value is VerificationPack {
+  return typeof value === "object"
+    && value !== null
+    && "packId" in value
+    && typeof value.packId === "string"
+    && "schemaVersion" in value
+    && typeof value.schemaVersion === "string"
+    && "packFingerprint" in value
+    && typeof value.packFingerprint === "string";
 }
 
 function isGitHubImportResponse(value: unknown): value is GitHubImportResponse {
@@ -703,6 +717,7 @@ export default function NewReportPage() {
         canonicalRun: pr.canonicalRun,
         changePassport: pr.changePassport,
         mergeContract: pr.mergeContract,
+        verificationPack: pr.verificationPack,
         verificationTarget: pr.canonicalRun ? { pullRequestId: pr.id, runId: pr.canonicalRun.runId } : undefined,
         initialTab,
       }));
@@ -784,6 +799,7 @@ export default function NewReportPage() {
       let source: ReportSource;
       let canonicalRun: CanonicalReviewRunManifest | undefined;
       let mergeContract: MergeContract | undefined;
+      let verificationPack: VerificationPack | undefined;
 
       try {
         const response = await fetch("/api/generate-report", {
@@ -809,6 +825,7 @@ export default function NewReportPage() {
         source = payload.source;
         canonicalRun = payload.canonicalRun;
         mergeContract = isMergeContract(payload.mergeContract) ? payload.mergeContract : undefined;
+        verificationPack = isVerificationPack(payload.verificationPack) ? payload.verificationPack : undefined;
       } catch {
         generatedReport = generateReport(input);
         source = "deterministic";
@@ -829,11 +846,19 @@ export default function NewReportPage() {
           reviewMode: canonicalRun.reviewMode,
           createdAt: canonicalRun.completedAt,
         });
+        verificationPack = buildVerificationPack({
+          report: generatedReport,
+          canonicalRun,
+          changePassport: selectedChangePassport,
+          mergeContract,
+          sourceUrl: importedPullRequest?.url,
+          createdAt: canonicalRun.completedAt,
+        });
       }
 
-      sessionStorage.setItem(GENERATED_REPORT_STORAGE_KEY, JSON.stringify({ report: generatedReport, source, canonicalRun, changePassport: selectedChangePassport, mergeContract }));
+      sessionStorage.setItem(GENERATED_REPORT_STORAGE_KEY, JSON.stringify({ report: generatedReport, source, canonicalRun, changePassport: selectedChangePassport, mergeContract, verificationPack }));
       try {
-        setHistory(addReportToHistory(window.localStorage, generatedReport, source, canonicalRun, selectedChangePassport, mergeContract));
+        setHistory(addReportToHistory(window.localStorage, generatedReport, source, canonicalRun, selectedChangePassport, mergeContract, verificationPack));
       } catch {
         // Report generation remains usable when persistent browser storage is unavailable.
       }
@@ -846,7 +871,7 @@ export default function NewReportPage() {
 
   function openHistoryReport(entry: ReportHistoryEntry) {
     try {
-      sessionStorage.setItem(GENERATED_REPORT_STORAGE_KEY, JSON.stringify({ report: entry.report, source: entry.source, canonicalRun: entry.canonicalRun, changePassport: entry.changePassport, mergeContract: entry.mergeContract }));
+      sessionStorage.setItem(GENERATED_REPORT_STORAGE_KEY, JSON.stringify({ report: entry.report, source: entry.source, canonicalRun: entry.canonicalRun, changePassport: entry.changePassport, mergeContract: entry.mergeContract, verificationPack: entry.verificationPack }));
       router.push("/report");
     } catch {
       setError("This saved report could not be opened. Please try again.");

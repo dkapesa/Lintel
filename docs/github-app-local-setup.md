@@ -259,6 +259,22 @@ The GitHub App API exposes contract data through the existing safe read path:
 
 The GitHub decision comment and Slack/GitHub handoff surfaces include only a concise contract summary such as open blocking clauses, advisory clauses, satisfied clauses and unresolved assumptions. They do not include the full contract JSON.
 
+## Verification Pack
+
+Each newly completed review can also produce a versioned Verification Pack.
+
+The pack is a bounded, portable review artifact. It packages safe structured data from the report, canonical run, Change Passport, evidence hierarchy, Assumption Registry, Builder-Verifier Boundary, Merge Contract, Readiness Delta, Review Diff and local human-decision state where available.
+
+The Verification Pack is not a new scoring system. It does not change the recommendation, risk band or readiness score, and it is not proof of correctness. Builder declarations remain declarations, accepted risk remains distinct from satisfied evidence, and unavailable or historical sections are listed explicitly.
+
+The JSON and Markdown exports are derived from the same normalized pack object. They never include raw diffs, source files, prompts, transcripts, webhook payloads, GitHub tokens, App JWTs, authorization headers or secrets.
+
+The local GitHub App API exposes pack data through:
+
+`/api/github-app?view=verification-pack&pullRequestId=<id>&runId=<run-id>`
+
+The single GitHub decision comment includes only a compact pack reference. It does not paste the full JSON or Markdown pack into the PR conversation.
+
 ## Repository enable and disable
 
 The local GitHub App management surface can enable or disable installed repositories for Lintel processing.

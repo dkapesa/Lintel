@@ -47,6 +47,14 @@ import {
   type MergeContractClause,
   type MergeContractClauseStatus,
 } from "../../lib/merge-contract";
+import {
+  buildVerificationPack,
+  verificationPackFilename,
+  verificationPackHandoffSummary,
+  verificationPackJson,
+  verificationPackToMarkdown,
+  type VerificationPack,
+} from "../../lib/verification-pack";
 import { shortSha, type ReadinessDelta, type ReviewDiff, type ReviewDiffItem, type ReviewDiffStatus } from "../../lib/readiness-delta";
 import { GENERATED_REPORT_STORAGE_KEY } from "../../lib/report-generator";
 import { conditionsToMarkdown, findingProvenanceLabel, reportMarkdownFilename, reportToMarkdown, type ReportSourceLabel } from "../../lib/report-markdown";
@@ -167,6 +175,7 @@ type StoredReport = {
   canonicalRun?: CanonicalReviewRunManifest;
   changePassport?: ChangePassport;
   mergeContract?: MergeContract;
+  verificationPack?: VerificationPack;
   verificationTarget?: { pullRequestId: string; runId: string };
   initialTab?: ReportTab;
 };
@@ -275,6 +284,13 @@ function isMergeContract(value: unknown): value is MergeContract {
     && typeof value.schemaVersion === "string"
     && typeof value.state === "string"
     && Array.isArray(value.clauses);
+}
+
+function isVerificationPack(value: unknown): value is VerificationPack {
+  return isRecord(value)
+    && typeof value.packId === "string"
+    && typeof value.schemaVersion === "string"
+    && typeof value.packFingerprint === "string";
 }
 
 function isVerificationTarget(value: unknown): value is { pullRequestId: string; runId: string } {
@@ -408,11 +424,15 @@ function isReportTextEntry(target: EventTarget | null) {
 }
 
 function downloadMarkdown(value: string, filename: string) {
+  return downloadText(value, filename, "text/markdown;charset=utf-8");
+}
+
+function downloadText(value: string, filename: string, type: string) {
   let url: string | null = null;
   let link: HTMLAnchorElement | null = null;
 
   try {
-    const blob = new Blob([value], { type: "text/markdown;charset=utf-8" });
+    const blob = new Blob([value], { type });
     url = URL.createObjectURL(blob);
     link = document.createElement("a");
     link.href = url;
@@ -1899,6 +1919,7 @@ function slackHandoffToText({
   assumptionSummary,
   builderVerifierSummary,
   mergeContractSummary,
+  verificationPackSummary,
 }: {
   report: Report;
   ownerLabel: string;
@@ -1910,6 +1931,7 @@ function slackHandoffToText({
   assumptionSummary?: string;
   builderVerifierSummary?: string;
   mergeContractSummary?: string;
+  verificationPackSummary?: string;
 }) {
   const topBlocker = conditions[0]
     ?? report.findings[0]?.title
@@ -1938,6 +1960,7 @@ function slackHandoffToText({
     ...(assumptionSummary ? [`Assumptions: ${assumptionSummary}`] : []),
     ...(builderVerifierSummary ? [`Verification boundary: ${builderVerifierSummary}`] : []),
     ...(mergeContractSummary ? [`Merge Contract: ${mergeContractSummary}`] : []),
+    ...(verificationPackSummary ? [`Verification Pack: ${verificationPackSummary}`] : []),
     ...(humanDecision ? [`Human decision: ${humanDecision}`] : []),
     `Next action: ${actionProgress.readinessConclusion}`,
     "",
@@ -2183,6 +2206,7 @@ export default function ReportPage() {
   const [canonicalRun, setCanonicalRun] = useState<CanonicalReviewRunManifest | null>(historicalCanonicalRunManifest(demoReport, "demo"));
   const [changePassport, setChangePassport] = useState<ChangePassport | null>(null);
   const [storedMergeContract, setStoredMergeContract] = useState<MergeContract | null>(null);
+  const [storedVerificationPack, setStoredVerificationPack] = useState<VerificationPack | null>(null);
   const [verificationTarget, setVerificationTarget] = useState<{ pullRequestId: string; runId: string } | null>(null);
   const [verificationResult, setVerificationResult] = useState<CanonicalRunVerificationRecord | null>(null);
   const [isVerifyingRun, setIsVerifyingRun] = useState(false);
@@ -2190,6 +2214,9 @@ export default function ReportPage() {
   const [conditionsCopyState, setConditionsCopyState] = useState<CopyState>("idle");
   const [mergeSummaryCopyState, setMergeSummaryCopyState] = useState<CopyState>("idle");
   const [mergeContractCopyState, setMergeContractCopyState] = useState<CopyState>("idle");
+  const [verificationPackJsonCopyState, setVerificationPackJsonCopyState] = useState<CopyState>("idle");
+  const [verificationPackMarkdownCopyState, setVerificationPackMarkdownCopyState] = useState<CopyState>("idle");
+  const [verificationPackDownloadState, setVerificationPackDownloadState] = useState<DownloadState>("idle");
   const [downloadState, setDownloadState] = useState<DownloadState>("idle");
   const [clearedConditionKeys, setClearedConditionKeys] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<ReportTab>("overview");
@@ -2212,6 +2239,9 @@ export default function ReportPage() {
   const conditionsCopyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mergeSummaryCopyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mergeContractCopyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const verificationPackJsonCopyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const verificationPackMarkdownCopyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const verificationPackDownloadResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const downloadResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const quickActionResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const studioDecisionResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -2234,6 +2264,7 @@ export default function ReportPage() {
         setCanonicalRun(isCanonicalRun(parsedReport.canonicalRun) ? parsedReport.canonicalRun : historicalCanonicalRunManifest(parsedReport.report, "github-pr"));
         setChangePassport(isChangePassport(parsedReport.changePassport) ? parsedReport.changePassport : null);
         setStoredMergeContract(isMergeContract(parsedReport.mergeContract) ? parsedReport.mergeContract : null);
+        setStoredVerificationPack(isVerificationPack(parsedReport.verificationPack) ? parsedReport.verificationPack : null);
         setVerificationTarget(isVerificationTarget(parsedReport.verificationTarget) ? parsedReport.verificationTarget : null);
         setVerificationResult(null);
         if (parsedReport.initialTab === "review-diff") setActiveTab("review-diff");
@@ -2247,6 +2278,7 @@ export default function ReportPage() {
         setCanonicalRun(historicalCanonicalRunManifest(parsedReport, "manual"));
         setChangePassport(null);
         setStoredMergeContract(null);
+        setStoredVerificationPack(null);
         setVerificationTarget(null);
         setVerificationResult(null);
         return;
@@ -2263,6 +2295,9 @@ export default function ReportPage() {
     if (conditionsCopyResetTimer.current) clearTimeout(conditionsCopyResetTimer.current);
     if (mergeSummaryCopyResetTimer.current) clearTimeout(mergeSummaryCopyResetTimer.current);
     if (mergeContractCopyResetTimer.current) clearTimeout(mergeContractCopyResetTimer.current);
+    if (verificationPackJsonCopyResetTimer.current) clearTimeout(verificationPackJsonCopyResetTimer.current);
+    if (verificationPackMarkdownCopyResetTimer.current) clearTimeout(verificationPackMarkdownCopyResetTimer.current);
+    if (verificationPackDownloadResetTimer.current) clearTimeout(verificationPackDownloadResetTimer.current);
     if (downloadResetTimer.current) clearTimeout(downloadResetTimer.current);
     if (quickActionResetTimer.current) clearTimeout(quickActionResetTimer.current);
     if (studioDecisionResetTimer.current) clearTimeout(studioDecisionResetTimer.current);
@@ -2452,6 +2487,24 @@ export default function ReportPage() {
   const mergeContractSatisfied = displayedContractClauses.filter(({ status }) => status === "satisfied").length;
   const mergeContractAccepted = displayedContractClauses.filter(({ status }) => status === "accepted").length;
   const mergeContractSummaryText = mergeContractSummary(mergeContract);
+  const verificationPack = buildVerificationPack({
+    report,
+    canonicalRun,
+    changePassport,
+    evidenceHierarchy,
+    builderVerifier: builderVerifierAssessment,
+    mergeContract,
+    readinessDelta,
+    reviewDiff,
+    reviewState: studioReviewState,
+    decisionHistory,
+    sourceType: canonicalRun?.sourceType ?? source,
+    sourceUrl: storedVerificationPack?.changeIdentity.sourceUrl,
+    createdAt: canonicalRun?.completedAt,
+  });
+  const verificationPackSummary = verificationPackHandoffSummary(verificationPack);
+  const verificationPackMarkdown = verificationPackToMarkdown(verificationPack);
+  const verificationPackJsonText = verificationPackJson(verificationPack);
 
   const readinessTimeline = readinessDelta
     ? [deltaTimelineEvent(readinessDelta), ...baseReadinessTimeline]
@@ -2477,6 +2530,7 @@ export default function ReportPage() {
     assumptionSummary,
     builderVerifierSummary,
     mergeContractSummary: mergeContractSummaryText,
+    verificationPackSummary,
   });
   const mergeSummaryMarkdown = mergeSummaryToMarkdown(report, {
     sourceLabel: sourceLabels[source],
@@ -2488,6 +2542,7 @@ export default function ReportPage() {
     assumptionSummary,
     builderVerifierSummary,
     mergeContractSummary: mergeContractSummaryText,
+    verificationPackSummary,
   });
   const blockerSurfaceCount = affectedSurfaces.filter((surface) => surface.status === "Blocker").length;
   const confirmationSurfaceCount = affectedSurfaces.filter((surface) => surface.status === "Attention" || surface.status === "Watch").length;
@@ -2871,6 +2926,32 @@ export default function ReportPage() {
     mergeContractCopyResetTimer.current = setTimeout(() => setMergeContractCopyState("idle"), 2_000);
 
     return copied;
+  }
+
+  async function handleCopyVerificationPackJson() {
+    const copied = await writeToClipboard(verificationPackJsonText);
+    setVerificationPackJsonCopyState(copied ? "copied" : "failed");
+
+    if (verificationPackJsonCopyResetTimer.current) clearTimeout(verificationPackJsonCopyResetTimer.current);
+    verificationPackJsonCopyResetTimer.current = setTimeout(() => setVerificationPackJsonCopyState("idle"), 2_000);
+  }
+
+  async function handleCopyVerificationPackMarkdown() {
+    const copied = await writeToClipboard(verificationPackMarkdown);
+    setVerificationPackMarkdownCopyState(copied ? "copied" : "failed");
+
+    if (verificationPackMarkdownCopyResetTimer.current) clearTimeout(verificationPackMarkdownCopyResetTimer.current);
+    verificationPackMarkdownCopyResetTimer.current = setTimeout(() => setVerificationPackMarkdownCopyState("idle"), 2_000);
+  }
+
+  function handleDownloadVerificationPack(format: "json" | "md") {
+    const value = format === "json" ? verificationPackJsonText : verificationPackMarkdown;
+    const mime = format === "json" ? "application/json;charset=utf-8" : "text/markdown;charset=utf-8";
+    const downloaded = downloadText(value, verificationPackFilename(verificationPack, format), mime);
+    setVerificationPackDownloadState(downloaded ? "downloaded" : "failed");
+
+    if (verificationPackDownloadResetTimer.current) clearTimeout(verificationPackDownloadResetTimer.current);
+    verificationPackDownloadResetTimer.current = setTimeout(() => setVerificationPackDownloadState("idle"), 2_000);
   }
 
   async function handleQuickCopyMergeSummary() {
@@ -3345,6 +3426,58 @@ export default function ReportPage() {
             )}
 
             <p className="condition-local-note">Local clause actions are stored on this device and do not alter the generated recommendation, score or canonical review run.</p>
+          </section>
+
+          <section className="section-block verification-pack" aria-labelledby="verification-pack-title">
+            <div className="section-heading">
+              <div>
+                <span className="card-kicker">REVIEW ARTIFACT</span>
+                <h2 id="verification-pack-title">Verification Pack</h2>
+                <p>Bounded JSON and Markdown artifact for the current review state. It is not proof of correctness or merge authorization.</p>
+              </div>
+              <span className="section-count">{verificationPack.generationStatus}</span>
+            </div>
+
+            <div className="verification-pack-summary-grid" aria-label="Verification Pack summary">
+              <article><span>Pack ID</span><strong>{fingerprintPrefix(verificationPack.packId)}</strong></article>
+              <article><span>Schema</span><strong>{verificationPack.schemaVersion}</strong></article>
+              <article><span>Head SHA</span><strong>{shortSha(verificationPack.changeIdentity.headSha)}</strong></article>
+              <article><span>Contract</span><strong>{verificationPack.mergeContract.blockingOpen} blocking open</strong></article>
+              <article><span>Assumptions</span><strong>{verificationPack.assumptions.openBlocking} blocking open</strong></article>
+              <article><span>Fingerprint</span><strong>{fingerprintPrefix(verificationPack.packFingerprint)}</strong></article>
+            </div>
+
+            <div className="verification-pack-detail-grid">
+              <article>
+                <span>Included sections</span>
+                <p>Change identity, review result, builder declaration, independent verification, evidence, assumptions, Merge Contract, review evolution, human decision and provenance.</p>
+              </article>
+              <article>
+                <span>Unavailable or limited</span>
+                {verificationPack.unavailableSections.length > 0 ? (
+                  <ul>{verificationPack.unavailableSections.map((item) => <li key={item}>{item}</li>)}</ul>
+                ) : (
+                  <p>No unavailable sections recorded for this pack.</p>
+                )}
+              </article>
+              <article>
+                <span>Stale state</span>
+                <p>{verificationPack.stale ? "Stale for current commit or local decision context." : "Current for the attached run/head SHA."}</p>
+              </article>
+            </div>
+
+            <div className="verification-pack-actions" aria-label="Verification Pack export actions">
+              <button type="button" onClick={handleCopyVerificationPackJson}>
+                {verificationPackJsonCopyState === "copied" ? "JSON copied" : verificationPackJsonCopyState === "failed" ? "Copy failed" : "Copy JSON"}
+              </button>
+              <button type="button" onClick={() => handleDownloadVerificationPack("json")}>
+                {verificationPackDownloadState === "downloaded" ? "Downloaded" : verificationPackDownloadState === "failed" ? "Download failed" : "Download JSON"}
+              </button>
+              <button type="button" onClick={handleCopyVerificationPackMarkdown}>
+                {verificationPackMarkdownCopyState === "copied" ? "Markdown copied" : verificationPackMarkdownCopyState === "failed" ? "Copy failed" : "Copy Markdown"}
+              </button>
+              <button type="button" onClick={() => handleDownloadVerificationPack("md")}>Download Markdown</button>
+            </div>
           </section>
 
           <section className="section-block change-passport" aria-labelledby="change-passport-title">

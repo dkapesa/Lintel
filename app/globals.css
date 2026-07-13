@@ -342,6 +342,18 @@ button { font:inherit; }
 .merge-contract-clause-details li { display:grid; gap:2px; padding:8px; border:1px solid var(--dline); border-radius:var(--radius-card); }
 .merge-contract-clause-details small { color:var(--dmuted); }
 .merge-contract-clause-actions { display:flex; flex-wrap:wrap; gap:8px; }
+.verification-pack { border-color:var(--color-border-strong); }
+.verification-pack-summary-grid { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:10px; margin-top:16px; }
+.verification-pack-summary-grid article, .verification-pack-detail-grid article { padding:12px; border:1px solid var(--dline); border-radius:var(--radius-card); background:var(--dpanel2); }
+.verification-pack-summary-grid span, .verification-pack-detail-grid span { display:block; color:var(--dmuted); font-size:10px; letter-spacing:.08em; text-transform:uppercase; }
+.verification-pack-summary-grid strong { display:block; margin-top:6px; color:var(--dtext); font-size:12px; overflow-wrap:anywhere; }
+.verification-pack-detail-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:12px; }
+.verification-pack-detail-grid p, .verification-pack-detail-grid li { color:var(--color-text-secondary); font-size:11px; line-height:1.55; }
+.verification-pack-detail-grid ul { display:grid; gap:5px; margin:8px 0 0; padding-left:16px; }
+.verification-pack-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+.verification-pack-actions button { min-height:var(--control-height-sm); padding:0 10px; border:1px solid var(--dline); border-radius:var(--radius-control); background:var(--dpanel2); color:var(--dtext); font-size:11px; font-weight:600; cursor:pointer; }
+.verification-pack-actions button:hover { border-color:var(--color-border-strong); background:var(--color-surface-hover); }
+.verification-pack-actions button:focus-visible { outline:2px solid var(--color-focus-ring); outline-offset:2px; }
 .test-plan-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:17px; }.test-plan-panel { min-width:0; padding:20px; border:1px solid var(--dline); border-radius:var(--radius-card); background:var(--dpanel); }.test-plan-panel > h3 { margin:0; font-size:12px; letter-spacing:-.02em; }.test-plan-panel .numbered-list, .test-plan-panel .checklist { margin-top:16px; }.test-plan-panel .suggested-tests { grid-template-columns:1fr; gap:8px; margin-top:16px; }.test-plan-panel .suggested-test { padding:14px; border-radius:var(--radius-row); background:var(--dpanel2); }.test-plan-panel .test-priority { margin-bottom:10px; }.test-plan-panel .missing-tests-empty, .test-plan-panel .section-empty { margin-top:16px; }.test-plan-panel--checklist { grid-column:1 / -1; }.test-plan-panel--checklist .checklist { grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px 24px; }
 .report-quality-compact { display:grid; grid-template-columns:auto minmax(0,1fr) auto; align-items:center; gap:20px; margin-top:42px; padding:14px 16px; border:1px solid var(--dline); border-radius:var(--radius-card); background:var(--dpanel); }.report-quality-compact > div { display:grid; gap:4px; }.report-quality-compact > div strong { font-size:11px; }.report-quality-compact p { margin:0; color:var(--dtext); font-size:10px; }.report-quality-compact ul { display:grid; gap:5px; margin:0; padding-left:17px; color:var(--color-text-secondary); font-size:var(--type-label); line-height:1.45; }.quality-status--legacy { color:var(--color-warning-muted); background:var(--dwarm-soft); }
 .final-recommendation.final-recommendation--compact { display:flex; align-items:center; justify-content:space-between; gap:36px; margin-top:22px; padding:24px 27px; }.final-recommendation--compact .final-intro { flex:0 0 auto; }.final-recommendation--compact h2 { margin-bottom:0; font-size:20px; }.final-recommendation--compact > p { max-width:680px; }
@@ -562,6 +574,7 @@ button.review-diff-row-line:focus-visible { outline:2px solid var(--color-focus-
   .report-merge-contract { padding:18px; }
   .merge-contract-summary-grid, .merge-contract-machine-row dl, .merge-contract-clause dl { grid-template-columns:1fr; }
   .merge-contract-machine-row { align-items:stretch; flex-direction:column; }
+  .verification-pack-summary-grid, .verification-pack-detail-grid { grid-template-columns:1fr; }
   .report-export-grid { grid-template-columns:1fr; }
   .merge-summary-builder-header { flex-direction:column; }
   .merge-summary-builder-header button { width:100%; justify-content:center; }

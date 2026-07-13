@@ -3,6 +3,7 @@ import { buildBuilderVerifierAssessment } from "../../../lib/builder-verifier-bo
 import { normalizeChangePassport, type ChangePassportSource } from "../../../lib/change-passport";
 import { buildEvidenceHierarchy } from "../../../lib/evidence-hierarchy";
 import { buildMergeContract } from "../../../lib/merge-contract";
+import { buildVerificationPack } from "../../../lib/verification-pack";
 import { generateReport, type ReportInput, type ReportInputSource } from "../../../lib/report-generator";
 import { normaliseReport, REPORT_JSON_SCHEMA } from "../../../lib/report-normalizer";
 import { isReviewProfile, reviewProfileDescription, reviewProfileLabel } from "../../../lib/review-profiles";
@@ -78,9 +79,19 @@ function responseWithReport(
     reviewMode: manifest.reviewMode,
     createdAt: manifest.completedAt,
   });
+  const verificationPack = buildVerificationPack({
+    report,
+    canonicalRun: manifest,
+    changePassport: input.changePassport,
+    evidenceHierarchy,
+    builderVerifier,
+    mergeContract,
+    sourceUrl: metadata?.sourceUrl,
+    createdAt: manifest.completedAt,
+  });
 
   return Response.json(
-    { report, source, canonicalRun: manifest, mergeContract },
+    { report, source, canonicalRun: manifest, mergeContract, verificationPack },
     { headers: { "Cache-Control": "no-store" } },
   );
 }

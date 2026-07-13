@@ -10,6 +10,7 @@ import {
 } from "./canonical-review-run";
 import type { ChangePassport } from "./change-passport";
 import { buildMergeContract, type MergeContract } from "./merge-contract";
+import { buildVerificationPack, type VerificationPack } from "./verification-pack";
 import type { Report } from "./mock-report";
 import { createReadinessDelta, createReviewDiff, type AnalysisRunSnapshot, type ReadinessDelta } from "./readiness-delta";
 import type { ReportInput } from "./report-generator";
@@ -83,6 +84,7 @@ export type GitHubAnalysisRunRecord = AnalysisRunSnapshot & {
   canonicalRun?: CanonicalReviewRunManifest;
   changePassport?: ChangePassport;
   mergeContract?: MergeContract;
+  verificationPack?: VerificationPack;
   verifications?: CanonicalRunVerificationRecord[];
 };
 
@@ -347,6 +349,14 @@ function completedRunFromReport(
     reviewMode: options?.input?.reviewProfile ?? report.pr.reviewProfile ?? "standard",
     createdAt: completedAt,
   });
+  const verificationPack = buildVerificationPack({
+    report,
+    canonicalRun,
+    changePassport: options?.input?.changePassport,
+    mergeContract,
+    sourceUrl: options?.sourceUrl,
+    createdAt: completedAt,
+  });
 
   return {
     runId,
@@ -365,6 +375,7 @@ function completedRunFromReport(
     canonicalRun,
     changePassport: options?.input?.changePassport,
     mergeContract,
+    verificationPack,
     completedAt,
   };
 }

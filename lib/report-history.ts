@@ -1,6 +1,7 @@
 import type { CanonicalReviewRunManifest } from "./canonical-review-run";
 import type { ChangePassport } from "./change-passport";
 import type { MergeContract } from "./merge-contract";
+import type { VerificationPack } from "./verification-pack";
 import type { Report } from "./mock-report";
 import { reviewProfileLabel } from "./review-profiles";
 
@@ -15,6 +16,7 @@ export type ReportHistoryEntry = {
   canonicalRun?: CanonicalReviewRunManifest;
   changePassport?: ChangePassport;
   mergeContract?: MergeContract;
+  verificationPack?: VerificationPack;
   inputLabel: string;
   createdAt: string;
   metadata: {
@@ -67,6 +69,7 @@ function historyEntry(value: unknown): ReportHistoryEntry | null {
     canonicalRun: isRecord(value.canonicalRun) ? value.canonicalRun as CanonicalReviewRunManifest : undefined,
     changePassport: isRecord(value.changePassport) ? value.changePassport as ChangePassport : undefined,
     mergeContract: isRecord(value.mergeContract) ? value.mergeContract as MergeContract : undefined,
+    verificationPack: isRecord(value.verificationPack) ? value.verificationPack as VerificationPack : undefined,
     inputLabel: reportInputLabel(value.report),
     createdAt: value.createdAt,
     metadata: {
@@ -111,6 +114,7 @@ export function addReportToHistory(
   canonicalRun?: CanonicalReviewRunManifest,
   changePassport?: ChangePassport,
   mergeContract?: MergeContract,
+  verificationPack?: VerificationPack,
 ) {
   const existing = readReportHistory(storage);
   if (hasRawDiff(report)) return existing;
@@ -125,6 +129,7 @@ export function addReportToHistory(
     canonicalRun,
     changePassport,
     mergeContract,
+    verificationPack,
     inputLabel: reportInputLabel(report),
     createdAt,
     metadata: {

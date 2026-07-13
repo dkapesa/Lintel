@@ -275,6 +275,26 @@ The local GitHub App API exposes pack data through:
 
 The single GitHub decision comment includes only a compact pack reference. It does not paste the full JSON or Markdown pack into the PR conversation.
 
+## Contract re-check
+
+When the same pull request receives a newer completed automated analysis, Lintel can compare the previous Evidence-backed Merge Contract with the latest contract.
+
+The re-check is a new immutable derived record. It references the previous and current contracts, canonical runs, Verification Packs and head SHAs. It does not mutate the original report, contract, pack or canonical run.
+
+The re-check classifies contract movement conservatively as improved, regressed, mixed, unchanged, fully satisfied, stale, incomplete or unavailable. It evaluates previous clauses against the latest structured review using the bounded Merge Contract requirement model only. It does not execute JavaScript, user-defined functions or arbitrary expressions.
+
+Accepted risk remains separate from satisfied evidence. Builder declarations remain declarations. Model-inferred evidence alone does not satisfy blocking clauses. Missing evidence remains missing, and clauses whose continuity cannot be established are reported as unavailable rather than assumed satisfied.
+
+The GitHub App API exposes re-check data through:
+
+`/api/github-app?view=contract-recheck&pullRequestId=<id>&runId=<run-id>`
+
+and bounded history through:
+
+`/api/github-app?view=contract-rechecks&pullRequestId=<id>`
+
+The GitHub decision comment and Slack/GitHub handoff surfaces include only a compact re-check summary such as newly satisfied clauses, reopened clauses, new requirements and stale human-decision state. They do not include full re-check JSON.
+
 ## Repository enable and disable
 
 The local GitHub App management surface can enable or disable installed repositories for Lintel processing.

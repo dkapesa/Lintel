@@ -15,6 +15,7 @@ type MergeSummaryOptions = {
   assumptionSummary?: string;
   builderVerifierSummary?: string;
   mergeContractSummary?: string;
+  contractRecheckSummary?: string;
   verificationPackSummary?: string;
 };
 
@@ -117,6 +118,7 @@ export function mergeSummaryToMarkdown(report: Report, options: MergeSummaryOpti
     ...(options.assumptionSummary ? [`**Assumptions:** ${safeMarkdownText(options.assumptionSummary)}`] : []),
     ...(options.builderVerifierSummary ? [`**Verification boundary:** ${safeMarkdownText(options.builderVerifierSummary)}`] : []),
     ...(options.mergeContractSummary ? [`**Merge Contract:** ${safeMarkdownText(options.mergeContractSummary)}`] : []),
+    ...(options.contractRecheckSummary ? [`**Contract re-check:** ${safeMarkdownText(options.contractRecheckSummary)}`] : []),
     ...(options.verificationPackSummary ? [`**Verification Pack:** ${safeMarkdownText(options.verificationPackSummary)}`] : []),
     "",
     "### Top blockers",

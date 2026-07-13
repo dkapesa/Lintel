@@ -209,6 +209,7 @@ async function processPullRequest(payload: unknown, deliveryId: string) {
         delta: completedRecord.analysisRuns?.[0]?.delta,
         canonicalRun: completedRecord.analysisRuns?.[0]?.canonicalRun,
         changePassport,
+        contractRecheck: completedRecord.analysisRuns?.[0]?.contractRecheck,
       });
       const published = await publishGitHubDecisionComment({
         owner: envelope.repositoryOwner,

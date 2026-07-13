@@ -26,6 +26,7 @@ import type { DecisionHistoryEvent } from "./decision-history";
 import type { ReadinessDelta, ReviewDiff, ReviewDiffItem } from "./readiness-delta";
 import { shortSha } from "./readiness-delta";
 import type { ReportReviewState } from "./review-state";
+import type { ContractRecheckRecord } from "./contract-recheck";
 
 export const VERIFICATION_PACK_SCHEMA_VERSION = "1.0";
 
@@ -149,6 +150,21 @@ export type VerificationPack = {
     mergeContractMovement?: ReadinessDelta["mergeContractMovement"];
     reviewDiffExamples: BoundedList<{ status: string; title: string; category: string }>;
   };
+  contractRecheck?: {
+    recheckId: string;
+    classification: string;
+    previousContractId: string;
+    currentContractId: string;
+    previousHeadSha?: string;
+    currentHeadSha?: string;
+    newlySatisfied: number;
+    reopened: number;
+    stillOpen: number;
+    newClauses: number;
+    staleEvidenceOrAssumptions: number;
+    humanDecisionApplicability: string;
+    fingerprint: string;
+  };
   humanDecision: {
     present: boolean;
     status?: string;
@@ -190,6 +206,7 @@ type VerificationPackInput = {
   mergeContract?: MergeContract;
   readinessDelta?: ReadinessDelta | null;
   reviewDiff?: ReviewDiff | null;
+  contractRecheck?: ContractRecheckRecord | null;
   reviewState?: ReportReviewState | null;
   decisionHistory?: DecisionHistoryEvent[];
   sourceType?: string;
@@ -254,7 +271,7 @@ function eventRank(event: DecisionHistoryEvent) {
 }
 
 function sectionFingerprint(value: unknown) {
-  return stableFingerprint(value);
+  return stableFingerprint(value ?? null);
 }
 
 function packState({
@@ -296,6 +313,7 @@ export function buildVerificationPack({
   mergeContract,
   readinessDelta,
   reviewDiff,
+  contractRecheck,
   reviewState,
   decisionHistory = [],
   sourceType,
@@ -539,6 +557,21 @@ export function buildVerificationPack({
       mergeContractMovement: readinessDelta?.mergeContractMovement,
       reviewDiffExamples,
     },
+    contractRecheck: contractRecheck ? {
+      recheckId: contractRecheck.recheckId,
+      classification: contractRecheck.classification,
+      previousContractId: contractRecheck.previousContractId,
+      currentContractId: contractRecheck.currentContractId,
+      previousHeadSha: contractRecheck.previousHeadSha,
+      currentHeadSha: contractRecheck.currentHeadSha,
+      newlySatisfied: contractRecheck.clauseEvaluations.filter((item) => item.evaluationStatus === "newly-satisfied").length,
+      reopened: contractRecheck.clauseEvaluations.filter((item) => item.evaluationStatus === "reopened").length,
+      stillOpen: contractRecheck.clauseEvaluations.filter((item) => item.evaluationStatus === "still-open").length,
+      newClauses: contractRecheck.newClauses.length,
+      staleEvidenceOrAssumptions: contractRecheck.evidenceChanges.evidenceBecameStale + contractRecheck.assumptionChanges.stale + contractRecheck.assumptionChanges.acceptedStale,
+      humanDecisionApplicability: contractRecheck.humanDecisionApplicability.state,
+      fingerprint: contractRecheck.fingerprint,
+    } : undefined,
     humanDecision: {
       present: !!reviewState || acceptedRiskEvents.length > 0,
       status: safeText(reviewState?.status, 80),
@@ -583,6 +616,7 @@ export function buildVerificationPack({
     assumptions: sectionFingerprint(packBase.assumptions),
     mergeContract: sectionFingerprint(packBase.mergeContract),
     reviewEvolution: sectionFingerprint(packBase.reviewEvolution),
+    contractRecheck: sectionFingerprint(packBase.contractRecheck),
     humanDecision: sectionFingerprint(packBase.humanDecision),
     provenance: sectionFingerprint(packBase.provenance),
   };
@@ -682,6 +716,15 @@ export function verificationPackToMarkdown(pack: VerificationPack) {
       ].join("\n")
       : escapeMarkdown(pack.reviewEvolution.reason),
     "",
+    ...(pack.contractRecheck ? [
+      "## Contract re-check",
+      `Re-check: \`${escapeMarkdown(pack.contractRecheck.recheckId)}\``,
+      `Classification: ${escapeMarkdown(pack.contractRecheck.classification)}`,
+      `Heads: \`${escapeMarkdown(shortSha(pack.contractRecheck.previousHeadSha))}\` -> \`${escapeMarkdown(shortSha(pack.contractRecheck.currentHeadSha))}\``,
+      `Newly satisfied: ${pack.contractRecheck.newlySatisfied}; reopened: ${pack.contractRecheck.reopened}; still open: ${pack.contractRecheck.stillOpen}; new clauses: ${pack.contractRecheck.newClauses}`,
+      `Human decision: ${escapeMarkdown(pack.contractRecheck.humanDecisionApplicability)}`,
+      "",
+    ] : []),
     "## Human decision",
     pack.humanDecision.present
       ? [
@@ -715,7 +758,10 @@ export function verificationPackJson(pack: VerificationPack) {
 export function verificationPackHandoffSummary(pack: VerificationPack) {
   const direct = pack.evidence.countsByClass["directly-observed"];
   const external = pack.evidence.countsByClass["externally-verified"];
-  return `Pack ${fingerprintPrefix(pack.packId)}; Head ${shortSha(pack.changeIdentity.headSha)}; State ${pack.generationStatus}; Contract ${pack.mergeContract.blockingOpen} blocking open; Assumptions ${pack.assumptions.openBlocking} blocking open; Evidence ${direct} directly observed, ${external} externally verified.`;
+  const recheck = pack.contractRecheck
+    ? ` Contract re-check ${pack.contractRecheck.classification}: ${pack.contractRecheck.newlySatisfied} newly satisfied, ${pack.contractRecheck.reopened} reopened.`
+    : "";
+  return `Pack ${fingerprintPrefix(pack.packId)}; Head ${shortSha(pack.changeIdentity.headSha)}; State ${pack.generationStatus}; Contract ${pack.mergeContract.blockingOpen} blocking open; Assumptions ${pack.assumptions.openBlocking} blocking open; Evidence ${direct} directly observed, ${external} externally verified.${recheck}`;
 }
 
 export function verificationPackFilename(pack: VerificationPack, extension: "json" | "md") {

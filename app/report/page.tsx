@@ -55,6 +55,11 @@ import {
   verificationPackToMarkdown,
   type VerificationPack,
 } from "../../lib/verification-pack";
+import {
+  contractRecheckSummary,
+  type ContractRecheckRecord,
+  type ContractRecheckClauseEvaluation,
+} from "../../lib/contract-recheck";
 import { shortSha, type ReadinessDelta, type ReviewDiff, type ReviewDiffItem, type ReviewDiffStatus } from "../../lib/readiness-delta";
 import { GENERATED_REPORT_STORAGE_KEY } from "../../lib/report-generator";
 import { conditionsToMarkdown, findingProvenanceLabel, reportMarkdownFilename, reportToMarkdown, type ReportSourceLabel } from "../../lib/report-markdown";
@@ -176,6 +181,7 @@ type StoredReport = {
   changePassport?: ChangePassport;
   mergeContract?: MergeContract;
   verificationPack?: VerificationPack;
+  contractRecheck?: ContractRecheckRecord;
   verificationTarget?: { pullRequestId: string; runId: string };
   initialTab?: ReportTab;
 };
@@ -291,6 +297,15 @@ function isVerificationPack(value: unknown): value is VerificationPack {
     && typeof value.packId === "string"
     && typeof value.schemaVersion === "string"
     && typeof value.packFingerprint === "string";
+}
+
+function isContractRecheck(value: unknown): value is ContractRecheckRecord {
+  return isRecord(value)
+    && typeof value.recheckId === "string"
+    && typeof value.schemaVersion === "string"
+    && typeof value.previousContractId === "string"
+    && typeof value.currentContractId === "string"
+    && typeof value.fingerprint === "string";
 }
 
 function isVerificationTarget(value: unknown): value is { pullRequestId: string; runId: string } {
@@ -826,6 +841,34 @@ function deltaTimelineEvent(delta: ReadinessDelta): ReadinessTimelineEvent {
     nextState: `${shortSha(delta.currentHeadSha)} / ${delta.currentScore}`,
     movement,
     relatedItem: contractMovement || deltaRecommendationMovement(delta),
+  };
+}
+
+function contractRecheckTimelineEvent(recheck: ContractRecheckRecord): ReadinessTimelineEvent {
+  const newlySatisfied = recheck.clauseEvaluations.filter((item) => item.evaluationStatus === "newly-satisfied").length;
+  const reopened = recheck.clauseEvaluations.filter((item) => item.evaluationStatus === "reopened").length;
+  const stillOpen = recheck.clauseEvaluations.filter((item) => item.evaluationStatus === "still-open").length;
+  const movement: ReadinessMovement = recheck.classification === "improved" || recheck.classification === "fully-satisfied"
+    ? "Readiness increased"
+    : recheck.classification === "regressed"
+      ? "Readiness decreased"
+      : "Current state";
+
+  return {
+    id: `contract-recheck-${recheck.recheckId}`,
+    title: "Contract re-check completed",
+    timestamp: recheck.triggeredAt,
+    actor: recheck.source === "api" ? "Local re-check action" : "GitHub App automated analysis",
+    provenance: recheck.source === "api" ? "Local user action" : "Deterministic analysis",
+    category: "Evidence",
+    summary: `${recheck.classification.replaceAll("-", " ")} contract movement: ${newlySatisfied} newly satisfied, ${reopened} reopened, ${stillOpen} still open, ${recheck.newClauses.length} new requirements.`,
+    area: "Contract re-check",
+    previousState: recheck.previousHeadSha ? shortSha(recheck.previousHeadSha) : "Previous contract",
+    nextState: recheck.currentHeadSha ? shortSha(recheck.currentHeadSha) : "Current contract",
+    movement,
+    relatedItem: recheck.humanDecisionApplicability.state === "predates-current-head"
+      ? "Human decision predates current head"
+      : `${recheck.previousContractId} -> ${recheck.currentContractId}`,
   };
 }
 
@@ -1919,6 +1962,7 @@ function slackHandoffToText({
   assumptionSummary,
   builderVerifierSummary,
   mergeContractSummary,
+  contractRecheckSummary,
   verificationPackSummary,
 }: {
   report: Report;
@@ -1931,6 +1975,7 @@ function slackHandoffToText({
   assumptionSummary?: string;
   builderVerifierSummary?: string;
   mergeContractSummary?: string;
+  contractRecheckSummary?: string;
   verificationPackSummary?: string;
 }) {
   const topBlocker = conditions[0]
@@ -1960,6 +2005,7 @@ function slackHandoffToText({
     ...(assumptionSummary ? [`Assumptions: ${assumptionSummary}`] : []),
     ...(builderVerifierSummary ? [`Verification boundary: ${builderVerifierSummary}`] : []),
     ...(mergeContractSummary ? [`Merge Contract: ${mergeContractSummary}`] : []),
+    ...(contractRecheckSummary ? [`Contract re-check: ${contractRecheckSummary}`] : []),
     ...(verificationPackSummary ? [`Verification Pack: ${verificationPackSummary}`] : []),
     ...(humanDecision ? [`Human decision: ${humanDecision}`] : []),
     `Next action: ${actionProgress.readinessConclusion}`,
@@ -2195,6 +2241,35 @@ function AffectedSurfaceCard({ surface }: { surface: AffectedSurface }) {
   );
 }
 
+function ContractRecheckRow({ evaluation }: { evaluation: ContractRecheckClauseEvaluation }) {
+  return (
+    <details className="contract-recheck-row">
+      <summary>
+        <span className={`contract-recheck-status contract-recheck-status--${evaluation.evaluationStatus}`}>{evaluation.evaluationStatus.replaceAll("-", " ")}</span>
+        <strong>{evaluation.title}</strong>
+        <span>{evaluation.importance}</span>
+      </summary>
+      <div className="contract-recheck-row-detail">
+        <p>{evaluation.explanation}</p>
+        <dl>
+          <div><dt>Previous</dt><dd>{evaluation.previousStatus}</dd></div>
+          <div><dt>Current</dt><dd>{evaluation.currentStatus ?? "Unavailable"}</dd></div>
+          <div><dt>Action</dt><dd>{evaluation.actionRequired ? "Action required" : "No immediate action from this clause"}</dd></div>
+        </dl>
+        {evaluation.requirementEvaluations.length > 0 && (
+          <ul>
+            {evaluation.requirementEvaluations.slice(0, 3).map((requirement) => (
+              <li key={requirement.requirementId}>
+                <strong>{requirement.currentResult}</strong> · {requirement.explanation}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </details>
+  );
+}
+
 export default function ReportPage() {
   const guidedTour = useGuidedTour();
   const [displayedReport, setDisplayedReport] = useState<{ report: Report; source: ReportSource }>({
@@ -2207,6 +2282,7 @@ export default function ReportPage() {
   const [changePassport, setChangePassport] = useState<ChangePassport | null>(null);
   const [storedMergeContract, setStoredMergeContract] = useState<MergeContract | null>(null);
   const [storedVerificationPack, setStoredVerificationPack] = useState<VerificationPack | null>(null);
+  const [storedContractRecheck, setStoredContractRecheck] = useState<ContractRecheckRecord | null>(null);
   const [verificationTarget, setVerificationTarget] = useState<{ pullRequestId: string; runId: string } | null>(null);
   const [verificationResult, setVerificationResult] = useState<CanonicalRunVerificationRecord | null>(null);
   const [isVerifyingRun, setIsVerifyingRun] = useState(false);
@@ -2265,6 +2341,7 @@ export default function ReportPage() {
         setChangePassport(isChangePassport(parsedReport.changePassport) ? parsedReport.changePassport : null);
         setStoredMergeContract(isMergeContract(parsedReport.mergeContract) ? parsedReport.mergeContract : null);
         setStoredVerificationPack(isVerificationPack(parsedReport.verificationPack) ? parsedReport.verificationPack : null);
+        setStoredContractRecheck(isContractRecheck(parsedReport.contractRecheck) ? parsedReport.contractRecheck : null);
         setVerificationTarget(isVerificationTarget(parsedReport.verificationTarget) ? parsedReport.verificationTarget : null);
         setVerificationResult(null);
         if (parsedReport.initialTab === "review-diff") setActiveTab("review-diff");
@@ -2279,6 +2356,7 @@ export default function ReportPage() {
         setChangePassport(null);
         setStoredMergeContract(null);
         setStoredVerificationPack(null);
+        setStoredContractRecheck(null);
         setVerificationTarget(null);
         setVerificationResult(null);
         return;
@@ -2487,6 +2565,14 @@ export default function ReportPage() {
   const mergeContractSatisfied = displayedContractClauses.filter(({ status }) => status === "satisfied").length;
   const mergeContractAccepted = displayedContractClauses.filter(({ status }) => status === "accepted").length;
   const mergeContractSummaryText = mergeContractSummary(mergeContract);
+  const contractRecheck = storedContractRecheck;
+  const contractRecheckSummaryText = contractRecheckSummary(contractRecheck);
+  const contractRecheckNewlySatisfied = contractRecheck?.clauseEvaluations.filter((item) => item.evaluationStatus === "newly-satisfied").length ?? 0;
+  const contractRecheckReopened = contractRecheck?.clauseEvaluations.filter((item) => item.evaluationStatus === "reopened").length ?? 0;
+  const contractRecheckStillOpen = contractRecheck?.clauseEvaluations.filter((item) => item.evaluationStatus === "still-open").length ?? 0;
+  const contractRecheckStaleEvidenceOrAssumptions = contractRecheck
+    ? contractRecheck.evidenceChanges.evidenceBecameStale + contractRecheck.assumptionChanges.stale + contractRecheck.assumptionChanges.acceptedStale
+    : 0;
   const verificationPack = buildVerificationPack({
     report,
     canonicalRun,
@@ -2496,6 +2582,7 @@ export default function ReportPage() {
     mergeContract,
     readinessDelta,
     reviewDiff,
+    contractRecheck,
     reviewState: studioReviewState,
     decisionHistory,
     sourceType: canonicalRun?.sourceType ?? source,
@@ -2506,9 +2593,11 @@ export default function ReportPage() {
   const verificationPackMarkdown = verificationPackToMarkdown(verificationPack);
   const verificationPackJsonText = verificationPackJson(verificationPack);
 
-  const readinessTimeline = readinessDelta
-    ? [deltaTimelineEvent(readinessDelta), ...baseReadinessTimeline]
-    : baseReadinessTimeline;
+  const readinessTimeline = [
+    ...(contractRecheck ? [contractRecheckTimelineEvent(contractRecheck)] : []),
+    ...(readinessDelta ? [deltaTimelineEvent(readinessDelta)] : []),
+    ...baseReadinessTimeline,
+  ];
   const reviewDiffAllItems = reviewDiff ? reviewDiffItems(reviewDiff) : [];
   const reviewDiffActiveFilters = reviewDiff && reviewDiff.mergeConditions.some((item) => item.status === "reopened")
     ? reviewDiffFilters
@@ -2530,6 +2619,7 @@ export default function ReportPage() {
     assumptionSummary,
     builderVerifierSummary,
     mergeContractSummary: mergeContractSummaryText,
+    contractRecheckSummary: contractRecheck ? contractRecheckSummaryText : undefined,
     verificationPackSummary,
   });
   const mergeSummaryMarkdown = mergeSummaryToMarkdown(report, {
@@ -2542,6 +2632,7 @@ export default function ReportPage() {
     assumptionSummary,
     builderVerifierSummary,
     mergeContractSummary: mergeContractSummaryText,
+    contractRecheckSummary: contractRecheck ? contractRecheckSummaryText : undefined,
     verificationPackSummary,
   });
   const blockerSurfaceCount = affectedSurfaces.filter((surface) => surface.status === "Blocker").length;
@@ -3478,6 +3569,69 @@ export default function ReportPage() {
               </button>
               <button type="button" onClick={() => handleDownloadVerificationPack("md")}>Download Markdown</button>
             </div>
+          </section>
+
+          <section className="section-block contract-recheck" aria-labelledby="contract-recheck-title">
+            <div className="section-heading">
+              <div>
+                <span className="card-kicker">CONTRACT MOVEMENT</span>
+                <h2 id="contract-recheck-title">Contract re-check</h2>
+                <p>Compares a previous Evidence-backed Merge Contract against the latest completed review. This does not alter score, recommendation or mergeability.</p>
+              </div>
+              <span className="section-count">{contractRecheck ? contractRecheck.classification : "Unavailable"}</span>
+            </div>
+
+            {contractRecheck ? (
+              <>
+                <div className="contract-recheck-summary-grid" aria-label="Contract re-check summary">
+                  <article><span>Previous → current</span><strong>{shortSha(contractRecheck.previousHeadSha)} → {shortSha(contractRecheck.currentHeadSha)}</strong></article>
+                  <article><span>Newly satisfied</span><strong>{contractRecheckNewlySatisfied}</strong></article>
+                  <article><span>Reopened</span><strong>{contractRecheckReopened}</strong></article>
+                  <article><span>Still open</span><strong>{contractRecheckStillOpen}</strong></article>
+                  <article><span>New requirements</span><strong>{contractRecheck.newClauses.length}</strong></article>
+                  <article><span>Stale evidence/assumptions</span><strong>{contractRecheckStaleEvidenceOrAssumptions}</strong></article>
+                </div>
+
+                <div className="contract-recheck-machine-row">
+                  <dl>
+                    <div><dt>Re-check ID</dt><dd>{fingerprintPrefix(contractRecheck.recheckId)}</dd></div>
+                    <div><dt>Previous contract</dt><dd>{fingerprintPrefix(contractRecheck.previousContractId)}</dd></div>
+                    <div><dt>Current contract</dt><dd>{fingerprintPrefix(contractRecheck.currentContractId)}</dd></div>
+                    <div><dt>Human decision</dt><dd>{contractRecheck.humanDecisionApplicability.state.replaceAll("-", " ")}</dd></div>
+                  </dl>
+                  <p>{contractRecheck.humanDecisionApplicability.reason}</p>
+                </div>
+
+                {contractRecheck.newClauses.length > 0 && (
+                  <div className="contract-recheck-new-clauses">
+                    <h3>New requirements in the latest contract</h3>
+                    <ul>
+                      {contractRecheck.newClauses.slice(0, 4).map((clause) => (
+                        <li key={clause.clauseId}>
+                          <strong>{clause.importance}</strong> · {clause.title}: {clause.statement}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {contractRecheck.clauseEvaluations.length > 0 ? (
+                  <div className="contract-recheck-rows">
+                    {contractRecheck.clauseEvaluations.slice(0, 8).map((evaluation) => (
+                      <ContractRecheckRow evaluation={evaluation} key={evaluation.clauseId} />
+                    ))}
+                  </div>
+                ) : (
+                  <p className="section-empty">No clause evaluations were available for this re-check.</p>
+                )}
+
+                {contractRecheck.limitations.length > 0 && (
+                  <p className="condition-local-note">Limitations: {contractRecheck.limitations.join(" ")}</p>
+                )}
+              </>
+            ) : (
+              <p className="section-empty">No previous completed contract is attached to this report. Contract re-check appears after a newer completed analysis of the same pull request.</p>
+            )}
           </section>
 
           <section className="section-block change-passport" aria-labelledby="change-passport-title">

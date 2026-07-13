@@ -5,6 +5,7 @@ import { compareChangePassport, passportHandoffSummary, type ChangePassport } fr
 import { assumptionHandoffSummary, buildEvidenceHierarchy, evidenceHandoffSummary } from "./evidence-hierarchy";
 import { buildMergeContract, mergeContractSummary } from "./merge-contract";
 import { buildVerificationPack, verificationPackHandoffSummary } from "./verification-pack";
+import { contractRecheckMarkdown, type ContractRecheckRecord } from "./contract-recheck";
 import { shortSha, type ReadinessDelta } from "./readiness-delta";
 import { decisionConditions, deduplicateReportItems, pruneUnsupportedReviewerFocus } from "./report-quality";
 
@@ -97,7 +98,7 @@ function deltaSection(delta?: ReadinessDelta) {
   ];
 }
 
-export function githubDecisionCommentBody(report: Report, options: { headSha: string; analysedAt: string; reportUrl?: string; delta?: ReadinessDelta; canonicalRun?: CanonicalReviewRunManifest; changePassport?: ChangePassport }) {
+export function githubDecisionCommentBody(report: Report, options: { headSha: string; analysedAt: string; reportUrl?: string; delta?: ReadinessDelta; canonicalRun?: CanonicalReviewRunManifest; changePassport?: ChangePassport; contractRecheck?: ContractRecheckRecord }) {
   const recommendation = report.verdict.recommendation.replaceAll("_", " ");
   const shortSha = options.headSha.slice(0, 7);
   const passportSummary = options.changePassport
@@ -136,6 +137,7 @@ export function githubDecisionCommentBody(report: Report, options: { headSha: st
     builderVerifier,
     mergeContract,
     readinessDelta: options.delta,
+    contractRecheck: options.contractRecheck,
     createdAt: options.analysedAt,
   });
 
@@ -158,6 +160,7 @@ export function githubDecisionCommentBody(report: Report, options: { headSha: st
     `**Verification boundary:** ${safeMarkdownText(builderVerifierHandoffSummary(builderVerifier))}`,
     `**Merge Contract:** ${safeMarkdownText(mergeContractSummary(mergeContract))}`,
     `**Verification Pack:** ${safeMarkdownText(verificationPackHandoffSummary(verificationPack))}`,
+    ...(options.contractRecheck ? [`**Contract re-check:** ${safeMarkdownText(contractRecheckMarkdown(options.contractRecheck).replace(/\n/g, " "))}`] : []),
     "",
     "### Top blockers",
     bulletList(topBlockers(report), "No blockers detected.", 4),

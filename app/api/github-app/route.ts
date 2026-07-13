@@ -3,8 +3,11 @@ import {
   reviewConfigurationFingerprint,
   type CanonicalRunVerificationRecord,
 } from "../../../lib/canonical-review-run";
+import { buildContractRecheck } from "../../../lib/contract-recheck";
+import { buildBuilderVerifierAssessment } from "../../../lib/builder-verifier-boundary";
+import { buildEvidenceHierarchy } from "../../../lib/evidence-hierarchy";
 import { createInstallationToken, getGitHubAppStatus, installationFetch, installationFetchError, isGitHubAppConfigured } from "../../../lib/github-app-auth";
-import { addRunVerification, readGitHubAppStore, setRepositoryEnabled } from "../../../lib/github-app-store";
+import { addRunContractRecheck, addRunVerification, readGitHubAppStore, setRepositoryEnabled } from "../../../lib/github-app-store";
 import { generateReport, type ReportInput } from "../../../lib/report-generator";
 import { inferStack } from "../../../lib/stack-inference";
 
@@ -16,7 +19,7 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
   return Response.json(body, { status, headers: NO_STORE_HEADERS });
 }
 
-function analysisRunSummary(record: { runId: string; headSha: string; baseSha?: string; recommendation: string; readinessScore: number; riskLevel: string; completedAt: string; delta?: unknown; deltaFailureCategory?: string; mergeContract?: unknown; verificationPack?: unknown }) {
+function analysisRunSummary(record: { runId: string; headSha: string; baseSha?: string; recommendation: string; readinessScore: number; riskLevel: string; completedAt: string; delta?: unknown; deltaFailureCategory?: string; mergeContract?: unknown; verificationPack?: unknown; contractRecheck?: unknown }) {
   return {
     runId: record.runId,
     headSha: record.headSha,
@@ -29,6 +32,7 @@ function analysisRunSummary(record: { runId: string; headSha: string; baseSha?: 
     deltaFailureCategory: record.deltaFailureCategory,
     mergeContract: record.mergeContract,
     verificationPack: record.verificationPack,
+    contractRecheck: record.contractRecheck,
   };
 }
 
@@ -83,6 +87,7 @@ export async function GET(request: Request) {
         changePassport: record.analysisRuns?.[0]?.changePassport,
         mergeContract: record.analysisRuns?.[0]?.mergeContract,
         verificationPack: record.analysisRuns?.[0]?.verificationPack,
+        latestContractRecheck: record.analysisRuns?.[0]?.contractRecheck,
         latestDelta: record.analysisRuns?.[0]?.delta,
         latestReviewDiff: record.analysisRuns?.[0]?.reviewDiff,
         deltaFailureCategory: record.analysisRuns?.[0]?.deltaFailureCategory,
@@ -196,6 +201,30 @@ export async function GET(request: Request) {
       });
     }
     return jsonResponse({ pullRequestId, runId: run.runId, available: true, verificationPack: run.verificationPack });
+  }
+
+  if (view === "contract-recheck" || view === "contract-rechecks") {
+    const pullRequestId = url.searchParams.get("pullRequestId");
+    const runId = url.searchParams.get("runId");
+    const recheckId = url.searchParams.get("recheckId");
+    if (!pullRequestId) return jsonResponse({ error: "pullRequestId is required." }, 400);
+    const record = store.pullRequests[pullRequestId];
+    if (!record) return jsonResponse({ error: "Automated pull-request record was not found." }, 404);
+    const rechecks = (record.analysisRuns ?? []).flatMap((run) => run.contractRecheck ? [{ runId: run.runId, contractRecheck: run.contractRecheck }] : []);
+    if (view === "contract-rechecks") return jsonResponse({ pullRequestId, rechecks });
+    const selected = recheckId
+      ? rechecks.find((item) => item.contractRecheck.recheckId === recheckId)
+      : runId
+        ? rechecks.find((item) => item.runId === runId)
+        : rechecks[0];
+    if (!selected) {
+      return jsonResponse({
+        pullRequestId,
+        available: false,
+        reason: "contract_recheck_unavailable",
+      });
+    }
+    return jsonResponse({ pullRequestId, runId: selected.runId, available: true, contractRecheck: selected.contractRecheck });
   }
 
   if (view === "deliveries") {
@@ -349,6 +378,71 @@ export async function POST(request: Request) {
 
     const updated = await addRunVerification(pullRequestId, runId, verification);
     return updated ? jsonResponse({ verification, verifications: updated.verifications ?? [] }) : jsonResponse({ error: "Verification could not be stored." }, 500);
+  }
+
+  if (record.action === "contract-recheck") {
+    const pullRequestId = typeof record.pullRequestId === "string" ? record.pullRequestId : null;
+    const runId = typeof record.runId === "string" ? record.runId : null;
+    if (!pullRequestId || !runId) return jsonResponse({ error: "pullRequestId and runId are required." }, 400);
+
+    const store = await readGitHubAppStore();
+    const pullRequest = store.pullRequests[pullRequestId];
+    const currentRunIndex = pullRequest?.analysisRuns?.findIndex((item) => item.runId === runId) ?? -1;
+    if (!pullRequest || currentRunIndex < 0 || !pullRequest.analysisRuns) return jsonResponse({ error: "Analysis run was not found." }, 404);
+    const currentRun = pullRequest.analysisRuns[currentRunIndex];
+    const previousRun = pullRequest.analysisRuns.slice(currentRunIndex + 1).find((item) => item.mergeContract && item.headSha !== currentRun.headSha);
+    if (!currentRun.mergeContract || !previousRun?.mergeContract) {
+      return jsonResponse({ available: false, reason: "contract_pair_unavailable" }, 409);
+    }
+    if (currentRun.contractRecheck && currentRun.contractRecheck.previousContractId === previousRun.mergeContract.contractId && currentRun.contractRecheck.currentContractId === currentRun.mergeContract.contractId) {
+      return jsonResponse({ available: true, contractRecheck: currentRun.contractRecheck });
+    }
+    const timestamp = new Date().toISOString();
+    const previousEvidence = buildEvidenceHierarchy(previousRun.report, previousRun.changePassport, { runId: previousRun.canonicalRun?.runId, headSha: previousRun.headSha });
+    const currentEvidence = buildEvidenceHierarchy(currentRun.report, currentRun.changePassport, { runId: currentRun.canonicalRun?.runId, headSha: currentRun.headSha });
+    const previousBoundary = previousRun.canonicalRun ? buildBuilderVerifierAssessment({
+      passport: previousRun.changePassport,
+      repository: previousRun.report.pr.repository,
+      pullRequestNumber: previousRun.report.pr.number,
+      headSha: previousRun.headSha,
+      canonicalRunId: previousRun.canonicalRun.runId,
+      analysisSource: previousRun.canonicalRun.analysisSource,
+      provider: previousRun.canonicalRun.provider,
+      model: previousRun.canonicalRun.model,
+      generatorVersion: previousRun.canonicalRun.generatorVersion,
+      deterministicRulesetVersion: previousRun.canonicalRun.deterministicRulesetVersion,
+      createdAt: previousRun.completedAt,
+    }) : undefined;
+    const currentBoundary = currentRun.canonicalRun ? buildBuilderVerifierAssessment({
+      passport: currentRun.changePassport,
+      repository: currentRun.report.pr.repository,
+      pullRequestNumber: currentRun.report.pr.number,
+      headSha: currentRun.headSha,
+      canonicalRunId: currentRun.canonicalRun.runId,
+      analysisSource: currentRun.canonicalRun.analysisSource,
+      provider: currentRun.canonicalRun.provider,
+      model: currentRun.canonicalRun.model,
+      generatorVersion: currentRun.canonicalRun.generatorVersion,
+      deterministicRulesetVersion: currentRun.canonicalRun.deterministicRulesetVersion,
+      createdAt: currentRun.completedAt,
+    }) : undefined;
+    const recheck = buildContractRecheck({
+      previousContract: previousRun.mergeContract,
+      currentContract: currentRun.mergeContract,
+      previousEvidenceHierarchy: previousEvidence,
+      currentEvidenceHierarchy: currentEvidence,
+      previousBuilderVerifier: previousBoundary,
+      currentBuilderVerifier: currentBoundary,
+      previousCanonicalRun: previousRun.canonicalRun,
+      currentCanonicalRun: currentRun.canonicalRun,
+      previousVerificationPack: previousRun.verificationPack,
+      currentVerificationPack: currentRun.verificationPack,
+      source: "api",
+      triggeredAt: timestamp,
+    });
+    if (!recheck) return jsonResponse({ available: false, reason: "contract_recheck_unavailable" }, 409);
+    const updated = await addRunContractRecheck(pullRequestId, runId, recheck);
+    return updated ? jsonResponse({ available: true, contractRecheck: updated.contractRecheck }) : jsonResponse({ error: "Contract re-check could not be stored." }, 500);
   }
 
   if (record.action !== "set-repository-enabled") {

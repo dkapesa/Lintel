@@ -11,6 +11,9 @@ import {
 import type { ChangePassport } from "./change-passport";
 import { buildMergeContract, type MergeContract } from "./merge-contract";
 import { buildVerificationPack, type VerificationPack } from "./verification-pack";
+import { buildContractRecheck, type ContractRecheckRecord } from "./contract-recheck";
+import { buildEvidenceHierarchy } from "./evidence-hierarchy";
+import { buildBuilderVerifierAssessment } from "./builder-verifier-boundary";
 import type { Report } from "./mock-report";
 import { createReadinessDelta, createReviewDiff, type AnalysisRunSnapshot, type ReadinessDelta } from "./readiness-delta";
 import type { ReportInput } from "./report-generator";
@@ -85,6 +88,7 @@ export type GitHubAnalysisRunRecord = AnalysisRunSnapshot & {
   changePassport?: ChangePassport;
   mergeContract?: MergeContract;
   verificationPack?: VerificationPack;
+  contractRecheck?: ContractRecheckRecord;
   verifications?: CanonicalRunVerificationRecord[];
 };
 
@@ -376,6 +380,7 @@ function completedRunFromReport(
     changePassport: options?.input?.changePassport,
     mergeContract,
     verificationPack,
+    contractRecheck: undefined,
     completedAt,
   };
 }
@@ -426,6 +431,69 @@ export async function completePullRequestAnalysis(id: string, report: Report, op
     try {
       currentRun.delta = createReadinessDelta(previousRun, currentRun, earlierRuns, timestamp);
       currentRun.reviewDiff = createReviewDiff(previousRun, currentRun, currentRun.delta, earlierRuns, timestamp) ?? undefined;
+      if (previousRun?.mergeContract && currentRun.mergeContract) {
+        const previousEvidence = buildEvidenceHierarchy(previousRun.report, previousRun.changePassport, { runId: previousRun.canonicalRun?.runId, headSha: previousRun.headSha });
+        const currentEvidence = buildEvidenceHierarchy(currentRun.report, currentRun.changePassport, { runId: currentRun.canonicalRun?.runId, headSha: currentRun.headSha });
+        const previousBoundary = previousRun.canonicalRun
+          ? buildBuilderVerifierAssessment({
+            passport: previousRun.changePassport,
+            repository: previousRun.report.pr.repository,
+            pullRequestNumber: previousRun.report.pr.number,
+            headSha: previousRun.headSha,
+            canonicalRunId: previousRun.canonicalRun.runId,
+            analysisSource: previousRun.canonicalRun.analysisSource,
+            provider: previousRun.canonicalRun.provider,
+            model: previousRun.canonicalRun.model,
+            generatorVersion: previousRun.canonicalRun.generatorVersion,
+            deterministicRulesetVersion: previousRun.canonicalRun.deterministicRulesetVersion,
+            createdAt: previousRun.completedAt,
+          })
+          : undefined;
+        const currentBoundary = currentRun.canonicalRun
+          ? buildBuilderVerifierAssessment({
+            passport: currentRun.changePassport,
+            repository: currentRun.report.pr.repository,
+            pullRequestNumber: currentRun.report.pr.number,
+            headSha: currentRun.headSha,
+            canonicalRunId: currentRun.canonicalRun.runId,
+            analysisSource: currentRun.canonicalRun.analysisSource,
+            provider: currentRun.canonicalRun.provider,
+            model: currentRun.canonicalRun.model,
+            generatorVersion: currentRun.canonicalRun.generatorVersion,
+            deterministicRulesetVersion: currentRun.canonicalRun.deterministicRulesetVersion,
+            createdAt: currentRun.completedAt,
+          })
+          : undefined;
+        currentRun.contractRecheck = buildContractRecheck({
+          previousContract: previousRun.mergeContract,
+          currentContract: currentRun.mergeContract,
+          previousEvidenceHierarchy: previousEvidence,
+          currentEvidenceHierarchy: currentEvidence,
+          previousBuilderVerifier: previousBoundary,
+          currentBuilderVerifier: currentBoundary,
+          previousCanonicalRun: previousRun.canonicalRun,
+          currentCanonicalRun: currentRun.canonicalRun,
+          previousVerificationPack: previousRun.verificationPack,
+          currentVerificationPack: currentRun.verificationPack,
+          source: "automated-analysis",
+          triggeredAt: timestamp,
+        }) ?? undefined;
+        if (currentRun.contractRecheck) {
+          currentRun.verificationPack = buildVerificationPack({
+            report: currentRun.report,
+            canonicalRun: currentRun.canonicalRun,
+            changePassport: currentRun.changePassport,
+            evidenceHierarchy: currentEvidence,
+            builderVerifier: currentBoundary,
+            mergeContract: currentRun.mergeContract,
+            readinessDelta: currentRun.delta,
+            reviewDiff: currentRun.reviewDiff,
+            contractRecheck: currentRun.contractRecheck,
+            sourceUrl: options?.sourceUrl,
+            createdAt: timestamp,
+          });
+        }
+      }
     } catch {
       currentRun.deltaFailureCategory = "delta_generation_failed";
     }
@@ -454,6 +522,23 @@ export async function addRunVerification(
     const run = record?.analysisRuns?.find((item) => item.runId === runId);
     if (!record || !run) return null;
     run.verifications = [verification, ...(run.verifications ?? [])].slice(0, 20);
+    record.updatedAt = now();
+    return run;
+  });
+}
+
+export async function addRunContractRecheck(
+  pullRequestId: string,
+  runId: string,
+  recheck: ContractRecheckRecord,
+) {
+  return updateStore((data) => {
+    const record = data.pullRequests[pullRequestId];
+    const run = record?.analysisRuns?.find((item) => item.runId === runId);
+    if (!record || !run) return null;
+    if (run.contractRecheck?.fingerprint !== recheck.fingerprint) {
+      run.contractRecheck = recheck;
+    }
     record.updatedAt = now();
     return run;
   });

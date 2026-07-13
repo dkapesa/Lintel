@@ -8,6 +8,7 @@ import { createCanonicalReviewRunManifest, type CanonicalReviewRunManifest } fro
 import { normalizeChangePassport, type ChangePassport, type ChangePassportProducerType } from "../../lib/change-passport";
 import { buildMergeContract, type MergeContract } from "../../lib/merge-contract";
 import { buildVerificationPack, type VerificationPack } from "../../lib/verification-pack";
+import type { ContractRecheckRecord } from "../../lib/contract-recheck";
 import { generateReport, GENERATED_REPORT_STORAGE_KEY, type ReportInput, type ReportInputSource } from "../../lib/report-generator";
 import { addReportToHistory, clearReportHistory, deleteReportFromHistory, readReportHistory, type ReportHistoryEntry } from "../../lib/report-history";
 import type { Report } from "../../lib/mock-report";
@@ -27,6 +28,7 @@ type StoredReport = {
   changePassport?: ChangePassport;
   mergeContract?: MergeContract;
   verificationPack?: VerificationPack;
+  contractRecheck?: ContractRecheckRecord;
   verificationTarget?: { pullRequestId: string; runId: string };
   initialTab?: "review-diff";
 };
@@ -118,6 +120,7 @@ type GitHubAppPullRequest = {
   changePassport?: ChangePassport;
   mergeContract?: MergeContract;
   verificationPack?: VerificationPack;
+  latestContractRecheck?: ContractRecheckRecord;
   latestDelta?: ReadinessDelta;
   latestReviewDiff?: ReviewDiff;
   deltaFailureCategory?: string;
@@ -129,6 +132,7 @@ type GitHubAppPullRequest = {
     riskLevel: string;
     completedAt: string;
     delta?: ReadinessDelta;
+    contractRecheck?: ContractRecheckRecord;
     deltaFailureCategory?: string;
   }>;
   commentPublishingState?: string;
@@ -196,6 +200,17 @@ function isVerificationPack(value: unknown): value is VerificationPack {
     && typeof value.schemaVersion === "string"
     && "packFingerprint" in value
     && typeof value.packFingerprint === "string";
+}
+
+function isContractRecheck(value: unknown): value is ContractRecheckRecord {
+  return typeof value === "object"
+    && value !== null
+    && "recheckId" in value
+    && typeof value.recheckId === "string"
+    && "schemaVersion" in value
+    && typeof value.schemaVersion === "string"
+    && "fingerprint" in value
+    && typeof value.fingerprint === "string";
 }
 
 function isGitHubImportResponse(value: unknown): value is GitHubImportResponse {
@@ -718,6 +733,7 @@ export default function NewReportPage() {
         changePassport: pr.changePassport,
         mergeContract: pr.mergeContract,
         verificationPack: pr.verificationPack,
+        contractRecheck: pr.latestContractRecheck,
         verificationTarget: pr.canonicalRun ? { pullRequestId: pr.id, runId: pr.canonicalRun.runId } : undefined,
         initialTab,
       }));
@@ -800,6 +816,7 @@ export default function NewReportPage() {
       let canonicalRun: CanonicalReviewRunManifest | undefined;
       let mergeContract: MergeContract | undefined;
       let verificationPack: VerificationPack | undefined;
+      let contractRecheck: ContractRecheckRecord | undefined;
 
       try {
         const response = await fetch("/api/generate-report", {
@@ -826,6 +843,7 @@ export default function NewReportPage() {
         canonicalRun = payload.canonicalRun;
         mergeContract = isMergeContract(payload.mergeContract) ? payload.mergeContract : undefined;
         verificationPack = isVerificationPack(payload.verificationPack) ? payload.verificationPack : undefined;
+        contractRecheck = isContractRecheck(payload.contractRecheck) ? payload.contractRecheck : undefined;
       } catch {
         generatedReport = generateReport(input);
         source = "deterministic";
@@ -856,9 +874,9 @@ export default function NewReportPage() {
         });
       }
 
-      sessionStorage.setItem(GENERATED_REPORT_STORAGE_KEY, JSON.stringify({ report: generatedReport, source, canonicalRun, changePassport: selectedChangePassport, mergeContract, verificationPack }));
+      sessionStorage.setItem(GENERATED_REPORT_STORAGE_KEY, JSON.stringify({ report: generatedReport, source, canonicalRun, changePassport: selectedChangePassport, mergeContract, verificationPack, contractRecheck }));
       try {
-        setHistory(addReportToHistory(window.localStorage, generatedReport, source, canonicalRun, selectedChangePassport, mergeContract, verificationPack));
+        setHistory(addReportToHistory(window.localStorage, generatedReport, source, canonicalRun, selectedChangePassport, mergeContract, verificationPack, contractRecheck));
       } catch {
         // Report generation remains usable when persistent browser storage is unavailable.
       }
@@ -871,7 +889,7 @@ export default function NewReportPage() {
 
   function openHistoryReport(entry: ReportHistoryEntry) {
     try {
-      sessionStorage.setItem(GENERATED_REPORT_STORAGE_KEY, JSON.stringify({ report: entry.report, source: entry.source, canonicalRun: entry.canonicalRun, changePassport: entry.changePassport, mergeContract: entry.mergeContract, verificationPack: entry.verificationPack }));
+      sessionStorage.setItem(GENERATED_REPORT_STORAGE_KEY, JSON.stringify({ report: entry.report, source: entry.source, canonicalRun: entry.canonicalRun, changePassport: entry.changePassport, mergeContract: entry.mergeContract, verificationPack: entry.verificationPack, contractRecheck: entry.contractRecheck }));
       router.push("/report");
     } catch {
       setError("This saved report could not be opened. Please try again.");
@@ -993,6 +1011,10 @@ export default function NewReportPage() {
             <dd>{deltaIndicatorWithSha(pr.latestDelta, pr.deltaFailureCategory)}</dd>
           </div>
           <div>
+            <dt>Contract re-check</dt>
+            <dd>{pr.latestContractRecheck ? pr.latestContractRecheck.classification.replaceAll("-", " ") : "Available after a newer completed contract"}</dd>
+          </div>
+          <div>
             <dt>PR comment</dt>
             <dd>{commentStateLabel(pr)}</dd>
           </div>
@@ -1006,6 +1028,7 @@ export default function NewReportPage() {
         <div className="brief-actions">
           {pr.latestReport && <button type="button" onClick={() => openAutomatedReport(pr)}>Open latest report</button>}
           {pr.latestReviewDiff && <button type="button" onClick={() => openAutomatedReport(pr, "review-diff")}>Open review diff</button>}
+          {pr.latestContractRecheck && <button type="button" onClick={() => openAutomatedReport(pr)}>Open contract re-check</button>}
           {pr.githubCommentHtmlUrl && <a href={pr.githubCommentHtmlUrl} target="_blank" rel="noreferrer">Comment on GitHub</a>}
         </div>
         <p className="brief-note">Automated analyses run from webhook events. To run a fresh readiness review here, import this pull request from open pull requests or by public URL.</p>

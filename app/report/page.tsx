@@ -5,6 +5,16 @@ import AppShell from "../app-shell";
 import { useGuidedTour } from "../guided-tour";
 import { compareChangePassport, passportHandoffSummary, type ChangePassport, type ChangePassportComparison } from "../../lib/change-passport";
 import {
+  assumptionHandoffSummary,
+  buildEvidenceHierarchy,
+  evidenceClassLabels,
+  evidenceClassOrder,
+  evidenceHandoffSummary,
+  type AssumptionRecord,
+  type AssumptionStatus,
+  type EvidenceRecord,
+} from "../../lib/evidence-hierarchy";
+import {
   conditionKey,
   conditionProgressSummary,
   readConditionProgress,
@@ -127,6 +137,12 @@ type ReadinessTimelineEvent = {
   current?: boolean;
 };
 type StudioHumanDecision = "Ready to merge" | "Tests required" | "Review required" | "Blocked" | "Approved with accepted risk";
+type LocalAssumptionOverride = {
+  status: Extract<AssumptionStatus, "open" | "supported" | "accepted" | "invalidated">;
+  note?: string;
+  timestamp: string;
+  headSha?: string;
+};
 
 type StoredReport = {
   report: Report;
@@ -251,6 +267,43 @@ function isVerificationRecord(value: unknown): value is CanonicalRunVerification
     && typeof value.sourceMatched === "boolean"
     && typeof value.configurationMatched === "boolean"
     && typeof value.reproducibility === "string";
+}
+
+function assumptionStateKey(report: Report, runId?: string) {
+  const base = `${report.pr.repository}:${report.pr.title}:${runId ?? report.pr.updatedAt ?? "local"}`;
+  return `lintel.assumptionRegistry.v1:${base.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+}
+
+function isAssumptionOverride(value: unknown): value is LocalAssumptionOverride {
+  return isRecord(value)
+    && (value.status === "open" || value.status === "supported" || value.status === "accepted" || value.status === "invalidated")
+    && typeof value.timestamp === "string";
+}
+
+function readAssumptionOverrides(storage: Storage, key: string) {
+  try {
+    const parsed: unknown = JSON.parse(storage.getItem(key) ?? "{}");
+    if (!isRecord(parsed)) return {};
+    return Object.entries(parsed).reduce<Record<string, LocalAssumptionOverride>>((result, [id, value]) => {
+      if (isAssumptionOverride(value)) result[id] = value;
+      return result;
+    }, {});
+  } catch {
+    return {};
+  }
+}
+
+function writeAssumptionOverride(storage: Storage, key: string, assumptionId: string, value: LocalAssumptionOverride) {
+  const current = readAssumptionOverrides(storage, key);
+  current[assumptionId] = value;
+  storage.setItem(key, JSON.stringify(current));
+  return current;
+}
+
+function assumptionDisplayStatus(assumption: AssumptionRecord, override?: LocalAssumptionOverride, currentHeadSha?: string) {
+  if (!override) return assumption.status;
+  if (override.headSha && currentHeadSha && override.headSha !== currentHeadSha) return "stale";
+  return override.status;
 }
 
 async function writeToClipboard(value: string) {
@@ -1779,6 +1832,8 @@ function slackHandoffToText({
   actionProgress,
   humanDecision,
   passportSummary,
+  evidenceSummary,
+  assumptionSummary,
 }: {
   report: Report;
   ownerLabel: string;
@@ -1786,6 +1841,8 @@ function slackHandoffToText({
   actionProgress: ActionProgress;
   humanDecision?: string;
   passportSummary?: string;
+  evidenceSummary?: string;
+  assumptionSummary?: string;
 }) {
   const topBlocker = conditions[0]
     ?? report.findings[0]?.title
@@ -1810,6 +1867,8 @@ function slackHandoffToText({
     `Reviewer focus: ${reviewerFocus}`,
     `Action progress: ${actionProgress.openBlockers} open blockers; ${actionProgress.requiredResolved}/${actionProgress.requiredTotal} required actions resolved`,
     ...(passportSummary ? [`Change Passport: ${passportSummary}`] : []),
+    ...(evidenceSummary ? [`Evidence: ${evidenceSummary}`] : []),
+    ...(assumptionSummary ? [`Assumptions: ${assumptionSummary}`] : []),
     ...(humanDecision ? [`Human decision: ${humanDecision}`] : []),
     `Next action: ${actionProgress.readinessConclusion}`,
     "",
@@ -1836,6 +1895,9 @@ function PassportObservations({ title, items, empty }: { title: string; items: C
             <li key={`${item.state}-${item.label}-${item.detail}`}>
               <strong>{item.label}</strong>
               <span>{item.detail}</span>
+              {(item.evidenceClass || item.provenance) && (
+                <small>{[item.evidenceClass, item.provenance].filter(Boolean).join(" · ")}</small>
+              )}
             </li>
           ))}
         </ul>
@@ -1853,6 +1915,57 @@ function EvidenceLedgerCard({ item }: { item: EvidenceLedgerItem }) {
       </div>
       <h3>{item.label}</h3>
       <p>{item.detail}</p>
+    </article>
+  );
+}
+
+function EvidenceHierarchyRow({ record }: { record: EvidenceRecord }) {
+  return (
+    <article className={`evidence-hierarchy-row evidence-hierarchy-row--${record.class}`}>
+      <div>
+        <span>{evidenceClassLabels[record.class]}</span>
+        <strong>{record.title}</strong>
+        <p>{record.statement}</p>
+      </div>
+      <dl>
+        <div><dt>Source</dt><dd>{record.source}</dd></div>
+        <div><dt>Status</dt><dd>{record.stale ? "Stale for current commit" : record.status.replaceAll("-", " ")}</dd></div>
+        <div><dt>Supports</dt><dd>{record.relatedSurfaces.slice(0, 2).join(", ") || "Review context"}</dd></div>
+      </dl>
+    </article>
+  );
+}
+
+function AssumptionRegistryRow({
+  assumption,
+  override,
+  status,
+  onUpdate,
+}: {
+  assumption: AssumptionRecord;
+  override?: LocalAssumptionOverride;
+  status: AssumptionStatus;
+  onUpdate: (status: LocalAssumptionOverride["status"]) => void;
+}) {
+  return (
+    <article className={`assumption-registry-row assumption-registry-row--${status}`}>
+      <div className="assumption-registry-main">
+        <span>{assumption.importance} · {status === "accepted" ? "Accepted uncertainty" : status}</span>
+        <strong>{assumption.statement}</strong>
+        <p>{assumption.evidenceRequired}</p>
+      </div>
+      <dl>
+        <div><dt>Source</dt><dd>{assumption.source}</dd></div>
+        <div><dt>Owner cue</dt><dd>{assumption.ownerCue ?? "Not assigned"}</dd></div>
+        <div><dt>Head SHA</dt><dd>{assumption.introducedHeadSha ? shortSha(assumption.introducedHeadSha) : "Local report"}</dd></div>
+        <div><dt>Local note</dt><dd>{override?.note ?? "None"}</dd></div>
+      </dl>
+      <div className="assumption-registry-actions" aria-label={`Actions for ${assumption.statement}`}>
+        <button type="button" onClick={() => onUpdate("supported")}>Confirm support</button>
+        <button type="button" onClick={() => onUpdate("accepted")}>Accept uncertainty</button>
+        <button type="button" onClick={() => onUpdate("invalidated")}>Invalidate</button>
+        <button type="button" onClick={() => onUpdate("open")}>Reopen</button>
+      </div>
     </article>
   );
 }
@@ -1909,6 +2022,7 @@ export default function ReportPage() {
   const [reviewState, setReviewState] = useState<ReportReviewState>(() => defaultReviewState(demoReport));
   const [decisionHistory, setDecisionHistory] = useState<DecisionHistoryEvent[]>(() => initialDecisionHistory(demoReport));
   const [actionStatusOverrides, setActionStatusOverrides] = useState<Record<string, ReviewActionStatus>>({});
+  const [assumptionOverrides, setAssumptionOverrides] = useState<Record<string, LocalAssumptionOverride>>({});
   const copyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const conditionsCopyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mergeSummaryCopyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -2051,6 +2165,15 @@ export default function ReportPage() {
       : "No specialist focus"
     : "Not assessed";
   const evidenceLedger = buildEvidenceLedger(report, displayedConditions, supportedReviewerFocus);
+  const evidenceHierarchy = buildEvidenceHierarchy(report, changePassport, { runId: canonicalRun?.runId, headSha: canonicalRun?.headSha });
+  const evidenceSummary = evidenceHandoffSummary(evidenceHierarchy);
+  const assumptionSummary = assumptionHandoffSummary(evidenceHierarchy);
+  const currentAssumptionStateKey = assumptionStateKey(report, canonicalRun?.runId);
+  const displayedAssumptions = evidenceHierarchy.assumptions.map((assumption) => {
+    const override = assumptionOverrides[assumption.assumptionId];
+    const status = assumptionDisplayStatus(assumption, override, canonicalRun?.headSha);
+    return { assumption, override, status };
+  });
   const affectedSurfaces = buildAffectedSurfaces(report, displayedConditions, supportedReviewerFocus);
   const readinessScoreBreakdown = buildReadinessScoreBreakdown({
     report,
@@ -2124,6 +2247,8 @@ export default function ReportPage() {
     actionProgress: reviewActionProgress,
     humanDecision: studioDecisionText,
     passportSummary,
+    evidenceSummary,
+    assumptionSummary,
   });
   const mergeSummaryMarkdown = mergeSummaryToMarkdown(report, {
     sourceLabel: sourceLabels[source],
@@ -2131,6 +2256,8 @@ export default function ReportPage() {
     includeLocalNote: includeLocalNoteInMergeSummary,
     actionProgress: `${reviewActionProgress.openBlockers} open blockers; ${reviewActionProgress.requiredResolved}/${reviewActionProgress.requiredTotal} required actions resolved. Human decision: ${studioDecisionText}. ${reviewActionProgress.readinessConclusion}`,
     passportSummary,
+    evidenceSummary,
+    assumptionSummary,
   });
   const blockerSurfaceCount = affectedSurfaces.filter((surface) => surface.status === "Blocker").length;
   const confirmationSurfaceCount = affectedSurfaces.filter((surface) => surface.status === "Attention" || surface.status === "Watch").length;
@@ -2162,6 +2289,14 @@ export default function ReportPage() {
       setClearedConditionKeys(new Set());
     }
   }, [report, displayedConditionSignature]);
+
+  useEffect(() => {
+    try {
+      setAssumptionOverrides(readAssumptionOverrides(window.localStorage, currentAssumptionStateKey));
+    } catch {
+      setAssumptionOverrides({});
+    }
+  }, [currentAssumptionStateKey]);
 
   useEffect(() => {
     setSelectedFindingIndex((current) => (
@@ -2263,6 +2398,42 @@ export default function ReportPage() {
         label: "Local",
       });
     }
+  }
+
+  function updateAssumptionStatus(assumption: AssumptionRecord, status: LocalAssumptionOverride["status"]) {
+    const note = status === "open"
+      ? ""
+      : window.prompt(
+        status === "accepted"
+          ? "Record why this uncertainty is accepted locally. This does not prove the assumption or clear merge conditions."
+          : status === "supported"
+            ? "Record the bounded evidence or confirmation supporting this assumption."
+            : "Record why this assumption is locally invalidated.",
+        "",
+      );
+    if (status !== "open" && note === null) return;
+
+    const nextOverride: LocalAssumptionOverride = {
+      status,
+      note: note ? note.slice(0, 220) : undefined,
+      timestamp: new Date().toISOString(),
+      headSha: canonicalRun?.headSha,
+    };
+
+    try {
+      setAssumptionOverrides(writeAssumptionOverride(window.localStorage, currentAssumptionStateKey, assumption.assumptionId, nextOverride));
+    } catch {
+      setAssumptionOverrides((current) => ({ ...current, [assumption.assumptionId]: nextOverride }));
+    }
+
+    recordDecisionEvent({
+      type: status === "accepted" ? "accepted-risk-recorded" : "human-decision-recorded",
+      title: status === "accepted" ? "Assumption accepted locally" : "Assumption status updated",
+      detail: assumption.statement,
+      previousState: assumption.status,
+      nextState: status,
+      label: "Local",
+    });
   }
 
   function updateReviewOwner(owner: ReviewerOwner) {
@@ -2781,6 +2952,11 @@ export default function ReportPage() {
                     <span className={readinessDelta.addedTestOrEvidenceGaps.length > 0 ? "delta-count delta-count--bad" : readinessDelta.clearedTestOrEvidenceGaps.length > 0 ? "delta-count delta-count--good" : "delta-count"}>
                       <strong>+{readinessDelta.addedTestOrEvidenceGaps.length} / −{readinessDelta.clearedTestOrEvidenceGaps.length}</strong> Test / evidence gaps
                     </span>
+                    {readinessDelta.evidenceMovement && (
+                      <span className={readinessDelta.evidenceMovement.assumptionsOpened > 0 ? "delta-count delta-count--warn" : "delta-count"}>
+                        <strong>{readinessDelta.evidenceMovement.evidenceAdded} / {readinessDelta.evidenceMovement.assumptionsOpened}</strong> Evidence added / assumptions opened
+                      </span>
+                    )}
                   </div>
 
                   {readinessDelta.classification === "unchanged" && (
@@ -2903,6 +3079,8 @@ export default function ReportPage() {
                 <article><span>Ruleset / generator</span><strong>{canonicalRun.deterministicRulesetVersion} / {canonicalRun.generatorVersion}</strong></article>
                 <article><span>Provider / model</span><strong>{canonicalRun.provider || canonicalRun.model ? `${canonicalRun.provider ?? "provider"} / ${canonicalRun.model ?? "model"}` : "Not used"}</strong></article>
                 <article><span>Completed</span><strong>{canonicalRun.completedAt ? timelineTime(canonicalRun.completedAt) : "Unknown"}</strong></article>
+                <article><span>Evidence model</span><strong>{canonicalRun.evidenceHierarchy?.schemaVersion ?? "historical"}</strong></article>
+                <article><span>Open assumptions</span><strong>{canonicalRun.evidenceHierarchy ? `${canonicalRun.evidenceHierarchy.openBlockingAssumptionCount} blocking / ${canonicalRun.evidenceHierarchy.openAdvisoryAssumptionCount} advisory` : "unavailable"}</strong></article>
               </div>
 
               <dl className="run-fingerprint-grid" aria-label="Canonical run fingerprints">
@@ -2910,6 +3088,8 @@ export default function ReportPage() {
                 <div><dt>Configuration</dt><dd>{fingerprintPrefix(canonicalRun.configurationFingerprint)}</dd></div>
                 <div><dt>Result</dt><dd>{fingerprintPrefix(canonicalRun.resultFingerprint)}</dd></div>
                 <div><dt>Previous run</dt><dd>{fingerprintPrefix(canonicalRun.previousRunId)}</dd></div>
+                <div><dt>Evidence</dt><dd>{fingerprintPrefix(canonicalRun.evidenceHierarchy?.evidenceFingerprint)}</dd></div>
+                <div><dt>Assumptions</dt><dd>{fingerprintPrefix(canonicalRun.evidenceHierarchy?.assumptionRegistryFingerprint)}</dd></div>
               </dl>
 
               {canonicalRun.reproducibilityLimitation && <p className="run-provenance-note">{canonicalRun.reproducibilityLimitation}</p>}
@@ -3306,6 +3486,64 @@ export default function ReportPage() {
               role="tabpanel"
               aria-labelledby="report-tab-evidence"
             >
+          <section className="section-block evidence-hierarchy" aria-labelledby="evidence-hierarchy-title">
+            <div className="section-heading">
+              <div>
+                <span className="card-kicker">TRUST MODEL</span>
+                <h2 id="evidence-hierarchy-title">Evidence hierarchy</h2>
+                <p>Evidence sources are tracked separately. Declarations and assumptions do not automatically become proof.</p>
+              </div>
+              <span className="section-count">{evidenceHierarchy.records.length} records</span>
+            </div>
+
+            <div className="evidence-class-grid" aria-label="Evidence classes">
+              {evidenceClassOrder.map((evidenceClass) => (
+                <article key={evidenceClass}>
+                  <span>{evidenceClassLabels[evidenceClass]}</span>
+                  <strong>{evidenceHierarchy.countsByClass[evidenceClass]}</strong>
+                </article>
+              ))}
+            </div>
+
+            <details className="evidence-hierarchy-details">
+              <summary>Inspect evidence records</summary>
+              <div className="evidence-hierarchy-list">
+                {evidenceHierarchy.records.length > 0 ? (
+                  evidenceHierarchy.records.slice(0, 24).map((record) => <EvidenceHierarchyRow key={record.evidenceId} record={record} />)
+                ) : (
+                  <p className="section-empty">No structured evidence records were available for this report.</p>
+                )}
+              </div>
+            </details>
+          </section>
+
+          <section className="section-block assumption-registry" aria-labelledby="assumption-registry-title">
+            <div className="section-heading">
+              <div>
+                <span className="card-kicker">ASSUMPTION REGISTRY</span>
+                <h2 id="assumption-registry-title">Unresolved dependencies</h2>
+                <p>Accepted uncertainty is recorded separately from supported evidence. Local actions do not clear merge conditions.</p>
+              </div>
+              <span className="section-count">{evidenceHierarchy.openBlockingAssumptions} blocking / {evidenceHierarchy.openAdvisoryAssumptions} advisory</span>
+            </div>
+
+            {displayedAssumptions.length > 0 ? (
+              <div className="assumption-registry-list">
+                {displayedAssumptions.map(({ assumption, override, status }) => (
+                  <AssumptionRegistryRow
+                    key={assumption.assumptionId}
+                    assumption={assumption}
+                    override={override}
+                    status={status}
+                    onUpdate={(nextStatus) => updateAssumptionStatus(assumption, nextStatus)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="section-empty section-empty--positive">No assumptions were registered from the current report or Change Passport.</p>
+            )}
+          </section>
+
           <section className="section-block report-evidence-ledger" aria-labelledby="evidence-ledger-title">
             <div className="section-heading">
               <div>

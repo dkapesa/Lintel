@@ -1,3 +1,5 @@
+import type { ChangePassport } from "./change-passport";
+import { buildEvidenceHierarchy } from "./evidence-hierarchy";
 import type { Recommendation, Report, RiskLevel } from "./mock-report";
 import { decisionConditions, deduplicateReportItems } from "./report-quality";
 
@@ -25,6 +27,16 @@ export type ReadinessDelta = {
   clearedBlockers: string[];
   addedTestOrEvidenceGaps: string[];
   clearedTestOrEvidenceGaps: string[];
+  evidenceMovement?: {
+    evidenceAdded: number;
+    strongerEvidenceAdded: number;
+    evidenceBecameStale: number;
+    assumptionsOpened: number;
+    assumptionsSupported: number;
+    assumptionsInvalidated: number;
+    assumptionsAccepted: number;
+    assumptionsBecameStale: number;
+  };
   classification: ReadinessDeltaClassification;
   generatedAt: string;
   deltaFailureCategory?: string;
@@ -64,6 +76,7 @@ export type ReviewDiff = {
   evidence: ReviewDiffItem[];
   testGaps: ReviewDiffItem[];
   mergeConditions: ReviewDiffItem[];
+  evidenceMovement?: ReadinessDelta["evidenceMovement"];
   generatedAt: string;
   failureCategory?: string;
 };
@@ -80,6 +93,7 @@ export type AnalysisRunSnapshot = {
   readinessScore: number;
   riskLevel: RiskLevel;
   report: Report;
+  changePassport?: ChangePassport;
   analysisSource: "deterministic";
   completedAt: string;
   delta?: ReadinessDelta;
@@ -461,6 +475,22 @@ export function createReadinessDelta(
   const scoreChange = previousRun ? currentRun.readinessScore - previousRun.readinessScore : undefined;
   const recommendationChange = previousRun ? movement(recommendationRank[previousRun.recommendation], recommendationRank[currentRun.recommendation]) : 0;
   const riskChange = previousRun ? movement(riskRank[previousRun.riskLevel], riskRank[currentRun.riskLevel]) : 0;
+  const previousEvidence = previousRun ? buildEvidenceHierarchy(previousRun.report, previousRun.changePassport, { runId: previousRun.runId, headSha: previousRun.headSha }) : null;
+  const currentEvidence = buildEvidenceHierarchy(currentRun.report, currentRun.changePassport, { runId: currentRun.runId, headSha: currentRun.headSha });
+  const previousEvidenceIds = new Set(previousEvidence?.records.map((record) => record.evidenceId) ?? []);
+  const currentEvidenceIds = new Set(currentEvidence.records.map((record) => record.evidenceId));
+  const previousAssumptionIds = new Set(previousEvidence?.assumptions.map((assumption) => assumption.assumptionId) ?? []);
+  const currentAssumptionIds = new Set(currentEvidence.assumptions.map((assumption) => assumption.assumptionId));
+  const evidenceMovement = {
+    evidenceAdded: currentEvidence.records.filter((record) => !previousEvidenceIds.has(record.evidenceId)).length,
+    strongerEvidenceAdded: currentEvidence.records.filter((record) => !previousEvidenceIds.has(record.evidenceId) && (record.class === "externally-verified" || record.class === "directly-observed" || record.class === "human-confirmed")).length,
+    evidenceBecameStale: currentEvidence.records.filter((record) => record.stale).length,
+    assumptionsOpened: currentEvidence.assumptions.filter((assumption) => !previousAssumptionIds.has(assumption.assumptionId) && assumption.status === "open").length,
+    assumptionsSupported: currentEvidence.assumptions.filter((assumption) => previousAssumptionIds.has(assumption.assumptionId) && assumption.status === "supported").length,
+    assumptionsInvalidated: currentEvidence.assumptions.filter((assumption) => previousAssumptionIds.has(assumption.assumptionId) && assumption.status === "invalidated").length,
+    assumptionsAccepted: currentEvidence.assumptions.filter((assumption) => previousAssumptionIds.has(assumption.assumptionId) && assumption.status === "accepted").length,
+    assumptionsBecameStale: currentEvidence.assumptions.filter((assumption) => assumption.stale).length,
+  };
 
   return {
     previousRunId: previousRun?.runId,
@@ -484,6 +514,7 @@ export function createReadinessDelta(
     clearedBlockers,
     addedTestOrEvidenceGaps,
     clearedTestOrEvidenceGaps,
+    evidenceMovement,
     classification: classifyDelta({
       previousRun,
       scoreChange,
@@ -553,6 +584,7 @@ export function createReviewDiff(
       changeFields: ["state", "clearanceRequirement"],
       reopenedKeys,
     }),
+    evidenceMovement: delta.evidenceMovement,
     generatedAt,
   };
 }

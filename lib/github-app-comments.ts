@@ -1,6 +1,7 @@
 import type { Report } from "./mock-report";
 import { fingerprintPrefix, type CanonicalReviewRunManifest } from "./canonical-review-run";
 import { compareChangePassport, passportHandoffSummary, type ChangePassport } from "./change-passport";
+import { assumptionHandoffSummary, buildEvidenceHierarchy, evidenceHandoffSummary } from "./evidence-hierarchy";
 import { shortSha, type ReadinessDelta } from "./readiness-delta";
 import { decisionConditions, deduplicateReportItems, pruneUnsupportedReviewerFocus } from "./report-quality";
 
@@ -96,6 +97,7 @@ export function githubDecisionCommentBody(report: Report, options: { headSha: st
   const passportSummary = options.changePassport
     ? passportHandoffSummary(options.changePassport, compareChangePassport(options.changePassport, report))
     : undefined;
+  const evidenceHierarchy = buildEvidenceHierarchy(report, options.changePassport, { runId: options.canonicalRun?.runId, headSha: options.headSha });
 
   return [
     LINTEL_COMMENT_MARKER,
@@ -111,6 +113,8 @@ export function githubDecisionCommentBody(report: Report, options: { headSha: st
       `**Analysis source:** ${safeMarkdownText(options.canonicalRun.analysisSource)}`,
     ] : []),
     ...(passportSummary ? [`**Change Passport:** ${safeMarkdownText(passportSummary)}`] : []),
+    `**Evidence:** ${safeMarkdownText(evidenceHandoffSummary(evidenceHierarchy))}`,
+    `**Assumptions:** ${safeMarkdownText(assumptionHandoffSummary(evidenceHierarchy))}`,
     "",
     "### Top blockers",
     bulletList(topBlockers(report), "No blockers detected.", 4),

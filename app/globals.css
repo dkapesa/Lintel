@@ -1255,6 +1255,40 @@ button.review-diff-row-line:focus-visible { outline:2px solid var(--color-focus-
   .passport-form-grid, .passport-summary-grid, .passport-detail-grid { grid-template-columns:1fr; }
 }
 
+/* V6.5 evidence hierarchy and assumption registry */
+.evidence-hierarchy, .assumption-registry { margin-top:0; padding:22px 24px; border:1px solid var(--dline); border-radius:13px; background:var(--dpanel); }
+.evidence-class-grid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:8px; margin-top:16px; }
+.evidence-class-grid article { min-width:0; padding:12px; border:1px solid #202226; border-radius:10px; background:var(--dpanel2); }
+.evidence-class-grid span, .evidence-hierarchy-row dt, .assumption-registry-row dt { display:block; color:var(--dmuted); font-size:8px; font-weight:850; letter-spacing:.08em; text-transform:uppercase; }
+.evidence-class-grid strong { display:block; margin-top:7px; color:var(--dink); font:18px var(--dmono); }
+.evidence-hierarchy-details { margin-top:12px; }
+.evidence-hierarchy-details summary { cursor:pointer; color:#d6dade; font-size:10px; font-weight:800; }
+.evidence-hierarchy-list, .assumption-registry-list { display:grid; gap:8px; margin-top:12px; }
+.evidence-hierarchy-row, .assumption-registry-row { min-width:0; display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,1fr); gap:12px; padding:13px; border:1px solid #202226; border-radius:10px; background:var(--dpanel2); }
+.evidence-hierarchy-row > div > span, .assumption-registry-main > span { display:inline-flex; width:max-content; margin-bottom:6px; padding:3px 6px; border:1px solid var(--dline); border-radius:999px; color:#d6dade; font-size:8px; font-weight:850; letter-spacing:.07em; text-transform:uppercase; }
+.evidence-hierarchy-row strong, .assumption-registry-row strong { display:block; color:var(--dink); font-size:12px; line-height:1.35; overflow-wrap:anywhere; }
+.evidence-hierarchy-row p, .assumption-registry-row p { margin:6px 0 0; color:var(--dtext); font-size:10px; line-height:1.55; overflow-wrap:anywhere; }
+.evidence-hierarchy-row dl, .assumption-registry-row dl { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin:0; }
+.assumption-registry-row dl { grid-template-columns:repeat(4,minmax(0,1fr)); }
+.evidence-hierarchy-row dl div, .assumption-registry-row dl div { min-width:0; padding:8px; border:1px solid var(--dline); border-radius:8px; background:var(--dpanel); }
+.evidence-hierarchy-row dd, .assumption-registry-row dd { margin:5px 0 0; color:#d6dade; font-size:10px; line-height:1.4; overflow-wrap:anywhere; }
+.assumption-registry-row { grid-template-columns:minmax(0,1fr); }
+.assumption-registry-actions { display:flex; flex-wrap:wrap; gap:7px; padding-top:11px; border-top:1px solid var(--dline); }
+.assumption-registry-actions button { min-height:30px; padding:0 9px; border:1px solid var(--dline); border-radius:8px; background:var(--dpanel); color:var(--dtext); font-size:9px; font-weight:800; cursor:pointer; }
+.assumption-registry-actions button:hover { border-color:#383d43; color:var(--dink); }
+.assumption-registry-row--supported { border-color:rgba(98,191,142,.35); }
+.assumption-registry-row--accepted { border-color:rgba(214,184,104,.35); }
+.assumption-registry-row--invalidated { border-color:rgba(224,144,124,.4); }
+.assumption-registry-row--stale { border-color:rgba(139,169,212,.35); }
+.passport-detail-grid li small { display:block; margin-top:3px; color:var(--dmuted); font-size:9px; }
+@media (max-width: 1080px) {
+  .evidence-class-grid { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .evidence-hierarchy-row, .evidence-hierarchy-row dl, .assumption-registry-row dl { grid-template-columns:1fr 1fr; }
+}
+@media (max-width: 680px) {
+  .evidence-class-grid, .evidence-hierarchy-row, .evidence-hierarchy-row dl, .assumption-registry-row dl { grid-template-columns:1fr; }
+}
+
 /* ============================================================
    E7.1 application shell — one shared frame for the workspace
    routes. Prefix: shell-. The root keeps the historical

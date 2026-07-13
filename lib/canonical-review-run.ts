@@ -1,5 +1,6 @@
 import type { Report } from "./mock-report";
 import type { ReportInput } from "./report-generator";
+import { buildEvidenceHierarchy, type EvidenceClass } from "./evidence-hierarchy";
 
 export const CANONICAL_RUN_SCHEMA_VERSION = "1.1";
 export const REPORT_SCHEMA_VERSION = "1.0";
@@ -49,6 +50,16 @@ export type CanonicalReviewRunManifest = {
     producerType: string;
     completeness: string;
     fingerprint: string;
+  };
+  evidenceHierarchy?: {
+    schemaVersion: string;
+    assumptionRegistrySchemaVersion: string;
+    evidenceFingerprint: string;
+    assumptionRegistryFingerprint: string;
+    countsByClass: Record<EvidenceClass, number>;
+    activeAssumptionIds: string[];
+    openBlockingAssumptionCount: number;
+    openAdvisoryAssumptionCount: number;
   };
   previousRunId?: string;
   processingState: "completed" | "failed" | "historical";
@@ -204,6 +215,7 @@ export function createCanonicalReviewRunManifest({
   const configurationFingerprint = reviewConfigurationFingerprint(input, analysisSource, provider, model);
   const resultFingerprint = reportFingerprint(report);
   const reproducibility = defaultReproducibility(inferredSourceType, analysisSource);
+  const evidenceHierarchy = buildEvidenceHierarchy(report, input.changePassport, { runId, headSha });
 
   return {
     runId: runId ?? `run_${inputFingerprint.slice(0, 10)}_${configurationFingerprint.slice(0, 8)}_${resultFingerprint.slice(0, 8)}`,
@@ -234,6 +246,16 @@ export function createCanonicalReviewRunManifest({
       completeness: input.changePassport.completeness,
       fingerprint: input.changePassport.fingerprint,
     } : undefined,
+    evidenceHierarchy: {
+      schemaVersion: evidenceHierarchy.schemaVersion,
+      assumptionRegistrySchemaVersion: evidenceHierarchy.assumptionRegistrySchemaVersion,
+      evidenceFingerprint: evidenceHierarchy.evidenceFingerprint,
+      assumptionRegistryFingerprint: evidenceHierarchy.assumptionRegistryFingerprint,
+      countsByClass: evidenceHierarchy.countsByClass,
+      activeAssumptionIds: evidenceHierarchy.assumptions.filter((assumption) => assumption.status === "open").slice(0, 12).map((assumption) => assumption.assumptionId),
+      openBlockingAssumptionCount: evidenceHierarchy.openBlockingAssumptions,
+      openAdvisoryAssumptionCount: evidenceHierarchy.openAdvisoryAssumptions,
+    },
     previousRunId,
     processingState: "completed",
     createdAt,

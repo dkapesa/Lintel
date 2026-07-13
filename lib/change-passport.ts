@@ -47,6 +47,8 @@ export type PassportObservation = {
   state: DeclarationState;
   label: string;
   detail: string;
+  evidenceClass?: "directly-observed" | "builder-declared" | "model-inferred" | "unknown";
+  provenance?: string;
 };
 
 export type ChangePassportComparison = {
@@ -223,6 +225,8 @@ export function compareChangePassport(passport: ChangePassport | null | undefine
         state: "observed but undeclared",
         label: surface,
         detail: "Lintel observed this review concern without a corresponding builder declaration.",
+        evidenceClass: "directly-observed",
+        provenance: "Lintel structured analysis",
       })),
       declaredUncertainty: [],
     };
@@ -235,6 +239,8 @@ export function compareChangePassport(passport: ChangePassport | null | undefine
     state: "declared" as const,
     label: "Unresolved uncertainty",
     detail: item,
+    evidenceClass: "builder-declared" as const,
+    provenance: passport.provenance,
   }));
 
   for (const surface of passport.claimedSurfaces) {
@@ -243,6 +249,8 @@ export function compareChangePassport(passport: ChangePassport | null | undefine
       state: supported ? "supported" : "unverified",
       label: surface,
       detail: supported ? "Declared surface also appears in Lintel reviewer focus, findings or operations." : "Declared surface is retained as builder context, but was not independently matched.",
+      evidenceClass: supported ? "directly-observed" : "builder-declared",
+      provenance: supported ? "Lintel structured analysis" : passport.provenance,
     });
   }
 
@@ -252,6 +260,8 @@ export function compareChangePassport(passport: ChangePassport | null | undefine
       state: supported ? "supported" : "unverified",
       label: file,
       detail: supported ? "Claimed file appears in the changed-file list." : "Claimed file was not matched to the normalized changed-file list.",
+      evidenceClass: supported ? "directly-observed" : "builder-declared",
+      provenance: supported ? "Changed-file list" : passport.provenance,
     });
   }
 
@@ -261,6 +271,8 @@ export function compareChangePassport(passport: ChangePassport | null | undefine
       state: supported ? "supported" : "unverified",
       label: validation,
       detail: supported ? "Lintel observed test-related evidence in the report context." : "Claimed validation was not independently verified by Lintel.",
+      evidenceClass: supported ? "directly-observed" : "builder-declared",
+      provenance: supported ? "Lintel structured analysis" : passport.provenance,
     });
   }
 
@@ -272,6 +284,8 @@ export function compareChangePassport(passport: ChangePassport | null | undefine
       state: "observed but undeclared" as const,
       label: surface,
       detail: "Lintel observed this concern, but it was not declared in the passport.",
+      evidenceClass: "directly-observed" as const,
+      provenance: "Lintel structured analysis",
     }));
 
   return {

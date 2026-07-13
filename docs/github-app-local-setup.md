@@ -180,6 +180,33 @@ The canonical review-run manifest stores only safe passport provenance: passport
 
 Passport claims do not alter readiness scoring, recommendations, blockers or merge conditions. Lintel compares declarations with structured report signals using deterministic field matching and labels claims as supported, unverified, declared, observed by Lintel but undeclared, or not applicable.
 
+## Evidence hierarchy and assumptions
+
+Lintel records a typed evidence hierarchy for new canonical runs. Evidence classes are ordered by provenance strength:
+
+1. Externally verified
+2. Directly observed
+3. Human confirmed
+4. Builder declared
+5. Model inferred
+6. Assumption
+7. Unknown
+
+The hierarchy describes provenance and strength. It does not automatically prove a conclusion, clear a merge condition, change readiness scoring or change the recommendation.
+
+The Assumption Registry records unresolved dependencies from Change Passport assumptions, declared uncertainty, selected merge conditions and findings that require proof. Assumption statuses are:
+
+- open
+- supported
+- invalidated
+- accepted
+- superseded
+- stale
+
+Supported and accepted are deliberately different. Supported means evidence backs the proposition. Accepted means a human chose to proceed despite incomplete proof.
+
+Canonical manifests store only safe evidence-model metadata: schema versions, fingerprints, counts by evidence class, active assumption IDs and open blocking/advisory assumption counts. They do not embed raw diffs, prompts, transcripts, credentials, webhook payloads or full unbounded metadata.
+
 ## Repository enable and disable
 
 The local GitHub App management surface can enable or disable installed repositories for Lintel processing.

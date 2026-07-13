@@ -241,6 +241,24 @@ The deterministic Lintel baseline is recorded as independently applied to observ
 
 Canonical manifests store only safe boundary provenance: schema version, assessment ID, fingerprint, classification, builder producer type, verifier types, dimension summary and deterministic-baseline presence. They do not store prompts, transcripts, raw diffs, secrets, tokens or arbitrary execution metadata.
 
+## Machine-readable Merge Contract
+
+Each newly completed review can include an Evidence-backed Merge Contract.
+
+The contract is a versioned, deterministic snapshot of the requirements that remain before the reviewed change can move forward. It records blocking and advisory clauses, why each clause exists, what evidence would satisfy it, currently linked evidence, related assumptions, affected surfaces, owner cues, head-SHA applicability and safe fingerprints.
+
+The contract is not the final human decision. It does not change Lintel’s recommendation, score, risk band or GitHub mergeability. Accepted risk is tracked separately from satisfied requirements, builder declarations are not automatically sufficient evidence, and model-inferred context is not treated as direct observation.
+
+The local store and report history persist only the normalized safe contract object. They do not persist raw diffs, prompts, transcripts, webhook payloads, GitHub tokens, App JWTs, authorization headers or secrets.
+
+Canonical manifests store only safe Merge Contract provenance: schema version, contract ID, contract fingerprint, current evaluation fingerprint, contract state, blocking/advisory clause counts, satisfied count, accepted-risk count and open assumption-linked clause count. Older runs remain readable and may show historical or unavailable contract metadata.
+
+The GitHub App API exposes contract data through the existing safe read path:
+
+`/api/github-app?view=merge-contract&pullRequestId=<id>&runId=<run-id>`
+
+The GitHub decision comment and Slack/GitHub handoff surfaces include only a concise contract summary such as open blocking clauses, advisory clauses, satisfied clauses and unresolved assumptions. They do not include the full contract JSON.
+
 ## Repository enable and disable
 
 The local GitHub App management surface can enable or disable installed repositories for Lintel processing.

@@ -2,8 +2,9 @@ import type { Report } from "./mock-report";
 import type { ReportInput } from "./report-generator";
 import { buildEvidenceHierarchy, type EvidenceClass } from "./evidence-hierarchy";
 import { buildBuilderVerifierAssessment, type BoundaryStatus, type VerificationBoundaryClassification } from "./builder-verifier-boundary";
+import { buildMergeContract, type MergeContractState } from "./merge-contract";
 
-export const CANONICAL_RUN_SCHEMA_VERSION = "1.2";
+export const CANONICAL_RUN_SCHEMA_VERSION = "1.3";
 export const REPORT_SCHEMA_VERSION = "1.0";
 export const REPORT_GENERATOR_VERSION = "6.6";
 export const DETERMINISTIC_RULESET_VERSION = "6.3";
@@ -71,6 +72,18 @@ export type CanonicalReviewRunManifest = {
     verifierTypes: string[];
     dimensions: Record<string, BoundaryStatus>;
     deterministicBaselineApplied: boolean;
+  };
+  mergeContract?: {
+    schemaVersion: string;
+    contractId: string;
+    contractFingerprint: string;
+    currentEvaluationFingerprint: string;
+    state: MergeContractState;
+    blockingClauseCount: number;
+    advisoryClauseCount: number;
+    satisfiedClauseCount: number;
+    acceptedRiskClauseCount: number;
+    openAssumptionLinkedClauseCount: number;
   };
   previousRunId?: string;
   processingState: "completed" | "failed" | "historical";
@@ -241,6 +254,18 @@ export function createCanonicalReviewRunManifest({
     deterministicRulesetVersion: DETERMINISTIC_RULESET_VERSION,
     createdAt: completedAt,
   });
+  const mergeContract = buildMergeContract({
+    report,
+    changePassport: input.changePassport,
+    evidenceHierarchy,
+    builderVerifier,
+    canonicalRunId: resolvedRunId,
+    baseSha,
+    headSha,
+    sourceType: inferredSourceType,
+    reviewMode: input.reviewProfile ?? "standard",
+    createdAt: completedAt,
+  });
 
   return {
     runId: resolvedRunId,
@@ -293,6 +318,18 @@ export function createCanonicalReviewRunManifest({
         return result;
       }, {}),
       deterministicBaselineApplied: builderVerifier.verifier.deterministicBaselineApplied,
+    },
+    mergeContract: {
+      schemaVersion: mergeContract.schemaVersion,
+      contractId: mergeContract.contractId,
+      contractFingerprint: mergeContract.contractFingerprint,
+      currentEvaluationFingerprint: mergeContract.currentEvaluationFingerprint,
+      state: mergeContract.state,
+      blockingClauseCount: mergeContract.clauses.filter((item) => item.importance === "blocking").length,
+      advisoryClauseCount: mergeContract.clauses.filter((item) => item.importance === "advisory").length,
+      satisfiedClauseCount: mergeContract.clauses.filter((item) => item.status === "satisfied").length,
+      acceptedRiskClauseCount: mergeContract.clauses.filter((item) => item.status === "accepted").length,
+      openAssumptionLinkedClauseCount: mergeContract.clauses.filter((item) => item.relatedAssumptionIds.length > 0 && item.status === "open").length,
     },
     previousRunId,
     processingState: "completed",

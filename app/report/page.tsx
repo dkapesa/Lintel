@@ -39,6 +39,14 @@ import {
   type DecisionHistoryEvent,
 } from "../../lib/decision-history";
 import { mergeSummaryToMarkdown } from "../../lib/merge-summary";
+import {
+  buildMergeContract,
+  mergeContractSummary,
+  safeMergeContractJson,
+  type MergeContract,
+  type MergeContractClause,
+  type MergeContractClauseStatus,
+} from "../../lib/merge-contract";
 import { shortSha, type ReadinessDelta, type ReviewDiff, type ReviewDiffItem, type ReviewDiffStatus } from "../../lib/readiness-delta";
 import { GENERATED_REPORT_STORAGE_KEY } from "../../lib/report-generator";
 import { conditionsToMarkdown, findingProvenanceLabel, reportMarkdownFilename, reportToMarkdown, type ReportSourceLabel } from "../../lib/report-markdown";
@@ -144,6 +152,12 @@ type LocalAssumptionOverride = {
   timestamp: string;
   headSha?: string;
 };
+type LocalClauseOverride = {
+  status: Extract<MergeContractClauseStatus, "open" | "satisfied" | "accepted" | "invalidated" | "superseded">;
+  reason?: string;
+  timestamp: string;
+  headSha?: string;
+};
 
 type StoredReport = {
   report: Report;
@@ -152,6 +166,7 @@ type StoredReport = {
   reviewDiff?: ReviewDiff;
   canonicalRun?: CanonicalReviewRunManifest;
   changePassport?: ChangePassport;
+  mergeContract?: MergeContract;
   verificationTarget?: { pullRequestId: string; runId: string };
   initialTab?: ReportTab;
 };
@@ -254,6 +269,14 @@ function isChangePassport(value: unknown): value is ChangePassport {
     && typeof value.fingerprint === "string";
 }
 
+function isMergeContract(value: unknown): value is MergeContract {
+  return isRecord(value)
+    && typeof value.contractId === "string"
+    && typeof value.schemaVersion === "string"
+    && typeof value.state === "string"
+    && Array.isArray(value.clauses);
+}
+
 function isVerificationTarget(value: unknown): value is { pullRequestId: string; runId: string } {
   return isRecord(value)
     && typeof value.pullRequestId === "string"
@@ -303,6 +326,42 @@ function writeAssumptionOverride(storage: Storage, key: string, assumptionId: st
 
 function assumptionDisplayStatus(assumption: AssumptionRecord, override?: LocalAssumptionOverride, currentHeadSha?: string) {
   if (!override) return assumption.status;
+  if (override.headSha && currentHeadSha && override.headSha !== currentHeadSha) return "stale";
+  return override.status;
+}
+
+function contractStateKey(contract: MergeContract) {
+  return `lintel.mergeContract.v1:${contract.contractId}:${contract.headSha ?? "local"}`;
+}
+
+function isClauseOverride(value: unknown): value is LocalClauseOverride {
+  return isRecord(value)
+    && (value.status === "open" || value.status === "satisfied" || value.status === "accepted" || value.status === "invalidated" || value.status === "superseded")
+    && typeof value.timestamp === "string";
+}
+
+function readClauseOverrides(storage: Storage, key: string) {
+  try {
+    const parsed: unknown = JSON.parse(storage.getItem(key) ?? "{}");
+    if (!isRecord(parsed)) return {};
+    return Object.entries(parsed).reduce<Record<string, LocalClauseOverride>>((result, [id, value]) => {
+      if (isClauseOverride(value)) result[id] = value;
+      return result;
+    }, {});
+  } catch {
+    return {};
+  }
+}
+
+function writeClauseOverride(storage: Storage, key: string, clauseId: string, value: LocalClauseOverride) {
+  const current = readClauseOverrides(storage, key);
+  current[clauseId] = value;
+  storage.setItem(key, JSON.stringify(current));
+  return current;
+}
+
+function clauseDisplayStatus(clause: MergeContractClause, override?: LocalClauseOverride, currentHeadSha?: string): MergeContractClauseStatus {
+  if (!override) return clause.status;
   if (override.headSha && currentHeadSha && override.headSha !== currentHeadSha) return "stale";
   return override.status;
 }
@@ -728,6 +787,9 @@ function deltaTimelineEvent(delta: ReadinessDelta): ReadinessTimelineEvent {
         ? "Recommendation changed"
         : "Current state";
   const openedCount = delta.openedMergeConditions.length + delta.reopenedMergeConditions.length;
+  const contractMovement = delta.mergeContractMovement
+    ? `${delta.mergeContractMovement.clausesOpened} contract clauses opened / ${delta.mergeContractMovement.clausesSatisfied} satisfied`
+    : "";
 
   return {
     id: `commit-readiness-delta-${delta.currentRunId}`,
@@ -743,7 +805,7 @@ function deltaTimelineEvent(delta: ReadinessDelta): ReadinessTimelineEvent {
     previousState: delta.previousHeadSha ? `${shortSha(delta.previousHeadSha)} / ${delta.previousScore ?? "unknown"}` : "No previous completed run",
     nextState: `${shortSha(delta.currentHeadSha)} / ${delta.currentScore}`,
     movement,
-    relatedItem: deltaRecommendationMovement(delta),
+    relatedItem: contractMovement || deltaRecommendationMovement(delta),
   };
 }
 
@@ -1836,6 +1898,7 @@ function slackHandoffToText({
   evidenceSummary,
   assumptionSummary,
   builderVerifierSummary,
+  mergeContractSummary,
 }: {
   report: Report;
   ownerLabel: string;
@@ -1846,6 +1909,7 @@ function slackHandoffToText({
   evidenceSummary?: string;
   assumptionSummary?: string;
   builderVerifierSummary?: string;
+  mergeContractSummary?: string;
 }) {
   const topBlocker = conditions[0]
     ?? report.findings[0]?.title
@@ -1873,6 +1937,7 @@ function slackHandoffToText({
     ...(evidenceSummary ? [`Evidence: ${evidenceSummary}`] : []),
     ...(assumptionSummary ? [`Assumptions: ${assumptionSummary}`] : []),
     ...(builderVerifierSummary ? [`Verification boundary: ${builderVerifierSummary}`] : []),
+    ...(mergeContractSummary ? [`Merge Contract: ${mergeContractSummary}`] : []),
     ...(humanDecision ? [`Human decision: ${humanDecision}`] : []),
     `Next action: ${actionProgress.readinessConclusion}`,
     "",
@@ -2038,6 +2103,55 @@ function AssumptionRegistryRow({
   );
 }
 
+function MergeContractClauseRow({
+  clause,
+  status,
+  override,
+  onUpdate,
+}: {
+  clause: MergeContractClause;
+  status: MergeContractClauseStatus;
+  override?: LocalClauseOverride;
+  onUpdate: (status: LocalClauseOverride["status"]) => void;
+}) {
+  return (
+    <article className={`merge-contract-clause merge-contract-clause--${status}`}>
+      <div className="merge-contract-clause-main">
+        <span>{clause.importance} Â· {status === "accepted" ? "Accepted risk" : status}</span>
+        <strong>{clause.title}</strong>
+        <p>{clause.statement}</p>
+      </div>
+      <dl>
+        <div><dt>Why</dt><dd>{clause.rationale}</dd></div>
+        <div><dt>Clears with</dt><dd>{clause.evidenceRequired}</dd></div>
+        <div><dt>Evidence</dt><dd>{clause.currentSupportingEvidenceIds.length > 0 ? `${clause.currentSupportingEvidenceIds.length} supporting record(s)` : "Stronger evidence required"}</dd></div>
+        <div><dt>Assumptions</dt><dd>{clause.relatedAssumptionIds.length > 0 ? clause.relatedAssumptionIds.length : "None linked"}</dd></div>
+        <div><dt>Owner cue</dt><dd>{clause.ownerCue ?? "Not assigned"}</dd></div>
+        <div><dt>Head SHA</dt><dd>{clause.lastEvaluatedHeadSha ? shortSha(clause.lastEvaluatedHeadSha) : "Local report"}</dd></div>
+        <div><dt>Local reason</dt><dd>{override?.reason ?? "None"}</dd></div>
+      </dl>
+      <details className="merge-contract-clause-details">
+        <summary>Inspect machine-readable requirements</summary>
+        <ul>
+          {clause.requirements.map((requirement) => (
+            <li key={requirement.requirementId}>
+              <strong>{requirement.type}</strong>
+              <span>{requirement.description}</span>
+              <small>{requirement.currentResult}{requirement.limitation ? ` Â· ${requirement.limitation}` : ""}</small>
+            </li>
+          ))}
+        </ul>
+      </details>
+      <div className="merge-contract-clause-actions" aria-label={`Actions for ${clause.title}`}>
+        <button type="button" onClick={() => onUpdate("satisfied")}>Mark satisfied</button>
+        <button type="button" onClick={() => onUpdate("accepted")}>Accept risk</button>
+        <button type="button" onClick={() => onUpdate("superseded")}>Supersede</button>
+        <button type="button" onClick={() => onUpdate("open")}>Reopen</button>
+      </div>
+    </article>
+  );
+}
+
 function AffectedSurfaceCard({ surface }: { surface: AffectedSurface }) {
   return (
     <article className="affected-surface-card">
@@ -2068,12 +2182,14 @@ export default function ReportPage() {
   const [reviewDiff, setReviewDiff] = useState<ReviewDiff | null>(null);
   const [canonicalRun, setCanonicalRun] = useState<CanonicalReviewRunManifest | null>(historicalCanonicalRunManifest(demoReport, "demo"));
   const [changePassport, setChangePassport] = useState<ChangePassport | null>(null);
+  const [storedMergeContract, setStoredMergeContract] = useState<MergeContract | null>(null);
   const [verificationTarget, setVerificationTarget] = useState<{ pullRequestId: string; runId: string } | null>(null);
   const [verificationResult, setVerificationResult] = useState<CanonicalRunVerificationRecord | null>(null);
   const [isVerifyingRun, setIsVerifyingRun] = useState(false);
   const [copyState, setCopyState] = useState<CopyState>("idle");
   const [conditionsCopyState, setConditionsCopyState] = useState<CopyState>("idle");
   const [mergeSummaryCopyState, setMergeSummaryCopyState] = useState<CopyState>("idle");
+  const [mergeContractCopyState, setMergeContractCopyState] = useState<CopyState>("idle");
   const [downloadState, setDownloadState] = useState<DownloadState>("idle");
   const [clearedConditionKeys, setClearedConditionKeys] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<ReportTab>("overview");
@@ -2091,9 +2207,11 @@ export default function ReportPage() {
   const [decisionHistory, setDecisionHistory] = useState<DecisionHistoryEvent[]>(() => initialDecisionHistory(demoReport));
   const [actionStatusOverrides, setActionStatusOverrides] = useState<Record<string, ReviewActionStatus>>({});
   const [assumptionOverrides, setAssumptionOverrides] = useState<Record<string, LocalAssumptionOverride>>({});
+  const [clauseOverrides, setClauseOverrides] = useState<Record<string, LocalClauseOverride>>({});
   const copyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const conditionsCopyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mergeSummaryCopyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mergeContractCopyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const downloadResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const quickActionResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const studioDecisionResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -2115,6 +2233,7 @@ export default function ReportPage() {
         setReviewDiff(isReviewDiff(parsedReport.reviewDiff) ? parsedReport.reviewDiff : null);
         setCanonicalRun(isCanonicalRun(parsedReport.canonicalRun) ? parsedReport.canonicalRun : historicalCanonicalRunManifest(parsedReport.report, "github-pr"));
         setChangePassport(isChangePassport(parsedReport.changePassport) ? parsedReport.changePassport : null);
+        setStoredMergeContract(isMergeContract(parsedReport.mergeContract) ? parsedReport.mergeContract : null);
         setVerificationTarget(isVerificationTarget(parsedReport.verificationTarget) ? parsedReport.verificationTarget : null);
         setVerificationResult(null);
         if (parsedReport.initialTab === "review-diff") setActiveTab("review-diff");
@@ -2127,6 +2246,7 @@ export default function ReportPage() {
         setReviewDiff(null);
         setCanonicalRun(historicalCanonicalRunManifest(parsedReport, "manual"));
         setChangePassport(null);
+        setStoredMergeContract(null);
         setVerificationTarget(null);
         setVerificationResult(null);
         return;
@@ -2142,6 +2262,7 @@ export default function ReportPage() {
     if (copyResetTimer.current) clearTimeout(copyResetTimer.current);
     if (conditionsCopyResetTimer.current) clearTimeout(conditionsCopyResetTimer.current);
     if (mergeSummaryCopyResetTimer.current) clearTimeout(mergeSummaryCopyResetTimer.current);
+    if (mergeContractCopyResetTimer.current) clearTimeout(mergeContractCopyResetTimer.current);
     if (downloadResetTimer.current) clearTimeout(downloadResetTimer.current);
     if (quickActionResetTimer.current) clearTimeout(quickActionResetTimer.current);
     if (studioDecisionResetTimer.current) clearTimeout(studioDecisionResetTimer.current);
@@ -2308,6 +2429,29 @@ export default function ReportPage() {
     humanDecisionPresent: !!latestHumanDecisionEvent,
   });
   const builderVerifierSummary = builderVerifierHandoffSummary(builderVerifierAssessment);
+  const generatedMergeContract = buildMergeContract({
+    report,
+    changePassport,
+    evidenceHierarchy,
+    builderVerifier: builderVerifierAssessment,
+    canonicalRunId: canonicalRun?.runId,
+    baseSha: canonicalRun?.baseSha,
+    headSha: canonicalRun?.headSha,
+    sourceType: canonicalRun?.sourceType ?? source,
+    reviewMode: canonicalRun?.reviewMode ?? pr.reviewProfile ?? "standard",
+    createdAt: canonicalRun?.completedAt,
+  });
+  const mergeContract = storedMergeContract ?? generatedMergeContract;
+  const mergeContractStateKey = contractStateKey(mergeContract);
+  const displayedContractClauses = mergeContract.clauses.map((clause) => {
+    const override = clauseOverrides[clause.clauseId];
+    return { clause, override, status: clauseDisplayStatus(clause, override, canonicalRun?.headSha) };
+  });
+  const mergeContractBlockingOpen = displayedContractClauses.filter(({ clause, status }) => clause.importance === "blocking" && status === "open").length;
+  const mergeContractAdvisoryOpen = displayedContractClauses.filter(({ clause, status }) => clause.importance === "advisory" && status === "open").length;
+  const mergeContractSatisfied = displayedContractClauses.filter(({ status }) => status === "satisfied").length;
+  const mergeContractAccepted = displayedContractClauses.filter(({ status }) => status === "accepted").length;
+  const mergeContractSummaryText = mergeContractSummary(mergeContract);
 
   const readinessTimeline = readinessDelta
     ? [deltaTimelineEvent(readinessDelta), ...baseReadinessTimeline]
@@ -2332,6 +2476,7 @@ export default function ReportPage() {
     evidenceSummary,
     assumptionSummary,
     builderVerifierSummary,
+    mergeContractSummary: mergeContractSummaryText,
   });
   const mergeSummaryMarkdown = mergeSummaryToMarkdown(report, {
     sourceLabel: sourceLabels[source],
@@ -2342,6 +2487,7 @@ export default function ReportPage() {
     evidenceSummary,
     assumptionSummary,
     builderVerifierSummary,
+    mergeContractSummary: mergeContractSummaryText,
   });
   const blockerSurfaceCount = affectedSurfaces.filter((surface) => surface.status === "Blocker").length;
   const confirmationSurfaceCount = affectedSurfaces.filter((surface) => surface.status === "Attention" || surface.status === "Watch").length;
@@ -2381,6 +2527,14 @@ export default function ReportPage() {
       setAssumptionOverrides({});
     }
   }, [currentAssumptionStateKey]);
+
+  useEffect(() => {
+    try {
+      setClauseOverrides(readClauseOverrides(window.localStorage, mergeContractStateKey));
+    } catch {
+      setClauseOverrides({});
+    }
+  }, [mergeContractStateKey]);
 
   useEffect(() => {
     setSelectedFindingIndex((current) => (
@@ -2515,6 +2669,44 @@ export default function ReportPage() {
       title: status === "accepted" ? "Assumption accepted locally" : "Assumption status updated",
       detail: assumption.statement,
       previousState: assumption.status,
+      nextState: status,
+      label: "Local",
+    });
+  }
+
+  function updateContractClauseStatus(clause: MergeContractClause, status: LocalClauseOverride["status"]) {
+    const reason = status === "open"
+      ? ""
+      : window.prompt(
+        status === "accepted"
+          ? "Record why this unresolved requirement is accepted as risk. This does not satisfy the clause."
+          : status === "satisfied"
+            ? "Record the bounded supporting evidence or confirmation for this clause."
+            : status === "superseded"
+              ? "Record why this clause is superseded by a newer requirement."
+              : "Record why this clause is no longer applicable.",
+        "",
+      );
+    if (status !== "open" && reason === null) return;
+
+    const nextOverride: LocalClauseOverride = {
+      status,
+      reason: reason ? reason.slice(0, 240) : undefined,
+      timestamp: new Date().toISOString(),
+      headSha: canonicalRun?.headSha,
+    };
+
+    try {
+      setClauseOverrides(writeClauseOverride(window.localStorage, mergeContractStateKey, clause.clauseId, nextOverride));
+    } catch {
+      setClauseOverrides((current) => ({ ...current, [clause.clauseId]: nextOverride }));
+    }
+
+    recordDecisionEvent({
+      type: status === "accepted" ? "accepted-risk-recorded" : "human-decision-recorded",
+      title: status === "accepted" ? "Merge contract risk accepted" : "Merge contract clause updated",
+      detail: clause.statement,
+      previousState: clause.status,
       nextState: status,
       label: "Local",
     });
@@ -2667,6 +2859,16 @@ export default function ReportPage() {
 
     if (mergeSummaryCopyResetTimer.current) clearTimeout(mergeSummaryCopyResetTimer.current);
     mergeSummaryCopyResetTimer.current = setTimeout(() => setMergeSummaryCopyState("idle"), 2_000);
+
+    return copied;
+  }
+
+  async function handleCopyMergeContractJson() {
+    const copied = await writeToClipboard(safeMergeContractJson(mergeContract));
+    setMergeContractCopyState(copied ? "copied" : "failed");
+
+    if (mergeContractCopyResetTimer.current) clearTimeout(mergeContractCopyResetTimer.current);
+    mergeContractCopyResetTimer.current = setTimeout(() => setMergeContractCopyState("idle"), 2_000);
 
     return copied;
   }
@@ -3096,6 +3298,55 @@ export default function ReportPage() {
 
           <BuilderVerifierBoundarySection assessment={builderVerifierAssessment} />
 
+          <section className="section-block machine-merge-contract" aria-labelledby="machine-merge-contract-title">
+            <div className="section-heading">
+              <div>
+                <span className="card-kicker">MACHINE-READABLE CONTRACT</span>
+                <h2 id="machine-merge-contract-title">Evidence-backed Merge Contract</h2>
+                <p>Contract clauses record requirements for this review. They do not replace the recommendation or authorize merge automatically.</p>
+              </div>
+              <span className="section-count">{mergeContract.state}</span>
+            </div>
+
+            <div className="merge-contract-summary-grid" aria-label="Merge Contract summary">
+              <article><span>Head SHA</span><strong>{mergeContract.headSha ? shortSha(mergeContract.headSha) : "Local report"}</strong></article>
+              <article><span>Blocking open</span><strong>{mergeContractBlockingOpen}</strong></article>
+              <article><span>Advisory open</span><strong>{mergeContractAdvisoryOpen}</strong></article>
+              <article><span>Satisfied</span><strong>{mergeContractSatisfied}</strong></article>
+              <article><span>Accepted risk</span><strong>{mergeContractAccepted}</strong></article>
+              <article><span>Schema</span><strong>{mergeContract.schemaVersion}</strong></article>
+            </div>
+
+            <div className="merge-contract-machine-row">
+              <dl>
+                <div><dt>Contract ID</dt><dd>{fingerprintPrefix(mergeContract.contractId)}</dd></div>
+                <div><dt>Fingerprint</dt><dd>{fingerprintPrefix(mergeContract.contractFingerprint)}</dd></div>
+                <div><dt>Evaluation</dt><dd>{fingerprintPrefix(mergeContract.currentEvaluationFingerprint)}</dd></div>
+              </dl>
+              <button type="button" onClick={handleCopyMergeContractJson}>
+                {mergeContractCopyState === "copied" ? "Contract JSON copied" : mergeContractCopyState === "failed" ? "Copy failed" : "Copy contract JSON"}
+              </button>
+            </div>
+
+            {displayedContractClauses.length > 0 ? (
+              <div className="merge-contract-clause-list">
+                {displayedContractClauses.map(({ clause, override, status }) => (
+                  <MergeContractClauseRow
+                    key={clause.clauseId}
+                    clause={clause}
+                    override={override}
+                    status={status}
+                    onUpdate={(nextStatus) => updateContractClauseStatus(clause, nextStatus)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <p className="section-empty section-empty--positive">No contract clauses were generated from the structured report.</p>
+            )}
+
+            <p className="condition-local-note">Local clause actions are stored on this device and do not alter the generated recommendation, score or canonical review run.</p>
+          </section>
+
           <section className="section-block change-passport" aria-labelledby="change-passport-title">
             <div className="section-heading">
               <div>
@@ -3169,6 +3420,8 @@ export default function ReportPage() {
                 <article><span>Open assumptions</span><strong>{canonicalRun.evidenceHierarchy ? `${canonicalRun.evidenceHierarchy.openBlockingAssumptionCount} blocking / ${canonicalRun.evidenceHierarchy.openAdvisoryAssumptionCount} advisory` : "unavailable"}</strong></article>
                 <article><span>Boundary</span><strong>{canonicalRun.builderVerifier?.classification ?? "historical"}</strong></article>
                 <article><span>Verifier types</span><strong>{canonicalRun.builderVerifier?.verifierTypes.join(" / ") ?? "unavailable"}</strong></article>
+                <article><span>Merge Contract</span><strong>{canonicalRun.mergeContract?.state ?? "historical"}</strong></article>
+                <article><span>Contract clauses</span><strong>{canonicalRun.mergeContract ? `${canonicalRun.mergeContract.blockingClauseCount} blocking / ${canonicalRun.mergeContract.advisoryClauseCount} advisory` : "unavailable"}</strong></article>
               </div>
 
               <dl className="run-fingerprint-grid" aria-label="Canonical run fingerprints">
@@ -3179,6 +3432,7 @@ export default function ReportPage() {
                 <div><dt>Evidence</dt><dd>{fingerprintPrefix(canonicalRun.evidenceHierarchy?.evidenceFingerprint)}</dd></div>
                 <div><dt>Assumptions</dt><dd>{fingerprintPrefix(canonicalRun.evidenceHierarchy?.assumptionRegistryFingerprint)}</dd></div>
                 <div><dt>Boundary</dt><dd>{fingerprintPrefix(canonicalRun.builderVerifier?.assessmentFingerprint)}</dd></div>
+                <div><dt>Contract</dt><dd>{fingerprintPrefix(canonicalRun.mergeContract?.contractFingerprint)}</dd></div>
               </dl>
 
               {canonicalRun.reproducibilityLimitation && <p className="run-provenance-note">{canonicalRun.reproducibilityLimitation}</p>}

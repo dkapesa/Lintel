@@ -9,6 +9,7 @@ import {
   type CanonicalRunSourceType,
 } from "./canonical-review-run";
 import type { ChangePassport } from "./change-passport";
+import { buildMergeContract, type MergeContract } from "./merge-contract";
 import type { Report } from "./mock-report";
 import { createReadinessDelta, createReviewDiff, type AnalysisRunSnapshot, type ReadinessDelta } from "./readiness-delta";
 import type { ReportInput } from "./report-generator";
@@ -81,6 +82,7 @@ export type GitHubAnalysisRunRecord = AnalysisRunSnapshot & {
   installationId: number;
   canonicalRun?: CanonicalReviewRunManifest;
   changePassport?: ChangePassport;
+  mergeContract?: MergeContract;
   verifications?: CanonicalRunVerificationRecord[];
 };
 
@@ -335,6 +337,16 @@ function completedRunFromReport(
       completedAt,
     })
     : historicalCanonicalRunManifest(report, "github-app");
+  const mergeContract = buildMergeContract({
+    report,
+    changePassport: options?.input?.changePassport,
+    canonicalRunId: canonicalRun.runId,
+    baseSha: record.baseSha,
+    headSha: record.headSha,
+    sourceType: options?.sourceType ?? "github-app",
+    reviewMode: options?.input?.reviewProfile ?? report.pr.reviewProfile ?? "standard",
+    createdAt: completedAt,
+  });
 
   return {
     runId,
@@ -352,6 +364,7 @@ function completedRunFromReport(
     analysisSource: "deterministic",
     canonicalRun,
     changePassport: options?.input?.changePassport,
+    mergeContract,
     completedAt,
   };
 }

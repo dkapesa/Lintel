@@ -3,6 +3,7 @@ import { fingerprintPrefix, type CanonicalReviewRunManifest } from "./canonical-
 import { buildBuilderVerifierAssessment, builderVerifierHandoffSummary } from "./builder-verifier-boundary";
 import { compareChangePassport, passportHandoffSummary, type ChangePassport } from "./change-passport";
 import { assumptionHandoffSummary, buildEvidenceHierarchy, evidenceHandoffSummary } from "./evidence-hierarchy";
+import { buildMergeContract, mergeContractSummary } from "./merge-contract";
 import { shortSha, type ReadinessDelta } from "./readiness-delta";
 import { decisionConditions, deduplicateReportItems, pruneUnsupportedReviewerFocus } from "./report-quality";
 
@@ -89,6 +90,9 @@ function deltaSection(delta?: ReadinessDelta) {
     `- Cleared: ${delta.clearedMergeConditions.length} conditions`,
     `- Opened: ${delta.openedMergeConditions.length + delta.reopenedMergeConditions.length} conditions`,
     `- Still open: ${stillOpenCount} ${stillOpenCount === 1 ? "condition" : "conditions"}`,
+    ...(delta.mergeContractMovement ? [
+      `- Merge Contract: ${delta.mergeContractMovement.clausesOpened} clauses opened, ${delta.mergeContractMovement.clausesSatisfied} satisfied`,
+    ] : []),
   ];
 }
 
@@ -111,6 +115,18 @@ export function githubDecisionCommentBody(report: Report, options: { headSha: st
     generatorVersion: options.canonicalRun?.generatorVersion ?? "historical",
     deterministicRulesetVersion: options.canonicalRun?.deterministicRulesetVersion ?? "historical",
   });
+  const mergeContract = buildMergeContract({
+    report,
+    changePassport: options.changePassport,
+    evidenceHierarchy,
+    builderVerifier,
+    canonicalRunId: options.canonicalRun?.runId,
+    baseSha: options.canonicalRun?.baseSha,
+    headSha: options.headSha,
+    sourceType: "github-app",
+    reviewMode: report.pr.reviewProfile ?? "standard",
+    createdAt: options.analysedAt,
+  });
 
   return [
     LINTEL_COMMENT_MARKER,
@@ -129,6 +145,7 @@ export function githubDecisionCommentBody(report: Report, options: { headSha: st
     `**Evidence:** ${safeMarkdownText(evidenceHandoffSummary(evidenceHierarchy))}`,
     `**Assumptions:** ${safeMarkdownText(assumptionHandoffSummary(evidenceHierarchy))}`,
     `**Verification boundary:** ${safeMarkdownText(builderVerifierHandoffSummary(builderVerifier))}`,
+    `**Merge Contract:** ${safeMarkdownText(mergeContractSummary(mergeContract))}`,
     "",
     "### Top blockers",
     bulletList(topBlockers(report), "No blockers detected.", 4),

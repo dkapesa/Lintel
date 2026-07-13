@@ -1,6 +1,7 @@
 import type { ChangePassport } from "./change-passport";
 import { buildEvidenceHierarchy } from "./evidence-hierarchy";
 import { buildBuilderVerifierAssessment, type VerificationBoundaryClassification } from "./builder-verifier-boundary";
+import { buildMergeContract } from "./merge-contract";
 import type { Recommendation, Report, RiskLevel } from "./mock-report";
 import { decisionConditions, deduplicateReportItems } from "./report-quality";
 
@@ -48,6 +49,16 @@ export type ReadinessDelta = {
     separationBecameUnknown: boolean;
     deterministicBaselineVersionChanged: boolean;
   };
+  mergeContractMovement?: {
+    clausesOpened: number;
+    clausesSatisfied: number;
+    clausesAccepted: number;
+    clausesReopened: number;
+    clausesSuperseded: number;
+    clausesBecameStale: number;
+    evidenceRequirementStrengthened: number;
+    assumptionLinkedClausesResolved: number;
+  };
   classification: ReadinessDeltaClassification;
   generatedAt: string;
   deltaFailureCategory?: string;
@@ -89,6 +100,7 @@ export type ReviewDiff = {
   mergeConditions: ReviewDiffItem[];
   evidenceMovement?: ReadinessDelta["evidenceMovement"];
   verificationBoundaryMovement?: ReadinessDelta["verificationBoundaryMovement"];
+  mergeContractMovement?: ReadinessDelta["mergeContractMovement"];
   generatedAt: string;
   failureCategory?: string;
 };
@@ -533,6 +545,45 @@ export function createReadinessDelta(
     separationBecameUnknown: previousBoundary ? previousBoundary.classification !== "separation unknown" && currentBoundary.classification === "separation unknown" : currentBoundary.classification === "separation unknown",
     deterministicBaselineVersionChanged: false,
   };
+  const previousContract = previousRun
+    ? buildMergeContract({
+      report: previousRun.report,
+      changePassport: previousRun.changePassport,
+      canonicalRunId: previousRun.runId,
+      baseSha: previousRun.baseSha,
+      headSha: previousRun.headSha,
+      sourceType: "github-app",
+      reviewMode: previousRun.report.pr.reviewProfile ?? "standard",
+    })
+    : null;
+  const currentContract = buildMergeContract({
+    report: currentRun.report,
+    changePassport: currentRun.changePassport,
+    canonicalRunId: currentRun.runId,
+    baseSha: currentRun.baseSha,
+    headSha: currentRun.headSha,
+    sourceType: "github-app",
+    reviewMode: currentRun.report.pr.reviewProfile ?? "standard",
+  });
+  const previousClauseMap = new Map(previousContract?.clauses.map((item) => [item.clauseId, item]) ?? []);
+  const currentClauseMap = new Map(currentContract.clauses.map((item) => [item.clauseId, item]));
+  const mergeContractMovement = {
+    clausesOpened: currentContract.clauses.filter((item) => item.status === "open" && previousClauseMap.get(item.clauseId)?.status !== "open").length,
+    clausesSatisfied: currentContract.clauses.filter((item) => item.status === "satisfied" && previousClauseMap.get(item.clauseId)?.status !== "satisfied").length,
+    clausesAccepted: currentContract.clauses.filter((item) => item.status === "accepted" && previousClauseMap.get(item.clauseId)?.status !== "accepted").length,
+    clausesReopened: currentContract.clauses.filter((item) => item.status === "open" && previousClauseMap.has(item.clauseId) && previousClauseMap.get(item.clauseId)?.status !== "open").length,
+    clausesSuperseded: currentContract.clauses.filter((item) => item.status === "superseded" && previousClauseMap.get(item.clauseId)?.status !== "superseded").length,
+    clausesBecameStale: currentContract.clauses.filter((item) => item.stale && !previousClauseMap.get(item.clauseId)?.stale).length,
+    evidenceRequirementStrengthened: currentContract.clauses.filter((item) => {
+      const previous = previousClauseMap.get(item.clauseId);
+      return previous ? item.requirements.length > previous.requirements.length : false;
+    }).length,
+    assumptionLinkedClausesResolved: [...previousClauseMap.values()].filter((previous) => (
+      previous.relatedAssumptionIds.length > 0
+      && previous.status === "open"
+      && currentClauseMap.get(previous.clauseId)?.status !== "open"
+    )).length,
+  };
 
   return {
     previousRunId: previousRun?.runId,
@@ -558,6 +609,7 @@ export function createReadinessDelta(
     clearedTestOrEvidenceGaps,
     evidenceMovement,
     verificationBoundaryMovement,
+    mergeContractMovement,
     classification: classifyDelta({
       previousRun,
       scoreChange,
@@ -629,6 +681,7 @@ export function createReviewDiff(
     }),
     evidenceMovement: delta.evidenceMovement,
     verificationBoundaryMovement: delta.verificationBoundaryMovement,
+    mergeContractMovement: delta.mergeContractMovement,
     generatedAt,
   };
 }

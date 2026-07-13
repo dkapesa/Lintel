@@ -1,5 +1,8 @@
 import { createCanonicalReviewRunManifest, type CanonicalAnalysisSource } from "../../../lib/canonical-review-run";
+import { buildBuilderVerifierAssessment } from "../../../lib/builder-verifier-boundary";
 import { normalizeChangePassport, type ChangePassportSource } from "../../../lib/change-passport";
+import { buildEvidenceHierarchy } from "../../../lib/evidence-hierarchy";
+import { buildMergeContract } from "../../../lib/merge-contract";
 import { generateReport, type ReportInput, type ReportInputSource } from "../../../lib/report-generator";
 import { normaliseReport, REPORT_JSON_SCHEMA } from "../../../lib/report-normalizer";
 import { isReviewProfile, reviewProfileDescription, reviewProfileLabel } from "../../../lib/review-profiles";
@@ -49,9 +52,35 @@ function responseWithReport(
     sourceUrl: metadata?.sourceUrl,
     pullRequestNumber: metadata?.pullRequestNumber,
   });
+  const evidenceHierarchy = buildEvidenceHierarchy(report, input.changePassport, { runId: manifest.runId, headSha: manifest.headSha });
+  const builderVerifier = buildBuilderVerifierAssessment({
+    passport: input.changePassport,
+    repository: input.repository,
+    pullRequestNumber: metadata?.pullRequestNumber,
+    headSha: manifest.headSha,
+    canonicalRunId: manifest.runId,
+    analysisSource,
+    provider,
+    model,
+    generatorVersion: manifest.generatorVersion,
+    deterministicRulesetVersion: manifest.deterministicRulesetVersion,
+    createdAt: manifest.completedAt,
+  });
+  const mergeContract = buildMergeContract({
+    report,
+    changePassport: input.changePassport,
+    evidenceHierarchy,
+    builderVerifier,
+    canonicalRunId: manifest.runId,
+    baseSha: manifest.baseSha,
+    headSha: manifest.headSha,
+    sourceType: manifest.sourceType,
+    reviewMode: manifest.reviewMode,
+    createdAt: manifest.completedAt,
+  });
 
   return Response.json(
-    { report, source, canonicalRun: manifest },
+    { report, source, canonicalRun: manifest, mergeContract },
     { headers: { "Cache-Control": "no-store" } },
   );
 }

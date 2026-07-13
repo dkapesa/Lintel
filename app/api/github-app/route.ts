@@ -16,7 +16,7 @@ function jsonResponse(body: Record<string, unknown>, status = 200) {
   return Response.json(body, { status, headers: NO_STORE_HEADERS });
 }
 
-function analysisRunSummary(record: { runId: string; headSha: string; baseSha?: string; recommendation: string; readinessScore: number; riskLevel: string; completedAt: string; delta?: unknown; deltaFailureCategory?: string }) {
+function analysisRunSummary(record: { runId: string; headSha: string; baseSha?: string; recommendation: string; readinessScore: number; riskLevel: string; completedAt: string; delta?: unknown; deltaFailureCategory?: string; mergeContract?: unknown }) {
   return {
     runId: record.runId,
     headSha: record.headSha,
@@ -27,6 +27,7 @@ function analysisRunSummary(record: { runId: string; headSha: string; baseSha?: 
     completedAt: record.completedAt,
     delta: record.delta,
     deltaFailureCategory: record.deltaFailureCategory,
+    mergeContract: record.mergeContract,
   };
 }
 
@@ -79,6 +80,7 @@ export async function GET(request: Request) {
         reportSource: record.reportSource,
         canonicalRun: record.analysisRuns?.[0]?.canonicalRun,
         changePassport: record.analysisRuns?.[0]?.changePassport,
+        mergeContract: record.analysisRuns?.[0]?.mergeContract,
         latestDelta: record.analysisRuns?.[0]?.delta,
         latestReviewDiff: record.analysisRuns?.[0]?.reviewDiff,
         deltaFailureCategory: record.analysisRuns?.[0]?.deltaFailureCategory,
@@ -150,6 +152,27 @@ export async function GET(request: Request) {
       });
     }
     return jsonResponse({ pullRequestId, runId: run.runId, available: true, reviewDiff: run.reviewDiff });
+  }
+
+  if (view === "merge-contract") {
+    const pullRequestId = url.searchParams.get("pullRequestId");
+    const runId = url.searchParams.get("runId");
+    if (!pullRequestId) return jsonResponse({ error: "pullRequestId is required." }, 400);
+    const record = store.pullRequests[pullRequestId];
+    if (!record) return jsonResponse({ error: "Automated pull-request record was not found." }, 404);
+    const run = runId
+      ? record.analysisRuns?.find((item) => item.runId === runId)
+      : record.analysisRuns?.[0];
+    if (!run) return jsonResponse({ error: "Completed analysis run was not found." }, 404);
+    if (!run.mergeContract) {
+      return jsonResponse({
+        pullRequestId,
+        runId: run.runId,
+        available: false,
+        reason: "merge_contract_unavailable",
+      });
+    }
+    return jsonResponse({ pullRequestId, runId: run.runId, available: true, mergeContract: run.mergeContract });
   }
 
   if (view === "deliveries") {

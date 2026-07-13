@@ -1,4 +1,5 @@
 import Link from "next/link";
+import AppShell from "../app-shell";
 import { gatesByLevel, policyGateSummary, REVIEW_POLICY_PROFILES, type GateLevel } from "../../lib/review-policies";
 
 const gateLevels: GateLevel[] = ["Required", "Recommended", "Optional"];
@@ -11,38 +12,8 @@ const levelCopy: Record<GateLevel, string> = {
 
 export default function ReviewPoliciesPage() {
   return (
-    <div className="app-shell workspace-shell">
-      <aside className="sidebar workspace-sidebar">
-        <Link className="brand workspace-brand" href="/" aria-label="Lintel home">
-          <span className="brand-mark" aria-hidden="true" />
-          <span>Lintel</span>
-        </Link>
-        <nav className="side-nav workspace-side-nav" aria-label="Primary navigation">
-          <span className="workspace-nav-label">Workspace</span>
-          <Link className="nav-item workspace-nav-item" href="/new">New report</Link>
-          <Link className="nav-item workspace-nav-item" href="/workspace">Risk inbox</Link>
-          <Link className="nav-item workspace-nav-item" href="/review-operations">Review operations</Link>
-          <Link className="nav-item workspace-nav-item" href="/report">Reports</Link>
-          <span className="workspace-nav-label">System</span>
-          <Link className="nav-item workspace-nav-item nav-item--active" href="/review-policies" aria-current="page">Review policies</Link>
-          <Link className="nav-item workspace-nav-item" href="/settings">Analysis settings</Link>
-          <Link className="nav-item workspace-nav-item" href="/github-action">GitHub Action</Link>
-          <Link className="nav-item workspace-nav-item" href="/slack-handoff">Slack handoff</Link>
-          <span className="workspace-nav-label">Evidence</span>
-          <Link className="nav-item workspace-nav-item" href="/docs/evaluation-results.md">Evaluation</Link>
-          <Link className="nav-item workspace-nav-item" href="/docs/security-model.md">Security model</Link>
-        </nav>
-        <div className="workspace-sidebar-panel">
-          <span>Merge gates</span>
-          <p>Different PRs need different readiness checks. This is a local prototype policy surface, not an enterprise policy engine.</p>
-        </div>
-        <div className="sidebar-footer">
-          <div className="workspace-avatar">N</div>
-          <div><strong>Demo Workspace</strong><span>Local policies</span></div>
-        </div>
-      </aside>
-
-      <main className="workspace-main policies-main">
+    <AppShell>
+      <div className="workspace-main policies-main">
         <header className="workspace-header workspace-header--app policies-header">
           <div className="workspace-header-copy">
             <span className="eyebrow">REVIEW POLICIES</span>
@@ -118,7 +89,7 @@ export default function ReviewPoliciesPage() {
             <Link href="/docs/security-model.md">Security model</Link>
           </div>
         </section>
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }

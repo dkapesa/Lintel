@@ -1,4 +1,5 @@
 import Link from "next/link";
+import AppShell from "../app-shell";
 
 const workflowSteps = [
   [
@@ -97,38 +98,8 @@ const yamlSnippet = [
 
 export default function GitHubActionPrototypePage() {
   return (
-    <div className="app-shell workspace-shell">
-      <aside className="sidebar workspace-sidebar">
-        <Link className="brand workspace-brand" href="/" aria-label="Lintel home">
-          <span className="brand-mark" aria-hidden="true" />
-          <span>Lintel</span>
-        </Link>
-        <nav className="side-nav workspace-side-nav" aria-label="Primary navigation">
-          <span className="workspace-nav-label">Workspace</span>
-          <Link className="nav-item workspace-nav-item" href="/new">New report</Link>
-          <Link className="nav-item workspace-nav-item" href="/workspace">Risk inbox</Link>
-          <Link className="nav-item workspace-nav-item" href="/review-operations">Review operations</Link>
-          <Link className="nav-item workspace-nav-item" href="/report">Reports</Link>
-          <span className="workspace-nav-label">System</span>
-          <Link className="nav-item workspace-nav-item" href="/review-policies">Review policies</Link>
-          <Link className="nav-item workspace-nav-item" href="/settings">Analysis settings</Link>
-          <Link className="nav-item workspace-nav-item nav-item--active" href="/github-action" aria-current="page">GitHub Action</Link>
-          <Link className="nav-item workspace-nav-item" href="/slack-handoff">Slack handoff</Link>
-          <span className="workspace-nav-label">Evidence</span>
-          <Link className="nav-item workspace-nav-item" href="/docs/evaluation-results.md">Evaluation</Link>
-          <Link className="nav-item workspace-nav-item" href="/docs/security-model.md">Security model</Link>
-        </nav>
-        <div className="workspace-sidebar-panel">
-          <span>CLI-first direction</span>
-          <p>A future thin Action wrapper should run Lintel inside CI and update one merge-readiness PR comment.</p>
-        </div>
-        <div className="sidebar-footer">
-          <div className="workspace-avatar">N</div>
-          <div><strong>Demo Workspace</strong><span>Action concept</span></div>
-        </div>
-      </aside>
-
-      <main className="workspace-main action-main">
+    <AppShell>
+      <div className="workspace-main action-main">
         <header className="workspace-header workspace-header--app action-header">
           <div className="workspace-header-copy">
             <span className="eyebrow">GITHUB ACTION BLUEPRINT</span>
@@ -239,7 +210,7 @@ export default function GitHubActionPrototypePage() {
             <Link href="/docs/cli-github-action-blueprint.md">CLI / GitHub Action blueprint</Link>
           </div>
         </section>
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }

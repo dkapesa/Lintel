@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
+import AppShell from "../app-shell";
 import { GuidedTourStartButton } from "../guided-tour";
 import {
   conditionKey,
@@ -826,38 +827,8 @@ export default function ReportsWorkspacePage() {
   }
 
   return (
-    <div className="app-shell workspace-shell">
-      <aside className="sidebar workspace-sidebar">
-        <Link className="brand workspace-brand" href="/" aria-label="Lintel home">
-          <span className="brand-mark" aria-hidden="true" />
-          <span>Lintel</span>
-        </Link>
-        <nav className="side-nav workspace-side-nav" aria-label="Primary navigation">
-          <span className="workspace-nav-label">Workspace</span>
-          <Link className="nav-item workspace-nav-item" href="/new">New report</Link>
-          <Link className="nav-item workspace-nav-item nav-item--active" href="/workspace" aria-current="page">Risk inbox</Link>
-          <Link className="nav-item workspace-nav-item" href="/review-operations">Review operations</Link>
-          <Link className="nav-item workspace-nav-item" href="/report">Reports</Link>
-          <span className="workspace-nav-label">System</span>
-          <Link className="nav-item workspace-nav-item" href="/review-policies">Review policies</Link>
-          <Link className="nav-item workspace-nav-item" href="/settings">Analysis settings</Link>
-          <Link className="nav-item workspace-nav-item" href="/github-action">GitHub Action</Link>
-          <Link className="nav-item workspace-nav-item" href="/slack-handoff">Slack handoff</Link>
-          <span className="workspace-nav-label">Evidence</span>
-          <Link className="nav-item workspace-nav-item" href="/docs/evaluation-results.md">Evaluation</Link>
-          <Link className="nav-item workspace-nav-item" href="/docs/security-model.md">Security model</Link>
-        </nav>
-        <div className="workspace-sidebar-panel">
-          <span>Risk inbox</span>
-          <p>Track merge conditions, reviewer focus and PR readiness locally. Raw diffs are not saved in history.</p>
-        </div>
-        <div className="sidebar-footer">
-          <div className="workspace-avatar">N</div>
-          <div><strong>Demo Workspace</strong><span>Local reports</span></div>
-        </div>
-      </aside>
-
-      <main className="workspace-main" data-tour="risk-inbox">
+    <AppShell>
+      <div className="workspace-main" data-tour="risk-inbox">
         <header className="workspace-header workspace-header--app">
           <div className="workspace-header-copy">
             <span className="eyebrow">LOCAL MERGE-READINESS OPERATIONS</span>
@@ -989,7 +960,7 @@ export default function ReportsWorkspacePage() {
             </div>
           </section>
         )}
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }

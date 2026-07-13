@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import AppShell from "../app-shell";
 
 type HandoffVariant = {
   id: "short-alert" | "reviewer-handoff" | "daily-digest";
@@ -165,38 +166,8 @@ export default function SlackHandoffPage() {
   }
 
   return (
-    <div className="app-shell workspace-shell">
-      <aside className="sidebar workspace-sidebar">
-        <Link className="brand workspace-brand" href="/" aria-label="Lintel home">
-          <span className="brand-mark" aria-hidden="true" />
-          <span>Lintel</span>
-        </Link>
-        <nav className="side-nav workspace-side-nav" aria-label="Primary navigation">
-          <span className="workspace-nav-label">Workspace</span>
-          <Link className="nav-item workspace-nav-item" href="/new">New report</Link>
-          <Link className="nav-item workspace-nav-item" href="/workspace">Risk inbox</Link>
-          <Link className="nav-item workspace-nav-item" href="/review-operations">Review operations</Link>
-          <Link className="nav-item workspace-nav-item" href="/report">Reports</Link>
-          <span className="workspace-nav-label">System</span>
-          <Link className="nav-item workspace-nav-item" href="/review-policies">Review policies</Link>
-          <Link className="nav-item workspace-nav-item" href="/settings">Analysis settings</Link>
-          <Link className="nav-item workspace-nav-item" href="/github-action">GitHub Action</Link>
-          <Link className="nav-item workspace-nav-item nav-item--active" href="/slack-handoff" aria-current="page">Slack handoff</Link>
-          <span className="workspace-nav-label">Evidence</span>
-          <Link className="nav-item workspace-nav-item" href="/docs/evaluation-results.md">Evaluation</Link>
-          <Link className="nav-item workspace-nav-item" href="/docs/security-model.md">Security model</Link>
-        </nav>
-        <div className="workspace-sidebar-panel">
-          <span>Handoff, not chat</span>
-          <p>Share the merge decision in existing team channels without turning Lintel into a collaboration app.</p>
-        </div>
-        <div className="sidebar-footer">
-          <div className="workspace-avatar">N</div>
-          <div><strong>Demo Workspace</strong><span>Export concept</span></div>
-        </div>
-      </aside>
-
-      <main className="workspace-main slack-main">
+    <AppShell>
+      <div className="workspace-main slack-main">
         <header className="workspace-header workspace-header--app slack-header">
           <div className="workspace-header-copy">
             <span className="eyebrow">SLACK-READY HANDOFF</span>
@@ -297,7 +268,7 @@ export default function SlackHandoffPage() {
             <Link href="/docs/security-model.md">Security model</Link>
           </div>
         </section>
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }

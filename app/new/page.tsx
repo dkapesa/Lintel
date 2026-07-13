@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import AppShell from "../app-shell";
 import { createCanonicalReviewRunManifest, type CanonicalReviewRunManifest } from "../../lib/canonical-review-run";
 import { normalizeChangePassport, type ChangePassport, type ChangePassportProducerType } from "../../lib/change-passport";
 import { generateReport, GENERATED_REPORT_STORAGE_KEY, type ReportInput, type ReportInputSource } from "../../lib/report-generator";
@@ -1074,19 +1075,7 @@ export default function NewReportPage() {
   const showInspector = activeSource !== "manual";
 
   return (
-    <main className="new-page">
-      <header className="new-topbar">
-        <Link className="new-brand" href="/">
-          <span className="brand-mark" aria-hidden="true">◢</span>
-          <span>Lintel</span>
-        </Link>
-        <nav className="new-topbar-links" aria-label="Workspace navigation">
-          <Link href="/workspace">Risk inbox</Link>
-          <Link href="/settings">Analysis settings</Link>
-          <Link href="/docs/security-model.md">Security model</Link>
-        </nav>
-      </header>
-
+    <AppShell>
       <div className="new-content">
         <section className="new-intro">
           <span className="eyebrow">NEW REVIEW</span>
@@ -1559,6 +1548,6 @@ export default function NewReportPage() {
           )}
         </section>
       </div>
-    </main>
+    </AppShell>
   );
 }

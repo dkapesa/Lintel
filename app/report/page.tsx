@@ -1,6 +1,7 @@
 "use client";
 
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
+import AppShell from "../app-shell";
 import { useGuidedTour } from "../guided-tour";
 import { compareChangePassport, passportHandoffSummary, type ChangePassport, type ChangePassportComparison } from "../../lib/change-passport";
 import {
@@ -2508,72 +2509,41 @@ export default function ReportPage() {
   }
 
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <a className="brand" href="/" aria-label="Lintel home">
-          <span className="brand-mark" aria-hidden="true">◢</span>
-          <span>Lintel</span>
-        </a>
-        <nav className="side-nav report-side-nav-clean" aria-label="Primary navigation">
-          <a className="nav-item" href="/new">New report</a>
-          <a className={`nav-item${source !== "demo" ? " nav-item--active" : ""}`} href="/workspace">Risk inbox</a>
-          <a className="nav-item" href="/review-operations">Review operations</a>
-          <a className={`nav-item${source === "demo" ? " nav-item--active" : ""}`} href="/report?demo=1">Demo report</a>
-          <a className="nav-item" href="/review-policies">Review policies</a>
-          <a className="nav-item" href="/settings">Analysis settings</a>
-          <a className="nav-item" href="/github-action">GitHub Action</a>
-          <a className="nav-item" href="/slack-handoff">Slack handoff</a>
-          <a className="nav-item" href="/docs/security-model.md">Security model</a>
-        </nav>
-        <nav className="side-nav report-side-nav-legacy" aria-label="Legacy navigation">
-          <a className="nav-item" href="/new"><span aria-hidden="true">＋</span>New report</a>
-          <a className={`nav-item${source !== "demo" ? " nav-item--active" : ""}`} href="/workspace"><span aria-hidden="true">▦</span>Reports workspace</a>
-          <a className={`nav-item${source === "demo" ? " nav-item--active" : ""}`} href="/report?demo=1"><span aria-hidden="true">◇</span>Demo report</a>
-        </nav>
-        <div className="sidebar-footer">
-          <div className="workspace-avatar">N</div>
-          <div><strong>Demo Workspace</strong><span>Engineering</span></div>
-          <span aria-hidden="true">⌄</span>
-        </div>
-      </aside>
-
-      <main className="main-content report-surface" id="report">
-        <header className="topbar">
-          <nav className="breadcrumbs" aria-label="Breadcrumb">
-            <a href="#repository">{pr.project}</a><span>/</span><a href="#overview">Reports</a><span>/</span><strong>PR #{pr.number}</strong>
-          </nav>
-          <div className="topbar-actions">
-            <SourceBadge source={source} />
-            <button
-              className={quickActionsOpen ? "quick-actions-trigger quick-actions-trigger--active" : "quick-actions-trigger"}
-              type="button"
-              onClick={() => setQuickActionsOpen((current) => !current)}
-              aria-expanded={quickActionsOpen}
-              aria-controls="report-quick-actions"
-            >
-              Quick actions <span>Ctrl/Cmd K</span>
-            </button>
-            <button
-              className={`copy-summary-button copy-summary-button--${copyState}`}
-              type="button"
-              onClick={handleCopySummary}
-              aria-live="polite"
-            >
-              {copyLabels[copyState]}
-            </button>
-            <button
-              className={`download-markdown-button download-markdown-button--${downloadState}`}
-              type="button"
-              onClick={handleDownloadMarkdown}
-              aria-live="polite"
-            >
-              {downloadLabels[downloadState]}
-            </button>
-            <span className="sync-status"><i /> Analysed {pr.updatedAt}</span>
-            <button className="icon-button" aria-label="More report actions">•••</button>
-          </div>
-        </header>
-
+    <AppShell
+      context={<>{pr.project} · PR #{pr.number}</>}
+      actions={
+        <>
+          <SourceBadge source={source} />
+          <button
+            className={quickActionsOpen ? "quick-actions-trigger quick-actions-trigger--active" : "quick-actions-trigger"}
+            type="button"
+            onClick={() => setQuickActionsOpen((current) => !current)}
+            aria-expanded={quickActionsOpen}
+            aria-controls="report-quick-actions"
+          >
+            Quick actions <span>Ctrl/Cmd K</span>
+          </button>
+          <button
+            className={`copy-summary-button copy-summary-button--${copyState}`}
+            type="button"
+            onClick={handleCopySummary}
+            aria-live="polite"
+          >
+            {copyLabels[copyState]}
+          </button>
+          <button
+            className={`download-markdown-button download-markdown-button--${downloadState}`}
+            type="button"
+            onClick={handleDownloadMarkdown}
+            aria-live="polite"
+          >
+            {downloadLabels[downloadState]}
+          </button>
+          <span className="sync-status"><i /> Analysed {pr.updatedAt}</span>
+        </>
+      }
+    >
+      <div className="main-content report-surface" id="report">
         {quickActionsOpen && (
           <section className="quick-actions-panel" id="report-quick-actions" aria-label="Report quick actions">
             <div className="quick-actions-header">
@@ -4160,7 +4130,7 @@ export default function ReportPage() {
             </div>
           </aside>
         </div>
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }

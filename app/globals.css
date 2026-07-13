@@ -1256,6 +1256,103 @@ button.review-diff-row-line:focus-visible { outline:2px solid var(--color-focus-
 }
 
 /* ============================================================
+   E7.1 application shell — one shared frame for the workspace
+   routes. Prefix: shell-. The root keeps the historical
+   `app-shell` class so existing route-body selectors continue
+   to apply; layout, sidebar, top bar, collapsed rail and the
+   mobile drawer are owned here on E7.0 tokens.
+   ============================================================ */
+.shell { --shell-nav-width:236px; display:grid; grid-template-columns:var(--shell-nav-width) minmax(0,1fr); min-height:100dvh; background:var(--color-canvas); color:var(--color-text-primary); }
+.shell[data-nav="collapsed"] { --shell-nav-width:64px; }
+
+/* --- Sidebar ------------------------------------------------ */
+.shell-sidebar { position:sticky; top:0; display:flex; flex-direction:column; gap:0; height:100dvh; min-width:0; padding:12px 10px; border-right:1px solid var(--color-border); background:var(--color-sidebar); overflow-x:hidden; overflow-y:auto; }
+.shell-sidebar-top { display:flex; align-items:center; justify-content:space-between; gap:4px; }
+.shell-brand { display:flex; align-items:center; gap:10px; min-width:0; min-height:32px; padding:0 7px; border-radius:var(--radius-control); color:var(--color-text-primary); font-size:14px; font-weight:600; letter-spacing:-.02em; }
+.shell-brand:hover { background:var(--color-surface-hover); }
+.shell-brand .brand-mark { flex:0 0 auto; width:14px; height:14px; border:1px solid var(--color-text-primary); border-radius:var(--radius-xs); font-size:0; transform:rotate(45deg); }
+.shell-collapse-toggle { display:grid; flex:0 0 auto; place-items:center; width:28px; height:28px; border:1px solid transparent; border-radius:var(--radius-control); background:transparent; color:var(--color-text-muted); cursor:pointer; }
+.shell-collapse-toggle:hover { border-color:var(--color-border); background:var(--color-surface-hover); color:var(--color-text-primary); }
+
+.shell-nav { display:flex; flex:1; flex-direction:column; margin-top:20px; min-height:0; }
+.shell-nav-group { display:flex; flex-direction:column; gap:1px; }
+.shell-nav-group + .shell-nav-group { margin-top:16px; padding-top:16px; }
+.shell-nav-group-label { margin:0 9px 4px; color:var(--color-text-faint); font-size:11px; font-weight:500; }
+.shell-nav-item { display:flex; align-items:center; gap:10px; min-height:32px; padding:0 9px; border-radius:var(--radius-control); color:var(--color-text-secondary); font-size:13px; font-weight:500; }
+.shell-nav-item svg { flex:0 0 auto; color:var(--color-text-faint); }
+.shell-nav-item-label { overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.shell-nav-item:hover { background:var(--color-surface-hover); color:var(--color-text-primary); }
+.shell-nav-item:hover svg { color:var(--color-text-secondary); }
+.shell-nav-item--active { background:var(--color-surface-selected); color:var(--color-text-primary); box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 14%, transparent), inset 2px 0 0 color-mix(in srgb, var(--color-accent) 55%, transparent); }
+.shell-nav-item--active svg { color:var(--color-accent); }
+
+.shell-sidebar-end { display:flex; flex-direction:column; gap:10px; margin-top:auto; padding-top:16px; }
+.shell-local-note { display:block; padding:6px 9px; border-radius:var(--radius-control); color:var(--color-text-faint); font-size:11px; line-height:1.45; }
+.shell-local-note:hover { background:var(--color-surface-hover); color:var(--color-text-secondary); }
+.shell-account { display:flex; align-items:center; gap:9px; min-width:0; padding:9px 7px 2px; border-top:1px solid var(--color-border); }
+.shell-avatar { display:grid; flex:0 0 auto; place-items:center; width:26px; height:26px; border-radius:var(--radius-row); background:var(--color-text-primary); color:var(--color-text-inverse); font-size:12px; font-weight:600; }
+.shell-account-meta { display:grid; gap:1px; min-width:0; }
+.shell-account-meta strong { overflow:hidden; color:var(--color-text-primary); font-size:12px; font-weight:600; white-space:nowrap; text-overflow:ellipsis; }
+.shell-account-meta span { color:var(--color-text-muted); font-size:11px; }
+
+/* Collapsed rail: icons stay recognisable, labels move to
+   accessible names/tooltips, groups separate with dividers. */
+.shell[data-nav="collapsed"] .shell-sidebar { padding-inline:9px; }
+.shell[data-nav="collapsed"] .shell-sidebar-top { flex-direction:column; gap:8px; }
+.shell[data-nav="collapsed"] .shell-brand { justify-content:center; width:100%; padding:0; }
+.shell[data-nav="collapsed"] .shell-brand-name,
+.shell[data-nav="collapsed"] .shell-nav-item-label,
+.shell[data-nav="collapsed"] .shell-nav-group-label,
+.shell[data-nav="collapsed"] .shell-local-note,
+.shell[data-nav="collapsed"] .shell-account-meta { display:none; }
+.shell[data-nav="collapsed"] .shell-nav-item { justify-content:center; padding:0; }
+.shell[data-nav="collapsed"] .shell-nav-group + .shell-nav-group { border-top:1px solid var(--color-border); }
+.shell[data-nav="collapsed"] .shell-account { justify-content:center; padding-inline:0; }
+
+/* --- Top bar ------------------------------------------------ */
+.shell-body { display:flex; flex-direction:column; min-width:0; }
+.shell-topbar { position:sticky; top:0; z-index:30; display:flex; align-items:center; gap:16px; min-height:52px; padding:6px var(--page-gutter); border-bottom:1px solid var(--color-border); background:color-mix(in srgb, var(--color-canvas) 88%, transparent); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); }
+.shell-topbar-context { display:flex; align-items:center; gap:8px; min-width:0; font-size:13px; }
+.shell-topbar-group { flex:0 0 auto; color:var(--color-text-muted); }
+.shell-topbar-sep { flex:0 0 auto; color:var(--color-text-faint); }
+.shell-topbar-title { flex:0 0 auto; color:var(--color-text-primary); font-weight:600; white-space:nowrap; }
+.shell-topbar-meta { overflow:hidden; margin-left:6px; padding-left:14px; border-left:1px solid var(--color-border); color:var(--color-text-muted); font-family:var(--font-mono); font-size:var(--type-mono-sm); white-space:nowrap; text-overflow:ellipsis; }
+.shell-topbar-actions { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:8px; margin-left:auto; color:var(--color-text-muted); font-size:12px; }
+.shell-menu-button { display:none; }
+.shell-main { flex:1; min-width:0; }
+
+/* --- Mobile drawer ------------------------------------------ */
+.shell-drawer-root { position:fixed; z-index:80; inset:0; }
+.shell-drawer-backdrop { position:absolute; inset:0; background:rgb(4 5 6 / 62%); }
+.shell-drawer { position:absolute; top:0; bottom:0; left:0; display:flex; flex-direction:column; width:min(300px, 86vw); padding:14px 12px; border-right:1px solid var(--color-border); background:var(--color-sidebar); box-shadow:var(--shadow-overlay); overflow-y:auto; outline:none; }
+.shell-drawer-top { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.shell-drawer-close { display:grid; flex:0 0 auto; place-items:center; width:36px; height:36px; border:1px solid var(--color-border); border-radius:var(--radius-control); background:transparent; color:var(--color-text-secondary); cursor:pointer; }
+.shell-drawer-close:hover { background:var(--color-surface-hover); color:var(--color-text-primary); }
+.shell-drawer .shell-nav-item { min-height:44px; font-size:14px; }
+.shell-drawer .shell-nav-group + .shell-nav-group { margin-top:14px; padding-top:14px; border-top:1px solid var(--color-border); }
+.shell-drawer .shell-local-note { padding-block:10px; }
+
+/* --- Responsive behaviour ----------------------------------- */
+@media (min-width:901px) {
+  .shell-drawer-root { display:none; }
+}
+
+@media (max-width:900px) {
+  .shell { grid-template-columns:minmax(0,1fr); }
+  .shell-sidebar { display:none; }
+  .shell-menu-button { display:grid; flex:0 0 auto; place-items:center; width:36px; height:36px; border:1px solid var(--color-border); border-radius:var(--radius-control); background:transparent; color:var(--color-text-secondary); cursor:pointer; }
+  .shell-menu-button:hover { background:var(--color-surface-hover); color:var(--color-text-primary); }
+  .shell-topbar { gap:10px; padding-inline:20px; }
+}
+
+@media (max-width:680px) {
+  .shell-topbar { min-height:48px; }
+  .shell-topbar-group, .shell-topbar-sep { display:none; }
+  .shell-topbar-meta { display:none; }
+  .shell-topbar-actions .sync-status { display:none; }
+}
+
+/* ============================================================
    W1 landing — engineering verification narrative (refined)
    Dark editorial site layer. Prefix: lp-. Ambient accent is a
    website-only mineral silver-blue; semantic colour (green/amber/

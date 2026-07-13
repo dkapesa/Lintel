@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import AppShell from "../app-shell";
 import { reportConditions } from "../../lib/condition-progress";
 import { report as demoReport, type Recommendation, type Report } from "../../lib/mock-report";
 import { readReportHistory, type ReportHistoryEntry } from "../../lib/report-history";
@@ -193,38 +194,8 @@ export default function ReviewOperationsPage() {
   const latest = entries[0];
 
   return (
-    <div className="app-shell workspace-shell">
-      <aside className="sidebar workspace-sidebar">
-        <Link className="brand workspace-brand" href="/" aria-label="Lintel home">
-          <span className="brand-mark" aria-hidden="true" />
-          <span>Lintel</span>
-        </Link>
-        <nav className="side-nav workspace-side-nav" aria-label="Primary navigation">
-          <span className="workspace-nav-label">Workspace</span>
-          <Link className="nav-item workspace-nav-item" href="/new">New report</Link>
-          <Link className="nav-item workspace-nav-item" href="/workspace">Risk inbox</Link>
-          <Link className="nav-item workspace-nav-item nav-item--active" href="/review-operations" aria-current="page">Review operations</Link>
-          <Link className="nav-item workspace-nav-item" href="/report">Reports</Link>
-          <span className="workspace-nav-label">System</span>
-          <Link className="nav-item workspace-nav-item" href="/review-policies">Review policies</Link>
-          <Link className="nav-item workspace-nav-item" href="/settings">Analysis settings</Link>
-          <Link className="nav-item workspace-nav-item" href="/github-action">GitHub Action</Link>
-          <Link className="nav-item workspace-nav-item" href="/slack-handoff">Slack handoff</Link>
-          <span className="workspace-nav-label">Evidence</span>
-          <Link className="nav-item workspace-nav-item" href="/docs/evaluation-results.md">Evaluation</Link>
-          <Link className="nav-item workspace-nav-item" href="/docs/security-model.md">Security model</Link>
-        </nav>
-        <div className="workspace-sidebar-panel">
-          <span>Review operations</span>
-          <p>Local patterns across reports. Useful for spotting recurring merge blockers without sending data to analytics.</p>
-        </div>
-        <div className="sidebar-footer">
-          <div className="workspace-avatar">N</div>
-          <div><strong>Demo Workspace</strong><span>Local patterns</span></div>
-        </div>
-      </aside>
-
-      <main className="workspace-main operations-main" data-tour="review-operations">
+    <AppShell>
+      <div className="workspace-main operations-main" data-tour="review-operations">
         <header className="workspace-header workspace-header--app operations-header">
           <div className="workspace-header-copy">
             <span className="eyebrow">LOCAL REVIEW OPERATIONS</span>
@@ -371,7 +342,7 @@ export default function ReviewOperationsPage() {
             </section>
           </aside>
         </section>
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }

@@ -1115,6 +1115,14 @@ export default function NewReportPage() {
           </div>
         </dl>
         {briefContextFields}
+        {selectedSample.decisionLedgerDemo && (
+          <div className="brief-note">
+            <strong>Human Decision Ledger demo:</strong>
+            <ul>
+              {selectedSample.decisionLedgerDemo.map((item) => <li key={item}>{item}</li>)}
+            </ul>
+          </div>
+        )}
         <p className="brief-note">Sample scenarios use built-in diffs, so you can inspect a full readiness report without sharing code.</p>
       </div>
     );

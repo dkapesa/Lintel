@@ -60,6 +60,21 @@ import {
   type ContractRecheckRecord,
   type ContractRecheckClauseEvaluation,
 } from "../../lib/contract-recheck";
+import {
+  appendHumanDecisionLedgerEntryToStorage,
+  appendHumanDecisionLedgerEntry,
+  createEmptyHumanDecisionLedger,
+  humanDecisionLedgerKeyForReport,
+  humanDecisionLedgerSummary,
+  projectHumanDecisionLedger,
+  readHumanDecisionLedger,
+  recommendationDivergenceForReport,
+  writeHumanDecisionLedger,
+  type HumanDecisionLedger,
+  type HumanDecisionLedgerEntry,
+  type HumanDecisionOutcome,
+  type HumanDecisionEventType,
+} from "../../lib/human-decision-ledger";
 import { shortSha, type ReadinessDelta, type ReviewDiff, type ReviewDiffItem, type ReviewDiffStatus } from "../../lib/readiness-delta";
 import { GENERATED_REPORT_STORAGE_KEY } from "../../lib/report-generator";
 import { conditionsToMarkdown, findingProvenanceLabel, reportMarkdownFilename, reportToMarkdown, type ReportSourceLabel } from "../../lib/report-markdown";
@@ -516,6 +531,20 @@ function reviewStatusFromStudioDecision(decision: StudioHumanDecision): ReviewSt
   return "Needs work";
 }
 
+function humanDecisionOutcomeFromStudio(decision: StudioHumanDecision): HumanDecisionOutcome {
+  if (decision === "Ready to merge") return "approve";
+  if (decision === "Approved with accepted risk") return "approve-with-accepted-risk";
+  if (decision === "Tests required") return "tests-required";
+  if (decision === "Review required") return "review-required";
+  if (decision === "Blocked") return "blocked";
+  return "request-changes";
+}
+
+function humanDecisionOutcomeLabel(outcome?: HumanDecisionOutcome) {
+  if (!outcome) return "No decision";
+  return outcome.replaceAll("-", " ");
+}
+
 function studioDecisionLabel(decision: StudioHumanDecision, acceptedRiskReason: string) {
   if (decision !== "Approved with accepted risk") return decision;
   const reason = acceptedRiskReason.trim();
@@ -869,6 +898,35 @@ function contractRecheckTimelineEvent(recheck: ContractRecheckRecord): Readiness
     relatedItem: recheck.humanDecisionApplicability.state === "predates-current-head"
       ? "Human decision predates current head"
       : `${recheck.previousContractId} -> ${recheck.currentContractId}`,
+  };
+}
+
+function humanLedgerTimelineEvent(entry: HumanDecisionLedgerEntry): ReadinessTimelineEvent {
+  const title = entry.eventType === "risk-accepted"
+    ? "Accepted risk recorded"
+    : entry.eventType === "risk-acceptance-revoked"
+      ? "Accepted risk revoked"
+      : entry.eventType === "decision-withdrawn"
+        ? "Human decision withdrawn"
+        : entry.eventType === "decision-reaffirmed"
+          ? "Human decision reaffirmed"
+          : entry.eventType === "decision-superseded"
+            ? "Human decision superseded"
+            : "Human decision recorded";
+
+  return {
+    id: `human-ledger-${entry.entryId}`,
+    title,
+    timestamp: entry.recordedAt,
+    actor: entry.actor.displayLabel,
+    provenance: "Human reviewer",
+    category: "Human actions",
+    summary: `${entry.eventType.replaceAll("-", " ")}${entry.outcome ? `: ${humanDecisionOutcomeLabel(entry.outcome)}` : ""}. ${entry.reason ?? "No reason recorded."}`,
+    area: "Human Decision Ledger",
+    previousState: entry.supersedesEntryId ?? entry.withdrawsEntryId,
+    nextState: entry.outcome,
+    movement: entry.eventType === "decision-withdrawn" || entry.eventType === "risk-acceptance-revoked" ? "Readiness decreased" : "Current state",
+    relatedItem: entry.applicableHeadSha ? `Applies to ${shortSha(entry.applicableHeadSha)}` : "Head SHA unavailable",
   };
 }
 
@@ -1964,6 +2022,7 @@ function slackHandoffToText({
   mergeContractSummary,
   contractRecheckSummary,
   verificationPackSummary,
+  humanDecisionLedgerSummary,
 }: {
   report: Report;
   ownerLabel: string;
@@ -1977,6 +2036,7 @@ function slackHandoffToText({
   mergeContractSummary?: string;
   contractRecheckSummary?: string;
   verificationPackSummary?: string;
+  humanDecisionLedgerSummary?: string;
 }) {
   const topBlocker = conditions[0]
     ?? report.findings[0]?.title
@@ -2007,6 +2067,7 @@ function slackHandoffToText({
     ...(mergeContractSummary ? [`Merge Contract: ${mergeContractSummary}`] : []),
     ...(contractRecheckSummary ? [`Contract re-check: ${contractRecheckSummary}`] : []),
     ...(verificationPackSummary ? [`Verification Pack: ${verificationPackSummary}`] : []),
+    ...(humanDecisionLedgerSummary ? [`Human decision: ${humanDecisionLedgerSummary}`] : []),
     ...(humanDecision ? [`Human decision: ${humanDecision}`] : []),
     `Next action: ${actionProgress.readinessConclusion}`,
     "",
@@ -2270,6 +2331,39 @@ function ContractRecheckRow({ evaluation }: { evaluation: ContractRecheckClauseE
   );
 }
 
+function HumanDecisionLedgerRow({ entry, currentHeadSha }: { entry: HumanDecisionLedgerEntry; currentHeadSha?: string }) {
+  const applicability = entry.applicableHeadSha && currentHeadSha && entry.applicableHeadSha !== currentHeadSha
+    ? "predates current commit"
+    : "applies to current commit";
+  return (
+    <details className="human-ledger-row">
+      <summary>
+        <span>{entry.eventType.replaceAll("-", " ")}</span>
+        <strong>{humanDecisionOutcomeLabel(entry.outcome)}</strong>
+        <time dateTime={entry.recordedAt}>{new Date(entry.recordedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time>
+      </summary>
+      <div className="human-ledger-row-detail">
+        <dl>
+          <div><dt>Actor</dt><dd>{entry.actor.displayLabel}</dd></div>
+          <div><dt>Commit</dt><dd>{shortSha(entry.applicableHeadSha)}</dd></div>
+          <div><dt>Applicability</dt><dd>{applicability}</dd></div>
+        </dl>
+        {entry.reason && <p>{entry.reason}</p>}
+        {(entry.referencedClauseIds.length > 0 || entry.referencedAssumptionIds.length > 0) && (
+          <p>References: {[...entry.referencedClauseIds, ...entry.referencedAssumptionIds].map(fingerprintPrefix).join(", ")}</p>
+        )}
+        {(entry.supersedesEntryId || entry.reaffirmsEntryId || entry.withdrawsEntryId) && (
+          <p>
+            {entry.supersedesEntryId && <>Supersedes {fingerprintPrefix(entry.supersedesEntryId)}. </>}
+            {entry.reaffirmsEntryId && <>Reaffirms {fingerprintPrefix(entry.reaffirmsEntryId)}. </>}
+            {entry.withdrawsEntryId && <>Withdraws/revokes {fingerprintPrefix(entry.withdrawsEntryId)}.</>}
+          </p>
+        )}
+      </div>
+    </details>
+  );
+}
+
 export default function ReportPage() {
   const guidedTour = useGuidedTour();
   const [displayedReport, setDisplayedReport] = useState<{ report: Report; source: ReportSource }>({
@@ -2308,6 +2402,7 @@ export default function ReportPage() {
   const [quickActionMessage, setQuickActionMessage] = useState<{ state: QuickActionMessageState; text: string } | null>(null);
   const [reviewState, setReviewState] = useState<ReportReviewState>(() => defaultReviewState(demoReport));
   const [decisionHistory, setDecisionHistory] = useState<DecisionHistoryEvent[]>(() => initialDecisionHistory(demoReport));
+  const [humanDecisionLedger, setHumanDecisionLedger] = useState<HumanDecisionLedger>(() => createEmptyHumanDecisionLedger({ report: demoReport, canonicalRun: historicalCanonicalRunManifest(demoReport, "demo") }));
   const [actionStatusOverrides, setActionStatusOverrides] = useState<Record<string, ReviewActionStatus>>({});
   const [assumptionOverrides, setAssumptionOverrides] = useState<Record<string, LocalAssumptionOverride>>({});
   const [clauseOverrides, setClauseOverrides] = useState<Record<string, LocalClauseOverride>>({});
@@ -2429,6 +2524,7 @@ export default function ReportPage() {
   const activePolicy = reviewPolicyForProfile(pr.reviewProfile);
   const activePolicyStatus = policyStatusForReport(report, activePolicy);
   const decisionHistoryKey = decisionHistoryKeyForReport(report);
+  const humanDecisionLedgerKey = humanDecisionLedgerKeyForReport(report);
   const displayedConditions = reportConditions(report);
   const selectedFinding = selectedFindingIndex !== null ? report.findings[selectedFindingIndex] : undefined;
   const selectedFindingFiles = selectedFinding ? affectedFilesForFinding(report, selectedFinding) : [];
@@ -2573,6 +2669,16 @@ export default function ReportPage() {
   const contractRecheckStaleEvidenceOrAssumptions = contractRecheck
     ? contractRecheck.evidenceChanges.evidenceBecameStale + contractRecheck.assumptionChanges.stale + contractRecheck.assumptionChanges.acceptedStale
     : 0;
+  const humanDecisionLedgerContext = {
+    report,
+    canonicalRun,
+    mergeContract,
+    contractRecheck,
+    currentHeadSha: canonicalRun?.headSha ?? readinessDelta?.currentHeadSha,
+  };
+  const humanDecisionProjection = projectHumanDecisionLedger(humanDecisionLedger, humanDecisionLedgerContext.currentHeadSha);
+  const humanDecisionDivergence = recommendationDivergenceForReport(report, humanDecisionProjection.latestEffectiveEntry);
+  const humanDecisionLedgerSummaryText = humanDecisionLedgerSummary(humanDecisionLedger, report, humanDecisionLedgerContext.currentHeadSha);
   const verificationPack = buildVerificationPack({
     report,
     canonicalRun,
@@ -2583,6 +2689,7 @@ export default function ReportPage() {
     readinessDelta,
     reviewDiff,
     contractRecheck,
+    humanDecisionLedger,
     reviewState: studioReviewState,
     decisionHistory,
     sourceType: canonicalRun?.sourceType ?? source,
@@ -2594,6 +2701,7 @@ export default function ReportPage() {
   const verificationPackJsonText = verificationPackJson(verificationPack);
 
   const readinessTimeline = [
+    ...[...humanDecisionLedger.entries].reverse().slice(0, 6).map(humanLedgerTimelineEvent),
     ...(contractRecheck ? [contractRecheckTimelineEvent(contractRecheck)] : []),
     ...(readinessDelta ? [deltaTimelineEvent(readinessDelta)] : []),
     ...baseReadinessTimeline,
@@ -2621,6 +2729,7 @@ export default function ReportPage() {
     mergeContractSummary: mergeContractSummaryText,
     contractRecheckSummary: contractRecheck ? contractRecheckSummaryText : undefined,
     verificationPackSummary,
+    humanDecisionLedgerSummary: humanDecisionLedgerSummaryText,
   });
   const mergeSummaryMarkdown = mergeSummaryToMarkdown(report, {
     sourceLabel: sourceLabels[source],
@@ -2634,6 +2743,7 @@ export default function ReportPage() {
     mergeContractSummary: mergeContractSummaryText,
     contractRecheckSummary: contractRecheck ? contractRecheckSummaryText : undefined,
     verificationPackSummary,
+    humanDecisionLedgerSummary: humanDecisionLedgerSummaryText,
   });
   const blockerSurfaceCount = affectedSurfaces.filter((surface) => surface.status === "Blocker").length;
   const confirmationSurfaceCount = affectedSurfaces.filter((surface) => surface.status === "Attention" || surface.status === "Watch").length;
@@ -2681,6 +2791,14 @@ export default function ReportPage() {
       setClauseOverrides({});
     }
   }, [mergeContractStateKey]);
+
+  useEffect(() => {
+    try {
+      setHumanDecisionLedger(readHumanDecisionLedger(window.localStorage, humanDecisionLedgerKey, humanDecisionLedgerContext, reviewState));
+    } catch {
+      setHumanDecisionLedger(createEmptyHumanDecisionLedger(humanDecisionLedgerContext));
+    }
+  }, [humanDecisionLedgerKey, canonicalRun?.runId, canonicalRun?.headSha, mergeContract.contractId, contractRecheck?.recheckId, reviewState.updatedAt]);
 
   useEffect(() => {
     setSelectedFindingIndex((current) => (
@@ -2741,6 +2859,49 @@ export default function ReportPage() {
         nextState: event.nextState,
         label: event.label ?? "Local",
       }, ...current].slice(0, 60));
+    }
+  }
+
+  function appendLedgerEntry(input: {
+    eventType: HumanDecisionEventType;
+    outcome?: HumanDecisionOutcome;
+    reason?: string;
+    referencedClauseIds?: string[];
+    referencedAssumptionIds?: string[];
+    referencedEvidenceIds?: string[];
+    acceptedRiskReferences?: string[];
+    supersedesEntryId?: string;
+    reaffirmsEntryId?: string;
+    withdrawsEntryId?: string;
+    source?: "decision-studio" | "merge-contract" | "assumption-registry" | "legacy" | "api" | "local";
+    idempotencyKey?: string;
+  }) {
+    try {
+      const next = appendHumanDecisionLedgerEntryToStorage(
+        window.localStorage,
+        humanDecisionLedgerKey,
+        humanDecisionLedger,
+        humanDecisionLedgerContext,
+        {
+          ...input,
+          actor: {
+            displayLabel: displayedOwner === "Unassigned" ? "Local reviewer" : displayedOwner,
+            source: "local",
+          },
+        },
+      );
+      setHumanDecisionLedger(next);
+      return next;
+    } catch {
+      const next = appendHumanDecisionLedgerEntry(humanDecisionLedger, humanDecisionLedgerContext, {
+        ...input,
+        actor: {
+          displayLabel: displayedOwner === "Unassigned" ? "Local reviewer" : displayedOwner,
+          source: "local",
+        },
+      });
+      setHumanDecisionLedger(next);
+      return next;
     }
   }
 
@@ -2818,6 +2979,18 @@ export default function ReportPage() {
       nextState: status,
       label: "Local",
     });
+
+    if (status === "accepted") {
+      appendLedgerEntry({
+        eventType: "risk-accepted",
+        outcome: "approve-with-accepted-risk",
+        reason: note || `Accepted uncertainty: ${assumption.statement}`,
+        referencedAssumptionIds: [assumption.assumptionId],
+        acceptedRiskReferences: [assumption.assumptionId],
+        source: "assumption-registry",
+        idempotencyKey: `assumption:${assumption.assumptionId}:${nextOverride.timestamp}:accepted`,
+      });
+    }
   }
 
   function updateContractClauseStatus(clause: MergeContractClause, status: LocalClauseOverride["status"]) {
@@ -2856,6 +3029,18 @@ export default function ReportPage() {
       nextState: status,
       label: "Local",
     });
+
+    if (status === "accepted") {
+      appendLedgerEntry({
+        eventType: "risk-accepted",
+        outcome: "approve-with-accepted-risk",
+        reason: reason || `Accepted unresolved contract clause: ${clause.statement}`,
+        referencedClauseIds: [clause.clauseId],
+        acceptedRiskReferences: [clause.clauseId],
+        source: "merge-contract",
+        idempotencyKey: `clause:${clause.clauseId}:${nextOverride.timestamp}:accepted`,
+      });
+    }
   }
 
   function updateReviewOwner(owner: ReviewerOwner) {
@@ -3110,7 +3295,41 @@ export default function ReportPage() {
     }
 
     const previousStatus = reviewState.status;
+    const outcome = humanDecisionOutcomeFromStudio(studioDecision);
+    const previousEntry = humanDecisionProjection.latestEffectiveEntry;
+    const isReaffirmation = previousEntry?.outcome === outcome && humanDecisionProjection.applicability === "predates-current-head";
+    const isSupersession = !!previousEntry && previousEntry.outcome !== outcome;
+    const openBlockingClauseIds = displayedContractClauses
+      .filter(({ clause, status }) => clause.importance === "blocking" && status === "open")
+      .map(({ clause }) => clause.clauseId)
+      .slice(0, 8);
+    const openAssumptionIds = evidenceHierarchy.assumptions
+      .filter((assumption) => assumption.importance === "blocking" && assumption.status === "open")
+      .map((assumption) => assumption.assumptionId)
+      .slice(0, 8);
+
     updateReviewState(studioReviewState);
+
+    appendLedgerEntry({
+      eventType: studioDecision === "Approved with accepted risk"
+        ? "risk-accepted"
+        : isReaffirmation
+          ? "decision-reaffirmed"
+          : isSupersession
+            ? "decision-superseded"
+            : "decision-recorded",
+      outcome,
+      reason: studioDecision === "Approved with accepted risk"
+        ? acceptedRiskReason.trim()
+        : `Decision Studio recorded: ${studioDecision}.`,
+      referencedClauseIds: studioDecision === "Approved with accepted risk" ? openBlockingClauseIds : [],
+      referencedAssumptionIds: studioDecision === "Approved with accepted risk" ? openAssumptionIds : [],
+      acceptedRiskReferences: studioDecision === "Approved with accepted risk" ? [...openBlockingClauseIds, ...openAssumptionIds] : [],
+      supersedesEntryId: isSupersession ? previousEntry?.entryId : undefined,
+      reaffirmsEntryId: isReaffirmation ? previousEntry?.entryId : undefined,
+      source: "decision-studio",
+      idempotencyKey: `studio:${outcome}:${canonicalRun?.headSha ?? "local"}:${Date.now()}`,
+    });
 
     recordDecisionEvent({
       type: studioDecision === "Approved with accepted risk" ? "accepted-risk-recorded" : "human-decision-recorded",
@@ -3126,6 +3345,51 @@ export default function ReportPage() {
     setStudioDecisionState("copied");
     if (studioDecisionResetTimer.current) clearTimeout(studioDecisionResetTimer.current);
     studioDecisionResetTimer.current = setTimeout(() => setStudioDecisionState("idle"), 2_000);
+  }
+
+  function withdrawCurrentHumanDecision() {
+    const current = humanDecisionProjection.latestEffectiveEntry;
+    if (!current) return;
+    const confirmed = window.confirm("Withdraw the current human decision? This appends a ledger event and keeps the original decision intact.");
+    if (!confirmed) return;
+
+    appendLedgerEntry({
+      eventType: "decision-withdrawn",
+      reason: "Current human decision withdrawn locally.",
+      withdrawsEntryId: current.entryId,
+      source: "decision-studio",
+      idempotencyKey: `withdraw:${current.entryId}:${Date.now()}`,
+    });
+    recordDecisionEvent({
+      type: "human-decision-recorded",
+      title: "Human decision withdrawn",
+      detail: "A local withdrawal event was appended to the Human Decision Ledger. The original decision remains in history.",
+      previousState: current.outcome,
+      nextState: "withdrawn",
+      label: "Local",
+    });
+  }
+
+  function revokeAcceptedRisk(entry: HumanDecisionLedgerEntry) {
+    const confirmed = window.confirm("Revoke this accepted-risk entry? This appends a ledger event and keeps the original acceptance intact.");
+    if (!confirmed) return;
+
+    appendLedgerEntry({
+      eventType: "risk-acceptance-revoked",
+      reason: "Accepted risk revoked locally.",
+      withdrawsEntryId: entry.entryId,
+      acceptedRiskReferences: [entry.entryId, ...entry.acceptedRiskReferences],
+      source: "decision-studio",
+      idempotencyKey: `revoke-risk:${entry.entryId}:${Date.now()}`,
+    });
+    recordDecisionEvent({
+      type: "accepted-risk-recorded",
+      title: "Accepted risk revoked",
+      detail: "A local accepted-risk revocation event was appended to the Human Decision Ledger.",
+      previousState: entry.outcome,
+      nextState: "risk acceptance revoked",
+      label: "Local",
+    });
   }
 
   function handleDownloadMarkdown() {
@@ -4718,6 +4982,53 @@ export default function ReportPage() {
                   <p>GitHub and Slack previews below reflect: <strong>{studioDecisionText}</strong></p>
                 </div>
               </div>
+            </section>
+
+            <section className="human-decision-ledger" aria-labelledby="human-decision-ledger-title">
+              <div className="decision-studio-header">
+                <div>
+                  <span className="card-kicker">HUMAN AUTHORITY</span>
+                  <h3 id="human-decision-ledger-title">Human Decision Ledger</h3>
+                  <p>Append-only local record of human decisions. Lintel recommendations, scores and findings remain unchanged.</p>
+                </div>
+                <span className="section-count">{humanDecisionProjection.applicability.replaceAll("-", " ")}</span>
+              </div>
+
+              <div className="human-ledger-summary-grid">
+                <article><span>Current decision</span><strong>{humanDecisionOutcomeLabel(humanDecisionProjection.latestEffectiveEntry?.outcome)}</strong></article>
+                <article><span>Lintel recommendation</span><strong>{verdict.recommendation.replaceAll("_", " ")}</strong></article>
+                <article><span>Divergence</span><strong>{humanDecisionDivergence.replaceAll("-", " ")}</strong></article>
+                <article><span>Applies to</span><strong>{shortSha(humanDecisionProjection.latestEffectiveEntry?.applicableHeadSha ?? canonicalRun?.headSha)}</strong></article>
+                <article><span>Accepted risks</span><strong>{humanDecisionProjection.activeAcceptedRisks.length}</strong></article>
+                <article><span>Ledger</span><strong>{fingerprintPrefix(humanDecisionLedger.ledgerId)}</strong></article>
+              </div>
+
+              {humanDecisionProjection.reaffirmationRequired && (
+                <p className="decision-studio-delta-note">
+                  Current human decision predates head {shortSha(humanDecisionLedgerContext.currentHeadSha)}. Reaffirmation is required before treating it as current.
+                </p>
+              )}
+
+              <div className="human-ledger-actions">
+                <button type="button" onClick={withdrawCurrentHumanDecision} disabled={!humanDecisionProjection.latestEffectiveEntry}>
+                  Withdraw current decision
+                </button>
+                {humanDecisionProjection.activeAcceptedRisks.slice(0, 2).map((entry) => (
+                  <button type="button" key={entry.entryId} onClick={() => revokeAcceptedRisk(entry)}>
+                    Revoke risk {fingerprintPrefix(entry.entryId)}
+                  </button>
+                ))}
+              </div>
+
+              {humanDecisionLedger.entries.length > 0 ? (
+                <div className="human-ledger-rows">
+                  {[...humanDecisionLedger.entries].reverse().slice(0, 10).map((entry) => (
+                    <HumanDecisionLedgerRow entry={entry} currentHeadSha={humanDecisionLedgerContext.currentHeadSha} key={entry.entryId} />
+                  ))}
+                </div>
+              ) : (
+                <p className="section-empty">No human decision has been recorded in the ledger yet.</p>
+              )}
             </section>
 
             <div className="report-export-grid">

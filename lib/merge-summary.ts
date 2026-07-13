@@ -17,6 +17,7 @@ type MergeSummaryOptions = {
   mergeContractSummary?: string;
   contractRecheckSummary?: string;
   verificationPackSummary?: string;
+  humanDecisionLedgerSummary?: string;
 };
 
 function safeMarkdownText(value: string) {
@@ -120,6 +121,7 @@ export function mergeSummaryToMarkdown(report: Report, options: MergeSummaryOpti
     ...(options.mergeContractSummary ? [`**Merge Contract:** ${safeMarkdownText(options.mergeContractSummary)}`] : []),
     ...(options.contractRecheckSummary ? [`**Contract re-check:** ${safeMarkdownText(options.contractRecheckSummary)}`] : []),
     ...(options.verificationPackSummary ? [`**Verification Pack:** ${safeMarkdownText(options.verificationPackSummary)}`] : []),
+    ...(options.humanDecisionLedgerSummary ? [`**Human decision:** ${safeMarkdownText(options.humanDecisionLedgerSummary)}`] : []),
     "",
     "### Top blockers",
     bulletList(topBlockers(report), "No blockers detected.", 4),

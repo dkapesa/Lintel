@@ -27,6 +27,12 @@ import type { ReadinessDelta, ReviewDiff, ReviewDiffItem } from "./readiness-del
 import { shortSha } from "./readiness-delta";
 import type { ReportReviewState } from "./review-state";
 import type { ContractRecheckRecord } from "./contract-recheck";
+import {
+  humanDecisionLedgerSummary,
+  projectHumanDecisionLedger,
+  recommendationDivergenceForReport,
+  type HumanDecisionLedger,
+} from "./human-decision-ledger";
 
 export const VERIFICATION_PACK_SCHEMA_VERSION = "1.0";
 
@@ -176,6 +182,26 @@ export type VerificationPack = {
     acceptedRiskEvents: BoundedList<Pick<DecisionHistoryEvent, "title" | "timestamp" | "detail" | "nextState">>;
     recentEvents: BoundedList<Pick<DecisionHistoryEvent, "type" | "title" | "timestamp" | "detail" | "previousState" | "nextState" | "label">>;
   };
+  humanDecisionLedger?: {
+    ledgerId: string;
+    schemaVersion: string;
+    currentEffectiveEntryId?: string;
+    currentDecision?: string;
+    applicability: string;
+    divergence: string;
+    activeAcceptedRiskCount: number;
+    recentEntries: BoundedList<{
+      entryId: string;
+      eventType: string;
+      outcome?: string;
+      actor: string;
+      applicableHeadSha?: string;
+      recordedAt: string;
+      reason?: string;
+    }>;
+    fingerprint: string;
+    summary: string;
+  };
   provenance: {
     canonicalRun?: CanonicalReviewRunManifest;
     canonicalRunSchemaVersion: string;
@@ -207,6 +233,7 @@ type VerificationPackInput = {
   readinessDelta?: ReadinessDelta | null;
   reviewDiff?: ReviewDiff | null;
   contractRecheck?: ContractRecheckRecord | null;
+  humanDecisionLedger?: HumanDecisionLedger | null;
   reviewState?: ReportReviewState | null;
   decisionHistory?: DecisionHistoryEvent[];
   sourceType?: string;
@@ -314,6 +341,7 @@ export function buildVerificationPack({
   readinessDelta,
   reviewDiff,
   contractRecheck,
+  humanDecisionLedger,
   reviewState,
   decisionHistory = [],
   sourceType,
@@ -360,6 +388,7 @@ export function buildVerificationPack({
     label: event.label,
   }));
   const humanDecisionStale = !!(reviewState?.updatedAt && run.headSha && readinessDelta?.currentHeadSha && readinessDelta.currentHeadSha !== run.headSha);
+  const ledgerProjection = humanDecisionLedger ? projectHumanDecisionLedger(humanDecisionLedger, run.headSha) : null;
   const stateInfo = packState({ canonicalRun: run, changePassport, mergeContract: contract, evidenceHierarchy: evidence });
 
   const findingRecords = report.findings.map((finding, index) => ({
@@ -588,6 +617,26 @@ export function buildVerificationPack({
       })), 6),
       recentEvents: { total: decisionHistory.length, exported: recentEvents.length, truncated: decisionHistory.length > recentEvents.length, items: recentEvents },
     },
+    humanDecisionLedger: humanDecisionLedger ? {
+      ledgerId: humanDecisionLedger.ledgerId,
+      schemaVersion: humanDecisionLedger.schemaVersion,
+      currentEffectiveEntryId: ledgerProjection?.latestEffectiveEntry?.entryId,
+      currentDecision: ledgerProjection?.latestEffectiveEntry?.outcome,
+      applicability: ledgerProjection?.applicability ?? "unavailable",
+      divergence: recommendationDivergenceForReport(report, ledgerProjection?.latestEffectiveEntry),
+      activeAcceptedRiskCount: ledgerProjection?.activeAcceptedRisks.length ?? 0,
+      recentEntries: bounded([...humanDecisionLedger.entries].reverse().map((entry) => ({
+        entryId: entry.entryId,
+        eventType: entry.eventType,
+        outcome: entry.outcome,
+        actor: entry.actor.displayLabel,
+        applicableHeadSha: entry.applicableHeadSha,
+        recordedAt: entry.recordedAt,
+        reason: safeText(entry.reason, 220),
+      })), LIMITS.decisionEvents),
+      fingerprint: humanDecisionLedger.fingerprint,
+      summary: humanDecisionLedgerSummary(humanDecisionLedger, report, run.headSha),
+    } : undefined,
     provenance: {
       canonicalRun: run,
       canonicalRunSchemaVersion: CANONICAL_RUN_SCHEMA_VERSION,
@@ -618,6 +667,7 @@ export function buildVerificationPack({
     reviewEvolution: sectionFingerprint(packBase.reviewEvolution),
     contractRecheck: sectionFingerprint(packBase.contractRecheck),
     humanDecision: sectionFingerprint(packBase.humanDecision),
+    humanDecisionLedger: sectionFingerprint(packBase.humanDecisionLedger),
     provenance: sectionFingerprint(packBase.provenance),
   };
   const packFingerprint = stableFingerprint({ ...packBase, sectionFingerprints });
@@ -736,6 +786,15 @@ export function verificationPackToMarkdown(pack: VerificationPack) {
       ].join("\n")
       : "No local human decision was recorded in this pack.",
     "",
+    ...(pack.humanDecisionLedger ? [
+      "## Human Decision Ledger",
+      `Ledger: \`${escapeMarkdown(pack.humanDecisionLedger.ledgerId)}\``,
+      `Current decision: ${escapeMarkdown(pack.humanDecisionLedger.currentDecision)}`,
+      `Applicability: ${escapeMarkdown(pack.humanDecisionLedger.applicability)}`,
+      `Divergence: ${escapeMarkdown(pack.humanDecisionLedger.divergence)}`,
+      `Active accepted risks: ${pack.humanDecisionLedger.activeAcceptedRiskCount}`,
+      "",
+    ] : []),
     "## Provenance",
     `Canonical run: \`${escapeMarkdown(fingerprintPrefix(pack.canonicalRunId))}\``,
     `Generator/ruleset: ${escapeMarkdown(pack.provenance.generatorVersion)} / ${escapeMarkdown(pack.provenance.deterministicRulesetVersion)}`,
@@ -761,7 +820,10 @@ export function verificationPackHandoffSummary(pack: VerificationPack) {
   const recheck = pack.contractRecheck
     ? ` Contract re-check ${pack.contractRecheck.classification}: ${pack.contractRecheck.newlySatisfied} newly satisfied, ${pack.contractRecheck.reopened} reopened.`
     : "";
-  return `Pack ${fingerprintPrefix(pack.packId)}; Head ${shortSha(pack.changeIdentity.headSha)}; State ${pack.generationStatus}; Contract ${pack.mergeContract.blockingOpen} blocking open; Assumptions ${pack.assumptions.openBlocking} blocking open; Evidence ${direct} directly observed, ${external} externally verified.${recheck}`;
+  const decision = pack.humanDecisionLedger
+    ? ` Human decision ${pack.humanDecisionLedger.currentDecision ?? "unavailable"} (${pack.humanDecisionLedger.applicability}).`
+    : "";
+  return `Pack ${fingerprintPrefix(pack.packId)}; Head ${shortSha(pack.changeIdentity.headSha)}; State ${pack.generationStatus}; Contract ${pack.mergeContract.blockingOpen} blocking open; Assumptions ${pack.assumptions.openBlocking} blocking open; Evidence ${direct} directly observed, ${external} externally verified.${recheck}${decision}`;
 }
 
 export function verificationPackFilename(pack: VerificationPack, extension: "json" | "md") {

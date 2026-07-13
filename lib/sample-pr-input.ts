@@ -259,6 +259,7 @@ export type PrSample = {
   id: string;
   name: string;
   input: ReportInput;
+  decisionLedgerDemo?: string[];
 };
 
 export const PR_SAMPLES: PrSample[] = [
@@ -266,7 +267,17 @@ export const PR_SAMPLES: PrSample[] = [
   { id: "provider-retry", name: "Provider failure / retry risk", input: RISKY_TESTS_REQUIRED_SAMPLE },
   { id: "auth-session", name: "Auth/session change", input: AUTH_SESSION_SAMPLE },
   { id: "database-migration", name: "Database migration", input: DATABASE_MIGRATION_SAMPLE },
-  { id: "payment-refund", name: "Payment/refund side effect", input: PAYMENT_REFUND_SAMPLE },
+  {
+    id: "payment-refund",
+    name: "Payment/refund side effect",
+    input: PAYMENT_REFUND_SAMPLE,
+    decisionLedgerDemo: [
+      "Lintel recommends tests required for refund idempotency.",
+      "Human initially requests changes for head A, then accepts one contract-clause risk locally.",
+      "A newer review at head B makes the earlier decision and risk acceptance stale.",
+      "Human supersedes the earlier decision; the ledger preserves both entries without changing score or recommendation.",
+    ],
+  },
   { id: "api-contract", name: "API contract change", input: API_CONTRACT_SAMPLE },
   { id: "logging-privacy", name: "Logging/privacy risk", input: LOGGING_PRIVACY_SAMPLE },
   { id: "frontend-analytics", name: "Frontend analytics/type change", input: FRONTEND_ANALYTICS_SAMPLE },

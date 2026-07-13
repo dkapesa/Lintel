@@ -13,6 +13,7 @@ type MergeSummaryOptions = {
   passportSummary?: string;
   evidenceSummary?: string;
   assumptionSummary?: string;
+  builderVerifierSummary?: string;
 };
 
 function safeMarkdownText(value: string) {
@@ -112,6 +113,7 @@ export function mergeSummaryToMarkdown(report: Report, options: MergeSummaryOpti
     ...(options.passportSummary ? [`**Change Passport:** ${safeMarkdownText(options.passportSummary)}`] : []),
     ...(options.evidenceSummary ? [`**Evidence:** ${safeMarkdownText(options.evidenceSummary)}`] : []),
     ...(options.assumptionSummary ? [`**Assumptions:** ${safeMarkdownText(options.assumptionSummary)}`] : []),
+    ...(options.builderVerifierSummary ? [`**Verification boundary:** ${safeMarkdownText(options.builderVerifierSummary)}`] : []),
     "",
     "### Top blockers",
     bulletList(topBlockers(report), "No blockers detected.", 4),

@@ -158,7 +158,9 @@ export const PAYMENT_REFUND_SAMPLE = {
     taskIntent: "Retry refund creation when the payment gateway times out.",
     producer: {
       tool: "Cursor",
-      model: "example-model",
+      provider: "Anthropic",
+      model: "claude-builder-example",
+      externalRunId: "cursor-session-refund-retry-demo",
     },
     changeSummary: "Adds a second refund attempt after a gateway timeout and records the refund response.",
     claimedSurfaces: ["Payments/domain logic"],

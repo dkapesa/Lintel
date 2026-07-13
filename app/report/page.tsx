@@ -4,6 +4,7 @@ import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import AppShell from "../app-shell";
 import { useGuidedTour } from "../guided-tour";
 import { compareChangePassport, passportHandoffSummary, type ChangePassport, type ChangePassportComparison } from "../../lib/change-passport";
+import { buildBuilderVerifierAssessment, builderVerifierHandoffSummary, type BuilderVerifierAssessment } from "../../lib/builder-verifier-boundary";
 import {
   assumptionHandoffSummary,
   buildEvidenceHierarchy,
@@ -1834,6 +1835,7 @@ function slackHandoffToText({
   passportSummary,
   evidenceSummary,
   assumptionSummary,
+  builderVerifierSummary,
 }: {
   report: Report;
   ownerLabel: string;
@@ -1843,6 +1845,7 @@ function slackHandoffToText({
   passportSummary?: string;
   evidenceSummary?: string;
   assumptionSummary?: string;
+  builderVerifierSummary?: string;
 }) {
   const topBlocker = conditions[0]
     ?? report.findings[0]?.title
@@ -1869,6 +1872,7 @@ function slackHandoffToText({
     ...(passportSummary ? [`Change Passport: ${passportSummary}`] : []),
     ...(evidenceSummary ? [`Evidence: ${evidenceSummary}`] : []),
     ...(assumptionSummary ? [`Assumptions: ${assumptionSummary}`] : []),
+    ...(builderVerifierSummary ? [`Verification boundary: ${builderVerifierSummary}`] : []),
     ...(humanDecision ? [`Human decision: ${humanDecision}`] : []),
     `Next action: ${actionProgress.readinessConclusion}`,
     "",
@@ -1903,6 +1907,70 @@ function PassportObservations({ title, items, empty }: { title: string; items: C
         </ul>
       ) : <p>{empty}</p>}
     </article>
+  );
+}
+
+function BuilderVerifierBoundarySection({ assessment }: { assessment: BuilderVerifierAssessment }) {
+  const sharedCritical = assessment.dimensions.some((item) => item.status === "shared" && (item.key === "provider" || item.key === "model" || item.key === "execution"));
+  const unknownCritical = assessment.dimensions.some((item) => item.status === "unknown" && (item.key === "provider" || item.key === "model" || item.key === "execution"));
+
+  return (
+    <section className={`section-block builder-verifier-boundary builder-verifier-boundary--${assessment.classification.replaceAll(" ", "-")}`} aria-labelledby="builder-verifier-title">
+      <div className="section-heading">
+        <div>
+          <span className="card-kicker">VERIFICATION BOUNDARY</span>
+          <h2 id="builder-verifier-title">Builder–Verifier Boundary</h2>
+          <p>Builder declarations are context. Lintel verification is shown separately and does not change the score here.</p>
+        </div>
+        <span className="section-count">{assessment.classification}</span>
+      </div>
+
+      {(sharedCritical || unknownCritical) && (
+        <p className={sharedCritical ? "boundary-warning boundary-warning--shared" : "boundary-warning"}>
+          {sharedCritical
+            ? "Same-context verification may be present. The deterministic baseline still ran where recorded."
+            : "Verification separation is not established from available metadata. Unknown remains unknown."}
+        </p>
+      )}
+
+      <div className="boundary-context-grid">
+        <article>
+          <span>Builder declared</span>
+          <strong>{assessment.builder.producerType}</strong>
+          <p>{[assessment.builder.tool, assessment.builder.provider, assessment.builder.model].filter(Boolean).join(" / ") || "No builder tool, provider or model supplied."}</p>
+        </article>
+        <article>
+          <span>Verified by Lintel</span>
+          <strong>{assessment.verifier.verifierTypes.filter((item) => item !== "mixed").join(" / ")}</strong>
+          <p>{assessment.verifier.deterministicBaselineApplied ? "Deterministic baseline applied." : "Deterministic baseline unknown."}</p>
+        </article>
+        <article>
+          <span>Run / head</span>
+          <strong>{assessment.canonicalRunId ? fingerprintPrefix(assessment.canonicalRunId) : "local"}</strong>
+          <p>{assessment.headSha ? `Head ${shortSha(assessment.headSha)}` : "Head SHA unavailable."}</p>
+        </article>
+      </div>
+
+      <p className="boundary-rationale">{assessment.rationale}</p>
+
+      <details className="boundary-details">
+        <summary>Inspect separation dimensions</summary>
+        <div className="boundary-dimension-grid">
+          {assessment.dimensions.map((dimension) => (
+            <article key={dimension.key} className={`boundary-dimension boundary-dimension--${dimension.status}`}>
+              <span>{dimension.status}</span>
+              <strong>{dimension.label}</strong>
+              <p>{dimension.rationale}</p>
+            </article>
+          ))}
+        </div>
+        {assessment.knownLimitations.length > 0 && (
+          <ul className="boundary-limitations">
+            {assessment.knownLimitations.map((limitation) => <li key={limitation}>{limitation}</li>)}
+          </ul>
+        )}
+      </details>
+    </section>
   );
 }
 
@@ -2226,6 +2294,20 @@ export default function ReportPage() {
       before the analysis at <code>{shortSha(readinessDelta.currentHeadSha)}</code>. Re-confirm it against the current head.
     </p>
   ) : null;
+  const builderVerifierAssessment = buildBuilderVerifierAssessment({
+    passport: changePassport,
+    repository: report.pr.repository,
+    pullRequestNumber: report.pr.number,
+    headSha: canonicalRun?.headSha,
+    canonicalRunId: canonicalRun?.runId,
+    analysisSource: canonicalRun?.analysisSource ?? (source === "demo" ? "demo" : "deterministic"),
+    provider: canonicalRun?.provider,
+    model: canonicalRun?.model,
+    generatorVersion: canonicalRun?.generatorVersion ?? "historical",
+    deterministicRulesetVersion: canonicalRun?.deterministicRulesetVersion ?? "historical",
+    humanDecisionPresent: !!latestHumanDecisionEvent,
+  });
+  const builderVerifierSummary = builderVerifierHandoffSummary(builderVerifierAssessment);
 
   const readinessTimeline = readinessDelta
     ? [deltaTimelineEvent(readinessDelta), ...baseReadinessTimeline]
@@ -2249,6 +2331,7 @@ export default function ReportPage() {
     passportSummary,
     evidenceSummary,
     assumptionSummary,
+    builderVerifierSummary,
   });
   const mergeSummaryMarkdown = mergeSummaryToMarkdown(report, {
     sourceLabel: sourceLabels[source],
@@ -2258,6 +2341,7 @@ export default function ReportPage() {
     passportSummary,
     evidenceSummary,
     assumptionSummary,
+    builderVerifierSummary,
   });
   const blockerSurfaceCount = affectedSurfaces.filter((surface) => surface.status === "Blocker").length;
   const confirmationSurfaceCount = affectedSurfaces.filter((surface) => surface.status === "Attention" || surface.status === "Watch").length;
@@ -3010,6 +3094,8 @@ export default function ReportPage() {
             </section>
           )}
 
+          <BuilderVerifierBoundarySection assessment={builderVerifierAssessment} />
+
           <section className="section-block change-passport" aria-labelledby="change-passport-title">
             <div className="section-heading">
               <div>
@@ -3081,6 +3167,8 @@ export default function ReportPage() {
                 <article><span>Completed</span><strong>{canonicalRun.completedAt ? timelineTime(canonicalRun.completedAt) : "Unknown"}</strong></article>
                 <article><span>Evidence model</span><strong>{canonicalRun.evidenceHierarchy?.schemaVersion ?? "historical"}</strong></article>
                 <article><span>Open assumptions</span><strong>{canonicalRun.evidenceHierarchy ? `${canonicalRun.evidenceHierarchy.openBlockingAssumptionCount} blocking / ${canonicalRun.evidenceHierarchy.openAdvisoryAssumptionCount} advisory` : "unavailable"}</strong></article>
+                <article><span>Boundary</span><strong>{canonicalRun.builderVerifier?.classification ?? "historical"}</strong></article>
+                <article><span>Verifier types</span><strong>{canonicalRun.builderVerifier?.verifierTypes.join(" / ") ?? "unavailable"}</strong></article>
               </div>
 
               <dl className="run-fingerprint-grid" aria-label="Canonical run fingerprints">
@@ -3090,6 +3178,7 @@ export default function ReportPage() {
                 <div><dt>Previous run</dt><dd>{fingerprintPrefix(canonicalRun.previousRunId)}</dd></div>
                 <div><dt>Evidence</dt><dd>{fingerprintPrefix(canonicalRun.evidenceHierarchy?.evidenceFingerprint)}</dd></div>
                 <div><dt>Assumptions</dt><dd>{fingerprintPrefix(canonicalRun.evidenceHierarchy?.assumptionRegistryFingerprint)}</dd></div>
+                <div><dt>Boundary</dt><dd>{fingerprintPrefix(canonicalRun.builderVerifier?.assessmentFingerprint)}</dd></div>
               </dl>
 
               {canonicalRun.reproducibilityLimitation && <p className="run-provenance-note">{canonicalRun.reproducibilityLimitation}</p>}

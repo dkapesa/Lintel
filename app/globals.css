@@ -1289,6 +1289,31 @@ button.review-diff-row-line:focus-visible { outline:2px solid var(--color-focus-
   .evidence-class-grid, .evidence-hierarchy-row, .evidence-hierarchy-row dl, .assumption-registry-row dl { grid-template-columns:1fr; }
 }
 
+/* V6.6 builder-verifier boundary */
+.builder-verifier-boundary { margin-top:26px; padding:22px 24px; border:1px solid var(--dline); border-radius:13px; background:var(--dpanel); }
+.boundary-warning { margin:14px 0 0; padding:11px 12px; border:1px solid rgba(139,169,212,.35); border-radius:10px; background:rgba(139,169,212,.07); color:#d6dade; font-size:10px; line-height:1.55; }
+.boundary-warning--shared { border-color:rgba(224,144,124,.4); background:rgba(224,144,124,.07); }
+.boundary-context-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-top:16px; }
+.boundary-context-grid article { min-width:0; padding:12px; border:1px solid #202226; border-radius:10px; background:var(--dpanel2); }
+.boundary-context-grid span, .boundary-dimension span { display:block; color:var(--dmuted); font-size:8px; font-weight:850; letter-spacing:.08em; text-transform:uppercase; }
+.boundary-context-grid strong, .boundary-dimension strong { display:block; margin-top:7px; color:var(--dink); font-size:12px; line-height:1.35; text-transform:capitalize; overflow-wrap:anywhere; }
+.boundary-context-grid p, .boundary-dimension p, .boundary-rationale { margin:7px 0 0; color:var(--dtext); font-size:10px; line-height:1.55; overflow-wrap:anywhere; }
+.boundary-rationale { padding:12px; border:1px solid var(--dline); border-radius:10px; background:var(--dpanel2); }
+.boundary-details { margin-top:12px; }
+.boundary-details summary { cursor:pointer; color:#d6dade; font-size:10px; font-weight:800; }
+.boundary-dimension-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-top:12px; }
+.boundary-dimension { min-width:0; padding:12px; border:1px solid #202226; border-radius:10px; background:var(--dpanel2); }
+.boundary-dimension--separate { border-color:rgba(98,191,142,.32); }
+.boundary-dimension--shared { border-color:rgba(224,144,124,.4); }
+.boundary-dimension--unknown { border-color:rgba(214,184,104,.32); }
+.boundary-limitations { display:grid; gap:6px; margin:12px 0 0; padding-left:18px; color:var(--dmuted); font-size:10px; line-height:1.55; }
+@media (max-width: 980px) {
+  .boundary-context-grid, .boundary-dimension-grid { grid-template-columns:1fr 1fr; }
+}
+@media (max-width: 680px) {
+  .boundary-context-grid, .boundary-dimension-grid { grid-template-columns:1fr; }
+}
+
 /* ============================================================
    E7.1 application shell — one shared frame for the workspace
    routes. Prefix: shell-. The root keeps the historical

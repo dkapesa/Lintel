@@ -1,10 +1,11 @@
 import type { Report } from "./mock-report";
 import type { ReportInput } from "./report-generator";
 import { buildEvidenceHierarchy, type EvidenceClass } from "./evidence-hierarchy";
+import { buildBuilderVerifierAssessment, type BoundaryStatus, type VerificationBoundaryClassification } from "./builder-verifier-boundary";
 
-export const CANONICAL_RUN_SCHEMA_VERSION = "1.1";
+export const CANONICAL_RUN_SCHEMA_VERSION = "1.2";
 export const REPORT_SCHEMA_VERSION = "1.0";
-export const REPORT_GENERATOR_VERSION = "6.4";
+export const REPORT_GENERATOR_VERSION = "6.6";
 export const DETERMINISTIC_RULESET_VERSION = "6.3";
 
 export type CanonicalRunSourceType = "github-app" | "github-pr" | "manual" | "sample" | "demo";
@@ -60,6 +61,16 @@ export type CanonicalReviewRunManifest = {
     activeAssumptionIds: string[];
     openBlockingAssumptionCount: number;
     openAdvisoryAssumptionCount: number;
+  };
+  builderVerifier?: {
+    schemaVersion: string;
+    assessmentId: string;
+    assessmentFingerprint: string;
+    classification: VerificationBoundaryClassification;
+    builderProducerType: string;
+    verifierTypes: string[];
+    dimensions: Record<string, BoundaryStatus>;
+    deterministicBaselineApplied: boolean;
   };
   previousRunId?: string;
   processingState: "completed" | "failed" | "historical";
@@ -215,10 +226,24 @@ export function createCanonicalReviewRunManifest({
   const configurationFingerprint = reviewConfigurationFingerprint(input, analysisSource, provider, model);
   const resultFingerprint = reportFingerprint(report);
   const reproducibility = defaultReproducibility(inferredSourceType, analysisSource);
-  const evidenceHierarchy = buildEvidenceHierarchy(report, input.changePassport, { runId, headSha });
+  const resolvedRunId = runId ?? `run_${inputFingerprint.slice(0, 10)}_${configurationFingerprint.slice(0, 8)}_${resultFingerprint.slice(0, 8)}`;
+  const evidenceHierarchy = buildEvidenceHierarchy(report, input.changePassport, { runId: resolvedRunId, headSha });
+  const builderVerifier = buildBuilderVerifierAssessment({
+    passport: input.changePassport,
+    repository: input.repository,
+    pullRequestNumber,
+    headSha,
+    canonicalRunId: resolvedRunId,
+    analysisSource,
+    provider,
+    model,
+    generatorVersion: REPORT_GENERATOR_VERSION,
+    deterministicRulesetVersion: DETERMINISTIC_RULESET_VERSION,
+    createdAt: completedAt,
+  });
 
   return {
-    runId: runId ?? `run_${inputFingerprint.slice(0, 10)}_${configurationFingerprint.slice(0, 8)}_${resultFingerprint.slice(0, 8)}`,
+    runId: resolvedRunId,
     schemaVersion: CANONICAL_RUN_SCHEMA_VERSION,
     sourceType: inferredSourceType,
     repository: input.repository,
@@ -255,6 +280,19 @@ export function createCanonicalReviewRunManifest({
       activeAssumptionIds: evidenceHierarchy.assumptions.filter((assumption) => assumption.status === "open").slice(0, 12).map((assumption) => assumption.assumptionId),
       openBlockingAssumptionCount: evidenceHierarchy.openBlockingAssumptions,
       openAdvisoryAssumptionCount: evidenceHierarchy.openAdvisoryAssumptions,
+    },
+    builderVerifier: {
+      schemaVersion: builderVerifier.schemaVersion,
+      assessmentId: builderVerifier.assessmentId,
+      assessmentFingerprint: builderVerifier.fingerprint,
+      classification: builderVerifier.classification,
+      builderProducerType: builderVerifier.builder.producerType,
+      verifierTypes: builderVerifier.verifier.verifierTypes,
+      dimensions: builderVerifier.dimensions.reduce<Record<string, BoundaryStatus>>((result, item) => {
+        result[item.key] = item.status;
+        return result;
+      }, {}),
+      deterministicBaselineApplied: builderVerifier.verifier.deterministicBaselineApplied,
     },
     previousRunId,
     processingState: "completed",

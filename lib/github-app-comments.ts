@@ -1,5 +1,6 @@
 import type { Report } from "./mock-report";
 import { fingerprintPrefix, type CanonicalReviewRunManifest } from "./canonical-review-run";
+import { buildBuilderVerifierAssessment, builderVerifierHandoffSummary } from "./builder-verifier-boundary";
 import { compareChangePassport, passportHandoffSummary, type ChangePassport } from "./change-passport";
 import { assumptionHandoffSummary, buildEvidenceHierarchy, evidenceHandoffSummary } from "./evidence-hierarchy";
 import { shortSha, type ReadinessDelta } from "./readiness-delta";
@@ -98,6 +99,18 @@ export function githubDecisionCommentBody(report: Report, options: { headSha: st
     ? passportHandoffSummary(options.changePassport, compareChangePassport(options.changePassport, report))
     : undefined;
   const evidenceHierarchy = buildEvidenceHierarchy(report, options.changePassport, { runId: options.canonicalRun?.runId, headSha: options.headSha });
+  const builderVerifier = buildBuilderVerifierAssessment({
+    passport: options.changePassport,
+    repository: report.pr.repository,
+    pullRequestNumber: report.pr.number,
+    headSha: options.headSha,
+    canonicalRunId: options.canonicalRun?.runId,
+    analysisSource: options.canonicalRun?.analysisSource ?? "deterministic",
+    provider: options.canonicalRun?.provider,
+    model: options.canonicalRun?.model,
+    generatorVersion: options.canonicalRun?.generatorVersion ?? "historical",
+    deterministicRulesetVersion: options.canonicalRun?.deterministicRulesetVersion ?? "historical",
+  });
 
   return [
     LINTEL_COMMENT_MARKER,
@@ -115,6 +128,7 @@ export function githubDecisionCommentBody(report: Report, options: { headSha: st
     ...(passportSummary ? [`**Change Passport:** ${safeMarkdownText(passportSummary)}`] : []),
     `**Evidence:** ${safeMarkdownText(evidenceHandoffSummary(evidenceHierarchy))}`,
     `**Assumptions:** ${safeMarkdownText(assumptionHandoffSummary(evidenceHierarchy))}`,
+    `**Verification boundary:** ${safeMarkdownText(builderVerifierHandoffSummary(builderVerifier))}`,
     "",
     "### Top blockers",
     bulletList(topBlockers(report), "No blockers detected.", 4),

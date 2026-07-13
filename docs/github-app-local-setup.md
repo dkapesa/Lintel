@@ -207,6 +207,40 @@ Supported and accepted are deliberately different. Supported means evidence back
 
 Canonical manifests store only safe evidence-model metadata: schema versions, fingerprints, counts by evidence class, active assumption IDs and open blocking/advisory assumption counts. They do not embed raw diffs, prompts, transcripts, credentials, webhook payloads or full unbounded metadata.
 
+## Builder-verifier boundary
+
+Lintel records a safe Builder-Verifier assessment for new canonical runs.
+
+The assessment separates:
+
+- builder context declared through the Change Passport;
+- deterministic Lintel verification;
+- optional model-assisted verification;
+- local human decisions where present.
+
+Separation dimensions are non-numeric:
+
+- separate;
+- shared;
+- unknown;
+- not applicable.
+
+Tracked dimensions include tool, provider, model, execution/run, deterministic-analysis and human-review boundaries.
+
+Overall classifications are:
+
+- independently verified;
+- partially separated;
+- same-context verification;
+- separation unknown;
+- not applicable.
+
+The classification is conservative. A different provider or model is one separation dimension, not proof of complete independence. Self-review or shared model context is not presented as independent verification. Unknown metadata remains unknown.
+
+The deterministic Lintel baseline is recorded as independently applied to observed change input and does not rely on builder claims. Builder declarations do not suppress findings, clear missing tests, prove assumptions, change risk bands or change recommendations.
+
+Canonical manifests store only safe boundary provenance: schema version, assessment ID, fingerprint, classification, builder producer type, verifier types, dimension summary and deterministic-baseline presence. They do not store prompts, transcripts, raw diffs, secrets, tokens or arbitrary execution metadata.
+
 ## Repository enable and disable
 
 The local GitHub App management surface can enable or disable installed repositories for Lintel processing.

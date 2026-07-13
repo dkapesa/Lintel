@@ -1,5 +1,6 @@
 import type { ChangePassport } from "./change-passport";
 import { buildEvidenceHierarchy } from "./evidence-hierarchy";
+import { buildBuilderVerifierAssessment, type VerificationBoundaryClassification } from "./builder-verifier-boundary";
 import type { Recommendation, Report, RiskLevel } from "./mock-report";
 import { decisionConditions, deduplicateReportItems } from "./report-quality";
 
@@ -36,6 +37,16 @@ export type ReadinessDelta = {
     assumptionsInvalidated: number;
     assumptionsAccepted: number;
     assumptionsBecameStale: number;
+  };
+  verificationBoundaryMovement?: {
+    previousClassification?: VerificationBoundaryClassification;
+    currentClassification: VerificationBoundaryClassification;
+    builderContextAdded: boolean;
+    verifierContextChanged: boolean;
+    separationChanged: boolean;
+    sameContextDetected: boolean;
+    separationBecameUnknown: boolean;
+    deterministicBaselineVersionChanged: boolean;
   };
   classification: ReadinessDeltaClassification;
   generatedAt: string;
@@ -77,6 +88,7 @@ export type ReviewDiff = {
   testGaps: ReviewDiffItem[];
   mergeConditions: ReviewDiffItem[];
   evidenceMovement?: ReadinessDelta["evidenceMovement"];
+  verificationBoundaryMovement?: ReadinessDelta["verificationBoundaryMovement"];
   generatedAt: string;
   failureCategory?: string;
 };
@@ -491,6 +503,36 @@ export function createReadinessDelta(
     assumptionsAccepted: currentEvidence.assumptions.filter((assumption) => previousAssumptionIds.has(assumption.assumptionId) && assumption.status === "accepted").length,
     assumptionsBecameStale: currentEvidence.assumptions.filter((assumption) => assumption.stale).length,
   };
+  const previousBoundary = previousRun ? buildBuilderVerifierAssessment({
+    passport: previousRun.changePassport,
+    repository: previousRun.repository,
+    pullRequestNumber: previousRun.pullRequestNumber,
+    headSha: previousRun.headSha,
+    canonicalRunId: previousRun.runId,
+    analysisSource: previousRun.analysisSource,
+    generatorVersion: "historical",
+    deterministicRulesetVersion: "historical",
+  }) : null;
+  const currentBoundary = buildBuilderVerifierAssessment({
+    passport: currentRun.changePassport,
+    repository: currentRun.repository,
+    pullRequestNumber: currentRun.pullRequestNumber,
+    headSha: currentRun.headSha,
+    canonicalRunId: currentRun.runId,
+    analysisSource: currentRun.analysisSource,
+    generatorVersion: "historical",
+    deterministicRulesetVersion: "historical",
+  });
+  const verificationBoundaryMovement = {
+    previousClassification: previousBoundary?.classification,
+    currentClassification: currentBoundary.classification,
+    builderContextAdded: !previousRun?.changePassport && !!currentRun.changePassport,
+    verifierContextChanged: previousBoundary ? previousBoundary.verifier.analysisSource !== currentBoundary.verifier.analysisSource : false,
+    separationChanged: previousBoundary ? previousBoundary.classification !== currentBoundary.classification : false,
+    sameContextDetected: currentBoundary.classification === "same-context verification",
+    separationBecameUnknown: previousBoundary ? previousBoundary.classification !== "separation unknown" && currentBoundary.classification === "separation unknown" : currentBoundary.classification === "separation unknown",
+    deterministicBaselineVersionChanged: false,
+  };
 
   return {
     previousRunId: previousRun?.runId,
@@ -515,6 +557,7 @@ export function createReadinessDelta(
     addedTestOrEvidenceGaps,
     clearedTestOrEvidenceGaps,
     evidenceMovement,
+    verificationBoundaryMovement,
     classification: classifyDelta({
       previousRun,
       scoreChange,
@@ -585,6 +628,7 @@ export function createReviewDiff(
       reopenedKeys,
     }),
     evidenceMovement: delta.evidenceMovement,
+    verificationBoundaryMovement: delta.verificationBoundaryMovement,
     generatedAt,
   };
 }

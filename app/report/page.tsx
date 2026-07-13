@@ -99,12 +99,22 @@ import {
 import {
   defaultReviewState,
   readReviewState,
+  readReviewStates,
   REVIEW_STATUSES,
   reviewStateKeyForReport,
   type ReportReviewState,
   type ReviewStatus,
   writeReviewState,
 } from "../../lib/review-state";
+import {
+  activeAssignableMembers,
+  activeWorkspace,
+  ensureWorkspaceStore,
+  findMemberByOwnerLabel,
+  workspaceScopedReviewKey,
+  type TeamWorkspace,
+  type WorkspaceStore,
+} from "../../lib/team-workspace";
 
 type GeneratedReportSource = "ai" | "deterministic";
 type ReportSource = GeneratedReportSource | "demo";
@@ -2401,6 +2411,7 @@ export default function ReportPage() {
   const [quickActionsOpen, setQuickActionsOpen] = useState(false);
   const [quickActionMessage, setQuickActionMessage] = useState<{ state: QuickActionMessageState; text: string } | null>(null);
   const [reviewState, setReviewState] = useState<ReportReviewState>(() => defaultReviewState(demoReport));
+  const [workspaceStore, setWorkspaceStore] = useState<WorkspaceStore | null>(null);
   const [decisionHistory, setDecisionHistory] = useState<DecisionHistoryEvent[]>(() => initialDecisionHistory(demoReport));
   const [humanDecisionLedger, setHumanDecisionLedger] = useState<HumanDecisionLedger>(() => createEmptyHumanDecisionLedger({ report: demoReport, canonicalRun: historicalCanonicalRunManifest(demoReport, "demo") }));
   const [actionStatusOverrides, setActionStatusOverrides] = useState<Record<string, ReviewActionStatus>>({});
@@ -2549,8 +2560,16 @@ export default function ReportPage() {
   const lastDecisionUpdate = decisionHistory[0]?.timestamp ?? reviewState.updatedAt;
   const operationalStatus = report.operationalReadiness?.status ?? "Not assessed";
   const qualityStatus = report.reportQuality?.status ?? "Not assessed";
+  const currentWorkspace: TeamWorkspace | null = workspaceStore ? activeWorkspace(workspaceStore) : null;
   const suggestedOwners = suggestedReviewerOwners(report);
   const displayedOwner = ownerDisplay(reviewState.owner, suggestedOwners);
+  const actorMember = findMemberByOwnerLabel(currentWorkspace, reviewState.owner);
+  const reportOwnerOptions = [
+    "Unassigned",
+    ...(currentWorkspace ? activeAssignableMembers(currentWorkspace).map((member) => member.displayName) : []),
+    ...REVIEW_OWNER_OPTIONS.filter((owner) => owner !== "Unassigned"),
+  ].filter((owner, index, values) => values.indexOf(owner) === index);
+  const reportOwnerIsHistorical = reviewState.owner !== "Unassigned" && !reportOwnerOptions.includes(reviewState.owner);
   const studioDecisionText = studioDecisionLabel(studioDecision, acceptedRiskReason);
   const studioReviewState: ReportReviewState = {
     ...reviewState,
@@ -2808,7 +2827,19 @@ export default function ReportPage() {
 
   useEffect(() => {
     try {
-      const savedState = readReviewState(window.localStorage, report);
+      setWorkspaceStore(ensureWorkspaceStore(window.localStorage));
+    } catch {
+      setWorkspaceStore(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    try {
+      const store = ensureWorkspaceStore(window.localStorage);
+      setWorkspaceStore(store);
+      const key = workspaceScopedReviewKey(store.activeWorkspaceId, reviewStateKeyForReport(report));
+      const allStates = readReviewStates(window.localStorage);
+      const savedState = allStates[key] ?? readReviewState(window.localStorage, report);
       setReviewState(savedState);
       setStudioDecision(studioDecisionFromReviewState(savedState.status));
       setAcceptedRiskReason("");
@@ -2887,6 +2918,9 @@ export default function ReportPage() {
           actor: {
             displayLabel: displayedOwner === "Unassigned" ? "Local reviewer" : displayedOwner,
             source: "local",
+            workspaceId: currentWorkspace?.workspaceId,
+            memberId: actorMember?.memberId,
+            role: actorMember?.role,
           },
         },
       );
@@ -2898,6 +2932,9 @@ export default function ReportPage() {
         actor: {
           displayLabel: displayedOwner === "Unassigned" ? "Local reviewer" : displayedOwner,
           source: "local",
+          workspaceId: currentWorkspace?.workspaceId,
+          memberId: actorMember?.memberId,
+          role: actorMember?.role,
         },
       });
       setHumanDecisionLedger(next);
@@ -2907,7 +2944,9 @@ export default function ReportPage() {
 
   function updateReviewState(nextState: ReportReviewState) {
     try {
-      const savedState = writeReviewState(window.localStorage, reviewStateKeyForReport(report), nextState);
+      const store = ensureWorkspaceStore(window.localStorage);
+      setWorkspaceStore(store);
+      const savedState = writeReviewState(window.localStorage, workspaceScopedReviewKey(store.activeWorkspaceId, reviewStateKeyForReport(report)), nextState);
       setReviewState(savedState);
       return savedState;
     } catch {
@@ -5224,10 +5263,16 @@ export default function ReportPage() {
               <label>
                 <span>Owner</span>
                 <select value={reviewState.owner} onChange={(event) => updateReviewOwner(event.target.value as ReviewerOwner)}>
-                  {REVIEW_OWNER_OPTIONS.map((owner) => <option key={owner} value={owner}>{owner}</option>)}
+                  {reportOwnerOptions.map((owner) => <option key={owner} value={owner}>{owner}</option>)}
+                  {reportOwnerIsHistorical && <option value={reviewState.owner}>{reviewState.owner} (inactive or historical)</option>}
                 </select>
               </label>
-              <p>Suggested owner cue: {suggestedOwners.length > 0 ? suggestedOwners.join(" / ") : "No specialist owner cue detected."}</p>
+              <p>
+                {currentWorkspace
+                  ? `Owner choices use active members in ${currentWorkspace.name}. Roles are local responsibility metadata, not access control.`
+                  : "Suggested owner cue"}{" "}
+                {suggestedOwners.length > 0 ? `Suggested cue: ${suggestedOwners.join(" / ")}` : "No specialist owner cue detected."}
+              </p>
               <label>
                 <span>Reviewer note</span>
                 <textarea

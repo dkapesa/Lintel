@@ -11,6 +11,7 @@ import { buildVerificationPack, type VerificationPack } from "../../lib/verifica
 import type { ContractRecheckRecord } from "../../lib/contract-recheck";
 import { generateReport, GENERATED_REPORT_STORAGE_KEY, type ReportInput, type ReportInputSource } from "../../lib/report-generator";
 import { addReportToHistory, clearReportHistory, deleteReportFromHistory, readReportHistory, type ReportHistoryEntry } from "../../lib/report-history";
+import { associateReportWithWorkspace, ensureWorkspaceStore } from "../../lib/team-workspace";
 import type { Report } from "../../lib/mock-report";
 import { shortSha, type ReadinessDelta, type ReviewDiff } from "../../lib/readiness-delta";
 import { PR_SAMPLES } from "../../lib/sample-pr-input";
@@ -876,7 +877,11 @@ export default function NewReportPage() {
 
       sessionStorage.setItem(GENERATED_REPORT_STORAGE_KEY, JSON.stringify({ report: generatedReport, source, canonicalRun, changePassport: selectedChangePassport, mergeContract, verificationPack, contractRecheck }));
       try {
-        setHistory(addReportToHistory(window.localStorage, generatedReport, source, canonicalRun, selectedChangePassport, mergeContract, verificationPack, contractRecheck));
+        const nextHistory = addReportToHistory(window.localStorage, generatedReport, source, canonicalRun, selectedChangePassport, mergeContract, verificationPack, contractRecheck);
+        const store = ensureWorkspaceStore(window.localStorage, nextHistory);
+        const newEntry = nextHistory[0];
+        if (newEntry) associateReportWithWorkspace(window.localStorage, newEntry, store.activeWorkspaceId);
+        setHistory(nextHistory);
       } catch {
         // Report generation remains usable when persistent browser storage is unavailable.
       }

@@ -6,6 +6,7 @@
 export type ShellIconName =
   | "new-report"
   | "risk-inbox"
+  | "team-workspace"
   | "review-operations"
   | "reports"
   | "review-policies"
@@ -35,6 +36,7 @@ export const SHELL_NAV_GROUPS: ShellNavGroup[] = [
     items: [
       { label: "New report", href: "/new", icon: "new-report" },
       { label: "Risk inbox", href: "/workspace", icon: "risk-inbox" },
+      { label: "Team workspace", href: "/team", icon: "team-workspace" },
       { label: "Review operations", href: "/review-operations", icon: "review-operations" },
       { label: "Reports", href: "/report", icon: "reports", activePrefix: "/report" },
     ],
@@ -86,6 +88,13 @@ const SHELL_ICON_PATHS: Record<ShellIconName, React.ReactNode> = {
     </>
   ),
   "review-operations": <path d="M1.75 8.5h2.4l1.7-4.2 2.9 7.4 1.6-3.2h3.9" />,
+  "team-workspace": (
+    <>
+      <circle cx="5.4" cy="5.4" r="2" />
+      <circle cx="10.8" cy="6.2" r="1.7" />
+      <path d="M2.6 12.8c.55-2 1.75-3.1 2.8-3.1s2.25 1.1 2.8 3.1M8.7 12.8c.45-1.45 1.25-2.35 2.1-2.35.8 0 1.6.75 2.1 2.35" />
+    </>
+  ),
   reports: (
     <>
       <path d="M4.25 2.75h5.25l2.25 2.25v8.25h-7.5z" />

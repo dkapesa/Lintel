@@ -45,6 +45,8 @@ export type RecommendationDivergence =
 export type HumanDecisionActor = {
   displayLabel: string;
   source: "local" | "github" | "imported" | "unknown";
+  workspaceId?: string;
+  memberId?: string;
   externalId?: string;
   role?: string;
 };
@@ -160,6 +162,8 @@ function defaultActor(input?: Partial<HumanDecisionActor>): HumanDecisionActor {
   return {
     displayLabel: safeText(input?.displayLabel, 80) ?? "Local reviewer",
     source: input?.source === "github" || input?.source === "imported" || input?.source === "unknown" ? input.source : "local",
+    workspaceId: safeText(input?.workspaceId, 120),
+    memberId: safeText(input?.memberId, 120),
     externalId: safeText(input?.externalId, 120),
     role: safeText(input?.role, 80),
   };
@@ -440,6 +444,8 @@ function parseActor(value: unknown): HumanDecisionActor {
   return defaultActor({
     displayLabel: typeof record.displayLabel === "string" ? record.displayLabel : "Unknown actor",
     source: record.source === "local" || record.source === "github" || record.source === "imported" || record.source === "unknown" ? record.source : "unknown",
+    workspaceId: typeof record.workspaceId === "string" ? record.workspaceId : undefined,
+    memberId: typeof record.memberId === "string" ? record.memberId : undefined,
     externalId: typeof record.externalId === "string" ? record.externalId : undefined,
     role: typeof record.role === "string" ? record.role : undefined,
   });

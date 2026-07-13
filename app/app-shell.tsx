@@ -10,6 +10,15 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { findShellRoute, isShellNavItemActive, SHELL_NAV_GROUPS, ShellIcon } from "./nav-config";
+import {
+  activeWorkspace,
+  ensureWorkspaceStore,
+  setActiveWorkspace,
+  workspaceLabel,
+  WORKSPACE_CHANGED_EVENT,
+  type TeamWorkspace,
+  type WorkspaceStore,
+} from "../lib/team-workspace";
 
 const NAV_COLLAPSE_STORAGE_KEY = "lintel.shell.nav-collapsed.v1";
 const MOBILE_NAV_QUERY = "(max-width: 900px)";
@@ -70,6 +79,67 @@ function ShellLocalNote({ onNavigate }: { onNavigate?: () => void }) {
     <Link className="shell-local-note" href="/docs/security-model.md" onClick={onNavigate}>
       Local-first · raw diffs are not stored
     </Link>
+  );
+}
+
+function WorkspaceSwitcher({ onNavigate }: { onNavigate?: () => void }) {
+  const [store, setStore] = useState<WorkspaceStore | null>(null);
+
+  useEffect(() => {
+    try {
+      setStore(ensureWorkspaceStore(window.localStorage));
+    } catch {
+      setStore(null);
+    }
+
+    const onWorkspaceChange = () => {
+      try {
+        setStore(ensureWorkspaceStore(window.localStorage));
+      } catch {
+        setStore(null);
+      }
+    };
+    window.addEventListener(WORKSPACE_CHANGED_EVENT, onWorkspaceChange);
+    window.addEventListener("storage", onWorkspaceChange);
+    return () => {
+      window.removeEventListener(WORKSPACE_CHANGED_EVENT, onWorkspaceChange);
+      window.removeEventListener("storage", onWorkspaceChange);
+    };
+  }, []);
+
+  const current: TeamWorkspace | null = store ? activeWorkspace(store) : null;
+  const workspaces = store?.workspaces.filter((workspace) => workspace.status === "active") ?? [];
+
+  function changeWorkspace(workspaceId: string) {
+    try {
+      const next = setActiveWorkspace(window.localStorage, workspaceId);
+      setStore(next);
+      window.dispatchEvent(new Event(WORKSPACE_CHANGED_EVENT));
+    } catch {
+      // Workspace selection is local-only; failure should not break navigation.
+    }
+  }
+
+  return (
+    <div className="shell-workspace-switcher" aria-label="Active team workspace">
+      <label>
+        <span>Workspace</span>
+        <select
+          value={store?.activeWorkspaceId ?? current?.workspaceId ?? ""}
+          onChange={(event) => changeWorkspace(event.target.value)}
+          aria-label="Select active workspace"
+        >
+          {workspaces.map((workspace) => (
+            <option key={workspace.workspaceId} value={workspace.workspaceId}>{workspace.name}</option>
+          ))}
+        </select>
+      </label>
+      <div className="shell-workspace-meta">
+        <strong>{current?.name ?? "Local Review Workspace"}</strong>
+        <span>{workspaceLabel(current)} · data stored on this device</span>
+      </div>
+      <Link className="shell-workspace-link" href="/team" onClick={onNavigate}>Team workspace</Link>
+    </div>
   );
 }
 
@@ -191,12 +261,13 @@ export default function AppShell({ children, title, context, actions }: AppShell
         </div>
         <ShellNav pathname={pathname} id="shell-primary-nav" />
         <div className="shell-sidebar-end">
+          <WorkspaceSwitcher />
           <ShellLocalNote />
           <div className="shell-account">
             <div className="shell-avatar" aria-hidden="true">N</div>
             <div className="shell-account-meta">
-              <strong>Demo Workspace</strong>
-              <span>Local data only</span>
+              <strong>Local workspace</strong>
+              <span>Responsibility metadata</span>
             </div>
           </div>
         </div>
@@ -261,6 +332,7 @@ export default function AppShell({ children, title, context, actions }: AppShell
             </div>
             <ShellNav pathname={pathname} onNavigate={() => setDrawerOpen(false)} />
             <div className="shell-sidebar-end">
+              <WorkspaceSwitcher onNavigate={() => setDrawerOpen(false)} />
               <ShellLocalNote onNavigate={() => setDrawerOpen(false)} />
             </div>
           </div>

@@ -11,10 +11,13 @@ export const REVIEW_OWNER_OPTIONS = [
   "Senior reviewer",
 ] as const;
 
-export type ReviewerOwner = (typeof REVIEW_OWNER_OPTIONS)[number];
+export type ReviewerOwner = (typeof REVIEW_OWNER_OPTIONS)[number] | (string & {});
 
 export function isReviewerOwner(value: unknown): value is ReviewerOwner {
-  return typeof value === "string" && (REVIEW_OWNER_OPTIONS as readonly string[]).includes(value);
+  return typeof value === "string"
+    && value.length > 0
+    && value.length <= 80
+    && !/(diff --git|@@|--- a\/|\+\+\+ b\/|\b(token|secret|authorization)\b\s*[:=])/i.test(value);
 }
 
 function reportEvidenceText(report: Report) {

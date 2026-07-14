@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Newsreader } from "next/font/google";
 import "./globals.css";
 import "./design-system.css";
 import GuidedTour from "./guided-tour";
+import { ThemeProvider, THEME_PREFERENCE_STORAGE_KEY } from "./theme-provider";
 
 /* Deterministic typography (W1 landing, E7.0 application). Geist Sans and
    Geist Mono are the application faces (via --font-sans/--font-mono in
@@ -17,10 +18,27 @@ export const metadata: Metadata = {
     "Lintel turns pull requests into inspectable evidence, unresolved conditions and a clear engineering decision. Agents create code; Lintel verifies what is ready — and the engineer stays the final authority.",
 };
 
+const themeBootstrapScript = `(() => {
+  try {
+    const key = ${JSON.stringify(THEME_PREFERENCE_STORAGE_KEY)};
+    const stored = window.localStorage.getItem(key);
+    const preference = stored === "dark" || stored === "light" || stored === "system" ? stored : "system";
+    const resolved = preference === "system"
+      ? (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+      : preference;
+    document.documentElement.dataset.theme = resolved;
+    document.documentElement.style.colorScheme = resolved;
+  } catch {
+    document.documentElement.dataset.theme = "dark";
+    document.documentElement.style.colorScheme = "dark";
+  }
+})();`;
+
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" data-scroll-behavior="smooth" className={`${geist.variable} ${geistMono.variable} ${newsreader.variable}`}>
-      <body><GuidedTour>{children}</GuidedTour></body>
+    <html lang="en" data-scroll-behavior="smooth" className={`${geist.variable} ${geistMono.variable} ${newsreader.variable}`} suppressHydrationWarning>
+      <head><script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} /></head>
+      <body><ThemeProvider><GuidedTour>{children}</GuidedTour></ThemeProvider></body>
     </html>
   );
 }

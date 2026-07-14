@@ -10,6 +10,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { findShellRoute, isShellNavItemActive, SHELL_NAV_GROUPS, ShellIcon } from "./nav-config";
+import { ThemeControl } from "./theme-provider";
 import {
   activeWorkspace,
   ensureWorkspaceStore,
@@ -298,7 +299,7 @@ export default function AppShell({ children, title, context, actions }: AppShell
             <strong className="shell-topbar-title">{routeTitle}</strong>
             {context && <span className="shell-topbar-meta">{context}</span>}
           </div>
-          {actions && <div className="shell-topbar-actions">{actions}</div>}
+          <div className="shell-topbar-actions"><ThemeControl />{actions}</div>
         </header>
         <main className="shell-main">{children}</main>
       </div>

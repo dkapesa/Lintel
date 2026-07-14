@@ -248,9 +248,9 @@ function ownerCueFor(statement: string, report: Report) {
 export function buildEvidenceHierarchy(
   report: Report,
   passport?: ChangePassport | null,
-  metadata?: { runId?: string; headSha?: string },
+  metadata?: { runId?: string; headSha?: string; createdAt?: string },
 ): EvidenceHierarchySummary {
-  const timestamp = new Date().toISOString();
+  const timestamp = metadata?.createdAt ?? new Date().toISOString();
   const conditions = decisionConditions(report.conditionsBeforeMerge);
   const records: EvidenceRecord[] = [];
   const assumptions: AssumptionRecord[] = [];

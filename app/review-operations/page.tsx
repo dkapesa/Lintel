@@ -199,7 +199,7 @@ export default function ReviewOperationsPage() {
         <header className="workspace-header workspace-header--app operations-header">
           <div className="workspace-header-copy">
             <span className="eyebrow">LOCAL REVIEW OPERATIONS</span>
-            <h1>What keeps blocking merge readiness?</h1>
+            <h1>Merge readiness operations</h1>
             <p>Aggregate local Lintel reports into practical reviewer signals: readiness distribution, missing-test trends, recurring blockers and operational risk patterns.</p>
             <span className="workspace-header-note">Local prototype / based on reports on this device / not production analytics</span>
           </div>

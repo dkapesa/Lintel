@@ -342,7 +342,7 @@ export function createCanonicalReviewRunManifest({
 }
 
 export function historicalCanonicalRunManifest(report: Report, sourceType: CanonicalRunSourceType = "demo"): CanonicalReviewRunManifest {
-  const timestamp = report.pr.updatedAt && !Number.isNaN(Date.parse(report.pr.updatedAt)) ? report.pr.updatedAt : new Date().toISOString();
+  const timestamp = report.pr.updatedAt || "unavailable";
   const resultFingerprint = reportFingerprint(report);
   return {
     runId: `historical_${resultFingerprint.slice(0, 12)}`,

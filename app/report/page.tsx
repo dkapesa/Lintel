@@ -2508,8 +2508,11 @@ export default function ReportPage() {
   const [quickActionMessage, setQuickActionMessage] = useState<{ state: QuickActionMessageState; text: string } | null>(null);
   const [reviewState, setReviewState] = useState<ReportReviewState>(() => defaultReviewState(demoReport));
   const [workspaceStore, setWorkspaceStore] = useState<WorkspaceStore | null>(null);
-  const [decisionHistory, setDecisionHistory] = useState<DecisionHistoryEvent[]>(() => initialDecisionHistory(demoReport));
-  const [humanDecisionLedger, setHumanDecisionLedger] = useState<HumanDecisionLedger>(() => createEmptyHumanDecisionLedger({ report: demoReport, canonicalRun: historicalCanonicalRunManifest(demoReport, "demo") }));
+  const [decisionHistory, setDecisionHistory] = useState<DecisionHistoryEvent[]>(() => initialDecisionHistory(demoReport, demoReport.pr.updatedAt));
+  const [humanDecisionLedger, setHumanDecisionLedger] = useState<HumanDecisionLedger>(() => createEmptyHumanDecisionLedger(
+    { report: demoReport, canonicalRun: historicalCanonicalRunManifest(demoReport, "demo") },
+    demoReport.pr.updatedAt,
+  ));
   const [actionStatusOverrides, setActionStatusOverrides] = useState<Record<string, ReviewActionStatus>>({});
   const [assumptionOverrides, setAssumptionOverrides] = useState<Record<string, LocalAssumptionOverride>>({});
   const [clauseOverrides, setClauseOverrides] = useState<Record<string, LocalClauseOverride>>({});
@@ -2682,6 +2685,7 @@ export default function ReportPage() {
 
   const { report, source } = displayedReport;
   const { pr, verdict } = report;
+  const reportRenderTimestamp = canonicalRun?.completedAt ?? canonicalRun?.createdAt ?? report.pr.updatedAt;
   const supportedReviewerFocus = pruneUnsupportedReviewerFocus(report);
   const activePolicy = reviewPolicyForProfile(pr.reviewProfile);
   const activePolicyStatus = policyStatusForReport(report, activePolicy);
@@ -2726,7 +2730,11 @@ export default function ReportPage() {
       : "No specialist focus"
     : "Not assessed";
   const evidenceLedger = buildEvidenceLedger(report, displayedConditions, supportedReviewerFocus);
-  const evidenceHierarchy = buildEvidenceHierarchy(report, changePassport, { runId: canonicalRun?.runId, headSha: canonicalRun?.headSha });
+  const evidenceHierarchy = buildEvidenceHierarchy(report, changePassport, {
+    runId: canonicalRun?.runId,
+    headSha: canonicalRun?.headSha,
+    createdAt: reportRenderTimestamp,
+  });
   const evidenceSummary = evidenceHandoffSummary(evidenceHierarchy);
   const assumptionSummary = assumptionHandoffSummary(evidenceHierarchy);
   const currentAssumptionStateKey = assumptionStateKey(report, canonicalRun?.runId);
@@ -2799,6 +2807,7 @@ export default function ReportPage() {
     generatorVersion: canonicalRun?.generatorVersion ?? "historical",
     deterministicRulesetVersion: canonicalRun?.deterministicRulesetVersion ?? "historical",
     humanDecisionPresent: !!latestHumanDecisionEvent,
+    createdAt: reportRenderTimestamp,
   });
   const builderVerifierSummary = builderVerifierHandoffSummary(builderVerifierAssessment);
   const generatedMergeContract = buildMergeContract({
@@ -2811,7 +2820,7 @@ export default function ReportPage() {
     headSha: canonicalRun?.headSha,
     sourceType: canonicalRun?.sourceType ?? source,
     reviewMode: canonicalRun?.reviewMode ?? pr.reviewProfile ?? "standard",
-    createdAt: canonicalRun?.completedAt,
+    createdAt: reportRenderTimestamp,
   });
   const mergeContract = storedMergeContract ?? generatedMergeContract;
   const mergeContractStateKey = contractStateKey(mergeContract);
@@ -2863,7 +2872,7 @@ export default function ReportPage() {
     decisionHistory,
     sourceType: canonicalRun?.sourceType ?? source,
     sourceUrl: storedVerificationPack?.changeIdentity.sourceUrl,
-    createdAt: canonicalRun?.completedAt,
+    createdAt: reportRenderTimestamp,
   });
   const verificationPackSummary = verificationPackHandoffSummary(verificationPack);
   const verificationPackMarkdown = verificationPackToMarkdown(verificationPack);

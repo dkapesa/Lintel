@@ -56,7 +56,7 @@
   --color-text-primary: #edece8;     /* warm off-white */
   --color-text-secondary: #a8aeb7;   /* cool neutral */
   --color-text-muted: #878e99;
-  --color-text-faint: #646b76;
+  --color-text-faint: #858c98;
   --color-text-inverse: #0b0c0e;
   --color-accent: #8ab2dd;
   --color-accent-strong: #b8cfec;
@@ -218,18 +218,18 @@
   --color-text-primary: #24262a;
   --color-text-secondary: #555b63;
   --color-text-muted: #70757d;
-  --color-text-faint: #898d93;
+  --color-text-faint: #666a71;
   --color-text-inverse: #f8f7f3;
   --color-accent: #426f9e;
   --color-accent-strong: #285a8d;
   --color-focus-ring: #356fa7;
   --color-success: #207957;
   --color-success-soft: rgb(32 121 87 / 11%);
-  --color-warning: #966415;
+  --color-warning: #82570f;
   --color-warning-strong: #7a4e08;
   --color-warning-muted: #866b3a;
   --color-warning-soft: rgb(150 100 21 / 12%);
-  --color-danger: #b34b43;
+  --color-danger: #a03e37;
   --color-danger-strong: #963a31;
   --color-danger-soft: rgb(179 75 67 / 11%);
   --color-information: #3d6f9f;
@@ -317,7 +317,7 @@ body {
   transform: translateY(1px);
 }
 
-:where(.fetch-diff-button, .generate-button, .history-delete, .report-history-heading button, .app-shell button, .app-shell a, .app-shell [role="button"], .app-shell select) {
+html.theme-transitioning :where(.fetch-diff-button, .generate-button, .history-delete, .report-history-heading button, .app-shell button, .app-shell a, .app-shell [role="button"], .app-shell select) {
   transition: color var(--transition-base), background-color var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base), opacity var(--transition-fast), transform var(--transition-fast);
 }
 
@@ -350,7 +350,7 @@ body {
 }
 
 /* Tabs, navigation, and selectable rows share one interaction language */
-:where(.app-shell .nav-item, .app-shell .report-tab, .app-shell .workspace-queue-tab, .app-shell .workspace-inbox-card, .app-shell .finding--selectable) {
+html.theme-transitioning :where(.app-shell .nav-item, .app-shell .report-tab, .app-shell .workspace-queue-tab, .app-shell .workspace-inbox-card, .app-shell .finding--selectable) {
   transition: color var(--transition-base), background-color var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base);
 }
 

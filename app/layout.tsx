@@ -29,8 +29,16 @@ const themeBootstrapScript = `(() => {
     document.documentElement.dataset.theme = resolved;
     document.documentElement.style.colorScheme = resolved;
   } catch {
-    document.documentElement.dataset.theme = "dark";
-    document.documentElement.style.colorScheme = "dark";
+    let resolved = "dark";
+    try {
+      if (typeof window.matchMedia === "function") {
+        resolved = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      }
+    } catch {
+      // Match-media access can also be unavailable in restricted contexts.
+    }
+    document.documentElement.dataset.theme = resolved;
+    document.documentElement.style.colorScheme = resolved;
   }
 })();`;
 

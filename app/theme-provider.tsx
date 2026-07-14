@@ -38,6 +38,30 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [preference, setPreference] = useState<ThemePreference>("system");
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>("dark");
   const preferenceRef = useRef<ThemePreference>("system");
+  const transitionRemovalTimer = useRef<number | null>(null);
+
+  const applyThemeWithTransition = (theme: ResolvedTheme) => {
+    const root = document.documentElement;
+    if (transitionRemovalTimer.current !== null) {
+      window.clearTimeout(transitionRemovalTimer.current);
+      transitionRemovalTimer.current = null;
+    }
+
+    const reducedMotion = typeof window.matchMedia === "function"
+      && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reducedMotion) {
+      root.classList.remove("theme-transitioning");
+      applyResolvedTheme(theme);
+      return;
+    }
+
+    root.classList.add("theme-transitioning");
+    applyResolvedTheme(theme);
+    transitionRemovalTimer.current = window.setTimeout(() => {
+      root.classList.remove("theme-transitioning");
+      transitionRemovalTimer.current = null;
+    }, 180);
+  };
 
   useEffect(() => {
     let storedPreference: ThemePreference = "system";
@@ -63,7 +87,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       if (preferenceRef.current === "system") applyPreference("system");
     };
     media?.addEventListener("change", onSystemThemeChange);
-    return () => media?.removeEventListener("change", onSystemThemeChange);
+    return () => {
+      media?.removeEventListener("change", onSystemThemeChange);
+      if (transitionRemovalTimer.current !== null) {
+        window.clearTimeout(transitionRemovalTimer.current);
+        transitionRemovalTimer.current = null;
+      }
+      document.documentElement.classList.remove("theme-transitioning");
+    };
   }, []);
 
   const value = useMemo<ThemeContextValue>(() => ({
@@ -80,7 +111,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       preferenceRef.current = safePreference;
       setPreference(safePreference);
       setResolvedTheme(nextTheme);
-      applyResolvedTheme(nextTheme);
+      applyThemeWithTransition(nextTheme);
     },
   }), [preference, resolvedTheme]);
 

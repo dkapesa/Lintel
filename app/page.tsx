@@ -1,119 +1,111 @@
 import Link from "next/link";
+import { historicalCanonicalRunManifest } from "../lib/canonical-review-run";
+import { buildEvidenceHierarchy } from "../lib/evidence-hierarchy";
+import { buildMergeContract } from "../lib/merge-contract";
+import { report } from "../lib/mock-report";
 import LandingNav from "./landing-nav";
 
-/* W1 landing. Lintel's signature motif: repository and evidence paths
-   converging on a single decision node. Decorative only — semantic colour
-   stays inside product frames. */
-function Topology({ variant }: { variant: "hero" | "cta" }) {
-  return (
-    <svg
-      className={`lp-topology lp-topology--${variant}`}
-      viewBox="0 0 1440 800"
-      preserveAspectRatio="xMidYMid slice"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <g fill="none" stroke="currentColor" strokeWidth="1.25">
-        <path d="M-40 110 C 300 130, 660 210, 1046 314" opacity="0.55" />
-        <path d="M-40 318 C 340 306, 700 314, 1044 322" opacity="0.8" />
-        <path d="M-40 560 C 320 544, 720 430, 1046 330" />
-        <path d="M-40 716 C 380 700, 780 520, 1050 340" opacity="0.65" />
-        <path d="M220 -40 C 470 90, 820 210, 1042 310" opacity="0.45" />
-        <path d="M1076 320 C 1200 322, 1320 326, 1480 328" opacity="0.7" />
-        <path d="M1074 314 C 1180 268, 1300 224, 1480 190" opacity="0.45" />
-        <path d="M1074 330 C 1180 380, 1300 428, 1480 462" opacity="0.4" />
-      </g>
-      <g fill="currentColor">
-        <circle cx="520" cy="186" r="3" opacity="0.7" />
-        <circle cx="560" cy="310" r="2.5" opacity="0.8" />
-        <circle cx="640" cy="470" r="3" opacity="0.8" />
-        <circle cx="812" cy="238" r="2.5" opacity="0.6" />
-        <circle cx="880" cy="560" r="2.5" opacity="0.55" />
-        <circle cx="1240" cy="324" r="2.5" opacity="0.6" />
-        <circle cx="1300" cy="224" r="2" opacity="0.45" />
-      </g>
-      <g fill="none" stroke="currentColor" strokeWidth="1.5">
-        <rect x="1049" y="311" width="22" height="22" transform="rotate(45 1060 322)" />
-        <rect x="1055" y="317" width="10" height="10" transform="rotate(45 1060 322)" opacity="0.6" />
-      </g>
-    </svg>
-  );
-}
+const run = historicalCanonicalRunManifest(report, "demo");
+const evidence = buildEvidenceHierarchy(report, null, {
+  runId: run.runId,
+  createdAt: run.completedAt,
+});
+const contract = buildMergeContract({
+  report,
+  evidenceHierarchy: evidence,
+  canonicalRunId: run.runId,
+  sourceType: run.sourceType,
+  reviewMode: run.reviewMode,
+  createdAt: run.completedAt,
+});
+
+const openConditions = report.conditionsBeforeMerge.length;
+const openBlockingClauses = contract.clauses.filter(
+  (clause) => clause.importance === "blocking" && clause.status === "open",
+).length;
+const advisoryOpenClauses = contract.clauses.filter(
+  (clause) => clause.importance === "advisory" && clause.status === "open",
+).length;
+const satisfiedClauses = contract.clauses.filter((clause) => clause.status === "satisfied").length;
+const finding = report.findings[0];
+const findingEvidence = evidence.records.find((record) => record.relatedFindingIds.includes("finding-0"));
+const expandedClause = contract.clauses[0];
+const collapsedClauses = contract.clauses.slice(1, 3);
+
+const verificationTrace = [
+  { label: "Change", state: "satisfied" },
+  { label: "Observation", state: "satisfied" },
+  { label: "Evidence", state: "partial" },
+  { label: "Requirement", state: "partial" },
+  { label: "Human decision", state: "open" },
+] as const;
 
 const failureModes = [
   {
-    id: "01",
-    title: "The dangerous path was never tested",
-    detail: "The happy path is covered. The retry that fires twice against a payment provider is not.",
+    reference: "01",
+    title: "A retry can duplicate a redemption.",
+    detail: report.operationalReadiness?.failureModes[0] ?? finding.evidence,
   },
   {
-    id: "02",
-    title: "Operational recovery remains unverified",
-    detail: "Rollback, timeout and failure handling are assumed to work — nothing in the change proves they do.",
+    reference: "02",
+    title: "Provider failure states remain unproved.",
+    detail: report.findings[1].evidence,
   },
   {
-    id: "03",
-    title: "Assumptions were declared but not supported",
-    detail: "The builder states the change is safe under load. No evidence in the diff supports the claim.",
-  },
-  {
-    id: "04",
-    title: "The code changed after a previous approval",
-    detail: "A new commit landed after review. The earlier approval silently covers code nobody has read.",
-  },
-  {
-    id: "05",
-    title: "Unresolved conditions were lost across iterations",
-    detail: "Conditions raised in round one disappear into the comment thread by round three.",
+    reference: "03",
+    title: "The client-facing error contract is unclear.",
+    detail: report.findings[2].evidence,
   },
 ] as const;
 
-const workflowSteps = [
+const trustRecords = [
   {
-    id: "01",
-    title: "Connect GitHub",
-    detail: "Connect once. Credentials stay server-side; the browser never holds a token.",
+    title: "Credentials stay server-side",
+    detail: "GitHub credentials are held by the server integration; the browser never receives a token.",
   },
   {
-    id: "02",
-    title: "Choose a pull request",
-    detail: "Pick from live repositories and open pull requests instead of describing them.",
+    title: "Diffs are processed transiently",
+    detail: "Raw diffs are analysed transiently and are not stored in local report history.",
   },
   {
-    id: "03",
-    title: "Inspect its context",
-    detail: "Title, branches, changed files and builder declarations arrive with the selection.",
+    title: "Deterministic analysis remains available",
+    detail: "The deterministic baseline is the safety floor and deterministic-only mode remains first-class.",
   },
   {
-    id: "04",
-    title: "Run a readiness review",
-    detail: "Deterministic checks always run. Model assistance is optional and labelled.",
+    title: "Findings label their provenance",
+    detail: "Every finding exposes its origin, including Rule detected and Model assisted.",
   },
 ] as const;
 
-const inspectables = [
-  ["Score explanation", "Why 67 and not 90: which findings and gaps move the readiness score."],
-  ["Findings and evidence", "Each finding carries concrete evidence and a provenance label — rule-detected or model-assisted."],
-  ["Readiness conditions", "What must happen before merge, tracked as explicit conditions instead of a comment thread."],
-  ["Reviewer focus", "Where a human reviewer should spend attention first, and why."],
-] as const;
+function SampleData() {
+  return <span className="lp-sample">SAMPLE DATA</span>;
+}
 
-const trustPoints = [
-  ["Credentials stay server-side", "GitHub credentials are held by the server integration. The browser never receives a token."],
-  ["Raw diffs are processed transiently", "Diffs are read to produce a report, then discarded. The report is the stored artifact."],
-  ["No raw diffs in local history", "Local report history keeps findings, conditions and decisions — not your code."],
-  ["Deterministic fallback", "If model analysis is unavailable or declined, the deterministic ruleset still produces a full report."],
-  ["Model provenance is visible", "Every finding is labelled rule-detected or model-assisted. Nothing hides its origin."],
-  ["Human decisions are explicit", "Recorded outcomes and reasoned overrides — never a silent automatic approval."],
-] as const;
+function Status({ tone, children }: { tone: "warning" | "danger" | "success" | "info"; children: React.ReactNode }) {
+  return <span className={`lp-status lp-status--${tone}`}>{children}</span>;
+}
 
-const decisionOutcomes = [
-  { label: "Ready to merge", note: "Conditions cleared, evidence supports the change." },
-  { label: "Tests required", note: "Specific coverage must exist before this moves forward.", selected: true },
-  { label: "Review required", note: "A named discipline needs to look before any decision." },
-  { label: "Blocked", note: "An unresolved risk stops the change where it stands." },
-  { label: "Approved with accepted risk", note: "Explicit override — requires a written reason that stays with the decision." },
-] as const;
+function Trace({ compact = false }: { compact?: boolean }) {
+  return (
+    <ol className={compact ? "lp-trace lp-trace--compact" : "lp-trace"} aria-label="Verification trace">
+      {verificationTrace.map((stage, index) => (
+        <li className={`lp-trace-node lp-trace-node--${stage.state}`} key={stage.label}>
+          <span className="lp-trace-index" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
+          <span>{stage.label}</span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function FrameHeader({ label }: { label: string }) {
+  return (
+    <div className="lp-frame-header" aria-hidden="true">
+      <span>{label}</span>
+      <SampleData />
+    </div>
+  );
+}
 
 export default function Home() {
   return (
@@ -122,417 +114,223 @@ export default function Home() {
       <LandingNav />
 
       <div id="lp-main">
-        {/* 1 — Hero: product-forward split. The decision console is the proof. */}
         <section className="lp-hero" aria-labelledby="lp-hero-title">
-          <Topology variant="hero" />
           <div className="lp-hero-grid">
             <div className="lp-hero-copy">
-              <p className="lp-eyebrow">Engineering verification for human and agent code</p>
+              <p className="lp-eyebrow">Engineering verification workspace</p>
               <h1 id="lp-hero-title" className="lp-serif">
                 Agents create code.<br />
                 Lintel verifies what is ready.
               </h1>
               <p className="lp-lede">
-                Lintel turns a pull request into inspectable evidence, unresolved conditions and a clear
-                engineering decision — before a risky change moves forward.
+                Follow one pull request from observed change to evidence-backed requirements and an explicit human decision.
               </p>
               <div className="lp-actions">
-                <Link className="lp-btn lp-btn--primary" href="/new">Review a pull request</Link>
-                <Link className="lp-btn lp-btn--ghost" href="/workspace">Explore the workspace</Link>
+                <Link className="lp-btn lp-btn--primary" href="/new">Check a pull request</Link>
+                <Link className="lp-btn lp-btn--secondary" href="/report?demo=1">View the sample report</Link>
               </div>
             </div>
 
             <div
-              className="lp-console"
+              className="lp-frame lp-frame--hero"
               role="img"
-              aria-label="Lintel readiness review with sample data: pull request 482 selected, recommendation tests required, readiness score 67 of 100 up from 48 since the previous head, one blocker, one cleared condition, a next action, and an awaiting human decision state"
+              aria-label={`Sample Lintel Case File for ${report.pr.repository} pull request ${report.pr.number}, ${report.pr.title}. Run ${run.runId}. The verification trace shows change and observation satisfied, evidence and requirement partial, and human decision open. Lintel recommends tests required with medium risk ${report.verdict.riskScore} out of 100, ${openBlockingClauses} blocking requirements open, and ${openConditions} report conditions open.`}
             >
-              <div className="lp-console-bar">
-                <span className="lp-console-dots" aria-hidden="true"><i /><i /><i /></span>
-                <code>lintel — readiness review</code>
-                <span className="lp-console-run"><code>run_0918</code> · SAMPLE DATA</span>
+              <FrameHeader label="Case file / verification ledger" />
+              <div className="lp-case-identity" aria-hidden="true">
+                <div>
+                  <span className="lp-ui-label">Report identity</span>
+                  <code>{run.runId}</code>
+                </div>
+                <div className="lp-case-number">
+                  <span className="lp-ui-label">Pull request</span>
+                  <strong>#{report.pr.number}</strong>
+                </div>
               </div>
-              <div className="lp-console-main" aria-hidden="true">
-                <div className="lp-console-pr-line">
-                  <code>hollis/checkout-service · PR #482 · head 8d04f2a</code>
-                  <span className="lp-chip lp-chip--blue">SELECTED</span>
+              <div className="lp-case-title" aria-hidden="true">
+                <code>{report.pr.repository}</code>
+                <h2>{report.pr.title}</h2>
+                <span>{report.pr.branch}</span>
+              </div>
+              <Trace compact />
+              <div className="lp-case-verdict" aria-hidden="true">
+                <div>
+                  <span className="lp-ui-label">Lintel recommendation</span>
+                  <Status tone="warning">TESTS REQUIRED</Status>
                 </div>
-                <h2>Add retry handling for failed refund submissions</h2>
-                <div className="lp-console-verdict-row">
-                  <span className="lp-chip lp-chip--amber">TESTS REQUIRED</span>
-                  <div className="lp-console-delta">
-                    <span className="lp-delta-score"><s>48</s> <i aria-hidden="true">→</i> 67</span>
-                    <span className="lp-chip lp-chip--green">IMPROVED</span>
-                  </div>
-                  <strong>67<span>/100</span></strong>
-                </div>
-                <ul className="lp-console-rows">
-                  <li className="lp-row--blocker">
-                    <span className="lp-chip lp-chip--red">BLOCKER</span>
-                    <p>Refund retry can submit duplicate provider requests</p>
-                  </li>
-                  <li className="lp-row--cleared">
-                    <span className="lp-chip lp-chip--green">CLEARED</span>
-                    <p>Timeout-path coverage added at head 8d04f2a</p>
-                  </li>
-                  <li>
-                    <span className="lp-chip">NEXT ACTION</span>
-                    <p>Prove refund retries are idempotent before merge</p>
-                  </li>
-                </ul>
-                <div className="lp-console-foot">
-                  <span>HUMAN DECISION</span>
-                  <p>Awaiting engineer — record it in the Decision Studio</p>
-                </div>
+                <dl>
+                  <div><dt>Risk record</dt><dd><strong>{report.verdict.riskScore}</strong><span>/100 · {report.verdict.riskLevel}</span></dd></div>
+                  <div><dt>Requirements</dt><dd><strong>{openBlockingClauses}</strong><span>blocking open</span></dd></div>
+                  <div><dt>Conditions</dt><dd><strong>{openConditions}</strong><span>open</span></dd></div>
+                </dl>
               </div>
             </div>
           </div>
         </section>
 
-        {/* 2 — The verification problem */}
         <section className="lp-problem" aria-labelledby="lp-problem-title">
           <div className="lp-problem-copy">
-            <p className="lp-eyebrow">The verification problem</p>
-            <h2 id="lp-problem-title" className="lp-serif">CI green does not mean the change is ready.</h2>
+            <p className="lp-eyebrow">The readiness gap</p>
+            <h2 id="lp-problem-title">CI green does not mean the change is ready.</h2>
             <p>
-              Coding agents and faster tooling produce more change than teams can carefully read. A passing
-              pipeline confirms the checks that exist — it says nothing about the checks that were never
-              written, the failure modes nobody considered, or the conditions that quietly went unresolved.
-            </p>
-            <p>
-              Verification and engineering judgment have to keep pace with creation. Lintel gives that
-              judgment structure without taking it away from the engineer.
+              A passing pipeline can still leave retry behaviour, failure handling and client contracts unverified. Lintel keeps those gaps as explicit records.
             </p>
           </div>
           <ol className="lp-failures">
             {failureModes.map((mode) => (
-              <li key={mode.id}>
-                <code>{mode.id}</code>
-                <div>
-                  <h3>{mode.title}</h3>
-                  <p>{mode.detail}</p>
-                </div>
+              <li key={mode.reference}>
+                <code>{mode.reference}</code>
+                <div><h3>{mode.title}</h3><p>{mode.detail}</p></div>
               </li>
             ))}
           </ol>
+          <div className="lp-editorial-trace" aria-label="Change to human decision verification path">
+            {verificationTrace.map((stage, index) => (
+              <div key={stage.label}>
+                <span>{stage.label}</span>
+                {index < verificationTrace.length - 1 && <b aria-hidden="true">→</b>}
+              </div>
+            ))}
+          </div>
         </section>
 
-        {/* 3 — Connected workflow */}
-        <section className="lp-workflow" aria-labelledby="lp-workflow-title">
-          <div className="lp-section-head">
-            <p className="lp-eyebrow">Connected workflow</p>
-            <h2 id="lp-workflow-title">Start with the pull request, not a blank prompt.</h2>
+        <section className="lp-exhibit lp-exhibit--finding" aria-labelledby="lp-finding-title">
+          <div className="lp-exhibit-copy">
+            <p className="lp-eyebrow">Exhibit I · Finding and evidence</p>
+            <h2 id="lp-finding-title">A finding is only useful when the proof travels with it.</h2>
             <p>
-              Lintel connects to GitHub and retrieves the context a review needs — repository, branches,
-              changed files, builder declarations — so you never re-paste and re-explain a change to get an
-              opinion on it.
+              The ledger binds the observed risk to its provenance, supporting record, related condition and required action.
             </p>
           </div>
           <div
-            className="lp-workbench"
+            className="lp-frame lp-frame--finding"
             role="img"
-            aria-label="The connected review workbench with sample data: a repositories pane, a pull requests pane with one selected, and a change brief with a run readiness review action"
+            aria-label={`Sample finding F1, high severity: ${finding.title} Reliability, rule detected. Supporting evidence E1 says ${findingEvidence?.statement}. Related condition: ${report.conditionsBeforeMerge[0]}. Required action: ${finding.action}. The evidence register contains ${evidence.records.length} records.`}
           >
-            <div className="lp-workbench-pane" aria-hidden="true">
-              <h3>Repositories</h3>
-              <div className="lp-workbench-item"><code>hollis/checkout-service</code><span className="lp-chip lp-chip--blue">CONNECTED</span></div>
-              <div className="lp-workbench-item"><code>hollis/session-api</code></div>
-              <div className="lp-workbench-item"><code>hollis/notifications</code></div>
-            </div>
-            <div className="lp-workbench-pane" aria-hidden="true">
-              <h3>Pull requests</h3>
-              <div className="lp-workbench-item lp-workbench-item--active">
-                <code>#482</code>
-                <p>Add retry handling for failed refund submissions</p>
+            <FrameHeader label="Finding record / F1" />
+            <article className="lp-finding-record" aria-hidden="true">
+              <header>
+                <code>F1</code>
+                <Status tone="danger">{finding.severity}</Status>
+                <div><h3>{finding.title}</h3><span>{finding.category} · {finding.provenance}</span></div>
+              </header>
+              <p className="lp-finding-explanation">{finding.evidence}</p>
+              <div className="lp-evidence-record">
+                <div><code>E1</code><strong>{findingEvidence?.title}</strong><Status tone="info">DIRECTLY OBSERVED</Status></div>
+                <p>{findingEvidence?.statement}</p>
+                <small>{findingEvidence?.source} · {findingEvidence?.provenance} · <code>{findingEvidence?.evidenceId}</code></small>
               </div>
-              <div className="lp-workbench-item"><code>#486</code><p>Rotate webhook signing secrets</p></div>
-            </div>
-            <div className="lp-workbench-pane lp-workbench-pane--brief" aria-hidden="true">
-              <h3>Change brief</h3>
-              <dl>
-                <div><dt>Branches</dt><dd><code>retry-refunds → main</code></dd></div>
-                <div><dt>Changed files</dt><dd><code>6 files · +214 −38</code></dd></div>
-                <div><dt>Producer</dt><dd><code>agent-assisted · declared</code></dd></div>
+              <dl className="lp-record-links">
+                <div><dt>Related condition</dt><dd>{report.conditionsBeforeMerge[0]}</dd></div>
+                <div><dt>Required action</dt><dd>{finding.action}</dd></div>
               </dl>
-              <span className="lp-workbench-cta">Run readiness review</span>
-            </div>
-          </div>
-          <ol className="lp-steps">
-            {workflowSteps.map((step) => (
-              <li key={step.id}>
-                <code>{step.id}</code>
-                <h3>{step.title}</h3>
-                <p>{step.detail}</p>
-              </li>
-            ))}
-          </ol>
-        </section>
-
-        {/* 4 — Inspectable decision */}
-        <section className="lp-inspect" aria-labelledby="lp-inspect-title">
-          <div className="lp-inspect-copy">
-            <p className="lp-eyebrow">Inspectable decision</p>
-            <h2 id="lp-inspect-title">A recommendation you can inspect.</h2>
-            <p>
-              Lintel does not return a bare approve-or-reject answer. The recommendation sits on top of an
-              inspectable structure — open any part of it and see what produced it.
-            </p>
-            <ul className="lp-inspect-list">
-              {inspectables.map(([term, detail]) => (
-                <li key={term}>
-                  <strong>{term}</strong>
-                  <span>{detail}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div
-            className="lp-report"
-            role="img"
-            aria-label="A readiness report excerpt with sample data: recommendation tests required with score explanation, a finding with evidence and a rule-detected provenance label, a missing test, affected surfaces, readiness conditions and reviewer focus"
-          >
-            <div className="lp-report-head" aria-hidden="true">
-              <div>
-                <span className="lp-kicker">RECOMMENDATION</span>
-                <strong>TESTS REQUIRED</strong>
-              </div>
-              <p>Score 67/100 — held back by one unresolved blocker and one missing test on the retry path.</p>
-            </div>
-            <div className="lp-report-block" aria-hidden="true">
-              <span className="lp-kicker">FINDING</span>
-              <h3>Refund retry can submit duplicate provider requests</h3>
-              <p className="lp-report-evidence">
-                <code>refund_worker.py</code> retries <code>submit_refund()</code> without an idempotency
-                key; the provider treats each attempt as a new submission.
+              <p className="lp-register-count">
+                Evidence register <strong>{evidence.records.length} records</strong> · {evidence.countsByClass["directly-observed"]} directly observed · {evidence.countsByClass.unknown} unknown
               </p>
-              <div className="lp-report-tags">
-                <span className="lp-chip">RULE DETECTED</span>
-                <span className="lp-chip lp-chip--red">HIGH IMPACT</span>
-              </div>
-            </div>
-            <div className="lp-report-block" aria-hidden="true">
-              <span className="lp-kicker">MISSING TEST</span>
-              <p>Duplicate-submission test for a retried refund against a slow provider response.</p>
-            </div>
-            <div className="lp-report-block" aria-hidden="true">
-              <span className="lp-kicker">AFFECTED SURFACES</span>
-              <div className="lp-report-tags">
-                <span className="lp-chip lp-chip--red">PAYMENTS</span>
-                <span className="lp-chip lp-chip--amber">PROVIDER API</span>
-                <span className="lp-chip">RETRY PATH</span>
-              </div>
-            </div>
-            <div className="lp-report-block" aria-hidden="true">
-              <span className="lp-kicker">READINESS CONDITIONS</span>
-              <ul className="lp-conditions">
-                <li className="lp-condition--open"><i aria-hidden="true" /><p>Prove refund retries are idempotent</p></li>
-                <li className="lp-condition--done"><i aria-hidden="true" /><p>Cover the provider-timeout path</p></li>
-              </ul>
-            </div>
-            <div className="lp-report-block lp-report-block--split" aria-hidden="true">
-              <div>
-                <span className="lp-kicker">REVIEWER FOCUS</span>
-                <p>Backend reliability — retry semantics first.</p>
-              </div>
-              <div>
-                <span className="lp-kicker">NEXT ACTION</span>
-                <p>Add the idempotency test, then re-run.</p>
-              </div>
-            </div>
+            </article>
           </div>
         </section>
 
-        {/* 5 — Change over time */}
-        <section className="lp-delta" aria-labelledby="lp-delta-title">
-          <div className="lp-section-head lp-section-head--center">
-            <p className="lp-eyebrow">Readiness Delta</p>
-            <h2 id="lp-delta-title" className="lp-serif">See what changed after every commit.</h2>
-            <p>
-              Every new commit re-opens the question. The Readiness Delta and Review Diff show exactly what a
-              push cleared, what it opened, and what still blocks — so conditions never get lost between
-              iterations.
-            </p>
-          </div>
+        <section className="lp-exhibit lp-exhibit--contract" aria-labelledby="lp-contract-title">
           <div
-            className="lp-delta-board"
+            className="lp-frame lp-frame--contract"
             role="img"
-            aria-label="Readiness Delta with sample data: score improved from 48 to 67. Cleared: timeout-path coverage and recovery evidence. Opened: API contract concern. Still blocking: retry idempotency."
+            aria-label={`Sample Merge Contract ${contract.contractId}, open. ${openBlockingClauses} blocking clauses open, ${advisoryOpenClauses} advisory open, ${satisfiedClauses} satisfied. Clause C1 is open and blocking: ${expandedClause.statement}. It clears with ${expandedClause.evidenceRequired}. Related records E1, E3 and A2. Clauses C2 and C3 are shown collapsed.`}
           >
-            <div className="lp-delta-score-row" aria-hidden="true">
-              <span className="lp-delta-big"><s>48</s><i>→</i><em>67</em></span>
-              <span className="lp-chip lp-chip--green">IMPROVED</span>
-              <code>3f2c41e → 8d04f2a · run_0917 → run_0918</code>
+            <FrameHeader label="Evidence-backed Merge Contract" />
+            <div className="lp-contract-summary" aria-hidden="true">
+              <div><span className="lp-ui-label">Contract identity</span><code>{contract.contractId}</code></div>
+              <dl>
+                <div><dt>Blocking open</dt><dd>{openBlockingClauses}</dd></div>
+                <div><dt>Advisory open</dt><dd>{advisoryOpenClauses}</dd></div>
+                <div><dt>Satisfied</dt><dd>{satisfiedClauses}</dd></div>
+              </dl>
             </div>
-            <div className="lp-delta-cols" aria-hidden="true">
-              <div className="lp-delta-col lp-delta-col--cleared">
-                <h3><span className="lp-dot lp-dot--green" />Cleared</h3>
-                <ul>
-                  <li>Timeout-path coverage</li>
-                  <li>Recovery evidence</li>
-                </ul>
-              </div>
-              <div className="lp-delta-col lp-delta-col--opened">
-                <h3><span className="lp-dot lp-dot--red" />Opened</h3>
-                <ul>
-                  <li>API contract concern</li>
-                </ul>
-              </div>
-              <div className="lp-delta-col lp-delta-col--blocking">
-                <h3><span className="lp-dot lp-dot--amber" />Still blocking</h3>
-                <ul>
-                  <li>Retry idempotency</li>
-                </ul>
-              </div>
-            </div>
-            <p className="lp-delta-note" aria-hidden="true">
-              A recommendation that changed after approval is a signal, not a footnote. Lintel re-analyses on
-              every head change and shows the difference as a structured Review Diff.
-            </p>
-          </div>
-        </section>
-
-        {/* 6 — Change Passport */}
-        <section className="lp-passport" aria-labelledby="lp-passport-title">
-          <div className="lp-section-head">
-            <p className="lp-eyebrow">Change Passport</p>
-            <h2 id="lp-passport-title">
-              Know what the builder claimed.<br />Verify what the change actually proves.
-            </h2>
-            <p>
-              Human- and agent-produced changes arrive with declarations: intent, claimed validation,
-              assumptions, known limitations. Lintel records them — and checks them against what the change
-              itself shows. Declarations are never trusted automatically.
-            </p>
-          </div>
-          <div className="lp-passport-compare">
-            <div className="lp-passport-panel">
-              <h3><span className="lp-kicker">DECLARED BY BUILDER</span><code>agent-assisted · imported from PR body</code></h3>
-              <ul>
-                <li><span>Task intent</span><p>Make failed refund submissions retry safely.</p></li>
-                <li><span>Claimed validation</span><p>“Unit tests added for the retry wrapper.”</p></li>
-                <li><span>Assumption</span><p>“Provider API tolerates repeated submissions.”</p></li>
-                <li><span>Known limitation</span><p>Batch refunds are out of scope for this change.</p></li>
-                <li><span>Unresolved uncertainty</span><p>Behaviour under provider rate-limiting is untested.</p></li>
-              </ul>
-            </div>
-            <div className="lp-passport-panel lp-passport-panel--observed">
-              <h3><span className="lp-kicker">OBSERVED BY LINTEL</span><code>compared against the diff</code></h3>
-              <ul>
-                <li>
-                  <span className="lp-chip lp-chip--green">SUPPORTED</span>
-                  <p>Retry-wrapper unit tests exist and exercise the failure path.</p>
-                </li>
-                <li>
-                  <span className="lp-chip lp-chip--amber">UNVERIFIED</span>
-                  <p>Nothing in the change supports the repeated-submission assumption.</p>
-                </li>
-                <li>
-                  <span className="lp-chip lp-chip--amber">UNDECLARED</span>
-                  <p>The change also touches the reconciliation report surface.</p>
-                </li>
-                <li>
-                  <span className="lp-chip lp-chip--red">UNRESOLVED</span>
-                  <p>Rate-limiting uncertainty matches an open readiness condition.</p>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </section>
-
-        {/* 7 — Decision provenance */}
-        <section className="lp-provenance" aria-labelledby="lp-provenance-title">
-          <div className="lp-provenance-head">
-            <p className="lp-eyebrow">Canonical review run</p>
-            <h2 id="lp-provenance-title">Every decision has provenance.</h2>
-            <p>
-              Each review is recorded as a canonical run — source, configuration and result, all
-              fingerprinted — so “where did this decision come from?” always has an answer.
-            </p>
-          </div>
-          <dl className="lp-manifest">
-            <div><dt>source</dt><dd><code>github-app · hollis/checkout-service#482</code></dd></div>
-            <div><dt>commits</dt><dd><code>base 41c09a2 → head 8d04f2a</code></dd></div>
-            <div><dt>review mode</dt><dd><code>standard</code></dd></div>
-            <div><dt>ruleset / generator</dt><dd><code>6.3 / 6.4</code></dd></div>
-            <div>
-              <dt>analysis source</dt>
-              <dd><span className="lp-chip lp-chip--violet">MODEL-ASSISTED</span> <code>deterministic baseline always runs</code></dd>
-            </div>
-            <div><dt>fingerprints</dt><dd><code>input 9c41…7e2 · config 77ab…c09 · result 5f0e…9c4</code></dd></div>
-            <div><dt>reproducibility</dt><dd><span className="lp-chip lp-chip--green">EXACT</span> <code>same input, same baseline result</code></dd></div>
-          </dl>
-        </section>
-
-        {/* 8 — Human authority */}
-        <section className="lp-authority" aria-labelledby="lp-authority-title">
-          <div className="lp-authority-copy">
-            <p className="lp-eyebrow">Human authority</p>
-            <h2 id="lp-authority-title" className="lp-serif">
-              Lintel presents the evidence.<br />Engineers make the decision.
-            </h2>
-            <p>
-              The final call is recorded by a person, in the Decision Studio, with the evidence in front of
-              them. Overrides are allowed — and they are explicit: accepting a risk requires a written reason
-              that stays attached to the decision.
-            </p>
-          </div>
-          <div
-            className="lp-studio"
-            role="img"
-            aria-label="Decision Studio outcomes with sample data: ready to merge, tests required which is selected, review required, blocked, and approved with accepted risk which requires a written reason"
-          >
-            <div className="lp-studio-head" aria-hidden="true">
-              <span className="lp-kicker">FINAL DECISION</span>
-              <code>recorded by the engineer</code>
-            </div>
-            <ul aria-hidden="true">
-              {decisionOutcomes.map((outcome) => (
-                <li key={outcome.label} className={"selected" in outcome && outcome.selected ? "lp-studio-option lp-studio-option--selected" : "lp-studio-option"}>
-                  <i aria-hidden="true" />
-                  <div>
-                    <strong>{outcome.label}</strong>
-                    <p>{outcome.note}</p>
-                  </div>
-                </li>
+            <article className="lp-clause lp-clause--expanded" aria-hidden="true">
+              <header><code>C1</code><strong>{expandedClause.statement}</strong><Status tone="danger">OPEN · BLOCKING</Status></header>
+              <p>{expandedClause.rationale}</p>
+              <dl>
+                <div><dt>Clears with</dt><dd>{expandedClause.evidenceRequired}</dd></div>
+                <div><dt>Evidence</dt><dd>Stronger evidence required</dd></div>
+                <div><dt>Related records</dt><dd><code>E1, E3, A2</code></dd></div>
+                <div><dt>Owner cue</dt><dd>{expandedClause.ownerCue}</dd></div>
+              </dl>
+            </article>
+            <div className="lp-collapsed-clauses" aria-hidden="true">
+              {collapsedClauses.map((clause, index) => (
+                <div key={clause.clauseId}><code>C{index + 2}</code><strong>{clause.statement}</strong><span>OPEN</span></div>
               ))}
-            </ul>
+            </div>
+          </div>
+          <div className="lp-exhibit-copy">
+            <p className="lp-eyebrow">Exhibit II · Merge Contract</p>
+            <h2 id="lp-contract-title">Requirements stay open until stronger evidence clears them.</h2>
+            <p>
+              The contract turns report conditions into durable clauses, with named proof, related records and an owner cue.
+            </p>
           </div>
         </section>
 
-        {/* 9 — Trust and data handling */}
-        <section className="lp-trust" aria-labelledby="lp-trust-title">
-          <div className="lp-section-head">
-            <p className="lp-eyebrow">Trust and data handling</p>
-            <h2 id="lp-trust-title">Narrow claims, all of them checkable.</h2>
-            <p>
-              Lintel is an early-stage product and describes itself precisely. These are the current
-              implementation facts — the <Link className="lp-link" href="/docs/security-model.md">security model</Link> spells
-              out the rest.
-            </p>
-          </div>
-          <ul className="lp-trust-list">
-            {trustPoints.map(([title, detail]) => (
-              <li key={title}>
-                <h3>{title}</h3>
-                <p>{detail}</p>
-              </li>
+        <section className="lp-thesis" aria-labelledby="lp-thesis-title">
+          <p className="lp-eyebrow">Verification ledger</p>
+          <h2 id="lp-thesis-title" className="lp-serif">A quiet ledger of evidence, moving toward a human decision.</h2>
+          <p>Each record keeps its meaning, source and state without pretending that analysis is authority.</p>
+          <ul className="lp-trust-records">
+            {trustRecords.map((record) => (
+              <li key={record.title}><h3>{record.title}</h3><p>{record.detail}</p></li>
             ))}
           </ul>
+          <Link className="lp-text-link" href="/docs/security-model.md">Read the security model <span aria-hidden="true">→</span></Link>
         </section>
 
-        {/* 10 — Final action */}
-        <section className="lp-final" aria-labelledby="lp-final-title">
-          <Topology variant="cta" />
-          <p className="lp-eyebrow">Next step</p>
-          <h2 id="lp-final-title" className="lp-serif">Review your next pull request with more confidence.</h2>
-          <p>
-            Bring a change you are unsure about. Leave with evidence, unresolved conditions and a decision
-            you can stand behind.
-          </p>
-          <div className="lp-actions">
-            <Link className="lp-btn lp-btn--primary" href="/new">Review a pull request</Link>
-            <Link className="lp-btn lp-btn--ghost" href="/workspace">Explore the workspace</Link>
+        <section className="lp-decision" aria-labelledby="lp-decision-title">
+          <div className="lp-decision-heading">
+            <p className="lp-eyebrow">Exhibit III · Human authority</p>
+            <h2 id="lp-decision-title">The analysis ends where accountable judgment begins.</h2>
+            <p>The demo ledger is truthful about its current state: Lintel has a recommendation; an engineer has not yet recorded the decision.</p>
           </div>
+          <div
+            className="lp-frame lp-frame--decision"
+            role="img"
+            aria-label={`Sample human decision exhibit for ${report.pr.repository} pull request ${report.pr.number}. Lintel recommends tests required with medium risk ${report.verdict.riskScore} out of 100. ${openBlockingClauses} blocking requirements and ${openConditions} report conditions remain open. The current Human Decision Ledger has no entry, so the engineer decision is pending, with no actor or timestamp available and no recommendation divergence recorded.`}
+          >
+            <FrameHeader label="Decision record / Human Decision Ledger" />
+            <div className="lp-decision-context" aria-hidden="true">
+              <div>
+                <span className="lp-ui-label">Verdict context</span>
+                <strong>#{report.pr.number} · {report.pr.title}</strong>
+                <code>{report.pr.repository} · {run.runId}</code>
+              </div>
+              <dl>
+                <div><dt>Lintel recommendation</dt><dd><Status tone="warning">TESTS REQUIRED</Status></dd></div>
+                <div><dt>Risk record</dt><dd><strong>{report.verdict.riskScore}/100</strong><span>{report.verdict.riskLevel}</span></dd></div>
+                <div><dt>Requirements</dt><dd><strong>{openBlockingClauses}</strong><span>blocking open</span></dd></div>
+                <div><dt>Conditions</dt><dd><strong>{openConditions}</strong><span>open</span></dd></div>
+              </dl>
+            </div>
+            <div className="lp-human-record" aria-hidden="true">
+              <span className="lp-ui-label">Current human decision</span>
+              <strong>Engineer decision pending.</strong>
+              <p>Record the next bounded decision after reviewing open proof and requirements.</p>
+              <dl>
+                <div><dt>Actor</dt><dd>Not recorded</dd></div>
+                <div><dt>Timestamp</dt><dd>Not recorded</dd></div>
+                <div><dt>Recommendation alignment</dt><dd>No decision to compare</dd></div>
+              </dl>
+              <span className="lp-static-affordance">Record decision in the sample report</span>
+            </div>
+          </div>
+        </section>
+
+        <section className="lp-final" aria-labelledby="lp-final-title">
+          <Trace compact />
+          <h2 id="lp-final-title" className="lp-serif">Bring the change you’re unsure about.</h2>
+          <p>Open the verification case, inspect the proof and leave the final decision with the engineer accountable for it.</p>
+          <div className="lp-actions">
+            <Link className="lp-btn lp-btn--primary" href="/new">Check a pull request</Link>
+            <Link className="lp-btn lp-btn--secondary" href="/report?demo=1">View the sample report</Link>
+          </div>
+          <code className="lp-run-reference">SAMPLE DATA · {run.runId}</code>
         </section>
       </div>
 
@@ -540,7 +338,7 @@ export default function Home() {
         <div className="lp-footer-brand">
           <span className="brand-mark" aria-hidden="true" />
           <span>Lintel</span>
-          <p>Engineering verification for human- and agent-produced change. Early-stage prototype.</p>
+          <p>Engineering verification for human- and agent-produced change.</p>
         </div>
         <nav aria-label="Product">
           <h3>Product</h3>

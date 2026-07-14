@@ -2,18 +2,18 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { useTheme } from "./theme-provider";
 
 const NAV_LINKS = [
-  { href: "/workspace", label: "Risk inbox" },
-  { href: "/review-operations", label: "Review operations" },
+  { href: "/report?demo=1", label: "Sample report" },
+  { href: "/workspace", label: "Workspace" },
   { href: "/docs/security-model.md", label: "Security model" },
 ] as const;
 
-/* W1 landing header. Desktop shows inline links; below 680px they move into a
-   small disclosure menu with button semantics, Escape-to-close and 44px+ targets. */
 export default function LandingNav() {
   const [open, setOpen] = useState(false);
   const toggleRef = useRef<HTMLButtonElement>(null);
+  const { resolvedTheme, setThemePreference } = useTheme();
 
   useEffect(() => {
     if (!open) return;
@@ -39,7 +39,16 @@ export default function LandingNav() {
         ))}
       </nav>
       <div className="lp-nav-cta">
-        <Link className="lp-btn lp-btn--small" href="/new">Review a pull request</Link>
+        <button
+          className="lp-theme-toggle"
+          type="button"
+          aria-label={`Switch to ${resolvedTheme === "dark" ? "light" : "dark"} theme`}
+          title={`Switch to ${resolvedTheme === "dark" ? "light" : "dark"} theme`}
+          onClick={() => setThemePreference(resolvedTheme === "dark" ? "light" : "dark")}
+        >
+          <span aria-hidden="true">{resolvedTheme === "dark" ? "☼" : "◐"}</span>
+        </button>
+        <Link className="lp-btn lp-btn--small" href="/new">Check a pull request</Link>
         <button
           ref={toggleRef}
           type="button"

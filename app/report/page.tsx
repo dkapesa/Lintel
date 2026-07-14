@@ -1,6 +1,6 @@
 "use client";
 
-import { type KeyboardEvent, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import AppShell from "../app-shell";
 import { useGuidedTour } from "../guided-tour";
 import { compareChangePassport, passportHandoffSummary, type ChangePassport, type ChangePassportComparison } from "../../lib/change-passport";
@@ -121,7 +121,7 @@ type ReportSource = GeneratedReportSource | "demo";
 type CopyState = "idle" | "copied" | "failed";
 type DownloadState = "idle" | "downloaded" | "failed";
 type QuickActionMessageState = "success" | "failed";
-type ReportTab = "overview" | "actions" | "timeline" | "review-diff" | "evidence" | "blast-radius" | "findings" | "tests" | "operations" | "review-focus" | "changed-files" | "export";
+type DossierSectionId = "what-changed" | "observed" | "uncertain" | "merge-contract" | "appendix";
 type Finding = Report["findings"][number];
 type ReviewerFocus = NonNullable<Report["reviewerFocus"]>[number];
 type EvidenceLedgerItem = {
@@ -208,7 +208,7 @@ type StoredReport = {
   verificationPack?: VerificationPack;
   contractRecheck?: ContractRecheckRecord;
   verificationTarget?: { pullRequestId: string; runId: string };
-  initialTab?: ReportTab;
+  initialTab?: string;
 };
 
 const sourceLabels: Record<ReportSource, ReportSourceLabel> = {
@@ -580,6 +580,50 @@ function reportNextAction(report: Report, conditions: string[], operationalStatu
   if (operationalStatus === "ATTENTION") return "Review operational readiness";
   if (report.findings.length > 0) return "Complete focused review";
   return "Complete normal review";
+}
+
+function dossierSectionForLegacyTarget(target: string): DossierSectionId {
+  if (["what-changed", "observed", "uncertain", "merge-contract", "appendix"].includes(target)) return target as DossierSectionId;
+  if (["overview", "blast-radius", "changed-files"].includes(target)) return "what-changed";
+  if (["findings", "operations"].includes(target)) return "observed";
+  if (["tests", "evidence", "review-focus"].includes(target)) return "uncertain";
+  if (target === "actions") return "merge-contract";
+  return "appendix";
+}
+
+function reportScrollBehavior(): ScrollBehavior {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
+}
+
+function recommendationBecauseClause({
+  report,
+  blockingClauses,
+  missingProof,
+  openAssumptions,
+}: {
+  report: Report;
+  blockingClauses: number;
+  missingProof: number;
+  openAssumptions: number;
+}) {
+  const recommendation = recommendationHeadings[report.verdict.recommendation];
+
+  if (blockingClauses > 0 && missingProof > 0) {
+    return `${recommendation} because ${blockingClauses} blocking ${blockingClauses === 1 ? "requirement remains" : "requirements remain"} open and ${missingProof} named ${missingProof === 1 ? "proof item is" : "proof items are"} missing.`;
+  }
+  if (blockingClauses > 0) {
+    return `${recommendation} because ${blockingClauses} blocking ${blockingClauses === 1 ? "requirement remains" : "requirements remain"} open.`;
+  }
+  if (openAssumptions > 0) {
+    return `${recommendation} because ${openAssumptions} ${openAssumptions === 1 ? "assumption remains" : "assumptions remain"} unsupported.`;
+  }
+  if (missingProof > 0) {
+    return `${recommendation} because ${missingProof} named ${missingProof === 1 ? "test or evidence item remains" : "test or evidence items remain"} missing.`;
+  }
+  if (report.findings.length > 0) {
+    return `${recommendation} because ${report.findings.length} structured ${report.findings.length === 1 ? "finding requires" : "findings require"} human review.`;
+  }
+  return report.verdict.summary;
 }
 
 function timelineTime(value: string) {
@@ -2399,7 +2443,8 @@ export default function ReportPage() {
   const [verificationPackDownloadState, setVerificationPackDownloadState] = useState<DownloadState>("idle");
   const [downloadState, setDownloadState] = useState<DownloadState>("idle");
   const [clearedConditionKeys, setClearedConditionKeys] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<ReportTab>("overview");
+  const [activeDossierSection, setActiveDossierSection] = useState<DossierSectionId>("what-changed");
+  const [decisionSheetOpen, setDecisionSheetOpen] = useState(false);
   const [selectedFindingIndex, setSelectedFindingIndex] = useState<number | null>(null);
   const [timelineFilter, setTimelineFilter] = useState<TimelineFilter>("All");
   const [reviewDiffFilter, setReviewDiffFilter] = useState<(typeof reviewDiffFilters)[number]>("All");
@@ -2428,6 +2473,8 @@ export default function ReportPage() {
   const quickActionResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const studioDecisionResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const noteHistoryBaselineRef = useRef("");
+  const decisionRailRef = useRef<HTMLElement | null>(null);
+  const decisionSheetTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("demo") === "1") return;
@@ -2450,7 +2497,7 @@ export default function ReportPage() {
         setStoredContractRecheck(isContractRecheck(parsedReport.contractRecheck) ? parsedReport.contractRecheck : null);
         setVerificationTarget(isVerificationTarget(parsedReport.verificationTarget) ? parsedReport.verificationTarget : null);
         setVerificationResult(null);
-        if (parsedReport.initialTab === "review-diff") setActiveTab("review-diff");
+        if (parsedReport.initialTab === "review-diff") setActiveDossierSection("appendix");
         return;
       }
 
@@ -2519,15 +2566,62 @@ export default function ReportPage() {
 
   useEffect(() => {
     function handleTourTab(event: Event) {
-      const tab = (event as CustomEvent<string>).detail;
-      if (["overview", "actions", "timeline", "review-diff", "evidence", "blast-radius", "findings", "tests", "operations", "review-focus", "changed-files", "export"].includes(tab)) {
-        setActiveTab(tab as ReportTab);
-      }
+      const target = (event as CustomEvent<string>).detail;
+      const section = dossierSectionForLegacyTarget(target);
+      setActiveDossierSection(section);
+      window.setTimeout(() => document.getElementById(`dossier-${section}`)?.scrollIntoView({ block: "start" }), 0);
     }
 
     window.addEventListener("lintel:tour-tab", handleTourTab);
     return () => window.removeEventListener("lintel:tour-tab", handleTourTab);
   }, []);
+
+  useEffect(() => {
+    const sections = Array.from(document.querySelectorAll<HTMLElement>("[data-dossier-section]"));
+    if (sections.length === 0 || !("IntersectionObserver" in window)) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      const visible = entries
+        .filter((entry) => entry.isIntersecting)
+        .sort((left, right) => right.intersectionRatio - left.intersectionRatio)[0];
+      const section = visible?.target.getAttribute("data-dossier-section") as DossierSectionId | null;
+      if (section) setActiveDossierSection(section);
+    }, { rootMargin: "-112px 0px -58% 0px", threshold: [0.05, 0.25, 0.6] });
+
+    sections.forEach((section) => observer.observe(section));
+    return () => observer.disconnect();
+  }, [displayedReport.report]);
+
+  useEffect(() => {
+    if (!decisionSheetOpen || !window.matchMedia("(max-width: 900px)").matches) return;
+    const rail = decisionRailRef.current;
+    if (!rail) return;
+
+    const focusable = Array.from(rail.querySelectorAll<HTMLElement>("button:not([disabled]), a[href], select:not([disabled]), textarea:not([disabled]), input:not([disabled]), details > summary"));
+    focusable[0]?.focus();
+
+    function handleSheetKeyDown(event: globalThis.KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setDecisionSheetOpen(false);
+        window.setTimeout(() => decisionSheetTriggerRef.current?.focus(), 0);
+        return;
+      }
+      if (event.key !== "Tab" || focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener("keydown", handleSheetKeyDown);
+    return () => document.removeEventListener("keydown", handleSheetKeyDown);
+  }, [decisionSheetOpen]);
 
   const { report, source } = displayedReport;
   const { pr, verdict } = report;
@@ -2772,20 +2866,20 @@ export default function ReportPage() {
     : openConditionCount === 0
       ? "All merge contract conditions are locally marked cleared. Recommendation is not changed automatically."
       : `${openConditionCount} ${openConditionCount === 1 ? "merge condition remains" : "merge conditions remain"} open before this report is ready to clear.`;
-  const reportTabs: Array<{ id: ReportTab; label: string; indicator: string }> = [
-    { id: "overview", label: "Overview", indicator: `${displayedConditions.length}` },
-    { id: "actions", label: "Actions", indicator: `${reviewActionProgress.openBlockers}` },
-    { id: "timeline", label: "Timeline", indicator: `${readinessTimeline.length}` },
-    { id: "review-diff", label: "Review Diff", indicator: reviewDiff ? `${reviewDiffChangedCount(reviewDiff)}` : "—" },
-    { id: "evidence", label: "Evidence", indicator: `${evidenceLedger.missing.length}` },
-    { id: "blast-radius", label: "Surfaces", indicator: `${affectedSurfaces.length}` },
-    { id: "findings", label: "Findings", indicator: `${report.findings.length}` },
-    { id: "tests", label: "Tests", indicator: `${report.missingTests.length}` },
-    { id: "operations", label: "Operations", indicator: operationalStatus === "ATTENTION" ? "Attention" : "Clear" },
-    { id: "review-focus", label: "Review focus", indicator: supportedReviewerFocus ? `${supportedReviewerFocus.length}` : "Legacy" },
-    { id: "changed-files", label: "Changed files", indicator: `${report.changedFiles.length}` },
-    { id: "export", label: "Export", indicator: "MD" },
+  const missingProofCount = Math.max(report.missingTests.length, evidenceLedger.missing.length);
+  const dossierSections: Array<{ id: DossierSectionId; label: string; count?: string }> = [
+    { id: "what-changed", label: "What changed", count: `${report.changedFiles.length}` },
+    { id: "observed", label: "What Lintel observed", count: `${report.findings.length}` },
+    { id: "uncertain", label: "Uncertain or missing", count: `${missingProofCount}` },
+    { id: "merge-contract", label: "Merge Contract", count: `${mergeContractBlockingOpen}` },
+    { id: "appendix", label: "Appendix" },
   ];
+  const becauseClause = recommendationBecauseClause({
+    report,
+    blockingClauses: mergeContractBlockingOpen,
+    missingProof: missingProofCount,
+    openAssumptions: evidenceHierarchy.openBlockingAssumptions + evidenceHierarchy.openAdvisoryAssumptions,
+  });
 
   useEffect(() => {
     try {
@@ -3151,51 +3245,21 @@ export default function ReportPage() {
     showQuickActionMessage("success", `Marked ${status}.`);
   }
 
-  function focusReportTab(tab: ReportTab) {
-    window.requestAnimationFrame(() => {
-      document.getElementById(`report-tab-${tab}`)?.focus();
-    });
-  }
-
-  function quickJumpTo(tab: ReportTab, label: string, targetId?: string) {
-    setActiveTab(tab);
+  function quickJumpTo(target: string, label: string, targetId?: string) {
+    const section = dossierSectionForLegacyTarget(target);
+    setActiveDossierSection(section);
     window.setTimeout(() => {
-      if (targetId) {
-        document.getElementById(targetId)?.scrollIntoView({ block: "start", behavior: "smooth" });
-      }
+      document.getElementById(targetId ?? `dossier-${section}`)?.scrollIntoView({ block: "start", behavior: reportScrollBehavior() });
     }, 0);
     showQuickActionMessage("success", `Jumped to ${label}.`);
   }
 
   function openDecisionStudio() {
-    quickJumpTo("export", "Decision Studio", "decision-studio-title");
-  }
-
-  function handleReportTabKeyDown(event: KeyboardEvent<HTMLElement>) {
-    if (!(event.target instanceof HTMLElement) || event.target.getAttribute("role") !== "tab") return;
-
-    const currentIndex = reportTabs.findIndex((tab) => tab.id === activeTab);
-    let nextIndex = currentIndex;
-
-    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
-      event.preventDefault();
-      nextIndex = (currentIndex + 1) % reportTabs.length;
-    } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
-      event.preventDefault();
-      nextIndex = (currentIndex - 1 + reportTabs.length) % reportTabs.length;
-    } else if (event.key === "Home") {
-      event.preventDefault();
-      nextIndex = 0;
-    } else if (event.key === "End") {
-      event.preventDefault();
-      nextIndex = reportTabs.length - 1;
+    if (window.matchMedia("(max-width: 900px)").matches) {
+      setDecisionSheetOpen(true);
+      return;
     }
-
-    if (nextIndex !== currentIndex) {
-      const nextTab = reportTabs[nextIndex].id;
-      setActiveTab(nextTab);
-      focusReportTab(nextTab);
-    }
+    document.getElementById("decision-studio-title")?.scrollIntoView({ block: "start", behavior: reportScrollBehavior() });
   }
 
   async function handleCopySummary() {
@@ -3453,1908 +3517,430 @@ export default function ReportPage() {
             aria-expanded={quickActionsOpen}
             aria-controls="report-quick-actions"
           >
-            Quick actions <span>Ctrl/Cmd K</span>
+            Actions <span>Ctrl/Cmd K</span>
           </button>
-          <button
-            className={`copy-summary-button copy-summary-button--${copyState}`}
-            type="button"
-            onClick={handleCopySummary}
-            aria-live="polite"
-          >
+          <button className={`copy-summary-button copy-summary-button--${copyState}`} type="button" onClick={handleCopySummary} aria-live="polite">
             {copyLabels[copyState]}
           </button>
-          <button
-            className={`download-markdown-button download-markdown-button--${downloadState}`}
-            type="button"
-            onClick={handleDownloadMarkdown}
-            aria-live="polite"
-          >
+          <button className={`download-markdown-button download-markdown-button--${downloadState}`} type="button" onClick={handleDownloadMarkdown} aria-live="polite">
             {downloadLabels[downloadState]}
           </button>
-          <span className="sync-status"><i /> Analysed {pr.updatedAt}</span>
         </>
       }
     >
-      <div className="main-content report-surface" id="report">
+      <div className="main-content report-surface report-case-file" id="report">
         {quickActionsOpen && (
-          <section className="quick-actions-panel" id="report-quick-actions" aria-label="Report quick actions">
+          <section className="quick-actions-panel quick-actions-panel--case-file" id="report-quick-actions" aria-label="Report quick actions">
             <div className="quick-actions-header">
               <div>
                 <span className="card-kicker">QUICK ACTIONS</span>
                 <h2>Move the review forward</h2>
-                <p>Local actions only. No GitHub, Slack or backend updates are sent.</p>
+                <p>Local navigation and handoff actions. Nothing is posted externally.</p>
               </div>
-              {quickActionMessage && (
-                <span className={`quick-actions-status quick-actions-status--${quickActionMessage.state}`} role="status">
-                  {quickActionMessage.text}
-                </span>
-              )}
+              {quickActionMessage && <span className={`quick-actions-status quick-actions-status--${quickActionMessage.state}`} role="status">{quickActionMessage.text}</span>}
             </div>
-            <div className="quick-actions-grid">
-              <button type="button" onClick={() => { window.location.assign("/workspace"); }}>
-                <strong>Go to Risk inbox</strong>
-                <span>Return to queue</span>
-              </button>
-              <button type="button" onClick={() => guidedTour?.startTour()}>
-                <strong>Start guided tour</strong>
-                <span>Explore workflow</span>
-              </button>
-              <button type="button" onClick={() => quickSetReviewStatus("Ready to merge")}>
-                <strong>Ready to merge</strong>
-                <span>Mark local state</span>
-              </button>
-              <button type="button" onClick={() => quickSetReviewStatus("Tests requested")}>
-                <strong>Tests requested</strong>
-                <span>Mark local state</span>
-              </button>
-              <button type="button" onClick={() => quickSetReviewStatus("Blocked")}>
-                <strong>Blocked</strong>
-                <span>Mark local state</span>
-              </button>
-              <button type="button" onClick={handleQuickCopyMergeSummary}>
-                <strong>Copy merge summary</strong>
-                <span>PR-ready Markdown</span>
-              </button>
-              <button type="button" onClick={handleQuickCopySlackHandoff}>
-                <strong>Copy Slack handoff</strong>
-                <span>Channel-friendly text</span>
-              </button>
-              <button type="button" onClick={() => quickJumpTo("evidence", "Evidence")}>
-                <strong>Jump to Evidence</strong>
-                <span>Ledger and contract</span>
-              </button>
-              <button type="button" onClick={() => quickJumpTo("actions", "Actions")}>
-                <strong>Jump to Actions</strong>
-                <span>Blockers board</span>
-              </button>
-              <button type="button" onClick={() => quickJumpTo("timeline", "Timeline")}>
-                <strong>Jump to Timeline</strong>
-                <span>Decision history</span>
-              </button>
-              <button type="button" onClick={() => quickJumpTo("findings", "Findings")}>
-                <strong>Jump to Findings</strong>
-                <span>Evidence-backed risks</span>
-              </button>
-              <button type="button" onClick={() => quickJumpTo("evidence", "Merge contract", "merge-contract-title")}>
-                <strong>Jump to Merge contract</strong>
-                <span>Conditions before merge</span>
-              </button>
-              <button type="button" onClick={() => quickJumpTo("blast-radius", "Blast radius")}>
-                <strong>Jump to Blast radius</strong>
-                <span>Affected surfaces</span>
-              </button>
-              <button type="button" onClick={() => quickJumpTo("export", "Export")}>
-                <strong>Jump to Export</strong>
-                <span>Copy and download</span>
-              </button>
-              <button type="button" onClick={openDecisionStudio}>
-                <strong>Open Decision Studio</strong>
-                <span>Final decision</span>
-              </button>
+            <div className="case-file-action-list">
+              <button type="button" onClick={() => window.location.assign("/workspace")}>Risk inbox</button>
+              <button type="button" onClick={() => guidedTour?.startTour()}>Start guided tour</button>
+              <button type="button" onClick={() => quickSetReviewStatus("Ready to merge")}>Mark ready</button>
+              <button type="button" onClick={() => quickSetReviewStatus("Tests requested")}>Request tests</button>
+              <button type="button" onClick={() => quickSetReviewStatus("Blocked")}>Mark blocked</button>
+              <button type="button" onClick={handleQuickCopyMergeSummary}>Copy PR summary</button>
+              <button type="button" onClick={handleQuickCopySlackHandoff}>Copy Slack handoff</button>
+              {dossierSections.map((section) => (
+                <button type="button" key={section.id} onClick={() => quickJumpTo(section.id, section.label)}>{section.label}</button>
+              ))}
+              <button type="button" onClick={openDecisionStudio}>Open Decision Studio</button>
             </div>
           </section>
         )}
 
-        <div className="report-working-layout">
-          <div className="report-content">
-          <nav className="report-tabs" aria-label="Report sections" role="tablist" onKeyDown={handleReportTabKeyDown}>
-            {reportTabs.map((tab) => (
-              <button
-                key={tab.id}
-                id={`report-tab-${tab.id}`}
-                className={activeTab === tab.id ? "report-tab report-tab--active" : "report-tab"}
-                type="button"
-                role="tab"
-                aria-selected={activeTab === tab.id}
-                aria-controls={`report-panel-${tab.id}`}
-                onClick={() => setActiveTab(tab.id)}
+        <header className="case-file-header" id="overview">
+          <div className="case-file-header-main">
+            <span className="case-file-eyebrow">Pull request #{pr.number}</span>
+            <h1>{pr.title}</h1>
+            <p>{pr.repository} · {pr.branch}</p>
+          </div>
+          <dl className="case-file-identity" aria-label="Review identity">
+            <div><dt>Author / source</dt><dd>{pr.author || sourceLabels[source]}</dd></div>
+            <div><dt>Head</dt><dd><code>{shortSha(canonicalRun?.headSha)}</code></dd></div>
+            <div><dt>Run</dt><dd><code>{canonicalRun ? fingerprintPrefix(canonicalRun.runId) : "Historical"}</code></dd></div>
+            <div><dt>Analysis</dt><dd>{canonicalRun?.analysisSource ?? sourceLabels[source]}</dd></div>
+          </dl>
+          <div className="case-file-trace" aria-label="Verification trace">
+            <span>Change</span><i aria-hidden="true" />
+            <span>Analysis</span><i aria-hidden="true" />
+            <span>Evidence</span><i aria-hidden="true" />
+            <span>Contract</span><i aria-hidden="true" />
+            <strong>Human decision</strong>
+          </div>
+          <p className="case-file-trace-note">
+            {canonicalRun ? `${reproducibilityLabel(canonicalRun.reproducibility)} · ${canonicalRun.generatorVersion} · ${canonicalRun.deterministicRulesetVersion}` : "Historical report · full verification trace unavailable"}
+          </p>
+        </header>
+
+        <div className="case-file-grid">
+          <nav className="case-file-outline" aria-label="Report dossier sections">
+            <span className="case-file-outline-label">Case file</span>
+            <div className="case-file-outline-links">
+              {dossierSections.map((section, index) => (
+                <a
+                  href={`#dossier-${section.id}`}
+                  key={section.id}
+                  aria-current={activeDossierSection === section.id ? "location" : undefined}
+                  onClick={() => setActiveDossierSection(section.id)}
+                >
+                  <span>{String(index + 1).padStart(2, "0")}</span>
+                  {section.label}
+                  {section.count !== undefined && <small>{section.count}</small>}
+                </a>
+              ))}
+            </div>
+            <label className="case-file-jump">
+              <span>Jump to section</span>
+              <select
+                value={activeDossierSection}
+                onChange={(event) => {
+                  const section = event.target.value as DossierSectionId;
+                  setActiveDossierSection(section);
+                  document.getElementById(`dossier-${section}`)?.scrollIntoView({ block: "start", behavior: reportScrollBehavior() });
+                }}
               >
-                <span>{tab.label}</span>
-                <strong>{tab.indicator}</strong>
-              </button>
-            ))}
+                {dossierSections.map((section) => <option key={section.id} value={section.id}>{section.label}</option>)}
+              </select>
+            </label>
           </nav>
 
-          {activeTab === "overview" && (
-            <div
-              className="report-tab-panel report-tab-panel--overview"
-              id="report-panel-overview"
-              role="tabpanel"
-              aria-labelledby="report-tab-overview"
-            >
-          <section className="report-header" id="overview">
-            <div className="header-copy">
-              <div className="header-overline"><span className="pull-request-mark">↗</span> PULL REQUEST #{pr.number}</div>
-              <h1>{pr.title}</h1>
-              <div className="report-meta">
-                <span>{pr.repository}</span><span className="meta-separator">•</span><span>{inputSourceLabel(pr.branch)}</span><span className="meta-separator">•</span><span>Mode: {reviewProfileLabel(pr.reviewProfile)}</span><span className="meta-separator">•</span><span>{pr.language}</span><span className="meta-separator">•</span><span>{pr.framework}</span>
+          <article className="case-file-dossier" aria-label="Merge-readiness verification dossier">
+            <section className="dossier-section" id="dossier-what-changed" data-dossier-section="what-changed" aria-labelledby="dossier-what-changed-title">
+              <header className="dossier-section-header">
+                <span>01</span>
+                <div><p>Change identity</p><h2 id="dossier-what-changed-title">What changed</h2></div>
+                <strong>{report.changedFiles.length} files</strong>
+              </header>
+              <div className="dossier-lede">
+                <p>{changePassport?.changeSummary ?? `Lintel reviewed ${report.changedFiles.length} changed ${report.changedFiles.length === 1 ? "file" : "files"} for ${pr.title}.`}</p>
+                <dl>
+                  <div><dt>Repository</dt><dd>{pr.repository}</dd></div>
+                  <div><dt>Branch</dt><dd><code>{pr.branch}</code></dd></div>
+                  <div><dt>Review mode</dt><dd>{reviewProfileLabel(pr.reviewProfile)}</dd></div>
+                </dl>
               </div>
-              <div className="report-header-state" aria-label="Local review state summary">
-                <span className="report-header-chip report-header-chip--state">{reviewState.status}</span>
-                <span className="report-header-chip report-header-chip--owner">{displayedOwner}</span>
-                <span className="report-header-chip">{conditionProgressLabel}</span>
-              </div>
-            </div>
-            <div className="header-verdict">
-              <RecommendationBadge recommendation={verdict.recommendation} />
-              <span className="verdict-caption">Merge recommendation</span>
-            </div>
-          </section>
-
-          <section className="overview-grid" aria-label="Report overview">
-            <article className="score-card">
-              <div>
-                <span className="card-kicker">RISK BAND</span>
-                <strong className={`risk-band risk-band--${verdict.riskLevel.toLowerCase()}`}>{verdict.riskLevel} RISK</strong>
-                <span className="risk-score-detail">Risk score: {verdict.riskScore}/100</span>
-              </div>
-            </article>
-            <article className="summary-card">
-              <div className="section-heading"><div><span className="card-kicker">EXECUTIVE SUMMARY</span><h2>{recommendationHeadings[verdict.recommendation]}</h2></div><span className="confidence">Confidence: {verdict.confidence}</span></div>
-              <p>{verdict.summary}</p>
-            </article>
-          </section>
-
-          <section className="section-block report-score-breakdown" aria-labelledby="score-breakdown-title">
-            <div className="section-heading">
-              <div>
-                <span className="card-kicker">READINESS SCORE</span>
-                <h2 id="score-breakdown-title">Why this score looks the way it does</h2>
-              </div>
-              <span className="section-count">Heuristic / not production-calibrated</span>
-            </div>
-
-            <div className="score-breakdown-summary" aria-label="Readiness score summary">
-              <article>
-                <span>Current score</span>
-                <strong>{verdict.riskLevel} · {verdict.riskScore}/100</strong>
-              </article>
-              <article>
-                <span>Strongest positive signal</span>
-                <strong>{readinessScoreBreakdown.strongestPositiveSignal}</strong>
-              </article>
-              <article>
-                <span>Biggest score drag</span>
-                <strong>{readinessScoreBreakdown.biggestScoreDrag}</strong>
-              </article>
-              <article>
-                <span>Next readiness action</span>
-                <strong>{readinessScoreBreakdown.nextAction}</strong>
-              </article>
-            </div>
-
-            <div className="score-breakdown-components">
-              {readinessScoreBreakdown.components.map((component) => (
-                <article className={`score-component score-component--${component.status.toLowerCase()}`} key={component.label}>
-                  <div className="score-component-header">
-                    <h3>{component.label}</h3>
-                    <span>{component.status}</span>
+              <div className="dossier-file-list" aria-label="Changed files">
+                {report.changedFiles.map((file) => (
+                  <div className="dossier-file-row" key={file.path}>
+                    <code>{file.path}</code>
+                    <span>{file.additions !== undefined ? `+${file.additions}` : ""} {file.deletions !== undefined ? `−${file.deletions}` : ""}</span>
+                    {file.risk && <RiskBadge risk={file.risk} />}
                   </div>
-                  <p>{component.explanation}</p>
-                  <dl>
-                    <div>
-                      <dt>Improves with</dt>
-                      <dd>{component.improvesWith}</dd>
-                    </div>
-                    <div>
-                      <dt>Related evidence</dt>
-                      <dd>{component.relatedEvidence}</dd>
-                    </div>
-                  </dl>
-                </article>
-              ))}
-            </div>
-          </section>
-
-          {readinessDelta && (
-            <section className={`section-block readiness-delta readiness-delta--${readinessDelta.classification}`} aria-labelledby="readiness-delta-title">
-              <div className="section-heading">
-                <div>
-                  <span className="card-kicker">READINESS DELTA</span>
-                  <h2 id="readiness-delta-title">
-                    {readinessDelta.classification === "initial" ? "Initial readiness baseline" : "Since previous analysis"}
-                  </h2>
-                </div>
-                <div className="readiness-delta-heading-actions">
-                  {reviewDiff && <button type="button" onClick={() => setActiveTab("review-diff")}>View Review Diff</button>}
-                </div>
-              </div>
-
-              {staleDecisionNotice}
-
-              {readinessDelta.deltaFailureCategory && (
-                <p className="delta-failure-note" role="status">
-                  Comparison incomplete — {readinessDelta.deltaFailureCategory.replaceAll("_", " ")}. The current report remains available.
-                </p>
-              )}
-
-              <DeltaEvolutionHeader source={readinessDelta} />
-
-              {readinessDelta.classification !== "initial" ? (
-                <>
-                  <div className="delta-count-row" aria-label="Movement since previous analysis">
-                    <span className={readinessDelta.clearedMergeConditions.length > 0 ? "delta-count delta-count--good" : "delta-count"}>
-                      <strong>{readinessDelta.clearedMergeConditions.length}</strong> Cleared
-                    </span>
-                    <span className={readinessDelta.openedMergeConditions.length > 0 ? "delta-count delta-count--bad" : "delta-count"}>
-                      <strong>{readinessDelta.openedMergeConditions.length}</strong> Opened
-                    </span>
-                    {readinessDelta.reopenedMergeConditions.length > 0 && (
-                      <span className="delta-count delta-count--bad">
-                        <strong>{readinessDelta.reopenedMergeConditions.length}</strong> Reopened
-                      </span>
-                    )}
-                    <span className={readinessDelta.unchangedOpenMergeConditions.length > 0 ? "delta-count delta-count--warn" : "delta-count"}>
-                      <strong>{readinessDelta.unchangedOpenMergeConditions.length}</strong> Still open
-                    </span>
-                    <span className={readinessDelta.addedBlockers.length > 0 ? "delta-count delta-count--bad" : readinessDelta.clearedBlockers.length > 0 ? "delta-count delta-count--good" : "delta-count"}>
-                      <strong>+{readinessDelta.addedBlockers.length} / −{readinessDelta.clearedBlockers.length}</strong> Blockers
-                    </span>
-                    <span className={readinessDelta.addedTestOrEvidenceGaps.length > 0 ? "delta-count delta-count--bad" : readinessDelta.clearedTestOrEvidenceGaps.length > 0 ? "delta-count delta-count--good" : "delta-count"}>
-                      <strong>+{readinessDelta.addedTestOrEvidenceGaps.length} / −{readinessDelta.clearedTestOrEvidenceGaps.length}</strong> Test / evidence gaps
-                    </span>
-                    {readinessDelta.evidenceMovement && (
-                      <span className={readinessDelta.evidenceMovement.assumptionsOpened > 0 ? "delta-count delta-count--warn" : "delta-count"}>
-                        <strong>{readinessDelta.evidenceMovement.evidenceAdded} / {readinessDelta.evidenceMovement.assumptionsOpened}</strong> Evidence added / assumptions opened
-                      </span>
-                    )}
-                  </div>
-
-                  {readinessDelta.classification === "unchanged" && (
-                    <p className="readiness-delta-note">New commit analysed — no material change to the merge decision.</p>
-                  )}
-
-                  <div className="readiness-delta-lists">
-                    <article>
-                      <h3>Cleared</h3>
-                      {readinessDelta.clearedMergeConditions.length > 0 ? (
-                        <>
-                          <ul>{readinessDelta.clearedMergeConditions.slice(0, 3).map((condition) => <li key={condition}>{condition}</li>)}</ul>
-                          {readinessDelta.clearedMergeConditions.length > 3 && (
-                            reviewDiff
-                              ? <button className="readiness-delta-more" type="button" onClick={() => setActiveTab("review-diff")}>+{readinessDelta.clearedMergeConditions.length - 3} more in Review Diff</button>
-                              : <p>+{readinessDelta.clearedMergeConditions.length - 3} more</p>
-                          )}
-                        </>
-                      ) : <p>No cleared merge conditions.</p>}
-                    </article>
-                    <article>
-                      <h3>Opened or reopened</h3>
-                      {[...readinessDelta.openedMergeConditions, ...readinessDelta.reopenedMergeConditions].length > 0 ? (
-                        <>
-                          <ul>{[...readinessDelta.openedMergeConditions, ...readinessDelta.reopenedMergeConditions].slice(0, 3).map((condition) => <li key={condition}>{condition}</li>)}</ul>
-                          {[...readinessDelta.openedMergeConditions, ...readinessDelta.reopenedMergeConditions].length > 3 && (
-                            reviewDiff
-                              ? <button className="readiness-delta-more" type="button" onClick={() => setActiveTab("review-diff")}>+{[...readinessDelta.openedMergeConditions, ...readinessDelta.reopenedMergeConditions].length - 3} more in Review Diff</button>
-                              : <p>+{[...readinessDelta.openedMergeConditions, ...readinessDelta.reopenedMergeConditions].length - 3} more</p>
-                          )}
-                        </>
-                      ) : <p>No new merge conditions.</p>}
-                    </article>
-                    <article>
-                      <h3>Blocker movement</h3>
-                      {readinessDelta.addedBlockers.length > 0 || readinessDelta.clearedBlockers.length > 0 ? (
-                        <ul>
-                          {readinessDelta.clearedBlockers.slice(0, 2).map((blocker) => <li key={`cleared-${blocker}`}>Cleared: {blocker}</li>)}
-                          {readinessDelta.addedBlockers.slice(0, 2).map((blocker) => <li key={`added-${blocker}`}>Added: {blocker}</li>)}
-                        </ul>
-                      ) : <p>No blocker movement.</p>}
-                    </article>
-                  </div>
-                </>
-              ) : (
-                <p className="readiness-delta-note">
-                  This is the first completed automated analysis for this pull request. Review Diff becomes available after the next
-                  completed head-SHA analysis, and this section will then show improved, regressed, mixed or unchanged movement.
-                </p>
-              )}
-            </section>
-          )}
-
-          <BuilderVerifierBoundarySection assessment={builderVerifierAssessment} />
-
-          <section className="section-block machine-merge-contract" aria-labelledby="machine-merge-contract-title">
-            <div className="section-heading">
-              <div>
-                <span className="card-kicker">MACHINE-READABLE CONTRACT</span>
-                <h2 id="machine-merge-contract-title">Evidence-backed Merge Contract</h2>
-                <p>Contract clauses record requirements for this review. They do not replace the recommendation or authorize merge automatically.</p>
-              </div>
-              <span className="section-count">{mergeContract.state}</span>
-            </div>
-
-            <div className="merge-contract-summary-grid" aria-label="Merge Contract summary">
-              <article><span>Head SHA</span><strong>{mergeContract.headSha ? shortSha(mergeContract.headSha) : "Local report"}</strong></article>
-              <article><span>Blocking open</span><strong>{mergeContractBlockingOpen}</strong></article>
-              <article><span>Advisory open</span><strong>{mergeContractAdvisoryOpen}</strong></article>
-              <article><span>Satisfied</span><strong>{mergeContractSatisfied}</strong></article>
-              <article><span>Accepted risk</span><strong>{mergeContractAccepted}</strong></article>
-              <article><span>Schema</span><strong>{mergeContract.schemaVersion}</strong></article>
-            </div>
-
-            <div className="merge-contract-machine-row">
-              <dl>
-                <div><dt>Contract ID</dt><dd>{fingerprintPrefix(mergeContract.contractId)}</dd></div>
-                <div><dt>Fingerprint</dt><dd>{fingerprintPrefix(mergeContract.contractFingerprint)}</dd></div>
-                <div><dt>Evaluation</dt><dd>{fingerprintPrefix(mergeContract.currentEvaluationFingerprint)}</dd></div>
-              </dl>
-              <button type="button" onClick={handleCopyMergeContractJson}>
-                {mergeContractCopyState === "copied" ? "Contract JSON copied" : mergeContractCopyState === "failed" ? "Copy failed" : "Copy contract JSON"}
-              </button>
-            </div>
-
-            {displayedContractClauses.length > 0 ? (
-              <div className="merge-contract-clause-list">
-                {displayedContractClauses.map(({ clause, override, status }) => (
-                  <MergeContractClauseRow
-                    key={clause.clauseId}
-                    clause={clause}
-                    override={override}
-                    status={status}
-                    onUpdate={(nextStatus) => updateContractClauseStatus(clause, nextStatus)}
-                  />
                 ))}
               </div>
-            ) : (
-              <p className="section-empty section-empty--positive">No contract clauses were generated from the structured report.</p>
-            )}
-
-            <p className="condition-local-note">Local clause actions are stored on this device and do not alter the generated recommendation, score or canonical review run.</p>
-          </section>
-
-          <section className="section-block verification-pack" aria-labelledby="verification-pack-title">
-            <div className="section-heading">
-              <div>
-                <span className="card-kicker">REVIEW ARTIFACT</span>
-                <h2 id="verification-pack-title">Verification Pack</h2>
-                <p>Bounded JSON and Markdown artifact for the current review state. It is not proof of correctness or merge authorization.</p>
-              </div>
-              <span className="section-count">{verificationPack.generationStatus}</span>
-            </div>
-
-            <div className="verification-pack-summary-grid" aria-label="Verification Pack summary">
-              <article><span>Pack ID</span><strong>{fingerprintPrefix(verificationPack.packId)}</strong></article>
-              <article><span>Schema</span><strong>{verificationPack.schemaVersion}</strong></article>
-              <article><span>Head SHA</span><strong>{shortSha(verificationPack.changeIdentity.headSha)}</strong></article>
-              <article><span>Contract</span><strong>{verificationPack.mergeContract.blockingOpen} blocking open</strong></article>
-              <article><span>Assumptions</span><strong>{verificationPack.assumptions.openBlocking} blocking open</strong></article>
-              <article><span>Fingerprint</span><strong>{fingerprintPrefix(verificationPack.packFingerprint)}</strong></article>
-            </div>
-
-            <div className="verification-pack-detail-grid">
-              <article>
-                <span>Included sections</span>
-                <p>Change identity, review result, builder declaration, independent verification, evidence, assumptions, Merge Contract, review evolution, human decision and provenance.</p>
-              </article>
-              <article>
-                <span>Unavailable or limited</span>
-                {verificationPack.unavailableSections.length > 0 ? (
-                  <ul>{verificationPack.unavailableSections.map((item) => <li key={item}>{item}</li>)}</ul>
-                ) : (
-                  <p>No unavailable sections recorded for this pack.</p>
-                )}
-              </article>
-              <article>
-                <span>Stale state</span>
-                <p>{verificationPack.stale ? "Stale for current commit or local decision context." : "Current for the attached run/head SHA."}</p>
-              </article>
-            </div>
-
-            <div className="verification-pack-actions" aria-label="Verification Pack export actions">
-              <button type="button" onClick={handleCopyVerificationPackJson}>
-                {verificationPackJsonCopyState === "copied" ? "JSON copied" : verificationPackJsonCopyState === "failed" ? "Copy failed" : "Copy JSON"}
-              </button>
-              <button type="button" onClick={() => handleDownloadVerificationPack("json")}>
-                {verificationPackDownloadState === "downloaded" ? "Downloaded" : verificationPackDownloadState === "failed" ? "Download failed" : "Download JSON"}
-              </button>
-              <button type="button" onClick={handleCopyVerificationPackMarkdown}>
-                {verificationPackMarkdownCopyState === "copied" ? "Markdown copied" : verificationPackMarkdownCopyState === "failed" ? "Copy failed" : "Copy Markdown"}
-              </button>
-              <button type="button" onClick={() => handleDownloadVerificationPack("md")}>Download Markdown</button>
-            </div>
-          </section>
-
-          <section className="section-block contract-recheck" aria-labelledby="contract-recheck-title">
-            <div className="section-heading">
-              <div>
-                <span className="card-kicker">CONTRACT MOVEMENT</span>
-                <h2 id="contract-recheck-title">Contract re-check</h2>
-                <p>Compares a previous Evidence-backed Merge Contract against the latest completed review. This does not alter score, recommendation or mergeability.</p>
-              </div>
-              <span className="section-count">{contractRecheck ? contractRecheck.classification : "Unavailable"}</span>
-            </div>
-
-            {contractRecheck ? (
-              <>
-                <div className="contract-recheck-summary-grid" aria-label="Contract re-check summary">
-                  <article><span>Previous → current</span><strong>{shortSha(contractRecheck.previousHeadSha)} → {shortSha(contractRecheck.currentHeadSha)}</strong></article>
-                  <article><span>Newly satisfied</span><strong>{contractRecheckNewlySatisfied}</strong></article>
-                  <article><span>Reopened</span><strong>{contractRecheckReopened}</strong></article>
-                  <article><span>Still open</span><strong>{contractRecheckStillOpen}</strong></article>
-                  <article><span>New requirements</span><strong>{contractRecheck.newClauses.length}</strong></article>
-                  <article><span>Stale evidence/assumptions</span><strong>{contractRecheckStaleEvidenceOrAssumptions}</strong></article>
+              <details className="dossier-record" open={affectedSurfaces.length <= 4}>
+                <summary><span>Affected surfaces</span><strong>{affectedSurfaces.length}</strong></summary>
+                <div className="affected-surfaces-grid affected-surfaces-grid--dossier">
+                  {affectedSurfaces.length > 0 ? affectedSurfaces.map((surface) => <AffectedSurfaceCard surface={surface} key={`${surface.name}-${surface.status}-${surface.evidence}`} />) : <p className="section-empty">No affected surface was detected beyond normal review.</p>}
                 </div>
-
-                <div className="contract-recheck-machine-row">
-                  <dl>
-                    <div><dt>Re-check ID</dt><dd>{fingerprintPrefix(contractRecheck.recheckId)}</dd></div>
-                    <div><dt>Previous contract</dt><dd>{fingerprintPrefix(contractRecheck.previousContractId)}</dd></div>
-                    <div><dt>Current contract</dt><dd>{fingerprintPrefix(contractRecheck.currentContractId)}</dd></div>
-                    <div><dt>Human decision</dt><dd>{contractRecheck.humanDecisionApplicability.state.replaceAll("-", " ")}</dd></div>
-                  </dl>
-                  <p>{contractRecheck.humanDecisionApplicability.reason}</p>
-                </div>
-
-                {contractRecheck.newClauses.length > 0 && (
-                  <div className="contract-recheck-new-clauses">
-                    <h3>New requirements in the latest contract</h3>
-                    <ul>
-                      {contractRecheck.newClauses.slice(0, 4).map((clause) => (
-                        <li key={clause.clauseId}>
-                          <strong>{clause.importance}</strong> · {clause.title}: {clause.statement}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
-                {contractRecheck.clauseEvaluations.length > 0 ? (
-                  <div className="contract-recheck-rows">
-                    {contractRecheck.clauseEvaluations.slice(0, 8).map((evaluation) => (
-                      <ContractRecheckRow evaluation={evaluation} key={evaluation.clauseId} />
-                    ))}
-                  </div>
-                ) : (
-                  <p className="section-empty">No clause evaluations were available for this re-check.</p>
-                )}
-
-                {contractRecheck.limitations.length > 0 && (
-                  <p className="condition-local-note">Limitations: {contractRecheck.limitations.join(" ")}</p>
-                )}
-              </>
-            ) : (
-              <p className="section-empty">No previous completed contract is attached to this report. Contract re-check appears after a newer completed analysis of the same pull request.</p>
-            )}
-          </section>
-
-          <section className="section-block change-passport" aria-labelledby="change-passport-title">
-            <div className="section-heading">
-              <div>
-                <span className="card-kicker">DECLARED CONTEXT</span>
-                <h2 id="change-passport-title">Change Passport</h2>
-                <p>Builder-declared context. Lintel does not treat these claims as verified evidence.</p>
-              </div>
-              <span className="section-count">{changePassport ? changePassport.completeness : "Absent"}</span>
-            </div>
-
-            {changePassport ? (
-              <>
-                <div className="passport-summary-grid">
-                  <article><span>Producer</span><strong>{changePassport.producerType}</strong></article>
-                  <article><span>Tool / model</span><strong>{[changePassport.producer?.tool, changePassport.producer?.model].filter(Boolean).join(" / ") || "Not supplied"}</strong></article>
-                  <article><span>Source</span><strong>{changePassport.source}</strong></article>
-                  <article><span>Validation claims</span><strong>{changePassport.claimedValidation.length + changePassport.claimedTests.length}</strong></article>
-                  <article><span>Assumptions</span><strong>{changePassport.assumptions.length}</strong></article>
-                  <article><span>Uncertainty</span><strong>{changePassport.unresolvedUncertainty.length}</strong></article>
-                </div>
-
-                <div className="passport-callout">
-                  <strong>{changePassport.taskIntent ?? "No task intent supplied."}</strong>
-                  <span>{passportComparison.summary}</span>
-                </div>
-
-                <details className="passport-details">
-                  <summary>Inspect declared context and Lintel observations</summary>
-                  <div className="passport-detail-grid">
-                    <PassportList title="Change summary" items={changePassport.changeSummary ? [changePassport.changeSummary] : []} empty="No change summary supplied." />
-                    <PassportList title="Claimed files and surfaces" items={[...changePassport.claimedFiles, ...changePassport.claimedSurfaces]} empty="No files or affected surfaces declared." />
-                    <PassportList title="Tests and validation" items={[...changePassport.claimedTests, ...changePassport.claimedValidation]} empty="No validation declared." />
+              </details>
+              <details className="dossier-record change-passport-record">
+                <summary><span>Change Passport</span><strong>{changePassport?.completeness ?? "Absent"}</strong></summary>
+                {changePassport ? (
+                  <div className="dossier-detail-stack">
+                    <p><strong>Declared by builder:</strong> {changePassport.taskIntent ?? "No task intent supplied."}</p>
+                    <p>{passportComparison.summary}</p>
+                    <PassportList title="Claimed files and surfaces" items={[...changePassport.claimedFiles, ...changePassport.claimedSurfaces]} empty="No files or surfaces declared." />
+                    <PassportList title="Claimed validation" items={[...changePassport.claimedTests, ...changePassport.claimedValidation]} empty="No validation declared." />
                     <PassportList title="Assumptions and constraints" items={[...changePassport.assumptions, ...changePassport.constraints]} empty="No assumptions or constraints declared." />
-                    <PassportList title="Known limitations" items={changePassport.knownLimitations} empty="No known limitations declared." />
-                    <PassportList title="Unresolved uncertainty" items={changePassport.unresolvedUncertainty} empty="No unresolved uncertainty declared." />
-                    <PassportList title="Reviewer handoff" items={changePassport.handoffNotes ? [changePassport.handoffNotes] : []} empty="No reviewer handoff note supplied." />
-                    <PassportObservations title="Supported declarations" items={passportComparison.supportedDeclarations} empty="No declarations were directly supported by structured report signals." />
+                    <PassportList title="Known limitations" items={changePassport.knownLimitations} empty="No limitations declared." />
+                    <PassportList title="Unresolved uncertainty" items={changePassport.unresolvedUncertainty} empty="No uncertainty declared." />
+                    <PassportList title="Reviewer handoff" items={changePassport.handoffNotes ? [changePassport.handoffNotes] : []} empty="No reviewer handoff supplied." />
+                    <PassportObservations title="Supported declarations" items={passportComparison.supportedDeclarations} empty="No declarations have structured support." />
                     <PassportObservations title="Unverified declarations" items={passportComparison.unverifiedDeclarations} empty="No unverified declarations recorded." />
-                    <PassportObservations title="Observed but not declared" items={passportComparison.observedButUndeclared} empty="No undeclared concerns observed by Lintel." />
+                    <PassportObservations title="Observed but not declared" items={passportComparison.observedButUndeclared} empty="No undeclared concerns observed." />
                   </div>
-                </details>
-              </>
-            ) : (
-              <div className="passport-empty">
-                <strong>No Change Passport was supplied for this change.</strong>
-                <p>Passport absence is not automatic proof of risk. It only means the builder did not provide structured intent, validation, assumptions or uncertainty for this review.</p>
-              </div>
-            )}
-          </section>
-
-          {canonicalRun && (
-            <section className="section-block run-provenance" aria-labelledby="run-provenance-title">
-              <div className="section-heading">
-                <div>
-                  <span className="card-kicker">RUN PROVENANCE</span>
-                  <h2 id="run-provenance-title">Canonical review run</h2>
-                </div>
-                <span className="section-count">{reproducibilityLabel(canonicalRun.reproducibility)}</span>
-              </div>
-
-              <div className="run-provenance-grid">
-                <article><span>Run ID</span><strong>{fingerprintPrefix(canonicalRun.runId)}</strong></article>
-                <article><span>Source</span><strong>{canonicalRun.sourceType}</strong></article>
-                <article><span>Head SHA</span><strong>{shortSha(canonicalRun.headSha)}</strong></article>
-                <article><span>Review mode</span><strong>{reviewProfileLabel(canonicalRun.reviewMode)}</strong></article>
-                <article><span>Analysis source</span><strong>{canonicalRun.analysisSource}</strong></article>
-                <article><span>Ruleset / generator</span><strong>{canonicalRun.deterministicRulesetVersion} / {canonicalRun.generatorVersion}</strong></article>
-                <article><span>Provider / model</span><strong>{canonicalRun.provider || canonicalRun.model ? `${canonicalRun.provider ?? "provider"} / ${canonicalRun.model ?? "model"}` : "Not used"}</strong></article>
-                <article><span>Completed</span><strong>{canonicalRun.completedAt ? timelineTime(canonicalRun.completedAt) : "Unknown"}</strong></article>
-                <article><span>Evidence model</span><strong>{canonicalRun.evidenceHierarchy?.schemaVersion ?? "historical"}</strong></article>
-                <article><span>Open assumptions</span><strong>{canonicalRun.evidenceHierarchy ? `${canonicalRun.evidenceHierarchy.openBlockingAssumptionCount} blocking / ${canonicalRun.evidenceHierarchy.openAdvisoryAssumptionCount} advisory` : "unavailable"}</strong></article>
-                <article><span>Boundary</span><strong>{canonicalRun.builderVerifier?.classification ?? "historical"}</strong></article>
-                <article><span>Verifier types</span><strong>{canonicalRun.builderVerifier?.verifierTypes.join(" / ") ?? "unavailable"}</strong></article>
-                <article><span>Merge Contract</span><strong>{canonicalRun.mergeContract?.state ?? "historical"}</strong></article>
-                <article><span>Contract clauses</span><strong>{canonicalRun.mergeContract ? `${canonicalRun.mergeContract.blockingClauseCount} blocking / ${canonicalRun.mergeContract.advisoryClauseCount} advisory` : "unavailable"}</strong></article>
-              </div>
-
-              <dl className="run-fingerprint-grid" aria-label="Canonical run fingerprints">
-                <div><dt>Input</dt><dd>{fingerprintPrefix(canonicalRun.inputFingerprint)}</dd></div>
-                <div><dt>Configuration</dt><dd>{fingerprintPrefix(canonicalRun.configurationFingerprint)}</dd></div>
-                <div><dt>Result</dt><dd>{fingerprintPrefix(canonicalRun.resultFingerprint)}</dd></div>
-                <div><dt>Previous run</dt><dd>{fingerprintPrefix(canonicalRun.previousRunId)}</dd></div>
-                <div><dt>Evidence</dt><dd>{fingerprintPrefix(canonicalRun.evidenceHierarchy?.evidenceFingerprint)}</dd></div>
-                <div><dt>Assumptions</dt><dd>{fingerprintPrefix(canonicalRun.evidenceHierarchy?.assumptionRegistryFingerprint)}</dd></div>
-                <div><dt>Boundary</dt><dd>{fingerprintPrefix(canonicalRun.builderVerifier?.assessmentFingerprint)}</dd></div>
-                <div><dt>Contract</dt><dd>{fingerprintPrefix(canonicalRun.mergeContract?.contractFingerprint)}</dd></div>
-              </dl>
-
-              {canonicalRun.reproducibilityLimitation && <p className="run-provenance-note">{canonicalRun.reproducibilityLimitation}</p>}
-
-              <div className="run-provenance-actions">
-                <button type="button" onClick={handleVerifyRun} disabled={!verificationTarget || isVerifyingRun}>
-                  {isVerifyingRun ? "Verifying..." : verificationTarget ? "Verify run" : "Verification unavailable"}
-                </button>
-                <span>{verificationTarget ? "Server-side deterministic replay is available for this GitHub App run." : "This run can be traced, but cannot be replayed from retained source in the browser."}</span>
-              </div>
-
-              {verificationResult && (
-                <div className={`run-verification-result run-verification-result--${verificationResult.reproducibility}`}>
-                  <div>
-                    <span className="card-kicker">VERIFICATION RESULT</span>
-                    <strong>{reproducibilityLabel(verificationResult.reproducibility)}</strong>
-                  </div>
-                  <dl>
-                    <div><dt>Source</dt><dd>{verificationLabel(verificationResult.sourceMatched)}</dd></div>
-                    <div><dt>Configuration</dt><dd>{verificationLabel(verificationResult.configurationMatched)}</dd></div>
-                    <div><dt>Result</dt><dd>{verificationLabel(verificationResult.resultMatched)}</dd></div>
-                    <div><dt>Checked</dt><dd>{timelineTime(verificationResult.createdAt)}</dd></div>
-                  </dl>
-                  <p>{verificationResult.details}</p>
-                  {verificationResult.failureCategory && <p>Failure category: {verificationResult.failureCategory.replaceAll("_", " ")}</p>}
-                </div>
-              )}
+                ) : <p className="section-empty">No Change Passport was supplied. Absence is context, not automatic proof of risk.</p>}
+              </details>
             </section>
-          )}
 
-          <section className="merge-conditions" aria-labelledby="merge-conditions-title">
-            <div className="section-heading">
-              <div>
-                <span className="card-kicker">DECISION GATE</span>
-                <h2 id="merge-conditions-title">Conditions before merge</h2>
-                {conditionTrackingEnabled && <span className="condition-progress">{conditionProgressSummary(clearedConditionCount, displayedConditions.length)}</span>}
-              </div>
-              <div className="merge-conditions-actions">
+            <section className="dossier-section" id="dossier-observed" data-dossier-section="observed" aria-labelledby="dossier-observed-title" data-tour="report-findings">
+              <header className="dossier-section-header">
+                <span>02</span>
+                <div><p>Independent analysis</p><h2 id="dossier-observed-title">What Lintel observed</h2></div>
+                <strong>{report.findings.length} findings</strong>
+              </header>
+              <div className="dossier-summary-record">
                 <RecommendationBadge recommendation={verdict.recommendation} />
-                <button
-                  className={`copy-conditions-button copy-conditions-button--${conditionsCopyState}`}
-                  type="button"
-                  onClick={handleCopyConditions}
-                  aria-live="polite"
-                >
-                  {copyConditionsLabels[conditionsCopyState]}
-                </button>
+                <p>{verdict.summary}</p>
               </div>
-            </div>
-            {conditionTrackingEnabled ? (
-              <>
-                <ul className="condition-checklist">
-                  {displayedConditions.map((condition) => {
-                    const key = conditionKey(condition);
-                    const checked = clearedConditionKeys.has(key);
-
-                    return (
-                      <li key={condition}>
-                        <label>
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={(event) => toggleCondition(condition, event.target.checked)}
-                          />
-                          <span>{condition}</span>
-                        </label>
-                      </li>
-                    );
-                  })}
-                </ul>
-                <p className="condition-local-note">Track locally. Condition progress is stored on this device.</p>
-              </>
-            ) : displayedConditions.length > 0 ? (
-              <ol>{displayedConditions.map((condition) => <li key={condition}>{condition}</li>)}</ol>
-            ) : <p className="merge-conditions-clear">No merge conditions detected.</p>}
-          </section>
-
-          <section className="section-block report-ownership-cues">
-            <div className="section-heading">
-              <div><span className="card-kicker">LOCAL OWNERSHIP</span><h2>Who should look next?</h2></div>
-              <span className="section-count">Stored locally</span>
-            </div>
-            <div className="ownership-cue-grid">
-              <article>
-                <span>Selected owner</span>
-                <strong>{reviewState.owner}</strong>
-                <p>This is a local cue only. Lintel is not assigning a real person or notifying a team.</p>
-              </article>
-              <article>
-                <span>Suggested owner cues</span>
-                <strong>{suggestedOwners.length > 0 ? suggestedOwners.join(" / ") : "No specialist cue"}</strong>
-                <p>Derived from findings, missing tests, operational readiness, reviewer focus and affected surfaces.</p>
-              </article>
-            </div>
-          </section>
-            </div>
-          )}
-
-          {activeTab === "actions" && (
-            <div
-              className="report-tab-panel"
-              id="report-panel-actions"
-              data-tour="review-actions"
-              role="tabpanel"
-              aria-labelledby="report-tab-actions"
-            >
-          <section className="section-block report-action-board" aria-labelledby="review-actions-title">
-            <div className="section-heading">
-              <div>
-                <span className="card-kicker">BLOCKER RESOLUTION</span>
-                <h2 id="review-actions-title">Review actions</h2>
+              <div className="dossier-finding-list" aria-label="Report findings">
+                {report.findings.length > 0 ? report.findings.map((finding, index) => (
+                  <details className="dossier-finding" key={`${finding.title}-${index}`} open={selectedFindingIndex === index} onToggle={(event) => {
+                    if (event.currentTarget.open) setSelectedFindingIndex(index);
+                    else if (selectedFindingIndex === index) setSelectedFindingIndex(null);
+                  }}>
+                    <summary>
+                      <span>{String(index + 1).padStart(2, "0")}</span>
+                      <SeverityTag severity={finding.severity} />
+                      <strong>{finding.title}</strong>
+                      <small>{finding.category}</small>
+                    </summary>
+                    <div className="dossier-finding-detail">
+                      <p><strong>Evidence</strong>{finding.evidence}</p>
+                      <p><strong>Reviewer action</strong>{finding.action}</p>
+                      {finding.file && <code>{finding.file}</code>}
+                      {selectedFindingFiles.length > 0 && <p><strong>Affected files</strong>{selectedFindingFiles.join(", ")}</p>}
+                      {selectedFindingCondition && <p><strong>Related condition</strong>{selectedFindingCondition}</p>}
+                      {selectedFindingMissingTest && <p><strong>Related missing test</strong>{selectedFindingMissingTest}</p>}
+                    </div>
+                  </details>
+                )) : <p className="section-empty section-empty--positive">No risk findings detected.</p>}
               </div>
-              <span className="section-count">Stored locally on this device</span>
-            </div>
+              <details className="dossier-record">
+                <summary><span>Supporting evidence</span><strong>{evidenceHierarchy.records.length}</strong></summary>
+                <div className="evidence-class-grid evidence-class-grid--dossier">
+                  {evidenceClassOrder.map((evidenceClass) => <article key={evidenceClass}><span>{evidenceClassLabels[evidenceClass]}</span><strong>{evidenceHierarchy.countsByClass[evidenceClass]}</strong></article>)}
+                </div>
+                <div className="evidence-hierarchy-list">
+                  {evidenceHierarchy.records.map((record) => <EvidenceHierarchyRow key={record.evidenceId} record={record} />)}
+                </div>
+              </details>
+              <details className="dossier-record">
+                <summary><span>Decision-support evidence ledger</span><strong>{evidenceLedger.found.length} found</strong></summary>
+                <div className="dossier-ledger-list">{evidenceLedger.found.map((item) => <EvidenceLedgerCard item={item} key={`${item.label}-${item.detail}`} />)}</div>
+              </details>
+              <details className="dossier-record">
+                <summary><span>Operational observations</span><strong>{operationalStatus}</strong></summary>
+                {report.operationalReadiness ? (
+                  <div className="dossier-detail-stack">
+                    <p>{report.operationalReadiness.summary}</p>
+                    <OperationalArea title="Failure modes" items={deduplicateReportItems(report.operationalReadiness.failureModes)} emptyCopy="No explicit failure mode detected." />
+                    <OperationalArea title="Detection and observability" items={deduplicateReportItems([...report.operationalReadiness.detectionSignals, ...report.operationalReadiness.observabilityGaps])} emptyCopy="No structured detection signal or observability gap recorded." />
+                    <OperationalArea title="Recovery and impact" items={deduplicateReportItems([...report.operationalReadiness.recoveryOrRollback, ...report.operationalReadiness.customerOrDataImpact])} emptyCopy="No recovery or impact item recorded." />
+                  </div>
+                ) : <p className="section-empty">Operational readiness was not assessed for this historical report.</p>}
+              </details>
+            </section>
 
-            <div className="action-progress-grid" aria-label="Review action progress">
-              <article>
-                <span>Open blockers</span>
-                <strong>{reviewActionProgress.openBlockers}</strong>
-              </article>
-              <article>
-                <span>Required resolved</span>
-                <strong>{reviewActionProgress.requiredResolved}/{reviewActionProgress.requiredTotal}</strong>
-              </article>
-              <article>
-                <span>Optional actions</span>
-                <strong>{reviewActionProgress.optionalActions}</strong>
-              </article>
-              <article>
-                <span>Readiness conclusion</span>
-                <p>{reviewActionProgress.readinessConclusion}</p>
-              </article>
-            </div>
+            <section className="dossier-section" id="dossier-uncertain" data-dossier-section="uncertain" aria-labelledby="dossier-uncertain-title" data-tour="report-tests">
+              <header className="dossier-section-header">
+                <span>03</span>
+                <div><p>Proof still required</p><h2 id="dossier-uncertain-title">Uncertain or missing</h2></div>
+                <strong>{missingProofCount} items</strong>
+              </header>
+              <div className="dossier-two-column">
+                <section>
+                  <h3>Missing tests</h3>
+                  {report.missingTests.length > 0 ? <ol className="numbered-list">{report.missingTests.map((test, index) => <li key={test}><span>{String(index + 1).padStart(2, "0")}</span>{test}</li>)}</ol> : <p className="section-empty section-empty--positive">No missing test gaps detected.</p>}
+                </section>
+                <section>
+                  <h3>Suggested verification</h3>
+                  {report.suggestedTests.length > 0 ? <ul className="dossier-plain-list">{report.suggestedTests.map((test) => <li key={test.title}><strong>{test.priority ?? "Suggested"}</strong><span>{test.title}</span>{test.description && <p>{test.description}</p>}</li>)}</ul> : <p className="section-empty">No additional tests suggested.</p>}
+                </section>
+              </div>
+              {displayedReviewerChecklist.length > 0 && (
+                <details className="dossier-record">
+                  <summary><span>Reviewer checklist</span><strong>{displayedReviewerChecklist.length}</strong></summary>
+                  <ul className="checklist">{displayedReviewerChecklist.map((item) => <li key={item.label}><span className={`check-icon check-icon--${item.status.toLowerCase()}`}>{item.status === "COMPLETE" ? "✓" : "!"}</span><span>{item.label}</span></li>)}</ul>
+                </details>
+              )}
+              <details className="dossier-record" open={displayedAssumptions.length > 0}>
+                <summary><span>Assumption Registry</span><strong>{evidenceHierarchy.openBlockingAssumptions} blocking · {evidenceHierarchy.openAdvisoryAssumptions} advisory</strong></summary>
+                <div className="assumption-registry-list">
+                  {displayedAssumptions.length > 0 ? displayedAssumptions.map(({ assumption, override, status }) => (
+                    <AssumptionRegistryRow key={assumption.assumptionId} assumption={assumption} override={override} status={status} onUpdate={(nextStatus) => updateAssumptionStatus(assumption, nextStatus)} />
+                  )) : <p className="section-empty section-empty--positive">No assumptions were registered.</p>}
+                </div>
+              </details>
+              <details className="dossier-record" open={evidenceLedger.missing.length > 0}>
+                <summary><span>Evidence gaps</span><strong>{evidenceLedger.missing.length}</strong></summary>
+                <div className="dossier-ledger-list">{evidenceLedger.missing.map((item) => <EvidenceLedgerCard item={item} key={`${item.label}-${item.detail}`} />)}</div>
+              </details>
+              <details className="dossier-record">
+                <summary><span>Reviewer focus</span><strong>{supportedReviewerFocus ? supportedReviewerFocus.length : "Historical"}</strong></summary>
+                {supportedReviewerFocus ? <div className="reviewer-focus-list">{supportedReviewerFocus.map((item) => <article className="reviewer-focus-item" key={item.area}><div><h3>{item.area}</h3><p>{item.reason}</p></div><span>{item.priority}</span></article>)}</div> : <p className="section-empty">Reviewer focus was not assessed for this historical report.</p>}
+              </details>
+            </section>
 
-            {reviewActions.length > 0 ? (
-              <div className="review-action-list">
-                {reviewActions.map((action) => (
-                  <article
-                    className={`review-action-card review-action-card--${action.priority.toLowerCase().replaceAll(" ", "-")} review-action-card--status-${action.status.toLowerCase().replaceAll(" ", "-")}`}
-                    key={action.key}
-                  >
-                    <div className="review-action-card-header">
-                      <div>
-                        <span>{action.source}</span>
-                        <h3>{action.title}</h3>
-                      </div>
-                      <strong>{action.priority}</strong>
-                    </div>
-                    <p>{action.reason}</p>
-                    <div className="review-action-meta">
-                      <div>
-                        <span>Suggested owner</span>
-                        <strong>{action.suggestedOwner}</strong>
-                      </div>
-                      <label>
-                        <span>Status</span>
-                        <select
-                          value={action.status}
-                          onChange={(event) => updateReviewActionStatus(action, event.target.value as ReviewActionStatus)}
-                        >
-                          {REVIEW_ACTION_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
-                        </select>
-                      </label>
-                    </div>
+            <section className="dossier-section" id="dossier-merge-contract" data-dossier-section="merge-contract" data-tour="merge-contract" aria-labelledby="merge-contract-title">
+              <header className="dossier-section-header">
+                <span>04</span>
+                <div><p>Requirements before merge</p><h2 id="merge-contract-title">Evidence-backed Merge Contract</h2></div>
+                <strong>{mergeContract.state}</strong>
+              </header>
+              <dl className="dossier-contract-summary">
+                <div><dt>Blocking open</dt><dd>{mergeContractBlockingOpen}</dd></div>
+                <div><dt>Advisory open</dt><dd>{mergeContractAdvisoryOpen}</dd></div>
+                <div><dt>Satisfied</dt><dd>{mergeContractSatisfied}</dd></div>
+                <div><dt>Accepted risk</dt><dd>{mergeContractAccepted}</dd></div>
+              </dl>
+              {displayedContractClauses.length > 0 ? <div className="merge-contract-clause-list">{displayedContractClauses.map(({ clause, override, status }) => (
+                <MergeContractClauseRow key={clause.clauseId} clause={clause} override={override} status={status} onUpdate={(nextStatus) => updateContractClauseStatus(clause, nextStatus)} />
+              ))}</div> : (
+                <div className="dossier-historical-contract">
+                  <p>{displayedConditions.length > 0 ? "This historical report has merge conditions but no complete machine-readable contract." : "No merge requirements were generated."}</p>
+                  {displayedConditions.length > 0 && <ol>{displayedConditions.map((condition) => <li key={condition}>{condition}</li>)}</ol>}
+                </div>
+              )}
+              {conditionTrackingEnabled && (
+                <details className="dossier-record" open>
+                  <summary><span>Local condition progress</span><strong>{conditionProgressLabel}</strong></summary>
+                  <div className="condition-tracker-list">{displayedConditions.map((condition) => {
+                    const checked = clearedConditionKeys.has(conditionKey(condition));
+                    return <label className={checked ? "condition-tracker-item condition-tracker-item--cleared" : "condition-tracker-item"} key={condition}><input type="checkbox" checked={checked} onChange={(event) => toggleCondition(condition, event.target.checked)} /><span>{condition}</span></label>;
+                  })}</div>
+                </details>
+              )}
+              <details className="dossier-record">
+                <summary><span>Contract re-check</span><strong>{contractRecheck?.classification ?? "Unavailable"}</strong></summary>
+                {contractRecheck ? <div className="contract-recheck-rows">{contractRecheck.clauseEvaluations.slice(0, 8).map((evaluation) => <ContractRecheckRow evaluation={evaluation} key={evaluation.clauseId} />)}</div> : <p className="section-empty">No previous completed contract is attached to this report.</p>}
+              </details>
+              <details className="dossier-record" data-tour="review-actions">
+                <summary><span>What must happen next</span><strong>{reviewActionProgress.openBlockers} blockers</strong></summary>
+                <p className="dossier-action-conclusion">{reviewActionProgress.readinessConclusion}</p>
+                <div className="review-action-list review-action-list--dossier">{reviewActions.map((action) => (
+                  <article className={`review-action-card review-action-card--${action.priority.toLowerCase()}`} key={action.key}>
+                    <div><span>{action.source} · {action.priority}</span><h3>{action.title}</h3><p>{action.reason}</p></div>
+                    <label><span>Status</span><select value={action.status} onChange={(event) => updateReviewActionStatus(action, event.target.value as ReviewActionStatus)}>{REVIEW_ACTION_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
                   </article>
-                ))}
+                ))}</div>
+              </details>
+              <div className="dossier-machine-row">
+                <span>Contract {fingerprintPrefix(mergeContract.contractId)} · schema {mergeContract.schemaVersion}</span>
+                <button type="button" onClick={handleCopyMergeContractJson}>{mergeContractCopyState === "copied" ? "JSON copied" : mergeContractCopyState === "failed" ? "Copy failed" : "Copy machine-readable JSON"}</button>
               </div>
-            ) : (
-              <p className="section-empty section-empty--positive">No blocker or review actions generated. Complete normal human review and CI checks.</p>
-            )}
-          </section>
-            </div>
-          )}
+            </section>
 
-          {activeTab === "timeline" && (
-            <div
-              className="report-tab-panel"
-              id="report-panel-timeline"
-              role="tabpanel"
-              aria-labelledby="report-tab-timeline"
-            >
-          <section className="section-block report-decision-history" aria-labelledby="decision-history-title">
-            <div className="section-heading">
-              <div>
-                <span className="card-kicker">LOCAL DECISION HISTORY</span>
-                <h2 id="decision-history-title">PR readiness timeline</h2>
-              </div>
-              <span className="section-count">Stored locally on this device</span>
-            </div>
-
-            <div className="timeline-summary-grid" aria-label="Readiness timeline summary">
-              <article>
-                <span>Current review state</span>
-                <strong>{reviewState.status}</strong>
-              </article>
-              <article>
-                <span>Local owner</span>
-                <strong>{displayedOwner}</strong>
-              </article>
-              <article>
-                <span>Conditions cleared</span>
-                <strong>{displayedConditions.length === 0 ? "None needed" : `${clearedConditionCount}/${displayedConditions.length}`}</strong>
-              </article>
-              <article>
-                <span>Open conditions</span>
-                <strong>{openConditionCount}</strong>
-              </article>
-              <article>
-                <span>Last local update</span>
-                <strong>{lastDecisionUpdate ? timelineTime(lastDecisionUpdate) : "No local changes yet"}</strong>
-              </article>
-              <article>
-                <span>Timeline events</span>
-                <strong>{readinessTimeline.length}</strong>
-              </article>
-            </div>
-
-            <p className="timeline-local-note">This is local-only decision history for the current browser. It is not team audit logging and is not sent to an API.</p>
-
-            <div className="timeline-filter-bar" aria-label="Timeline filters">
-              {timelineFilters.map((filter) => (
-                <button
-                  key={filter}
-                  type="button"
-                  className={timelineFilter === filter ? "timeline-filter timeline-filter--active" : "timeline-filter"}
-                  aria-pressed={timelineFilter === filter}
-                  onClick={() => {
-                    setTimelineFilter(filter);
-                    setSelectedTimelineEventId(null);
-                  }}
-                >
-                  {filter}
-                  <span>{filter === "All" ? readinessTimeline.length : readinessTimeline.filter((event) => event.category === filter).length}</span>
-                </button>
-              ))}
-            </div>
-
-            <div className="decision-timeline-workspace">
-            <ol className="decision-timeline" aria-label="Readiness evolution events">
-              {filteredTimeline.map((event) => (
-                <li className={event.current ? "decision-timeline-item decision-timeline-item--current" : "decision-timeline-item"} key={event.id}>
-                  <div className="decision-timeline-marker" aria-hidden="true" />
-                  <button
-                    className={selectedTimelineEventId === event.id ? "decision-timeline-event decision-timeline-event--selected" : "decision-timeline-event"}
-                    type="button"
-                    aria-pressed={selectedTimelineEventId === event.id}
-                    onClick={() => setSelectedTimelineEventId(event.id)}
-                  >
-                    <div className="decision-timeline-header">
-                      <div>
-                        <h3>{event.title}</h3>
-                        <time dateTime={event.timestamp}>{timelineTime(event.timestamp)}</time>
-                      </div>
-                      <span>{event.provenance}</span>
-                    </div>
-                    <div className="decision-timeline-meta">
-                      <span>{event.category}</span>
-                      <span>{event.actor}</span>
-                      {event.movement && <strong>{event.movement}</strong>}
-                    </div>
-                    {(event.previousState || event.nextState) && (
-                      <div className="decision-timeline-state">
-                        {event.previousState && <span>{event.previousState}</span>}
-                        {event.previousState && event.nextState && <strong>→</strong>}
-                        {event.nextState && <span>{event.nextState}</span>}
-                      </div>
-                    )}
-                    <p>{event.summary}</p>
-                  </button>
-                </li>
-              ))}
-            </ol>
-              <aside className="timeline-event-inspector" aria-label="Timeline event details">
-                {selectedTimelineEvent ? (
-                  <>
-                    <div className="timeline-event-inspector-header">
-                      <div>
-                        <span className="card-kicker">EVENT INSPECTOR</span>
-                        <h3>{selectedTimelineEvent.title}</h3>
-                      </div>
-                      <button type="button" onClick={() => setSelectedTimelineEventId(null)}>Close</button>
-                    </div>
-                    <dl className="timeline-event-detail-grid">
-                      <div><dt>Timestamp</dt><dd><time dateTime={selectedTimelineEvent.timestamp}>{timelineTime(selectedTimelineEvent.timestamp)}</time></dd></div>
-                      <div><dt>Actor / source</dt><dd>{selectedTimelineEvent.actor}</dd></div>
-                      <div><dt>Provenance</dt><dd>{selectedTimelineEvent.provenance}</dd></div>
-                      <div><dt>Report area</dt><dd>{selectedTimelineEvent.area}</dd></div>
-                      <div><dt>Previous state</dt><dd>{selectedTimelineEvent.previousState ?? "Not recorded"}</dd></div>
-                      <div><dt>New state</dt><dd>{selectedTimelineEvent.nextState ?? "Not recorded"}</dd></div>
-                      <div><dt>Decision impact</dt><dd>{selectedTimelineEvent.movement ?? "Context recorded"}</dd></div>
+            <section className="dossier-section dossier-section--appendix" id="dossier-appendix" data-dossier-section="appendix" aria-labelledby="dossier-appendix-title" data-tour="report-export">
+              <header className="dossier-section-header">
+                <span>05</span>
+                <div><p>Technical record</p><h2 id="dossier-appendix-title">Appendix</h2></div>
+              </header>
+              <details className="dossier-record" open>
+                <summary><span>Canonical run and provenance</span><strong>{canonicalRun ? fingerprintPrefix(canonicalRun.runId) : "Historical"}</strong></summary>
+                {canonicalRun ? (
+                  <div className="appendix-provenance">
+                    <dl>
+                      <div><dt>Source</dt><dd>{canonicalRun.sourceType}</dd></div><div><dt>Head</dt><dd><code>{shortSha(canonicalRun.headSha)}</code></dd></div>
+                      <div><dt>Review mode</dt><dd>{reviewProfileLabel(canonicalRun.reviewMode)}</dd></div><div><dt>Analysis</dt><dd>{canonicalRun.analysisSource}</dd></div>
+                      <div><dt>Ruleset</dt><dd>{canonicalRun.deterministicRulesetVersion}</dd></div><div><dt>Generator</dt><dd>{canonicalRun.generatorVersion}</dd></div>
+                      <div><dt>Reproducibility</dt><dd>{reproducibilityLabel(canonicalRun.reproducibility)}</dd></div><div><dt>Completed</dt><dd>{canonicalRun.completedAt ? timelineTime(canonicalRun.completedAt) : "Unknown"}</dd></div>
                     </dl>
-                    <div className="timeline-event-explanation">
-                      <span>Explanation</span>
-                      <p>{selectedTimelineEvent.summary}</p>
-                    </div>
-                    <div className="timeline-event-explanation">
-                      <span>Related item</span>
-                      <p>{selectedTimelineEvent.relatedItem ?? "No directly related condition, finding, test or reviewer was recorded."}</p>
-                    </div>
-                    {reviewDiff && selectedTimelineEvent.area === "Readiness Delta" && (
-                      <button className="timeline-review-diff-button" type="button" onClick={() => setActiveTab("review-diff")}>
-                        View Review Diff
-                      </button>
-                    )}
+                    <div className="run-fingerprint-grid"><div><dt>Input</dt><dd>{fingerprintPrefix(canonicalRun.inputFingerprint)}</dd></div><div><dt>Configuration</dt><dd>{fingerprintPrefix(canonicalRun.configurationFingerprint)}</dd></div><div><dt>Result</dt><dd>{fingerprintPrefix(canonicalRun.resultFingerprint)}</dd></div></div>
+                    {verificationTarget && <button type="button" onClick={handleVerifyRun} disabled={isVerifyingRun}>{isVerifyingRun ? "Verifying…" : "Verify run"}</button>}
+                    {verificationResult && <p className="condition-local-note">{verificationResult.details}</p>}
+                  </div>
+                ) : <p className="section-empty">Canonical run provenance is unavailable for this historical report.</p>}
+              </details>
+              <details className="dossier-record">
+                <summary><span>Builder–Verifier Boundary</span><strong>{builderVerifierAssessment.classification}</strong></summary>
+                <BuilderVerifierBoundarySection assessment={builderVerifierAssessment} />
+              </details>
+              <details className="dossier-record">
+                <summary><span>Verification Pack</span><strong>{verificationPack.generationStatus}</strong></summary>
+                <div className="verification-pack-summary-grid"><article><span>Pack</span><strong>{fingerprintPrefix(verificationPack.packId)}</strong></article><article><span>Head</span><strong>{shortSha(verificationPack.changeIdentity.headSha)}</strong></article><article><span>Fingerprint</span><strong>{fingerprintPrefix(verificationPack.packFingerprint)}</strong></article></div>
+                {verificationPack.unavailableSections.length > 0 && <p>Limited sections: {verificationPack.unavailableSections.join(", ")}</p>}
+                <div className="verification-pack-actions">
+                  <button type="button" onClick={handleCopyVerificationPackJson}>{verificationPackJsonCopyState === "copied" ? "JSON copied" : "Copy JSON"}</button>
+                  <button type="button" onClick={() => handleDownloadVerificationPack("json")}>Download JSON</button>
+                  <button type="button" onClick={handleCopyVerificationPackMarkdown}>{verificationPackMarkdownCopyState === "copied" ? "Markdown copied" : "Copy Markdown"}</button>
+                  <button type="button" onClick={() => handleDownloadVerificationPack("md")}>Download Markdown</button>
+                </div>
+              </details>
+              <details className="dossier-record">
+                <summary><span>Readiness evolution and Review Diff</span><strong>{readinessDelta ? classificationLabel(readinessDelta.classification) : "Initial"}</strong></summary>
+                {readinessDelta ? <DeltaEvolutionHeader source={reviewDiff ?? readinessDelta} /> : <p className="section-empty">No previous completed run is attached.</p>}
+                {readinessDelta && readinessDelta.classification !== "initial" && (
+                  <div className="dossier-delta-summary">
+                    <p>Conditions: {readinessDelta.clearedMergeConditions.length} cleared · {readinessDelta.openedMergeConditions.length} opened · {readinessDelta.reopenedMergeConditions.length} reopened · {readinessDelta.unchangedOpenMergeConditions.length} still open.</p>
+                    <p>Blockers: {readinessDelta.clearedBlockers.length} cleared · {readinessDelta.addedBlockers.length} added.</p>
+                    <p>Tests or evidence gaps: {readinessDelta.clearedTestOrEvidenceGaps.length} cleared · {readinessDelta.addedTestOrEvidenceGaps.length} added.</p>
+                  </div>
+                )}
+                {reviewDiff && (
+                  <>
+                    <div className="review-diff-filter-bar" aria-label="Review Diff filters">{reviewDiffActiveFilters.map((filter) => <button type="button" key={filter} className={reviewDiffFilter === filter ? "review-diff-filter review-diff-filter--active" : "review-diff-filter"} aria-pressed={reviewDiffFilter === filter} onClick={() => setReviewDiffFilter(filter)}>{filter}</button>)}</div>
+                    {reviewDiffVisibleCount > 0 ? <div className="review-diff-sections"><ReviewDiffSection title="Findings" items={reviewDiff.findings} filter={reviewDiffFilter} /><ReviewDiffSection title="Evidence" items={reviewDiff.evidence} filter={reviewDiffFilter} /><ReviewDiffSection title="Tests" items={reviewDiff.testGaps} filter={reviewDiffFilter} /><ReviewDiffSection title="Merge conditions" items={reviewDiff.mergeConditions} filter={reviewDiffFilter} /></div> : <p className="section-empty">No Review Diff items match this filter.</p>}
                   </>
-                ) : (
-                  <div className="timeline-event-empty">
-                    <span className="card-kicker">EVENT INSPECTOR</span>
-                    <h3>Select a timeline event</h3>
-                    <p>Inspect the event source, state movement, related report area and why it matters to the current merge-readiness decision.</p>
-                  </div>
                 )}
-              </aside>
-            </div>
-          </section>
-            </div>
-          )}
+              </details>
+              <details className="dossier-record">
+                <summary><span>Decision timeline</span><strong>{readinessTimeline.length} events</strong></summary>
+                <div className="timeline-filter-bar">{timelineFilters.map((filter) => <button type="button" key={filter} className={timelineFilter === filter ? "timeline-filter timeline-filter--active" : "timeline-filter"} aria-pressed={timelineFilter === filter} onClick={() => setTimelineFilter(filter)}>{filter}</button>)}</div>
+                <ol className="decision-timeline decision-timeline--appendix">{filteredTimeline.map((event) => <li key={event.id} className={event.current ? "decision-timeline-item decision-timeline-item--current" : "decision-timeline-item"}><div className="decision-timeline-marker" aria-hidden="true" /><button type="button" className="decision-timeline-event" onClick={() => setSelectedTimelineEventId(selectedTimelineEventId === event.id ? null : event.id)}><div className="decision-timeline-header"><div><h3>{event.title}</h3><time dateTime={event.timestamp}>{timelineTime(event.timestamp)}</time></div><span>{event.provenance}</span></div><p>{event.summary}</p>{selectedTimelineEventId === event.id && <div className="timeline-inline-detail"><strong>{event.movement ?? "Context recorded"}</strong><span>{event.previousState ?? "Not recorded"} → {event.nextState ?? "Not recorded"}</span><span>{event.relatedItem ?? event.area}</span></div>}</button></li>)}</ol>
+              </details>
+              <details className="dossier-record">
+                <summary><span>Engineering review and score factors</span><strong>{qualityStatus}</strong></summary>
+                <div className="review-grid"><ReviewCard title="Security review" review={report.reviews.security} findingTitles={findingTitles} /><ReviewCard title="Reliability review" review={report.reviews.reliability} findingTitles={findingTitles} /><ReviewCard title="Maintainability review" review={report.reviews.maintainability} findingTitles={findingTitles} /></div>
+                <div className="score-breakdown-list">{readinessScoreBreakdown.components.map((component) => <article key={component.label}><div><h3>{component.label}</h3><span>{component.status}</span></div><p>{component.explanation}</p><small>Improves with: {component.improvesWith}</small><small>Related evidence: {component.relatedEvidence}</small></article>)}</div>
+                {report.reportQuality ? <div className="dossier-quality-record"><strong>Report quality: {report.reportQuality.status}</strong>{report.reportQuality.checks.map((check) => <p key={check.label}>{check.label}: {check.status} · {check.detail}</p>)}</div> : <p className="section-empty">Report quality was not assessed for this historical report.</p>}
+              </details>
+              <details className="dossier-record" id="report-export-title">
+                <summary><span>Copy, export and handoff</span><strong>Local only</strong></summary>
+                <div className="case-file-export-actions">
+                  <button type="button" onClick={handleCopyConditions}>{copyConditionsLabels[conditionsCopyState]}</button>
+                  <button type="button" onClick={handleCopySummary}>{copyLabels[copyState]}</button>
+                  <button type="button" onClick={handleDownloadMarkdown}>{downloadLabels[downloadState]}</button>
+                  <button type="button" onClick={handleCopyMergeSummary}>{copyMergeSummaryLabels[mergeSummaryCopyState]}</button>
+                  <button type="button" onClick={handleQuickCopySlackHandoff}>Copy Slack handoff</button>
+                </div>
+                {reviewState.note.trim().length > 0 && <label className="case-file-note-option"><input type="checkbox" checked={includeLocalNoteInMergeSummary} onChange={(event) => setIncludeLocalNoteInMergeSummary(event.target.checked)} /><span>Include the local reviewer note in the PR-ready summary</span></label>}
+                <details className="handoff-preview"><summary>GitHub-ready Markdown preview</summary><pre>{mergeSummaryMarkdown}</pre></details>
+                <details className="handoff-preview"><summary>Slack-ready handoff preview</summary><pre>{slackHandoffText}</pre></details>
+                <nav className="case-file-related-links" aria-label="Related report actions"><a href="/workspace">Back to Risk inbox</a><a href="/new">Check another pull request</a><a href="/review-policies">Review policies</a><a href="/docs/security-model.md">Security model</a></nav>
+              </details>
+            </section>
+          </article>
 
-          {activeTab === "review-diff" && (
-            <div
-              className="report-tab-panel"
-              id="report-panel-review-diff"
-              role="tabpanel"
-              aria-labelledby="report-tab-review-diff"
-            >
-          <section className="section-block report-review-diff" aria-labelledby="review-diff-title">
-            <div className="section-heading">
-              <div>
-                <span className="card-kicker">COMMIT-AWARE REVIEW</span>
-                <h2 id="review-diff-title">Review Diff</h2>
-              </div>
-              <span className="section-count">{reviewDiff ? classificationLabel(reviewDiff.classification) : "Unavailable"}</span>
+          {decisionSheetOpen && <button className="verdict-sheet-scrim" type="button" aria-label="Close decision details" onClick={() => { setDecisionSheetOpen(false); window.setTimeout(() => decisionSheetTriggerRef.current?.focus(), 0); }} />}
+          <aside
+            className={decisionSheetOpen ? "report-verdict-rail report-verdict-rail--open" : "report-verdict-rail"}
+            aria-label="Merge-readiness verdict and human decision"
+            aria-modal={decisionSheetOpen ? true : undefined}
+            role={decisionSheetOpen ? "dialog" : "complementary"}
+            ref={decisionRailRef}
+          >
+            <div className="verdict-rail-compact">
+              <div><RecommendationBadge recommendation={verdict.recommendation} /><span>{verdict.riskScore}/100 · {verdict.riskLevel}</span></div>
+              <button ref={decisionSheetTriggerRef} type="button" onClick={() => setDecisionSheetOpen(true)}>Review decision</button>
             </div>
-
-            {reviewDiff ? (
-              <>
+            <div className="verdict-rail-body">
+              <div className="verdict-rail-sheet-header"><span>Decision record</span><button type="button" onClick={() => { setDecisionSheetOpen(false); window.setTimeout(() => decisionSheetTriggerRef.current?.focus(), 0); }}>Close</button></div>
+              <section className="verdict-rail-recommendation">
+                <span className="card-kicker">LINTEL RECOMMENDATION</span>
+                <RecommendationBadge recommendation={verdict.recommendation} />
+                <p>{becauseClause}</p>
+                <dl><div><dt>Risk score</dt><dd>{verdict.riskScore}/100</dd></div><div><dt>Risk band</dt><dd>{verdict.riskLevel}</dd></div></dl>
+              </section>
+              <section className="verdict-rail-requirements">
+                <dl><div><dt>Blocking open</dt><dd>{mergeContractBlockingOpen}</dd></div><div><dt>Conditions cleared</dt><dd>{clearedConditionCount}</dd></div><div><dt>Missing proof</dt><dd>{missingProofCount}</dd></div><div><dt>Open actions</dt><dd>{reviewActionProgress.openBlockers}</dd></div></dl>
+                <div><span>Immediate next action</span><strong>{reportNextDecisionAction}</strong></div>
+                <p>{activePolicy.label} · {activePolicyStatus.label}. {policyGateSummary(activePolicy)}.</p>
+              </section>
+              <section className="verdict-rail-local-state" aria-label="Local review state">
+                <label><span>Review state</span><select value={reviewState.status} onChange={(event) => updateReviewStatus(event.target.value as ReviewStatus)}>{REVIEW_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
+                <label><span>Review owner</span><select value={reviewState.owner} onChange={(event) => updateReviewOwner(event.target.value as ReviewerOwner)}>{reportOwnerOptions.map((owner) => <option key={owner} value={owner}>{owner}</option>)}{reportOwnerIsHistorical && <option value={reviewState.owner}>{reviewState.owner} (historical)</option>}</select></label>
+                <label><span>Private reviewer note</span><textarea value={reviewState.note} maxLength={1000} rows={3} onChange={(event) => updateReviewNote(event.target.value)} onBlur={handleReviewNoteBlur} placeholder="Stored locally on this device." /></label>
+              </section>
+              <section className="decision-studio decision-studio--rail" aria-labelledby="decision-studio-title">
+                <div className="decision-studio-header"><div><span className="card-kicker">FINAL HUMAN DECISION</span><h2 id="decision-studio-title">Merge Decision Studio</h2><p>Final authority remains human. Recording a decision does not change Lintel’s analysis.</p></div></div>
                 {staleDecisionNotice}
-
-                {reviewDiff.failureCategory && (
-                  <p className="delta-failure-note" role="status">
-                    Comparison incomplete — {reviewDiff.failureCategory.replaceAll("_", " ")}. Items below may not reflect the full change.
-                  </p>
-                )}
-
-                <DeltaEvolutionHeader source={reviewDiff} />
-
-                <div className="review-diff-filter-bar" aria-label="Review Diff filters">
-                  {reviewDiffActiveFilters.map((filter) => (
-                    <button
-                      key={filter}
-                      type="button"
-                      className={reviewDiffFilter === filter ? "review-diff-filter review-diff-filter--active" : "review-diff-filter"}
-                      aria-pressed={reviewDiffFilter === filter}
-                      onClick={() => setReviewDiffFilter(filter)}
-                    >
-                      {filter}
-                      <span>{filter === "All" ? reviewDiffAllItems.length : reviewDiffAllItems.filter((item) => reviewDiffFilterMatches(item, filter)).length}</span>
-                    </button>
-                  ))}
-                </div>
-
-                {reviewDiffVisibleCount === 0 ? (
-                  <p className="section-empty section-empty--positive">No structured Review Diff items match this filter.</p>
-                ) : (
-                  <div className="review-diff-sections">
-                    <ReviewDiffSection title="Findings" items={reviewDiff.findings} filter={reviewDiffFilter} />
-                    <ReviewDiffSection title="Evidence" items={reviewDiff.evidence} filter={reviewDiffFilter} />
-                    <ReviewDiffSection title="Tests" items={reviewDiff.testGaps} filter={reviewDiffFilter} />
-                    <ReviewDiffSection title="Merge conditions" items={reviewDiff.mergeConditions} filter={reviewDiffFilter} />
-                  </div>
-                )}
-              </>
-            ) : readinessDelta?.classification === "initial" ? (
-              <div className="review-diff-placeholder">
-                <DeltaEvolutionHeader source={readinessDelta} />
-                <p className="section-empty">This is the initial readiness baseline. Review Diff becomes available after the next completed head-SHA analysis for the same pull request.</p>
-              </div>
-            ) : readinessDelta ? (
-              <div className="review-diff-placeholder">
-                <DeltaEvolutionHeader source={readinessDelta} />
-                <p className="section-empty">Readiness Delta is available, but the detailed item comparison was not stored for this run — this can happen for older records. The current report remains available.</p>
-              </div>
-            ) : (
-              <p className="section-empty">No automated run history is attached to this report. Review Diff is available for GitHub App automated re-analyses.</p>
-            )}
-          </section>
-            </div>
-          )}
-
-          {activeTab === "evidence" && (
-            <div
-              className="report-tab-panel"
-              id="report-panel-evidence"
-              role="tabpanel"
-              aria-labelledby="report-tab-evidence"
-            >
-          <section className="section-block evidence-hierarchy" aria-labelledby="evidence-hierarchy-title">
-            <div className="section-heading">
-              <div>
-                <span className="card-kicker">TRUST MODEL</span>
-                <h2 id="evidence-hierarchy-title">Evidence hierarchy</h2>
-                <p>Evidence sources are tracked separately. Declarations and assumptions do not automatically become proof.</p>
-              </div>
-              <span className="section-count">{evidenceHierarchy.records.length} records</span>
-            </div>
-
-            <div className="evidence-class-grid" aria-label="Evidence classes">
-              {evidenceClassOrder.map((evidenceClass) => (
-                <article key={evidenceClass}>
-                  <span>{evidenceClassLabels[evidenceClass]}</span>
-                  <strong>{evidenceHierarchy.countsByClass[evidenceClass]}</strong>
-                </article>
-              ))}
-            </div>
-
-            <details className="evidence-hierarchy-details">
-              <summary>Inspect evidence records</summary>
-              <div className="evidence-hierarchy-list">
-                {evidenceHierarchy.records.length > 0 ? (
-                  evidenceHierarchy.records.slice(0, 24).map((record) => <EvidenceHierarchyRow key={record.evidenceId} record={record} />)
-                ) : (
-                  <p className="section-empty">No structured evidence records were available for this report.</p>
-                )}
-              </div>
-            </details>
-          </section>
-
-          <section className="section-block assumption-registry" aria-labelledby="assumption-registry-title">
-            <div className="section-heading">
-              <div>
-                <span className="card-kicker">ASSUMPTION REGISTRY</span>
-                <h2 id="assumption-registry-title">Unresolved dependencies</h2>
-                <p>Accepted uncertainty is recorded separately from supported evidence. Local actions do not clear merge conditions.</p>
-              </div>
-              <span className="section-count">{evidenceHierarchy.openBlockingAssumptions} blocking / {evidenceHierarchy.openAdvisoryAssumptions} advisory</span>
-            </div>
-
-            {displayedAssumptions.length > 0 ? (
-              <div className="assumption-registry-list">
-                {displayedAssumptions.map(({ assumption, override, status }) => (
-                  <AssumptionRegistryRow
-                    key={assumption.assumptionId}
-                    assumption={assumption}
-                    override={override}
-                    status={status}
-                    onUpdate={(nextStatus) => updateAssumptionStatus(assumption, nextStatus)}
-                  />
-                ))}
-              </div>
-            ) : (
-              <p className="section-empty section-empty--positive">No assumptions were registered from the current report or Change Passport.</p>
-            )}
-          </section>
-
-          <section className="section-block report-evidence-ledger" aria-labelledby="evidence-ledger-title">
-            <div className="section-heading">
-              <div>
-                <span className="card-kicker">EXPLAINABILITY</span>
-                <h2 id="evidence-ledger-title">Evidence ledger</h2>
-              </div>
-              <span className="section-count">{evidenceLedger.found.length} found / {evidenceLedger.missing.length} missing</span>
-            </div>
-
-            <div className="evidence-summary-grid" aria-label="Evidence summary">
-              <article>
-                <span>Evidence found</span>
-                <strong>{evidenceLedger.found.length}</strong>
-              </article>
-              <article>
-                <span>Missing evidence</span>
-                <strong>{evidenceLedger.missing.length}</strong>
-              </article>
-              <article>
-                <span>Open conditions</span>
-                <strong>{openConditionCount}</strong>
-              </article>
-              <article>
-                <span>Readiness conclusion</span>
-                <p>{readinessConclusion}</p>
-              </article>
-            </div>
-
-            <div className="evidence-ledger-grid">
-              <section className="evidence-ledger-column" aria-labelledby="evidence-found-title">
-                <div className="evidence-ledger-column-heading">
-                  <h3 id="evidence-found-title">Evidence found</h3>
-                  <span>Supports the current decision</span>
-                </div>
-                {evidenceLedger.found.length > 0 ? (
-                  <div className="evidence-ledger-list">
-                    {evidenceLedger.found.map((item) => <EvidenceLedgerCard item={item} key={`${item.label}-${item.detail}`} />)}
-                  </div>
-                ) : (
-                  <p className="section-empty">No supporting evidence was identified in this legacy report.</p>
-                )}
+                <fieldset><legend>Record decision for <code>{shortSha(humanDecisionLedgerContext.currentHeadSha)}</code></legend><div className="decision-studio-options">{studioDecisionOptions.map((option) => <label key={option}><input type="radio" name="studio-decision-case-file" value={option} checked={studioDecision === option} onChange={() => setStudioDecision(option)} /><span>{option}</span></label>)}</div></fieldset>
+                {studioDecision === "Approved with accepted risk" && <label className="decision-studio-reason"><span>Accepted risk reason</span><textarea value={acceptedRiskReason} rows={3} maxLength={700} required onChange={(event) => setAcceptedRiskReason(event.target.value)} placeholder="State the risk and why proceeding is acceptable." /></label>}
+                <button className="decision-studio-save" type="button" onClick={saveStudioDecision} disabled={studioDecision === "Approved with accepted risk" && acceptedRiskReason.trim().length === 0}>{studioDecisionState === "copied" ? "Decision recorded" : studioDecisionState === "failed" ? "Reason required" : "Record human decision"}</button>
+                <p className="decision-studio-impact">Current handoff: <strong>{studioDecisionText}</strong></p>
               </section>
-
-              <section className="evidence-ledger-column" aria-labelledby="evidence-missing-title">
-                <div className="evidence-ledger-column-heading">
-                  <h3 id="evidence-missing-title">Evidence missing</h3>
-                  <span>Blocks or needs confirmation before merge</span>
-                </div>
-                {evidenceLedger.missing.length > 0 ? (
-                  <div className="evidence-ledger-list">
-                    {evidenceLedger.missing.map((item) => <EvidenceLedgerCard item={item} key={`${item.label}-${item.detail}`} />)}
-                  </div>
-                ) : (
-                  <p className="section-empty section-empty--positive">No missing evidence detected.</p>
-                )}
-              </section>
-            </div>
-          </section>
-
-          <section className="section-block report-merge-contract" aria-labelledby="merge-contract-title" data-tour="merge-contract">
-            <div className="section-heading">
-              <div>
-                <span className="card-kicker">MERGE CONTRACT</span>
-                <h2 id="merge-contract-title">What must be true before merge</h2>
-                {conditionTrackingEnabled && <span className="condition-progress">{conditionProgressLabel}</span>}
-              </div>
-              <RecommendationBadge recommendation={verdict.recommendation} />
-            </div>
-
-            {conditionTrackingEnabled ? (
-              <>
-                <ul className="merge-contract-list">
-                  {displayedConditions.map((condition) => {
-                    const key = conditionKey(condition);
-                    const checked = clearedConditionKeys.has(key);
-
-                    return (
-                      <li key={condition}>
-                        <label>
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={(event) => toggleCondition(condition, event.target.checked)}
-                          />
-                          <span>{condition}</span>
-                        </label>
-                      </li>
-                    );
-                  })}
-                </ul>
-                <p className="condition-local-note">Stored locally on this device. Clearing every item does not automatically change the recommendation.</p>
-              </>
-            ) : displayedConditions.length > 0 ? (
-              <ol className="merge-contract-list merge-contract-list--static">
-                {displayedConditions.map((condition) => <li key={condition}>{condition}</li>)}
-              </ol>
-            ) : (
-              <p className="merge-contract-clear">No merge conditions detected.</p>
-            )}
-          </section>
-            </div>
-          )}
-
-          {activeTab === "blast-radius" && (
-            <div
-              className="report-tab-panel"
-              id="report-panel-blast-radius"
-              role="tabpanel"
-              aria-labelledby="report-tab-blast-radius"
-            >
-          <section className="section-block report-blast-radius" aria-labelledby="blast-radius-title">
-            <div className="section-heading">
-              <div>
-                <span className="card-kicker">BLAST RADIUS</span>
-                <h2 id="blast-radius-title">Affected surfaces</h2>
-              </div>
-              <span className="section-count">{affectedSurfaces.length} surfaces</span>
-            </div>
-
-            <div className="surface-summary-grid" aria-label="Blast radius summary">
-              <article>
-                <span>Affected surfaces</span>
-                <strong>{affectedSurfaces.length}</strong>
-              </article>
-              <article>
-                <span>Blocker surfaces</span>
-                <strong>{blockerSurfaceCount}</strong>
-              </article>
-              <article>
-                <span>Need confirmation</span>
-                <strong>{confirmationSurfaceCount}</strong>
-              </article>
-              <article>
-                <span>Primary review area</span>
-                <p>{primaryAffectedSurface}</p>
-              </article>
-            </div>
-
-            {affectedSurfaces.length > 0 ? (
-              <div className="affected-surfaces-grid">
-                {affectedSurfaces.map((surface) => (
-                  <AffectedSurfaceCard surface={surface} key={`${surface.name}-${surface.status}-${surface.evidence}`} />
-                ))}
-              </div>
-            ) : (
-              <p className="section-empty section-empty--positive">No affected surface detected beyond normal human review and CI checks.</p>
-            )}
-          </section>
-            </div>
-          )}
-
-          {activeTab === "findings" && (
-            <div
-              className="report-tab-panel"
-              id="report-panel-findings"
-              data-tour="report-findings"
-              role="tabpanel"
-              aria-labelledby="report-tab-findings"
-            >
-          <section className="section-block report-findings">
-            <div className="section-heading"><div><span className="card-kicker">PRIORITY ITEMS</span><h2>Risk findings</h2></div><span className="section-count">{report.findings.length} findings</span></div>
-            {report.findings.length > 0 ? (
-              <div className="findings-workspace">
-                <div className="findings-list" aria-label="Selectable findings">
-                  {report.findings.map((finding, index) => {
-                    const selected = selectedFindingIndex === index;
-
-                    return (
-                      <article
-                        className={selected ? "finding finding--selectable finding--selected" : "finding finding--selectable"}
-                        key={`${finding.title}-${index}`}
-                        role="button"
-                        tabIndex={0}
-                        aria-pressed={selected}
-                        aria-label={`Inspect finding: ${finding.title}`}
-                        onClick={() => setSelectedFindingIndex(index)}
-                        onKeyDown={(event) => {
-                          if (event.key === "Enter" || event.key === " ") {
-                            event.preventDefault();
-                            setSelectedFindingIndex(index);
-                          }
-                        }}
-                      >
-                        <div className="finding-index">{String(index + 1).padStart(2, "0")}</div>
-                        <div className="finding-content">
-                          <div className="finding-title">
-                            <SeverityTag severity={finding.severity} />
-                            <h3>{finding.title}</h3>
-                            {finding.provenance && <span className={`finding-provenance finding-provenance--${findingProvenanceLabel(finding.provenance).toLowerCase().replaceAll(" ", "-")}`}>{findingProvenanceLabel(finding.provenance)}</span>}
-                          </div>
-                          <p><strong>Evidence:</strong> {finding.evidence}</p>
-                          <p><strong>Action:</strong> {finding.action}</p>
-                          {finding.file && <code>{finding.file}</code>}
-                          <span className="finding-inspect-hint">{selected ? "Selected" : "Inspect evidence"}</span>
-                        </div>
-                        <span className="finding-category">{finding.category}</span>
-                      </article>
-                    );
-                  })}
-                </div>
-
-                <aside className="finding-detail-panel" aria-label="Finding evidence panel">
-                  {selectedFinding ? (
-                    <>
-                      <div className="finding-detail-header">
-                        <div>
-                          <span className="card-kicker">EVIDENCE PANEL</span>
-                          <h3>{selectedFinding.title}</h3>
-                        </div>
-                        <button type="button" onClick={() => setSelectedFindingIndex(null)}>Close</button>
-                      </div>
-
-                      <div className="finding-detail-tags">
-                        <SeverityTag severity={selectedFinding.severity} />
-                        <span>{selectedFinding.category}</span>
-                        {selectedFinding.provenance && <span>{findingProvenanceLabel(selectedFinding.provenance)}</span>}
-                      </div>
-
-                      <section>
-                        <h4>Why this matters</h4>
-                        <p>{selectedFinding.evidence}</p>
-                      </section>
-
-                      <section>
-                        <h4>Recommended reviewer action</h4>
-                        <p>{selectedFinding.action}</p>
-                      </section>
-
-                      <div className="finding-detail-grid">
-                        <section>
-                          <h4>Affected files or areas</h4>
-                          {selectedFindingFiles.length > 0 ? (
-                            <ul>{selectedFindingFiles.map((file) => <li key={file}><code>{file}</code></li>)}</ul>
-                          ) : (
-                            <p>No specific file was attached to this finding.</p>
-                          )}
-                        </section>
-
-                        <section>
-                          <h4>Related missing test</h4>
-                          <p>{selectedFindingMissingTest ?? "No directly related missing test was identified."}</p>
-                        </section>
-
-                        <section>
-                          <h4>Related merge condition</h4>
-                          <p>{selectedFindingCondition ?? "No directly related merge condition was identified."}</p>
-                        </section>
-
-                        <section>
-                          <h4>Reviewer focus</h4>
-                          {selectedFindingReviewerFocus ? (
-                            <p><strong>{selectedFindingReviewerFocus.area}:</strong> {selectedFindingReviewerFocus.reason}</p>
-                          ) : (
-                            <p>No specialist reviewer focus was matched to this finding.</p>
-                          )}
-                        </section>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="finding-detail-empty">
-                      <span className="card-kicker">EVIDENCE PANEL</span>
-                      <h3>Select a finding to inspect the evidence.</h3>
-                      <p>Evidence, recommended action, affected files, related tests and merge conditions for the selected finding — without leaving this tab.</p>
-                    </div>
-                  )}
-                </aside>
-              </div>
-            ) : <p className="section-empty">No risk findings detected.</p>}
-          </section>
-            </div>
-          )}
-
-          {activeTab === "tests" && (
-            <div
-              className="report-tab-panel"
-              id="report-panel-tests"
-              data-tour="report-tests"
-              role="tabpanel"
-              aria-labelledby="report-tab-tests"
-            >
-          <section className="section-block report-test-plan">
-            <div className="section-heading"><div><span className="card-kicker">VERIFICATION</span><h2>Test plan</h2></div><span className="section-count">{report.missingTests.length} gaps · {report.suggestedTests.length} tests</span></div>
-            <div className="test-plan-grid">
-              <article className="test-plan-panel">
-                <h3>Missing coverage</h3>
-                {report.missingTests.length > 0 ? (
-                  <ol className="numbered-list">
-                    {report.missingTests.map((test, index) => <li key={test}><span>{String(index + 1).padStart(2, "0")}</span>{test}</li>)}
-                  </ol>
-                ) : <p className="missing-tests-empty">{cleanApprove || source === "ai" ? "No missing test gaps detected." : "No missing test gaps detected by local rules."}</p>}
-              </article>
-              <article className="test-plan-panel">
-                <h3>Suggested tests</h3>
-                {report.suggestedTests.length > 0 ? (
-                  <div className="suggested-tests">
-                    {report.suggestedTests.map((test) => <article className="suggested-test" key={test.title}>{test.priority && <span className={`test-priority test-priority--${test.priority.toLowerCase()}`}>{test.priority}</span>}<h3>{test.title}</h3>{test.description && <p>{test.description}</p>}</article>)}
-                  </div>
-                ) : <p className="section-empty">No additional tests suggested.</p>}
-              </article>
-              {cleanApprove ? (
-                <article className="test-plan-panel test-plan-panel--checklist">
-                  <h3>Reviewer checklist</h3>
-                  <p className="section-empty">No reviewer checklist items required.</p>
-                </article>
-              ) : displayedReviewerChecklist.length > 0 && (
-                <article className="test-plan-panel test-plan-panel--checklist">
-                  <h3>Reviewer checklist</h3>
-                  <ul className="checklist">
-                    {displayedReviewerChecklist.map((item) => <li key={item.label}><span className={`check-icon check-icon--${item.status.toLowerCase()}`}>{item.status === "COMPLETE" ? "✓" : "!"}</span><span>{item.label}</span></li>)}
-                  </ul>
-                </article>
-              )}
-            </div>
-          </section>
-            </div>
-          )}
-
-          {activeTab === "operations" && (
-            <div
-              className="report-tab-panel"
-              id="report-panel-operations"
-              role="tabpanel"
-              aria-labelledby="report-tab-operations"
-            >
-          <section className="section-block report-operational-readiness">
-            <div className="section-heading"><div><span className="card-kicker">OPERATIONS</span><h2>Operational readiness</h2></div></div>
-            {report.operationalReadiness ? (
-              <div className="operational-panel">
-                <div className="operational-overview">
-                  <p>{report.operationalReadiness.summary}</p>
-                  <span className={`review-status review-status--${report.operationalReadiness.status.toLowerCase()}`}>{report.operationalReadiness.status}</span>
-                </div>
-                <div className="operational-grid">
-                  <OperationalArea title="Failure modes" items={deduplicateReportItems(report.operationalReadiness.failureModes)} emptyCopy="No explicit failure mode detected." />
-                  <OperationalArea title="Detection signals" items={deduplicateReportItems(report.operationalReadiness.detectionSignals)} emptyCopy="No explicit detection signal required by detected rules." />
-                  <OperationalArea title="Observability gaps" items={deduplicateReportItems(report.operationalReadiness.observabilityGaps)} emptyCopy="No observability gap detected." />
-                  <OperationalArea title="Recovery or rollback" items={deduplicateReportItems(report.operationalReadiness.recoveryOrRollback)} emptyCopy="No recovery or rollback gap detected." />
-                  <OperationalArea title="Customer or data impact" items={deduplicateReportItems(report.operationalReadiness.customerOrDataImpact)} emptyCopy="No customer or data impact detected." />
-                  <OperationalArea title="Owner or reviewer focus" items={deduplicateReportItems(report.operationalReadiness.ownerOrReviewerFocus)} emptyCopy="No additional operational reviewer focus detected." />
-                </div>
-              </div>
-            ) : (
-              <div className="operational-legacy">
-                <span className="operational-status-legacy">NOT ASSESSED</span>
-                <p>Not assessed — regenerate this report</p>
-              </div>
-            )}
-          </section>
-            </div>
-          )}
-
-          {activeTab === "review-focus" && (
-            <div
-              className="report-tab-panel"
-              id="report-panel-review-focus"
-              role="tabpanel"
-              aria-labelledby="report-tab-review-focus"
-            >
-          <section className="section-block report-reviewer-focus">
-            <div className="section-heading">
-              <div><span className="card-kicker">REVIEW ROUTING</span><h2>Reviewer focus</h2></div>
-              {supportedReviewerFocus && <span className="section-count">{supportedReviewerFocus.length} areas</span>}
-            </div>
-            {supportedReviewerFocus ? (
-              supportedReviewerFocus.length > 0 ? (
-                <div className="reviewer-focus-list">
-                  {supportedReviewerFocus.map((item) => (
-                    <article className="reviewer-focus-item" key={item.area}>
-                      <div>
-                        <h3>{item.area}</h3>
-                        <p>{item.reason}</p>
-                      </div>
-                      <span className={`reviewer-priority reviewer-priority--${item.priority.toLowerCase()}`}>{item.priority}</span>
-                    </article>
-                  ))}
-                </div>
-              ) : (
-                <p className="reviewer-focus-empty">No specialist reviewer focus detected by current rules.</p>
-              )
-            ) : (
-              <p className="reviewer-focus-legacy">Reviewer focus was not assessed — regenerate this report.</p>
-            )}
-          </section>
-            </div>
-          )}
-
-          {activeTab === "changed-files" && (
-            <div
-              className="report-tab-panel"
-              id="report-panel-changed-files"
-              role="tabpanel"
-              aria-labelledby="report-tab-changed-files"
-            >
-          <section className="section-block report-changed-files">
-            <div className="section-heading"><div><span className="card-kicker">CHANGESET</span><h2>Changed files</h2></div><span className="section-count">{report.changedFiles.length} files</span></div>
-            <div className="file-list">
-              {report.changedFiles.map((file) => (
-                <div className="file-row" key={file.path}>
-                  <span className="file-icon" aria-hidden="true">▱</span><code>{file.path}</code>{(file.additions !== undefined || file.deletions !== undefined || file.risk) && <div className="file-stats">{file.additions !== undefined && <span className="additions">+{file.additions}</span>}{file.deletions !== undefined && <span className="deletions">−{file.deletions}</span>}{file.risk && <RiskBadge risk={file.risk} />}</div>}
-                </div>
-              ))}
-            </div>
-          </section>
-            </div>
-          )}
-
-          {activeTab === "review-focus" && (
-            <div className="report-tab-panel report-tab-panel--continued">
-          <section className="section-block report-engineering-review">
-            <div className="section-heading"><div><span className="card-kicker">ENGINEERING REVIEW</span><h2>Change quality</h2></div></div>
-            <div className="review-grid">
-              <ReviewCard title="Security review" review={report.reviews.security} findingTitles={findingTitles} calmSummary={cleanApprove ? "No security attention signal detected." : undefined} />
-              <ReviewCard title="Reliability review" review={report.reviews.reliability} findingTitles={findingTitles} calmSummary={cleanApprove ? "No reliability attention signal detected." : undefined} />
-              <ReviewCard title="Maintainability review" review={report.reviews.maintainability} findingTitles={findingTitles} calmSummary={cleanApprove ? "No maintainability attention signal detected." : undefined} />
-            </div>
-          </section>
-
-          <section className="report-quality-compact" aria-label="Report quality">
-            <div><span className="card-kicker">REPORT QUALITY</span><strong>{report.reportQuality?.status === "PASS" ? "Checks passed" : report.reportQuality?.status === "WARNING" ? "Review warnings" : "Not assessed"}</strong></div>
-            {report.reportQuality ? (
-              report.reportQuality.status === "PASS" ? <p>Internally consistent and safe to share.</p> : (
-                <ul>{report.reportQuality.checks.filter((check) => check.status === "WARNING").map((check) => <li key={check.label}><strong>{check.label}:</strong> {check.detail}</li>)}</ul>
-              )
-            ) : <p>Regenerate this legacy report to run quality checks.</p>}
-            <span className={`quality-status quality-status--${report.reportQuality?.status.toLowerCase() ?? "legacy"}`}>{report.reportQuality?.status ?? "NOT ASSESSED"}</span>
-          </section>
-            </div>
-          )}
-
-          {activeTab === "export" && (
-            <div
-              className="report-tab-panel"
-              id="report-panel-export"
-              data-tour="report-export"
-              role="tabpanel"
-              aria-labelledby="report-tab-export"
-            >
-          <section className="section-block report-export-actions" aria-labelledby="report-export-title">
-            <div className="section-heading">
-              <div>
-                <span className="card-kicker">HANDOFF</span>
-                <h2 id="report-export-title">Export and next steps</h2>
-              </div>
-              <SourceBadge source={source} />
-            </div>
-
-            <section className="decision-studio" aria-labelledby="decision-studio-title">
-              <div className="decision-studio-header">
-                <div>
-                  <span className="card-kicker">FINAL DECISION</span>
-                  <h3 id="decision-studio-title">Merge Decision Studio</h3>
-                  <p>Record the local human decision before copying a GitHub or Slack handoff. This stays on this device.</p>
-                </div>
-                <span className={`review-status review-status--${studioReviewState.status.toLowerCase().replaceAll(" ", "-")}`}>{studioDecision}</span>
-              </div>
-
-              <div className="decision-studio-grid">
-                <article>
-                  <span>Recommendation</span>
-                  <strong>{verdict.recommendation.replaceAll("_", " ")}</strong>
-                </article>
-                <article>
-                  <span>Readiness score</span>
-                  <strong>{verdict.riskScore}/100</strong>
-                </article>
-                <article>
-                  <span>Risk level</span>
-                  <strong>{verdict.riskLevel}</strong>
-                </article>
-                <article>
-                  <span>Reviewer owner</span>
-                  <strong>{displayedOwner}</strong>
-                </article>
-                <article>
-                  <span>Open conditions</span>
-                  <strong>{openConditionCount}</strong>
-                </article>
-                <article>
-                  <span>Cleared conditions</span>
-                  <strong>{clearedConditionCount}</strong>
-                </article>
-              </div>
-
-              <div className="decision-studio-context">
-                <article>
-                  <span>Top blocker</span>
-                  <p>{reportTopBlocker}</p>
-                </article>
-                <article>
-                  <span>Next action</span>
-                  <p>{reportNextDecisionAction}</p>
-                </article>
-              </div>
-
-              {readinessDelta && readinessDelta.classification !== "initial" && (
-                <p className="decision-studio-delta-note">
-                  Latest automated re-analysis is for head {shortSha(readinessDelta.currentHeadSha)}. Local human decisions remain local and should be re-confirmed when the PR head changes.
-                </p>
-              )}
-
-              <div className="decision-studio-controls">
-                <fieldset>
-                  <legend>Human decision</legend>
-                  <div className="decision-studio-options">
-                    {studioDecisionOptions.map((option) => (
-                      <label key={option}>
-                        <input
-                          type="radio"
-                          name="studio-decision"
-                          value={option}
-                          checked={studioDecision === option}
-                          onChange={() => setStudioDecision(option)}
-                        />
-                        <span>{option}</span>
-                      </label>
-                    ))}
-                  </div>
-                </fieldset>
-
-                {studioDecision === "Approved with accepted risk" && (
-                  <label className="decision-studio-reason">
-                    <span>Accepted risk reason</span>
-                    <textarea
-                      value={acceptedRiskReason}
-                      rows={3}
-                      maxLength={700}
-                      required
-                      onChange={(event) => setAcceptedRiskReason(event.target.value)}
-                      placeholder="Explain what risk is being accepted and why it is acceptable for this merge."
-                    />
-                  </label>
-                )}
-
-                <div className="decision-studio-actions">
-                  <button
-                    type="button"
-                    onClick={saveStudioDecision}
-                    disabled={studioDecision === "Approved with accepted risk" && acceptedRiskReason.trim().length === 0}
-                  >
-                    {studioDecisionState === "copied" ? "Decision saved" : studioDecisionState === "failed" ? "Reason required" : "Save human decision"}
-                  </button>
-                  <p>GitHub and Slack previews below reflect: <strong>{studioDecisionText}</strong></p>
-                </div>
-              </div>
-            </section>
-
-            <section className="human-decision-ledger" aria-labelledby="human-decision-ledger-title">
-              <div className="decision-studio-header">
-                <div>
-                  <span className="card-kicker">HUMAN AUTHORITY</span>
-                  <h3 id="human-decision-ledger-title">Human Decision Ledger</h3>
-                  <p>Append-only local record of human decisions. Lintel recommendations, scores and findings remain unchanged.</p>
-                </div>
-                <span className="section-count">{humanDecisionProjection.applicability.replaceAll("-", " ")}</span>
-              </div>
-
-              <div className="human-ledger-summary-grid">
-                <article><span>Current decision</span><strong>{humanDecisionOutcomeLabel(humanDecisionProjection.latestEffectiveEntry?.outcome)}</strong></article>
-                <article><span>Lintel recommendation</span><strong>{verdict.recommendation.replaceAll("_", " ")}</strong></article>
-                <article><span>Divergence</span><strong>{humanDecisionDivergence.replaceAll("-", " ")}</strong></article>
-                <article><span>Applies to</span><strong>{shortSha(humanDecisionProjection.latestEffectiveEntry?.applicableHeadSha ?? canonicalRun?.headSha)}</strong></article>
-                <article><span>Accepted risks</span><strong>{humanDecisionProjection.activeAcceptedRisks.length}</strong></article>
-                <article><span>Ledger</span><strong>{fingerprintPrefix(humanDecisionLedger.ledgerId)}</strong></article>
-              </div>
-
-              {humanDecisionProjection.reaffirmationRequired && (
-                <p className="decision-studio-delta-note">
-                  Current human decision predates head {shortSha(humanDecisionLedgerContext.currentHeadSha)}. Reaffirmation is required before treating it as current.
-                </p>
-              )}
-
-              <div className="human-ledger-actions">
-                <button type="button" onClick={withdrawCurrentHumanDecision} disabled={!humanDecisionProjection.latestEffectiveEntry}>
-                  Withdraw current decision
-                </button>
-                {humanDecisionProjection.activeAcceptedRisks.slice(0, 2).map((entry) => (
-                  <button type="button" key={entry.entryId} onClick={() => revokeAcceptedRisk(entry)}>
-                    Revoke risk {fingerprintPrefix(entry.entryId)}
-                  </button>
-                ))}
-              </div>
-
-              {humanDecisionLedger.entries.length > 0 ? (
-                <div className="human-ledger-rows">
-                  {[...humanDecisionLedger.entries].reverse().slice(0, 10).map((entry) => (
-                    <HumanDecisionLedgerRow entry={entry} currentHeadSha={humanDecisionLedgerContext.currentHeadSha} key={entry.entryId} />
-                  ))}
-                </div>
-              ) : (
-                <p className="section-empty">No human decision has been recorded in the ledger yet.</p>
-              )}
-            </section>
-
-            <div className="report-export-grid">
-              <article>
-                <h3>Copy conditions</h3>
-                <p>Copy only the merge conditions as PR-ready Markdown.</p>
-                <button
-                  className={`copy-conditions-button copy-conditions-button--${conditionsCopyState}`}
-                  type="button"
-                  onClick={handleCopyConditions}
-                  aria-live="polite"
-                >
-                  {copyConditionsLabels[conditionsCopyState]}
-                </button>
-              </article>
-              <article>
-                <h3>Copy summary</h3>
-                <p>Copy a concise Markdown report for review handoff or validation.</p>
-                <button
-                  className={`copy-summary-button copy-summary-button--${copyState}`}
-                  type="button"
-                  onClick={handleCopySummary}
-                  aria-live="polite"
-                >
-                  {copyLabels[copyState]}
-                </button>
-              </article>
-              <article>
-                <h3>Download Markdown</h3>
-                <p>Save the current report as a local Markdown artifact.</p>
-                <button
-                  className={`download-markdown-button download-markdown-button--${downloadState}`}
-                  type="button"
-                  onClick={handleDownloadMarkdown}
-                  aria-live="polite"
-                >
-                  {downloadLabels[downloadState]}
-                </button>
-              </article>
-              <article>
-                <h3>Navigate</h3>
-                <p>Return to the local risk inbox or check another pull request.</p>
-                <div className="report-export-links">
-                  <a href="/workspace">Back to workspace</a>
-                  <a href="/new">Check another pull request</a>
-                  <a href="/review-policies">Review policies</a>
-                  <button type="button" onClick={() => setActiveTab("evidence")}>Evidence ledger</button>
-                  <button type="button" onClick={() => setActiveTab("blast-radius")}>Affected surfaces</button>
-                  <a href="/github-action">GitHub Action prototype</a>
-                  <a href="/slack-handoff">Slack handoff concept</a>
-                  <a href="/docs/security-model.md">Security model</a>
-                </div>
-              </article>
-            </div>
-
-            <div className="merge-summary-builder" aria-label="GitHub comment builder">
-              <div className="merge-summary-builder-header">
-                <div>
-                  <span className="card-kicker">PR COMMENT BUILDER</span>
-                  <h3>Merge-readiness handoff</h3>
-                  <p>Preview a concise Markdown comment you can paste into a GitHub PR. This is local/export only; Lintel does not post to GitHub.</p>
-                </div>
-                <button
-                  className={`copy-summary-button copy-summary-button--${mergeSummaryCopyState}`}
-                  type="button"
-                  onClick={handleCopyMergeSummary}
-                  aria-live="polite"
-                >
-                  {copyMergeSummaryLabels[mergeSummaryCopyState]}
-                </button>
-              </div>
-
-              <div className="merge-summary-options">
-                <span>{verdict.recommendation.replaceAll("_", " ")} · {verdict.riskLevel} risk · {reviewState.status}</span>
-                {reviewState.note.trim().length > 0 ? (
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={includeLocalNoteInMergeSummary}
-                      onChange={(event) => setIncludeLocalNoteInMergeSummary(event.target.checked)}
-                    />
-                    <span>Include local reviewer note</span>
-                  </label>
-                ) : (
-                  <span>Local reviewer note is empty.</span>
-                )}
-              </div>
-
-              <pre className="merge-summary-preview" aria-label="Generated merge-readiness Markdown preview">{mergeSummaryMarkdown}</pre>
-            </div>
-
-            <div className="merge-summary-builder" aria-label="Slack handoff builder">
-              <div className="merge-summary-builder-header">
-                <div>
-                  <span className="card-kicker">SLACK HANDOFF</span>
-                  <h3>Team-channel handoff</h3>
-                  <p>Preview the same final decision in a concise Slack-ready format. This is copy/export only.</p>
-                </div>
-                <button
-                  className="copy-summary-button"
-                  type="button"
-                  onClick={handleQuickCopySlackHandoff}
-                  aria-live="polite"
-                >
-                  Copy Slack handoff
-                </button>
-              </div>
-              <pre className="merge-summary-preview" aria-label="Generated Slack handoff preview">{slackHandoffText}</pre>
-            </div>
-          </section>
-
-          <section className="final-recommendation final-recommendation--compact">
-            <div className="final-intro"><span className="card-kicker">CLOSING SUMMARY</span><h2>{recommendationHeadings[verdict.recommendation]}</h2></div>
-            <p>{closingRecommendations[verdict.recommendation]}</p>
-          </section>
-            </div>
-          )}
-          </div>
-
-          <aside className="report-decision-panel" aria-label="Merge-readiness decision panel">
-            <div className="report-decision-panel-header">
-              <span className="card-kicker">DECISION</span>
-              <RecommendationBadge recommendation={verdict.recommendation} />
-            </div>
-
-            <div className="report-decision-panel-title">
-              <h2>{pr.title}</h2>
-              <p>{pr.repository}</p>
-            </div>
-
-            <div className="report-decision-panel-risk">
-              <strong className={`risk-band risk-band--${verdict.riskLevel.toLowerCase()}`}>{verdict.riskLevel} RISK</strong>
-              <span>Risk score: {verdict.riskScore}/100</span>
-            </div>
-
-            <dl className="report-decision-panel-snapshot" aria-label="Report at a glance">
-              <div><dt>{displayedConditions.length}</dt><dd>conditions</dd></div>
-              <div><dt>{report.missingTests.length}</dt><dd>missing tests</dd></div>
-              <div className={reviewActionProgress.openBlockers > 0 ? "snapshot-stat--attention" : undefined}><dt>{reviewActionProgress.openBlockers}</dt><dd>open blockers</dd></div>
-            </dl>
-
-            <section className="report-decision-panel-next" aria-label="Next action">
-              <span>Next action</span>
-              <strong>
-                {displayedConditions.length > 0
-                  ? "Clear merge conditions"
-                  : report.missingTests.length > 0
-                    ? "Add focused tests"
-                    : operationalStatus === "ATTENTION"
-                      ? "Review operational readiness"
-                      : report.findings.length > 0
-                        ? "Complete focused review"
-                        : "Complete normal review"}
-              </strong>
-            </section>
-
-            <dl className="report-decision-panel-meta">
-              <div><dt>Review mode</dt><dd>{reviewProfileLabel(pr.reviewProfile)}</dd></div>
-              <div><dt>Policy</dt><dd>{activePolicy.label}</dd></div>
-              <div><dt>Input</dt><dd>{decisionPanelInputLabel(pr.branch)}</dd></div>
-              <div><dt>Mode</dt><dd>{sourceLabels[source]}</dd></div>
-              <div><dt>Operations</dt><dd>{operationalStatus}</dd></div>
-              <div><dt>Quality</dt><dd>{qualityStatus}</dd></div>
-              <div><dt>Reviewer focus</dt><dd>{reviewerFocusSummary}</dd></div>
-              <div><dt>Owner</dt><dd>{displayedOwner}</dd></div>
-            </dl>
-
-            <section className="report-policy-gates" aria-label="Active merge policy">
-              <div>
-                <span>Active policy</span>
-                <strong>{activePolicyStatus.label}</strong>
-              </div>
-              <p>{activePolicy.label}: {policyGateSummary(activePolicy)}. {activePolicyStatus.detail}</p>
-              <a href="/review-policies">View merge gates</a>
-            </section>
-
-            <section className="report-decision-panel-conditions" aria-label="Condition progress">
-              <span>Conditions cleared</span>
-              <strong>{conditionProgressLabel}</strong>
-            </section>
-
-            <section className="report-local-review-state" aria-label="Local review state">
-              <div className="report-local-review-heading">
-                <span>Local review state</span>
-                <strong>{reviewState.status}</strong>
-              </div>
-              <label>
-                <span>Status</span>
-                <select value={reviewState.status} onChange={(event) => updateReviewStatus(event.target.value as ReviewStatus)}>
-                  {REVIEW_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}
-                </select>
-              </label>
-              <label>
-                <span>Owner</span>
-                <select value={reviewState.owner} onChange={(event) => updateReviewOwner(event.target.value as ReviewerOwner)}>
-                  {reportOwnerOptions.map((owner) => <option key={owner} value={owner}>{owner}</option>)}
-                  {reportOwnerIsHistorical && <option value={reviewState.owner}>{reviewState.owner} (inactive or historical)</option>}
-                </select>
-              </label>
-              <p>
-                {currentWorkspace
-                  ? `Owner choices use active members in ${currentWorkspace.name}. Roles are local responsibility metadata, not access control.`
-                  : "Suggested owner cue"}{" "}
-                {suggestedOwners.length > 0 ? `Suggested cue: ${suggestedOwners.join(" / ")}` : "No specialist owner cue detected."}
-              </p>
-              <label>
-                <span>Reviewer note</span>
-                <textarea
-                  value={reviewState.note}
-                  maxLength={1000}
-                  rows={4}
-                  onChange={(event) => updateReviewNote(event.target.value)}
-                  onBlur={handleReviewNoteBlur}
-                  placeholder="Local/private note for this device. Do not paste raw diffs or secrets."
-                />
-              </label>
-              <p>{reviewState.updatedAt ? `Review state saved locally ${new Date(reviewState.updatedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}.` : "Review state is stored locally on this device."}</p>
-            </section>
-
-            <div className="report-decision-panel-actions">
-              <button
-                type="button"
-                onClick={openDecisionStudio}
-              >
-                Open Decision Studio
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("export")}
-              >
-                Build PR comment
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("actions")}
-              >
-                Review actions
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("timeline")}
-              >
-                Decision history
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("evidence")}
-              >
-                Evidence ledger
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab("blast-radius")}
-              >
-                Affected surfaces
-              </button>
-              <button
-                className={`copy-conditions-button copy-conditions-button--${conditionsCopyState}`}
-                type="button"
-                onClick={handleCopyConditions}
-                aria-live="polite"
-              >
-                {copyConditionsLabels[conditionsCopyState]}
-              </button>
-              <button
-                className={`copy-summary-button copy-summary-button--${copyState}`}
-                type="button"
-                onClick={handleCopySummary}
-                aria-live="polite"
-              >
-                {copyLabels[copyState]}
-              </button>
-              <button
-                className={`download-markdown-button download-markdown-button--${downloadState}`}
-                type="button"
-                onClick={handleDownloadMarkdown}
-                aria-live="polite"
-              >
-                {downloadLabels[downloadState]}
-              </button>
-              <a href="/workspace">Back to workspace</a>
-              <a href="/new">Check another pull request</a>
-              <a href="/docs/security-model.md">Security model</a>
+              <details className="verdict-ledger" open={humanDecisionProjection.reaffirmationRequired}>
+                <summary><span>Human Decision Ledger</span><strong>{humanDecisionLedger.entries.length}</strong></summary>
+                <dl className="verdict-ledger-summary"><div><dt>Current</dt><dd>{humanDecisionOutcomeLabel(humanDecisionProjection.latestEffectiveEntry?.outcome)}</dd></div><div><dt>Alignment</dt><dd>{humanDecisionDivergence.replaceAll("-", " ")}</dd></div><div><dt>Applicability</dt><dd>{humanDecisionProjection.applicability.replaceAll("-", " ")}</dd></div></dl>
+                {humanDecisionProjection.reaffirmationRequired && <p className="decision-studio-delta-note">Decision predates the current head. Reaffirmation is required.</p>}
+                <div className="human-ledger-actions"><button type="button" onClick={withdrawCurrentHumanDecision} disabled={!humanDecisionProjection.latestEffectiveEntry}>Withdraw current decision</button>{humanDecisionProjection.activeAcceptedRisks.slice(0, 2).map((entry) => <button type="button" key={entry.entryId} onClick={() => revokeAcceptedRisk(entry)}>Revoke risk {fingerprintPrefix(entry.entryId)}</button>)}</div>
+                <div className="human-ledger-rows">{[...humanDecisionLedger.entries].reverse().slice(0, 10).map((entry) => <HumanDecisionLedgerRow entry={entry} currentHeadSha={humanDecisionLedgerContext.currentHeadSha} key={entry.entryId} />)}</div>
+              </details>
+              <div className="verdict-rail-footer-actions"><button type="button" onClick={handleCopyMergeSummary}>{copyMergeSummaryLabels[mergeSummaryCopyState]}</button><button type="button" onClick={() => quickJumpTo("merge-contract", "Merge Contract")}>View contract</button></div>
             </div>
           </aside>
         </div>
       </div>
     </AppShell>
   );
+
 }

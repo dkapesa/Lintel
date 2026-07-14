@@ -122,6 +122,7 @@ type CopyState = "idle" | "copied" | "failed";
 type DownloadState = "idle" | "downloaded" | "failed";
 type QuickActionMessageState = "success" | "failed";
 type DossierSectionId = "what-changed" | "observed" | "uncertain" | "merge-contract" | "appendix";
+type VerificationTraceState = "open" | "satisfied" | "partial" | "unavailable";
 type Finding = Report["findings"][number];
 type ReviewerFocus = NonNullable<Report["reviewerFocus"]>[number];
 type EvidenceLedgerItem = {
@@ -582,6 +583,26 @@ function reportNextAction(report: Report, conditions: string[], operationalStatu
   return "Complete normal review";
 }
 
+function studioDecisionMatchesRecommendation(decision: StudioHumanDecision, recommendation: Recommendation) {
+  if (decision === "Approved with accepted risk") return false;
+  if (recommendation === "APPROVE") return decision === "Ready to merge";
+  if (recommendation === "TESTS_REQUIRED") return decision === "Tests required";
+  if (recommendation === "REVIEW_REQUIRED") return decision === "Review required";
+  if (recommendation === "BLOCK") return decision === "Blocked";
+  return false;
+}
+
+function normalizedRecordKey(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "item";
+}
+
+function uncertaintyStateLabel(status: AssumptionStatus) {
+  if (status === "open" || status === "stale") return "ASSUMED";
+  if (status === "accepted") return "ACCEPTED";
+  if (status === "invalidated" || status === "superseded") return "INVALIDATED";
+  return "SUPPORTED";
+}
+
 function dossierSectionForLegacyTarget(target: string): DossierSectionId {
   if (["what-changed", "observed", "uncertain", "merge-contract", "appendix"].includes(target)) return target as DossierSectionId;
   if (["overview", "blast-radius", "changed-files"].includes(target)) return "what-changed";
@@ -629,7 +650,7 @@ function recommendationBecauseClause({
 function timelineTime(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "Unknown time";
-  return date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  return date.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/London" });
 }
 
 function deltaScoreMovement(delta: ReadinessDelta) {
@@ -2236,36 +2257,45 @@ function EvidenceLedgerCard({ item }: { item: EvidenceLedgerItem }) {
   );
 }
 
-function EvidenceHierarchyRow({ record }: { record: EvidenceRecord }) {
+function EvidenceHierarchyRow({ record, reference }: { record: EvidenceRecord; reference: string }) {
+  const technicalReference = record.supportingReference ?? (record.headSha ? shortSha(record.headSha) : "Not recorded");
   return (
-    <article className={`evidence-hierarchy-row evidence-hierarchy-row--${record.class}`}>
-      <div>
+    <details className={`evidence-register-row evidence-register-row--${record.class}`}>
+      <summary>
+        <code>{reference}</code>
         <span>{evidenceClassLabels[record.class]}</span>
         <strong>{record.title}</strong>
+        <span className="evidence-register-state">{record.stale ? "STALE" : record.status.replaceAll("-", " ").toUpperCase()}</span>
+      </summary>
+      <div className="evidence-register-detail">
         <p>{record.statement}</p>
+        <dl>
+          <div><dt>Provenance</dt><dd>{record.provenance}</dd></div>
+          <div><dt>Source</dt><dd>{record.source}</dd></div>
+          <div><dt>Supports</dt><dd>{record.relatedSurfaces.slice(0, 3).join(", ") || "Review context"}</dd></div>
+          <div><dt>Technical reference</dt><dd><code>{technicalReference}</code></dd></div>
+        </dl>
       </div>
-      <dl>
-        <div><dt>Source</dt><dd>{record.source}</dd></div>
-        <div><dt>Status</dt><dd>{record.stale ? "Stale for current commit" : record.status.replaceAll("-", " ")}</dd></div>
-        <div><dt>Supports</dt><dd>{record.relatedSurfaces.slice(0, 2).join(", ") || "Review context"}</dd></div>
-      </dl>
-    </article>
+    </details>
   );
 }
 
 function AssumptionRegistryRow({
   assumption,
+  reference,
   override,
   status,
   onUpdate,
 }: {
   assumption: AssumptionRecord;
+  reference: string;
   override?: LocalAssumptionOverride;
   status: AssumptionStatus;
   onUpdate: (status: LocalAssumptionOverride["status"]) => void;
 }) {
   return (
-    <article className={`assumption-registry-row assumption-registry-row--${status}`}>
+    <article className={`uncertainty-record uncertainty-record--${status}`}>
+      <div className="uncertainty-record-state"><code>{reference}</code><span>{uncertaintyStateLabel(status)}</span></div>
       <div className="assumption-registry-main">
         <span>{assumption.importance} · {status === "accepted" ? "Accepted uncertainty" : status}</span>
         <strong>{assumption.statement}</strong>
@@ -2289,31 +2319,40 @@ function AssumptionRegistryRow({
 
 function MergeContractClauseRow({
   clause,
+  reference,
+  relatedReferences,
+  recheckEvaluation,
   status,
   override,
   onUpdate,
 }: {
   clause: MergeContractClause;
+  reference: string;
+  relatedReferences: string[];
+  recheckEvaluation?: ContractRecheckClauseEvaluation;
   status: MergeContractClauseStatus;
   override?: LocalClauseOverride;
   onUpdate: (status: LocalClauseOverride["status"]) => void;
 }) {
   return (
-    <article className={`merge-contract-clause merge-contract-clause--${status}`}>
+    <article className={`merge-contract-clause contract-ledger-row contract-ledger-row--${clause.importance} contract-ledger-row--${status}`}>
+      <div className="contract-ledger-reference"><code>{reference}</code><span>{clause.importance}</span></div>
       <div className="merge-contract-clause-main">
-        <span>{clause.importance} Â· {status === "accepted" ? "Accepted risk" : status}</span>
+        <span>{clause.type.replaceAll("-", " ")}</span>
         <strong>{clause.title}</strong>
         <p>{clause.statement}</p>
+        <small>{clause.rationale}</small>
       </div>
-      <dl>
-        <div><dt>Why</dt><dd>{clause.rationale}</dd></div>
+      <div className="contract-ledger-state"><span>{status === "accepted" ? "ACCEPTED RISK" : status.toUpperCase()}</span><small>{clause.lastEvaluatedHeadSha ? shortSha(clause.lastEvaluatedHeadSha) : "Local"}</small></div>
+      <dl className="contract-ledger-links">
         <div><dt>Clears with</dt><dd>{clause.evidenceRequired}</dd></div>
         <div><dt>Evidence</dt><dd>{clause.currentSupportingEvidenceIds.length > 0 ? `${clause.currentSupportingEvidenceIds.length} supporting record(s)` : "Stronger evidence required"}</dd></div>
         <div><dt>Assumptions</dt><dd>{clause.relatedAssumptionIds.length > 0 ? clause.relatedAssumptionIds.length : "None linked"}</dd></div>
+        <div><dt>Related records</dt><dd>{relatedReferences.length > 0 ? relatedReferences.join(", ") : "None linked"}</dd></div>
         <div><dt>Owner cue</dt><dd>{clause.ownerCue ?? "Not assigned"}</dd></div>
-        <div><dt>Head SHA</dt><dd>{clause.lastEvaluatedHeadSha ? shortSha(clause.lastEvaluatedHeadSha) : "Local report"}</dd></div>
         <div><dt>Local reason</dt><dd>{override?.reason ?? "None"}</dd></div>
       </dl>
+      {recheckEvaluation && <p className={`contract-recheck-annotation contract-recheck-annotation--${recheckEvaluation.evaluationStatus}`}><strong>{recheckEvaluation.evaluationStatus.replaceAll("-", " ")}</strong> · {recheckEvaluation.explanation}</p>}
       <details className="merge-contract-clause-details">
         <summary>Inspect machine-readable requirements</summary>
         <ul>
@@ -2394,7 +2433,7 @@ function HumanDecisionLedgerRow({ entry, currentHeadSha }: { entry: HumanDecisio
       <summary>
         <span>{entry.eventType.replaceAll("-", " ")}</span>
         <strong>{humanDecisionOutcomeLabel(entry.outcome)}</strong>
-        <time dateTime={entry.recordedAt}>{new Date(entry.recordedAt).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</time>
+        <time dateTime={entry.recordedAt}>{timelineTime(entry.recordedAt)}</time>
       </summary>
       <div className="human-ledger-row-detail">
         <dl>
@@ -2445,7 +2484,6 @@ export default function ReportPage() {
   const [clearedConditionKeys, setClearedConditionKeys] = useState<Set<string>>(new Set());
   const [activeDossierSection, setActiveDossierSection] = useState<DossierSectionId>("what-changed");
   const [decisionSheetOpen, setDecisionSheetOpen] = useState(false);
-  const [selectedFindingIndex, setSelectedFindingIndex] = useState<number | null>(null);
   const [timelineFilter, setTimelineFilter] = useState<TimelineFilter>("All");
   const [reviewDiffFilter, setReviewDiffFilter] = useState<(typeof reviewDiffFilters)[number]>("All");
   const [selectedTimelineEventId, setSelectedTimelineEventId] = useState<string | null>(null);
@@ -2475,6 +2513,7 @@ export default function ReportPage() {
   const noteHistoryBaselineRef = useRef("");
   const decisionRailRef = useRef<HTMLElement | null>(null);
   const decisionSheetTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const decisionSheetReturnFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("demo") === "1") return;
@@ -2556,13 +2595,12 @@ export default function ReportPage() {
   useEffect(() => {
     function handleReportEscape(event: globalThis.KeyboardEvent) {
       if (event.key !== "Escape" || isReportTextEntry(event.target)) return;
-      if (selectedFindingIndex !== null) setSelectedFindingIndex(null);
       if (selectedTimelineEventId !== null) setSelectedTimelineEventId(null);
     }
 
     window.addEventListener("keydown", handleReportEscape);
     return () => window.removeEventListener("keydown", handleReportEscape);
-  }, [selectedFindingIndex, selectedTimelineEventId]);
+  }, [selectedTimelineEventId]);
 
   useEffect(() => {
     function handleTourTab(event: Event) {
@@ -2597,14 +2635,15 @@ export default function ReportPage() {
     const rail = decisionRailRef.current;
     if (!rail) return;
 
-    const focusable = Array.from(rail.querySelectorAll<HTMLElement>("button:not([disabled]), a[href], select:not([disabled]), textarea:not([disabled]), input:not([disabled]), details > summary"));
-    focusable[0]?.focus();
+    const focusable = Array.from(rail.querySelectorAll<HTMLElement>("button:not([disabled]), a[href], select:not([disabled]), textarea:not([disabled]), input:not([disabled]), details > summary"))
+      .filter((element) => element.offsetParent !== null);
+    const focusFrame = window.requestAnimationFrame(() => focusable[0]?.focus());
 
     function handleSheetKeyDown(event: globalThis.KeyboardEvent) {
       if (event.key === "Escape") {
         event.preventDefault();
         setDecisionSheetOpen(false);
-        window.setTimeout(() => decisionSheetTriggerRef.current?.focus(), 0);
+        window.setTimeout(() => (decisionSheetReturnFocusRef.current ?? decisionSheetTriggerRef.current)?.focus(), 0);
         return;
       }
       if (event.key !== "Tab" || focusable.length === 0) return;
@@ -2620,7 +2659,10 @@ export default function ReportPage() {
     }
 
     document.addEventListener("keydown", handleSheetKeyDown);
-    return () => document.removeEventListener("keydown", handleSheetKeyDown);
+    return () => {
+      window.cancelAnimationFrame(focusFrame);
+      document.removeEventListener("keydown", handleSheetKeyDown);
+    };
   }, [decisionSheetOpen]);
 
   const { report, source } = displayedReport;
@@ -2631,13 +2673,6 @@ export default function ReportPage() {
   const decisionHistoryKey = decisionHistoryKeyForReport(report);
   const humanDecisionLedgerKey = humanDecisionLedgerKeyForReport(report);
   const displayedConditions = reportConditions(report);
-  const selectedFinding = selectedFindingIndex !== null ? report.findings[selectedFindingIndex] : undefined;
-  const selectedFindingFiles = selectedFinding ? affectedFilesForFinding(report, selectedFinding) : [];
-  const selectedFindingMissingTest = selectedFinding ? bestRelatedText(selectedFinding, report.missingTests) : null;
-  const selectedFindingCondition = selectedFinding ? bestRelatedText(selectedFinding, displayedConditions) : null;
-  const selectedFindingReviewerFocus = selectedFinding && supportedReviewerFocus
-    ? reviewerFocusForFinding(selectedFinding, supportedReviewerFocus)
-    : null;
   const displayedConditionSignature = displayedConditions.join("\n");
   const conditionTrackingEnabled = (verdict.recommendation === "TESTS_REQUIRED" || verdict.recommendation === "REVIEW_REQUIRED")
     && displayedConditions.length > 0;
@@ -2880,6 +2915,64 @@ export default function ReportPage() {
     missingProof: missingProofCount,
     openAssumptions: evidenceHierarchy.openBlockingAssumptions + evidenceHierarchy.openAdvisoryAssumptions,
   });
+  const evidenceReferenceById = new Map(evidenceHierarchy.records.map((record, index) => [record.evidenceId, `E${index + 1}`]));
+  const assumptionReferenceById = new Map(displayedAssumptions.map(({ assumption }, index) => [assumption.assumptionId, `A${index + 1}`]));
+  const findingReferenceById = new Map<string, string>();
+  report.findings.forEach((finding, index) => {
+    findingReferenceById.set(`finding-${index}`, `F${index + 1}`);
+    findingReferenceById.set(`finding-${normalizedRecordKey(finding.title)}`, `F${index + 1}`);
+  });
+  const testReferenceById = new Map(report.missingTests.map((test, index) => [`test-gap-${index}`, `M${index + 1}`]));
+  const contractRecheckByClauseId = new Map((contractRecheck?.clauseEvaluations ?? []).map((evaluation) => [evaluation.clauseId, evaluation]));
+  const contractRelatedReferencesById = new Map(displayedContractClauses.map(({ clause }) => [
+    clause.clauseId,
+    [...new Set([
+      ...clause.relatedFindingIds.flatMap((id) => findingReferenceById.get(id) ?? []),
+      ...clause.relatedTestGapIds.flatMap((id) => testReferenceById.get(id) ?? []),
+      ...clause.relatedEvidenceIds.flatMap((id) => evidenceReferenceById.get(id) ?? []),
+      ...clause.relatedAssumptionIds.flatMap((id) => assumptionReferenceById.get(id) ?? []),
+    ])],
+  ]));
+  const findingEvidenceRecords = report.findings.map((finding, index) => evidenceHierarchy.records.filter((record) => (
+    record.relatedFindingIds.includes(`finding-${index}`)
+    || record.relatedFindingIds.includes(`finding-${normalizedRecordKey(finding.title)}`)
+  )));
+  const traceNodes: Array<{ label: string; href: string; state: VerificationTraceState; decision?: boolean }> = [
+    { label: "Change", href: "#dossier-what-changed", state: report.changedFiles.length > 0 ? "satisfied" : (pr.title || pr.repository) ? "partial" : "unavailable" },
+    { label: "Observation", href: "#dossier-observed", state: report.findings.length > 0 || report.operationalReadiness || canonicalRun ? "satisfied" : "partial" },
+    {
+      label: "Evidence",
+      href: "#dossier-observed",
+      state: evidenceHierarchy.records.length === 0
+        ? "unavailable"
+        : evidenceHierarchy.records.some((record) => record.status === "missing" || record.status === "unverified" || record.stale)
+          ? "partial"
+          : "satisfied",
+    },
+    {
+      label: "Requirement",
+      href: "#dossier-merge-contract",
+      state: displayedContractClauses.length === 0
+        ? displayedConditions.length > 0 ? "partial" : "unavailable"
+        : mergeContractBlockingOpen > 0
+          ? mergeContractSatisfied > 0 ? "partial" : "open"
+          : mergeContractAccepted > 0 ? "partial" : "satisfied",
+    },
+    {
+      label: "Human decision",
+      href: "#human-decision-record",
+      decision: true,
+      state: !humanDecisionProjection.latestEffectiveEntry
+        ? "open"
+        : humanDecisionProjection.applicability === "applicable" ? "satisfied" : "partial",
+    },
+  ];
+  const deltaSummary = readinessDelta?.previousHeadSha
+    ? `Since ${shortSha(readinessDelta.previousHeadSha)}: ${readinessDelta.openedMergeConditions.length} opened · ${readinessDelta.clearedMergeConditions.length} cleared · score ${readinessDelta.previousScore ?? "—"} → ${readinessDelta.currentScore}`
+    : null;
+  const studioDecisionDiverges = !studioDecisionMatchesRecommendation(studioDecision, verdict.recommendation);
+  const studioDecisionReasonRequired = studioDecisionDiverges || studioDecision === "Approved with accepted risk";
+  const currentHumanDecision = humanDecisionProjection.latestEffectiveEntry;
 
   useEffect(() => {
     try {
@@ -2912,12 +3005,6 @@ export default function ReportPage() {
       setHumanDecisionLedger(createEmptyHumanDecisionLedger(humanDecisionLedgerContext));
     }
   }, [humanDecisionLedgerKey, canonicalRun?.runId, canonicalRun?.headSha, mergeContract.contractId, contractRecheck?.recheckId, reviewState.updatedAt]);
-
-  useEffect(() => {
-    setSelectedFindingIndex((current) => (
-      current !== null && current >= report.findings.length ? null : current
-    ));
-  }, [report]);
 
   useEffect(() => {
     try {
@@ -3390,7 +3477,7 @@ export default function ReportPage() {
   }
 
   function saveStudioDecision() {
-    if (studioDecision === "Approved with accepted risk" && acceptedRiskReason.trim().length === 0) {
+    if (studioDecisionReasonRequired && acceptedRiskReason.trim().length === 0) {
       setStudioDecisionState("failed");
       if (studioDecisionResetTimer.current) clearTimeout(studioDecisionResetTimer.current);
       studioDecisionResetTimer.current = setTimeout(() => setStudioDecisionState("idle"), 2_000);
@@ -3422,9 +3509,7 @@ export default function ReportPage() {
             ? "decision-superseded"
             : "decision-recorded",
       outcome,
-      reason: studioDecision === "Approved with accepted risk"
-        ? acceptedRiskReason.trim()
-        : `Decision Studio recorded: ${studioDecision}.`,
+      reason: acceptedRiskReason.trim() || `Decision Studio recorded: ${studioDecision}.`,
       referencedClauseIds: studioDecision === "Approved with accepted risk" ? openBlockingClauseIds : [],
       referencedAssumptionIds: studioDecision === "Approved with accepted risk" ? openAssumptionIds : [],
       acceptedRiskReferences: studioDecision === "Approved with accepted risk" ? [...openBlockingClauseIds, ...openAssumptionIds] : [],
@@ -3439,7 +3524,7 @@ export default function ReportPage() {
       title: studioDecision === "Approved with accepted risk" ? "Accepted risk recorded" : "Human decision recorded",
       detail: studioDecision === "Approved with accepted risk"
         ? `Approved with accepted risk. Reason: ${acceptedRiskReason.trim()}`
-        : `Human decision recorded in Decision Studio: ${studioDecision}.`,
+        : `Human decision recorded in Decision Studio: ${studioDecision}.${acceptedRiskReason.trim() ? ` Reason: ${acceptedRiskReason.trim()}` : ""}`,
       previousState: previousStatus,
       nextState: studioDecision,
       label: "Local",
@@ -3567,13 +3652,35 @@ export default function ReportPage() {
             <div><dt>Run</dt><dd><code>{canonicalRun ? fingerprintPrefix(canonicalRun.runId) : "Historical"}</code></dd></div>
             <div><dt>Analysis</dt><dd>{canonicalRun?.analysisSource ?? sourceLabels[source]}</dd></div>
           </dl>
-          <div className="case-file-trace" aria-label="Verification trace">
-            <span>Change</span><i aria-hidden="true" />
-            <span>Analysis</span><i aria-hidden="true" />
-            <span>Evidence</span><i aria-hidden="true" />
-            <span>Contract</span><i aria-hidden="true" />
-            <strong>Human decision</strong>
-          </div>
+          <nav className="case-file-trace" aria-label="Verification trace">
+            {traceNodes.map((node, index) => (
+              <div className="case-file-trace-step" key={node.label}>
+                <a className={`case-file-trace-node case-file-trace-node--${node.state}${node.decision ? " case-file-trace-node--decision" : ""}`} href={node.href} aria-label={`${node.label}: ${node.state}`} onClick={(event) => {
+                  if (node.decision && window.matchMedia("(max-width: 900px)").matches) {
+                    event.preventDefault();
+                    decisionSheetReturnFocusRef.current = event.currentTarget;
+                    setDecisionSheetOpen(true);
+                  }
+                }}>
+                  <span aria-hidden="true" />
+                  <strong>{node.label}</strong>
+                  <small>{node.state}</small>
+                </a>
+                {index < traceNodes.length - 1 && <i aria-hidden="true" />}
+              </div>
+            ))}
+          </nav>
+          {deltaSummary && <p className="case-file-delta-summary">{deltaSummary}</p>}
+          {readinessDelta?.previousHeadSha && (
+            <details className="case-file-run-trace">
+              <summary>Compare two review checkpoints</summary>
+              <div>
+                <article><span>Previous review</span><code>{shortSha(readinessDelta.previousHeadSha)}</code><strong>{readinessDelta.previousScore ?? "Score unavailable"}</strong><small>{readinessDelta.previousRecommendation ?? "Recommendation unavailable"}</small></article>
+                <i aria-hidden="true" />
+                <article><span>Current review</span><code>{shortSha(readinessDelta.currentHeadSha)}</code><strong>{readinessDelta.currentScore}</strong><small>{readinessDelta.currentRecommendation}</small></article>
+              </div>
+            </details>
+          )}
           <p className="case-file-trace-note">
             {canonicalRun ? `${reproducibilityLabel(canonicalRun.reproducibility)} · ${canonicalRun.generatorVersion} · ${canonicalRun.deterministicRulesetVersion}` : "Historical report · full verification trace unavailable"}
           </p>
@@ -3672,40 +3779,47 @@ export default function ReportPage() {
                 <p>{verdict.summary}</p>
               </div>
               <div className="dossier-finding-list" aria-label="Report findings">
-                {report.findings.length > 0 ? report.findings.map((finding, index) => (
-                  <details className="dossier-finding" key={`${finding.title}-${index}`} open={selectedFindingIndex === index} onToggle={(event) => {
-                    if (event.currentTarget.open) setSelectedFindingIndex(index);
-                    else if (selectedFindingIndex === index) setSelectedFindingIndex(null);
-                  }}>
-                    <summary>
-                      <span>{String(index + 1).padStart(2, "0")}</span>
-                      <SeverityTag severity={finding.severity} />
-                      <strong>{finding.title}</strong>
-                      <small>{finding.category}</small>
-                    </summary>
-                    <div className="dossier-finding-detail">
-                      <p><strong>Evidence</strong>{finding.evidence}</p>
-                      <p><strong>Reviewer action</strong>{finding.action}</p>
-                      {finding.file && <code>{finding.file}</code>}
-                      {selectedFindingFiles.length > 0 && <p><strong>Affected files</strong>{selectedFindingFiles.join(", ")}</p>}
-                      {selectedFindingCondition && <p><strong>Related condition</strong>{selectedFindingCondition}</p>}
-                      {selectedFindingMissingTest && <p><strong>Related missing test</strong>{selectedFindingMissingTest}</p>}
-                    </div>
-                  </details>
-                )) : <p className="section-empty section-empty--positive">No risk findings detected.</p>}
+                {report.findings.length > 0 ? report.findings.map((finding, index) => {
+                  const relatedEvidence = findingEvidenceRecords[index] ?? [];
+                  const relatedFiles = affectedFilesForFinding(report, finding);
+                  const relatedCondition = bestRelatedText(finding, displayedConditions);
+                  const relatedMissingTest = bestRelatedText(finding, report.missingTests);
+                  const movement = reviewDiff?.findings.find((item) => normalizedRecordKey(item.title) === normalizedRecordKey(finding.title));
+                  return (
+                    <article className={`dossier-finding dossier-finding--${finding.severity.toLowerCase()}`} key={`${finding.title}-${index}`}>
+                      <header className="dossier-finding-header">
+                        <code>F{index + 1}</code>
+                        <SeverityTag severity={finding.severity} />
+                        <div><strong>{finding.title}</strong><span>{finding.category} · {findingProvenanceLabel(finding.provenance ?? "Rule detected")}</span></div>
+                        {movement && <small>{movement.status.replaceAll("-", " ")}</small>}
+                      </header>
+                      <p className="dossier-finding-explanation">{finding.evidence}</p>
+                      {relatedFiles.length > 0 && <p className="dossier-finding-technical"><span>Surface / file</span><code>{relatedFiles.join(", ")}</code></p>}
+                      <div className="finding-evidence-links" aria-label={`Supporting evidence for F${index + 1}`}>
+                        <span>Supporting evidence</span>
+                        {relatedEvidence.length > 0 ? relatedEvidence.map((record) => (
+                          <details key={record.evidenceId}>
+                            <summary><code>{evidenceReferenceById.get(record.evidenceId)}</code><span>{record.title}</span></summary>
+                            <p>{record.statement}</p>
+                            <small>{evidenceClassLabels[record.class]} · {record.provenance}{record.stale ? " · stale for current commit" : ""}</small>
+                          </details>
+                        )) : <p>No attached structured evidence reference. The finding explanation remains the observed record.</p>}
+                      </div>
+                      {relatedCondition && <p className="dossier-finding-related"><span>Related condition</span>{relatedCondition}</p>}
+                      {relatedMissingTest && <p className="dossier-finding-related"><span>Related missing test</span>{relatedMissingTest}</p>}
+                      <p className="dossier-finding-action"><span>Required action</span>{finding.action}</p>
+                    </article>
+                  );
+                }) : <p className="section-empty section-empty--positive">No risk findings detected.</p>}
               </div>
-              <details className="dossier-record">
-                <summary><span>Supporting evidence</span><strong>{evidenceHierarchy.records.length}</strong></summary>
-                <div className="evidence-class-grid evidence-class-grid--dossier">
-                  {evidenceClassOrder.map((evidenceClass) => <article key={evidenceClass}><span>{evidenceClassLabels[evidenceClass]}</span><strong>{evidenceHierarchy.countsByClass[evidenceClass]}</strong></article>)}
+              <details className="dossier-record evidence-register" open>
+                <summary><span>Evidence register</span><strong>{evidenceHierarchy.records.length} records</strong></summary>
+                <div className="evidence-class-distribution" aria-label="Evidence classes">
+                  {evidenceClassOrder.map((evidenceClass) => <span key={evidenceClass}><strong>{evidenceHierarchy.countsByClass[evidenceClass]}</strong> {evidenceClassLabels[evidenceClass]}</span>)}
                 </div>
-                <div className="evidence-hierarchy-list">
-                  {evidenceHierarchy.records.map((record) => <EvidenceHierarchyRow key={record.evidenceId} record={record} />)}
+                <div className="evidence-register-list">
+                  {evidenceHierarchy.records.length > 0 ? evidenceHierarchy.records.map((record, index) => <EvidenceHierarchyRow key={record.evidenceId} record={record} reference={`E${index + 1}`} />) : <p className="section-empty">Structured evidence provenance is unavailable for this report.</p>}
                 </div>
-              </details>
-              <details className="dossier-record">
-                <summary><span>Decision-support evidence ledger</span><strong>{evidenceLedger.found.length} found</strong></summary>
-                <div className="dossier-ledger-list">{evidenceLedger.found.map((item) => <EvidenceLedgerCard item={item} key={`${item.label}-${item.detail}`} />)}</div>
               </details>
               <details className="dossier-record">
                 <summary><span>Operational observations</span><strong>{operationalStatus}</strong></summary>
@@ -3726,15 +3840,22 @@ export default function ReportPage() {
                 <div><p>Proof still required</p><h2 id="dossier-uncertain-title">Uncertain or missing</h2></div>
                 <strong>{missingProofCount} items</strong>
               </header>
-              <div className="dossier-two-column">
-                <section>
-                  <h3>Missing tests</h3>
-                  {report.missingTests.length > 0 ? <ol className="numbered-list">{report.missingTests.map((test, index) => <li key={test}><span>{String(index + 1).padStart(2, "0")}</span>{test}</li>)}</ol> : <p className="section-empty section-empty--positive">No missing test gaps detected.</p>}
-                </section>
-                <section>
-                  <h3>Suggested verification</h3>
-                  {report.suggestedTests.length > 0 ? <ul className="dossier-plain-list">{report.suggestedTests.map((test) => <li key={test.title}><strong>{test.priority ?? "Suggested"}</strong><span>{test.title}</span>{test.description && <p>{test.description}</p>}</li>)}</ul> : <p className="section-empty">No additional tests suggested.</p>}
-                </section>
+              <div className="uncertainty-register" aria-label="Missing proof and reviewer needs">
+                {report.missingTests.map((test, index) => (
+                  <article className="uncertainty-record uncertainty-record--missing" key={test}>
+                    <div className="uncertainty-record-state"><code>M{index + 1}</code><span>MISSING</span></div>
+                    <div><strong>{test}</strong><p>Named test proof is not present in the current review record.</p></div>
+                    <small>Tests / coverage</small>
+                  </article>
+                ))}
+                {report.suggestedTests.map((test, index) => (
+                  <article className="uncertainty-record uncertainty-record--review" key={test.title}>
+                    <div className="uncertainty-record-state"><code>R{index + 1}</code><span>MISSING</span></div>
+                    <div><strong>{test.title}</strong><p>{test.description ?? "Reviewer verification remains useful before the decision."}</p></div>
+                    <small>{test.priority ?? "Suggested"} verification</small>
+                  </article>
+                ))}
+                {report.missingTests.length === 0 && report.suggestedTests.length === 0 && <p className="section-empty section-empty--positive">No missing test or reviewer-verification records detected.</p>}
               </div>
               {displayedReviewerChecklist.length > 0 && (
                 <details className="dossier-record">
@@ -3745,14 +3866,14 @@ export default function ReportPage() {
               <details className="dossier-record" open={displayedAssumptions.length > 0}>
                 <summary><span>Assumption Registry</span><strong>{evidenceHierarchy.openBlockingAssumptions} blocking · {evidenceHierarchy.openAdvisoryAssumptions} advisory</strong></summary>
                 <div className="assumption-registry-list">
-                  {displayedAssumptions.length > 0 ? displayedAssumptions.map(({ assumption, override, status }) => (
-                    <AssumptionRegistryRow key={assumption.assumptionId} assumption={assumption} override={override} status={status} onUpdate={(nextStatus) => updateAssumptionStatus(assumption, nextStatus)} />
+                  {displayedAssumptions.length > 0 ? displayedAssumptions.map(({ assumption, override, status }, index) => (
+                    <AssumptionRegistryRow key={assumption.assumptionId} reference={`A${index + 1}`} assumption={assumption} override={override} status={status} onUpdate={(nextStatus) => updateAssumptionStatus(assumption, nextStatus)} />
                   )) : <p className="section-empty section-empty--positive">No assumptions were registered.</p>}
                 </div>
               </details>
               <details className="dossier-record" open={evidenceLedger.missing.length > 0}>
                 <summary><span>Evidence gaps</span><strong>{evidenceLedger.missing.length}</strong></summary>
-                <div className="dossier-ledger-list">{evidenceLedger.missing.map((item) => <EvidenceLedgerCard item={item} key={`${item.label}-${item.detail}`} />)}</div>
+                <div className="uncertainty-register">{evidenceLedger.missing.map((item, index) => <article className="uncertainty-record uncertainty-record--missing" key={`${item.label}-${item.detail}`}><div className="uncertainty-record-state"><code>G{index + 1}</code><span>MISSING</span></div><div><strong>{item.label}</strong><p>{item.detail}</p></div><small>{item.relation}</small></article>)}</div>
               </details>
               <details className="dossier-record">
                 <summary><span>Reviewer focus</span><strong>{supportedReviewerFocus ? supportedReviewerFocus.length : "Historical"}</strong></summary>
@@ -3772,8 +3893,8 @@ export default function ReportPage() {
                 <div><dt>Satisfied</dt><dd>{mergeContractSatisfied}</dd></div>
                 <div><dt>Accepted risk</dt><dd>{mergeContractAccepted}</dd></div>
               </dl>
-              {displayedContractClauses.length > 0 ? <div className="merge-contract-clause-list">{displayedContractClauses.map(({ clause, override, status }) => (
-                <MergeContractClauseRow key={clause.clauseId} clause={clause} override={override} status={status} onUpdate={(nextStatus) => updateContractClauseStatus(clause, nextStatus)} />
+              {displayedContractClauses.length > 0 ? <div className="merge-contract-clause-list">{displayedContractClauses.map(({ clause, override, status }, index) => (
+                <MergeContractClauseRow key={clause.clauseId} clause={clause} reference={`C${index + 1}`} relatedReferences={contractRelatedReferencesById.get(clause.clauseId) ?? []} recheckEvaluation={contractRecheckByClauseId.get(clause.clauseId)} override={override} status={status} onUpdate={(nextStatus) => updateContractClauseStatus(clause, nextStatus)} />
               ))}</div> : (
                 <div className="dossier-historical-contract">
                   <p>{displayedConditions.length > 0 ? "This historical report has merge conditions but no complete machine-readable contract." : "No merge requirements were generated."}</p>
@@ -3814,7 +3935,7 @@ export default function ReportPage() {
                 <span>05</span>
                 <div><p>Technical record</p><h2 id="dossier-appendix-title">Appendix</h2></div>
               </header>
-              <details className="dossier-record" open>
+              <details className="dossier-record">
                 <summary><span>Canonical run and provenance</span><strong>{canonicalRun ? fingerprintPrefix(canonicalRun.runId) : "Historical"}</strong></summary>
                 {canonicalRun ? (
                   <div className="appendix-provenance">
@@ -3890,7 +4011,7 @@ export default function ReportPage() {
             </section>
           </article>
 
-          {decisionSheetOpen && <button className="verdict-sheet-scrim" type="button" aria-label="Close decision details" onClick={() => { setDecisionSheetOpen(false); window.setTimeout(() => decisionSheetTriggerRef.current?.focus(), 0); }} />}
+          {decisionSheetOpen && <button className="verdict-sheet-scrim" type="button" aria-label="Close decision details" onClick={() => { setDecisionSheetOpen(false); window.setTimeout(() => (decisionSheetReturnFocusRef.current ?? decisionSheetTriggerRef.current)?.focus(), 0); }} />}
           <aside
             className={decisionSheetOpen ? "report-verdict-rail report-verdict-rail--open" : "report-verdict-rail"}
             aria-label="Merge-readiness verdict and human decision"
@@ -3900,10 +4021,10 @@ export default function ReportPage() {
           >
             <div className="verdict-rail-compact">
               <div><RecommendationBadge recommendation={verdict.recommendation} /><span>{verdict.riskScore}/100 · {verdict.riskLevel}</span></div>
-              <button ref={decisionSheetTriggerRef} type="button" onClick={() => setDecisionSheetOpen(true)}>Review decision</button>
+              <button ref={decisionSheetTriggerRef} type="button" onClick={(event) => { decisionSheetReturnFocusRef.current = event.currentTarget; setDecisionSheetOpen(true); }}>Review decision</button>
             </div>
             <div className="verdict-rail-body">
-              <div className="verdict-rail-sheet-header"><span>Decision record</span><button type="button" onClick={() => { setDecisionSheetOpen(false); window.setTimeout(() => decisionSheetTriggerRef.current?.focus(), 0); }}>Close</button></div>
+              <div className="verdict-rail-sheet-header"><span>Decision record</span><button type="button" onClick={() => { setDecisionSheetOpen(false); window.setTimeout(() => (decisionSheetReturnFocusRef.current ?? decisionSheetTriggerRef.current)?.focus(), 0); }}>Close</button></div>
               <section className="verdict-rail-recommendation">
                 <span className="card-kicker">LINTEL RECOMMENDATION</span>
                 <RecommendationBadge recommendation={verdict.recommendation} />
@@ -3920,12 +4041,21 @@ export default function ReportPage() {
                 <label><span>Review owner</span><select value={reviewState.owner} onChange={(event) => updateReviewOwner(event.target.value as ReviewerOwner)}>{reportOwnerOptions.map((owner) => <option key={owner} value={owner}>{owner}</option>)}{reportOwnerIsHistorical && <option value={reviewState.owner}>{reviewState.owner} (historical)</option>}</select></label>
                 <label><span>Private reviewer note</span><textarea value={reviewState.note} maxLength={1000} rows={3} onChange={(event) => updateReviewNote(event.target.value)} onBlur={handleReviewNoteBlur} placeholder="Stored locally on this device." /></label>
               </section>
-              <section className="decision-studio decision-studio--rail" aria-labelledby="decision-studio-title">
+              <section className="decision-studio decision-studio--rail" id="human-decision-record" aria-labelledby="decision-studio-title">
                 <div className="decision-studio-header"><div><span className="card-kicker">FINAL HUMAN DECISION</span><h2 id="decision-studio-title">Merge Decision Studio</h2><p>Final authority remains human. Recording a decision does not change Lintel’s analysis.</p></div></div>
                 {staleDecisionNotice}
-                <fieldset><legend>Record decision for <code>{shortSha(humanDecisionLedgerContext.currentHeadSha)}</code></legend><div className="decision-studio-options">{studioDecisionOptions.map((option) => <label key={option}><input type="radio" name="studio-decision-case-file" value={option} checked={studioDecision === option} onChange={() => setStudioDecision(option)} /><span>{option}</span></label>)}</div></fieldset>
-                {studioDecision === "Approved with accepted risk" && <label className="decision-studio-reason"><span>Accepted risk reason</span><textarea value={acceptedRiskReason} rows={3} maxLength={700} required onChange={(event) => setAcceptedRiskReason(event.target.value)} placeholder="State the risk and why proceeding is acceptable." /></label>}
-                <button className="decision-studio-save" type="button" onClick={saveStudioDecision} disabled={studioDecision === "Approved with accepted risk" && acceptedRiskReason.trim().length === 0}>{studioDecisionState === "copied" ? "Decision recorded" : studioDecisionState === "failed" ? "Reason required" : "Record human decision"}</button>
+                {currentHumanDecision ? (
+                  <div className="current-human-decision">
+                    <span>Current human decision</span>
+                    <strong>{humanDecisionOutcomeLabel(currentHumanDecision.outcome)}</strong>
+                    <dl><div><dt>Actor</dt><dd>{currentHumanDecision.actor.displayLabel}</dd></div><div><dt>Recorded</dt><dd><time dateTime={currentHumanDecision.recordedAt}>{timelineTime(currentHumanDecision.recordedAt)}</time></dd></div><div><dt>Applies to</dt><dd><code>{shortSha(currentHumanDecision.applicableHeadSha)}</code></dd></div><div><dt>Alignment</dt><dd>{humanDecisionDivergence.replaceAll("-", " ")}</dd></div></dl>
+                    {currentHumanDecision.reason && <p>{currentHumanDecision.reason}</p>}
+                  </div>
+                ) : <p className="decision-awaiting"><strong>Engineer decision pending.</strong> Review the open proof and contract requirements, then record one bounded decision.</p>}
+                <fieldset><legend>Record decision for <code>{shortSha(humanDecisionLedgerContext.currentHeadSha)}</code></legend><div className="decision-studio-options">{studioDecisionOptions.map((option) => <label key={option}><input type="radio" name="studio-decision-case-file" value={option} checked={studioDecision === option} onChange={() => { setStudioDecision(option); setAcceptedRiskReason(""); }} /><span>{option}</span></label>)}</div></fieldset>
+                {studioDecisionDiverges && <p className="decision-divergence-preview" role="status"><strong>Differs from Lintel's recommendation</strong> — reason required. Lintel remains {verdict.recommendation.replaceAll("_", " ").toLowerCase()}.</p>}
+                {studioDecisionReasonRequired && <label className="decision-studio-reason"><span>{studioDecision === "Approved with accepted risk" ? "Accepted risk reason" : "Decision reason"}</span><textarea value={acceptedRiskReason} rows={3} maxLength={700} required onChange={(event) => setAcceptedRiskReason(event.target.value)} placeholder={studioDecision === "Approved with accepted risk" ? "State the risk and why proceeding is acceptable." : "Explain why the human decision differs from Lintel's recommendation."} /></label>}
+                <button className="decision-studio-save" type="button" onClick={saveStudioDecision} disabled={studioDecisionReasonRequired && acceptedRiskReason.trim().length === 0}>{studioDecisionState === "copied" ? "Decision recorded" : studioDecisionState === "failed" ? "Reason required" : currentHumanDecision ? "Record new decision" : "Record decision"}</button>
                 <p className="decision-studio-impact">Current handoff: <strong>{studioDecisionText}</strong></p>
               </section>
               <details className="verdict-ledger" open={humanDecisionProjection.reaffirmationRequired}>

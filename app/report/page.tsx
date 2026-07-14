@@ -2294,26 +2294,29 @@ function AssumptionRegistryRow({
   onUpdate: (status: LocalAssumptionOverride["status"]) => void;
 }) {
   return (
-    <article className={`uncertainty-record uncertainty-record--${status}`}>
-      <div className="uncertainty-record-state"><code>{reference}</code><span>{uncertaintyStateLabel(status)}</span></div>
-      <div className="assumption-registry-main">
-        <span>{assumption.importance} · {status === "accepted" ? "Accepted uncertainty" : status}</span>
-        <strong>{assumption.statement}</strong>
-        <p>{assumption.evidenceRequired}</p>
+    <details className={`uncertainty-record assumption-registry-row uncertainty-record--${status}`}>
+      <summary>
+        <span className="uncertainty-record-state"><code>{reference}</code><span>{uncertaintyStateLabel(status)}</span></span>
+        <span className="assumption-registry-main">
+          <strong>{assumption.statement}</strong>
+          <small>{assumption.importance} · {assumption.source} · {assumption.introducedHeadSha ? shortSha(assumption.introducedHeadSha) : "Local report"}</small>
+        </span>
+        <span className="assumption-importance">{assumption.importance}</span>
+      </summary>
+      <div className="assumption-registry-detail">
+        <p><strong>Evidence required:</strong> {assumption.evidenceRequired}</p>
+        <dl>
+          <div><dt>Owner cue</dt><dd>{assumption.ownerCue ?? "Not assigned"}</dd></div>
+          <div><dt>Local note</dt><dd>{override?.note ?? "None"}</dd></div>
+        </dl>
+        <div className="assumption-registry-actions" aria-label={`Actions for ${assumption.statement}`}>
+          <button type="button" onClick={() => onUpdate("supported")}>Confirm support</button>
+          <button type="button" onClick={() => onUpdate("accepted")}>Accept uncertainty</button>
+          <button type="button" onClick={() => onUpdate("invalidated")}>Invalidate</button>
+          <button type="button" onClick={() => onUpdate("open")}>Reopen</button>
+        </div>
       </div>
-      <dl>
-        <div><dt>Source</dt><dd>{assumption.source}</dd></div>
-        <div><dt>Owner cue</dt><dd>{assumption.ownerCue ?? "Not assigned"}</dd></div>
-        <div><dt>Head SHA</dt><dd>{assumption.introducedHeadSha ? shortSha(assumption.introducedHeadSha) : "Local report"}</dd></div>
-        <div><dt>Local note</dt><dd>{override?.note ?? "None"}</dd></div>
-      </dl>
-      <div className="assumption-registry-actions" aria-label={`Actions for ${assumption.statement}`}>
-        <button type="button" onClick={() => onUpdate("supported")}>Confirm support</button>
-        <button type="button" onClick={() => onUpdate("accepted")}>Accept uncertainty</button>
-        <button type="button" onClick={() => onUpdate("invalidated")}>Invalidate</button>
-        <button type="button" onClick={() => onUpdate("open")}>Reopen</button>
-      </div>
-    </article>
+    </details>
   );
 }
 
@@ -2325,6 +2328,8 @@ function MergeContractClauseRow({
   status,
   override,
   onUpdate,
+  isOpen,
+  onDisclosureChange,
 }: {
   clause: MergeContractClause;
   reference: string;
@@ -2333,17 +2338,23 @@ function MergeContractClauseRow({
   status: MergeContractClauseStatus;
   override?: LocalClauseOverride;
   onUpdate: (status: LocalClauseOverride["status"]) => void;
+  isOpen: boolean;
+  onDisclosureChange: (isOpen: boolean) => void;
 }) {
   return (
-    <article className={`merge-contract-clause contract-ledger-row contract-ledger-row--${clause.importance} contract-ledger-row--${status}`}>
-      <div className="contract-ledger-reference"><code>{reference}</code><span>{clause.importance}</span></div>
-      <div className="merge-contract-clause-main">
-        <span>{clause.type.replaceAll("-", " ")}</span>
-        <strong>{clause.title}</strong>
-        <p>{clause.statement}</p>
-        <small>{clause.rationale}</small>
-      </div>
-      <div className="contract-ledger-state"><span>{status === "accepted" ? "ACCEPTED RISK" : status.toUpperCase()}</span><small>{clause.lastEvaluatedHeadSha ? shortSha(clause.lastEvaluatedHeadSha) : "Local"}</small></div>
+    <details
+      className={`merge-contract-clause contract-ledger-row contract-ledger-row--${clause.importance} contract-ledger-row--${status}`}
+      open={isOpen}
+      onToggle={(event) => onDisclosureChange(event.currentTarget.open)}
+    >
+      <summary>
+        <span className="contract-ledger-reference"><code>{reference}</code></span>
+        <span className="merge-contract-clause-main"><strong>{clause.statement}</strong></span>
+        <span className="contract-ledger-importance">{clause.importance}</span>
+        <span className="contract-ledger-state">{status === "accepted" ? "ACCEPTED RISK" : status.toUpperCase()}</span>
+      </summary>
+      <div className="contract-ledger-expanded">
+        <p className="contract-clause-rationale">{clause.rationale}</p>
       <dl className="contract-ledger-links">
         <div><dt>Clears with</dt><dd>{clause.evidenceRequired}</dd></div>
         <div><dt>Evidence</dt><dd>{clause.currentSupportingEvidenceIds.length > 0 ? `${clause.currentSupportingEvidenceIds.length} supporting record(s)` : "Stronger evidence required"}</dd></div>
@@ -2371,7 +2382,8 @@ function MergeContractClauseRow({
         <button type="button" onClick={() => onUpdate("superseded")}>Supersede</button>
         <button type="button" onClick={() => onUpdate("open")}>Reopen</button>
       </div>
-    </article>
+      </div>
+    </details>
   );
 }
 
@@ -2438,7 +2450,7 @@ function HumanDecisionLedgerRow({ entry, currentHeadSha }: { entry: HumanDecisio
       <div className="human-ledger-row-detail">
         <dl>
           <div><dt>Actor</dt><dd>{entry.actor.displayLabel}</dd></div>
-          <div><dt>Commit</dt><dd>{shortSha(entry.applicableHeadSha)}</dd></div>
+          {entry.applicableHeadSha && <div><dt>Commit</dt><dd>{shortSha(entry.applicableHeadSha)}</dd></div>}
           <div><dt>Applicability</dt><dd>{applicability}</dd></div>
         </dl>
         {entry.reason && <p>{entry.reason}</p>}
@@ -2488,6 +2500,7 @@ export default function ReportPage() {
   const [reviewDiffFilter, setReviewDiffFilter] = useState<(typeof reviewDiffFilters)[number]>("All");
   const [selectedTimelineEventId, setSelectedTimelineEventId] = useState<string | null>(null);
   const [studioDecision, setStudioDecision] = useState<StudioHumanDecision>("Review required");
+  const [decisionStudioExpanded, setDecisionStudioExpanded] = useState(false);
   const [acceptedRiskReason, setAcceptedRiskReason] = useState("");
   const [studioDecisionState, setStudioDecisionState] = useState<CopyState>("idle");
   const [includeLocalNoteInMergeSummary, setIncludeLocalNoteInMergeSummary] = useState(false);
@@ -2500,6 +2513,7 @@ export default function ReportPage() {
   const [actionStatusOverrides, setActionStatusOverrides] = useState<Record<string, ReviewActionStatus>>({});
   const [assumptionOverrides, setAssumptionOverrides] = useState<Record<string, LocalAssumptionOverride>>({});
   const [clauseOverrides, setClauseOverrides] = useState<Record<string, LocalClauseOverride>>({});
+  const [openContractClauseIds, setOpenContractClauseIds] = useState<Set<string>>(new Set());
   const copyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const conditionsCopyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mergeSummaryCopyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -2514,6 +2528,7 @@ export default function ReportPage() {
   const decisionRailRef = useRef<HTMLElement | null>(null);
   const decisionSheetTriggerRef = useRef<HTMLButtonElement | null>(null);
   const decisionSheetReturnFocusRef = useRef<HTMLElement | null>(null);
+  const contractDisclosureKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("demo") === "1") return;
@@ -2805,6 +2820,12 @@ export default function ReportPage() {
     return { clause, override, status: clauseDisplayStatus(clause, override, canonicalRun?.headSha) };
   });
   const mergeContractBlockingOpen = displayedContractClauses.filter(({ clause, status }) => clause.importance === "blocking" && status === "open").length;
+  const openBlockingClauseIds = displayedContractClauses
+    .filter(({ clause, status }) => clause.importance === "blocking" && status === "open")
+    .map(({ clause }) => clause.clauseId);
+  const initialOpenContractClauseId = openBlockingClauseIds[0];
+  const allOpenBlockersExpanded = openBlockingClauseIds.length > 0
+    && openBlockingClauseIds.every((clauseId) => openContractClauseIds.has(clauseId));
   const mergeContractAdvisoryOpen = displayedContractClauses.filter(({ clause, status }) => clause.importance === "advisory" && status === "open").length;
   const mergeContractSatisfied = displayedContractClauses.filter(({ status }) => status === "satisfied").length;
   const mergeContractAccepted = displayedContractClauses.filter(({ status }) => status === "accepted").length;
@@ -2909,12 +2930,9 @@ export default function ReportPage() {
     { id: "merge-contract", label: "Merge Contract", count: `${mergeContractBlockingOpen}` },
     { id: "appendix", label: "Appendix" },
   ];
-  const becauseClause = recommendationBecauseClause({
-    report,
-    blockingClauses: mergeContractBlockingOpen,
-    missingProof: missingProofCount,
-    openAssumptions: evidenceHierarchy.openBlockingAssumptions + evidenceHierarchy.openAdvisoryAssumptions,
-  });
+  const becauseClause = mergeContractBlockingOpen === 0 && missingProofCount === 0
+    ? "No open blocking requirements or missing proofs are recorded."
+    : `Held back by ${mergeContractBlockingOpen === 1 ? "1 open blocking requirement" : `${mergeContractBlockingOpen} open blocking requirements`} and ${missingProofCount === 1 ? "1 missing proof" : `${missingProofCount} missing proofs`}.`;
   const evidenceReferenceById = new Map(evidenceHierarchy.records.map((record, index) => [record.evidenceId, `E${index + 1}`]));
   const assumptionReferenceById = new Map(displayedAssumptions.map(({ assumption }, index) => [assumption.assumptionId, `A${index + 1}`]));
   const findingReferenceById = new Map<string, string>();
@@ -2942,7 +2960,7 @@ export default function ReportPage() {
     { label: "Observation", href: "#dossier-observed", state: report.findings.length > 0 || report.operationalReadiness || canonicalRun ? "satisfied" : "partial" },
     {
       label: "Evidence",
-      href: "#dossier-observed",
+      href: "#dossier-evidence-register",
       state: evidenceHierarchy.records.length === 0
         ? "unavailable"
         : evidenceHierarchy.records.some((record) => record.status === "missing" || record.status === "unverified" || record.stale)
@@ -2999,6 +3017,12 @@ export default function ReportPage() {
   }, [mergeContractStateKey]);
 
   useEffect(() => {
+    if (contractDisclosureKeyRef.current === mergeContract.contractId) return;
+    contractDisclosureKeyRef.current = mergeContract.contractId;
+    setOpenContractClauseIds(new Set(initialOpenContractClauseId ? [initialOpenContractClauseId] : []));
+  }, [mergeContract.contractId, initialOpenContractClauseId]);
+
+  useEffect(() => {
     try {
       setHumanDecisionLedger(readHumanDecisionLedger(window.localStorage, humanDecisionLedgerKey, humanDecisionLedgerContext, reviewState));
     } catch {
@@ -3023,12 +3047,14 @@ export default function ReportPage() {
       const savedState = allStates[key] ?? readReviewState(window.localStorage, report);
       setReviewState(savedState);
       setStudioDecision(studioDecisionFromReviewState(savedState.status));
+      setDecisionStudioExpanded(false);
       setAcceptedRiskReason("");
       noteHistoryBaselineRef.current = savedState.note;
     } catch {
       const fallbackState = defaultReviewState(report);
       setReviewState(fallbackState);
       setStudioDecision(studioDecisionFromReviewState(fallbackState.status));
+      setDecisionStudioExpanded(false);
       setAcceptedRiskReason("");
       noteHistoryBaselineRef.current = fallbackState.note;
     }
@@ -3088,6 +3114,15 @@ export default function ReportPage() {
     source?: "decision-studio" | "merge-contract" | "assumption-registry" | "legacy" | "api" | "local";
     idempotencyKey?: string;
   }) {
+    const actorLabel = actorMember?.displayName
+      ?? (reviewState.owner !== "Unassigned" && !reviewState.owner.startsWith("Suggested:") ? reviewState.owner : "Local engineer");
+    const actor = {
+      displayLabel: actorLabel,
+      source: "local" as const,
+      workspaceId: currentWorkspace?.workspaceId,
+      memberId: actorMember?.memberId,
+      role: actorMember?.role,
+    };
     try {
       const next = appendHumanDecisionLedgerEntryToStorage(
         window.localStorage,
@@ -3096,13 +3131,7 @@ export default function ReportPage() {
         humanDecisionLedgerContext,
         {
           ...input,
-          actor: {
-            displayLabel: displayedOwner === "Unassigned" ? "Local reviewer" : displayedOwner,
-            source: "local",
-            workspaceId: currentWorkspace?.workspaceId,
-            memberId: actorMember?.memberId,
-            role: actorMember?.role,
-          },
+          actor,
         },
       );
       setHumanDecisionLedger(next);
@@ -3110,17 +3139,29 @@ export default function ReportPage() {
     } catch {
       const next = appendHumanDecisionLedgerEntry(humanDecisionLedger, humanDecisionLedgerContext, {
         ...input,
-        actor: {
-          displayLabel: displayedOwner === "Unassigned" ? "Local reviewer" : displayedOwner,
-          source: "local",
-          workspaceId: currentWorkspace?.workspaceId,
-          memberId: actorMember?.memberId,
-          role: actorMember?.role,
-        },
+        actor,
       });
       setHumanDecisionLedger(next);
       return next;
     }
+  }
+
+  function updateContractDisclosure(clauseId: string, isOpen: boolean) {
+    setOpenContractClauseIds((current) => {
+      const next = new Set(current);
+      if (isOpen) next.add(clauseId);
+      else next.delete(clauseId);
+      return next;
+    });
+  }
+
+  function toggleOpenBlockerDisclosures() {
+    setOpenContractClauseIds((current) => {
+      const next = new Set(current);
+      if (allOpenBlockersExpanded) openBlockingClauseIds.forEach((clauseId) => next.delete(clauseId));
+      else openBlockingClauseIds.forEach((clauseId) => next.add(clauseId));
+      return next;
+    });
   }
 
   function updateReviewState(nextState: ReportReviewState) {
@@ -3531,6 +3572,7 @@ export default function ReportPage() {
     });
 
     setStudioDecisionState("copied");
+    setDecisionStudioExpanded(false);
     if (studioDecisionResetTimer.current) clearTimeout(studioDecisionResetTimer.current);
     studioDecisionResetTimer.current = setTimeout(() => setStudioDecisionState("idle"), 2_000);
   }
@@ -3812,7 +3854,7 @@ export default function ReportPage() {
                   );
                 }) : <p className="section-empty section-empty--positive">No risk findings detected.</p>}
               </div>
-              <details className="dossier-record evidence-register" open>
+              <details className="dossier-record evidence-register" id="dossier-evidence-register" open>
                 <summary><span>Evidence register</span><strong>{evidenceHierarchy.records.length} records</strong></summary>
                 <div className="evidence-class-distribution" aria-label="Evidence classes">
                   {evidenceClassOrder.map((evidenceClass) => <span key={evidenceClass}><strong>{evidenceHierarchy.countsByClass[evidenceClass]}</strong> {evidenceClassLabels[evidenceClass]}</span>)}
@@ -3893,9 +3935,12 @@ export default function ReportPage() {
                 <div><dt>Satisfied</dt><dd>{mergeContractSatisfied}</dd></div>
                 <div><dt>Accepted risk</dt><dd>{mergeContractAccepted}</dd></div>
               </dl>
-              {displayedContractClauses.length > 0 ? <div className="merge-contract-clause-list">{displayedContractClauses.map(({ clause, override, status }, index) => (
-                <MergeContractClauseRow key={clause.clauseId} clause={clause} reference={`C${index + 1}`} relatedReferences={contractRelatedReferencesById.get(clause.clauseId) ?? []} recheckEvaluation={contractRecheckByClauseId.get(clause.clauseId)} override={override} status={status} onUpdate={(nextStatus) => updateContractClauseStatus(clause, nextStatus)} />
-              ))}</div> : (
+              {displayedContractClauses.length > 0 ? <div className="merge-contract-clause-list">
+                {openBlockingClauseIds.length > 1 && <div className="contract-disclosure-control"><span>{openBlockingClauseIds.length} blocking requirements remain open</span><button type="button" onClick={toggleOpenBlockerDisclosures}>{allOpenBlockersExpanded ? "Collapse open blockers" : "Expand open blockers"}</button></div>}
+                {displayedContractClauses.map(({ clause, override, status }, index) => (
+                  <MergeContractClauseRow key={clause.clauseId} clause={clause} reference={`C${index + 1}`} relatedReferences={contractRelatedReferencesById.get(clause.clauseId) ?? []} recheckEvaluation={contractRecheckByClauseId.get(clause.clauseId)} override={override} status={status} onUpdate={(nextStatus) => updateContractClauseStatus(clause, nextStatus)} isOpen={openContractClauseIds.has(clause.clauseId)} onDisclosureChange={(isOpen) => updateContractDisclosure(clause.clauseId, isOpen)} />
+                ))}
+              </div> : (
                 <div className="dossier-historical-contract">
                   <p>{displayedConditions.length > 0 ? "This historical report has merge conditions but no complete machine-readable contract." : "No merge requirements were generated."}</p>
                   {displayedConditions.length > 0 && <ol>{displayedConditions.map((condition) => <li key={condition}>{condition}</li>)}</ol>}
@@ -4027,7 +4072,7 @@ export default function ReportPage() {
               <div className="verdict-rail-sheet-header"><span>Decision record</span><button type="button" onClick={() => { setDecisionSheetOpen(false); window.setTimeout(() => (decisionSheetReturnFocusRef.current ?? decisionSheetTriggerRef.current)?.focus(), 0); }}>Close</button></div>
               <section className="verdict-rail-recommendation">
                 <span className="card-kicker">LINTEL RECOMMENDATION</span>
-                <RecommendationBadge recommendation={verdict.recommendation} />
+                <strong>{verdict.recommendation.replaceAll("_", " ")}</strong>
                 <p>{becauseClause}</p>
                 <dl><div><dt>Risk score</dt><dd>{verdict.riskScore}/100</dd></div><div><dt>Risk band</dt><dd>{verdict.riskLevel}</dd></div></dl>
               </section>
@@ -4036,28 +4081,34 @@ export default function ReportPage() {
                 <div><span>Immediate next action</span><strong>{reportNextDecisionAction}</strong></div>
                 <p>{activePolicy.label} · {activePolicyStatus.label}. {policyGateSummary(activePolicy)}.</p>
               </section>
-              <section className="verdict-rail-local-state" aria-label="Local review state">
-                <label><span>Review state</span><select value={reviewState.status} onChange={(event) => updateReviewStatus(event.target.value as ReviewStatus)}>{REVIEW_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
-                <label><span>Review owner</span><select value={reviewState.owner} onChange={(event) => updateReviewOwner(event.target.value as ReviewerOwner)}>{reportOwnerOptions.map((owner) => <option key={owner} value={owner}>{owner}</option>)}{reportOwnerIsHistorical && <option value={reviewState.owner}>{reviewState.owner} (historical)</option>}</select></label>
-                <label><span>Private reviewer note</span><textarea value={reviewState.note} maxLength={1000} rows={3} onChange={(event) => updateReviewNote(event.target.value)} onBlur={handleReviewNoteBlur} placeholder="Stored locally on this device." /></label>
-              </section>
               <section className="decision-studio decision-studio--rail" id="human-decision-record" aria-labelledby="decision-studio-title">
-                <div className="decision-studio-header"><div><span className="card-kicker">FINAL HUMAN DECISION</span><h2 id="decision-studio-title">Merge Decision Studio</h2><p>Final authority remains human. Recording a decision does not change Lintel’s analysis.</p></div></div>
+                <div className="decision-studio-header"><div><span className="card-kicker" id="decision-studio-title">HUMAN DECISION</span><p>Final authority remains human. This does not change Lintel’s analysis.</p></div></div>
                 {staleDecisionNotice}
                 {currentHumanDecision ? (
                   <div className="current-human-decision">
-                    <span>Current human decision</span>
+                    <span className="current-decision-lintel">Lintel recommended: {verdict.recommendation.replaceAll("_", " ")}</span>
                     <strong>{humanDecisionOutcomeLabel(currentHumanDecision.outcome)}</strong>
-                    <dl><div><dt>Actor</dt><dd>{currentHumanDecision.actor.displayLabel}</dd></div><div><dt>Recorded</dt><dd><time dateTime={currentHumanDecision.recordedAt}>{timelineTime(currentHumanDecision.recordedAt)}</time></dd></div><div><dt>Applies to</dt><dd><code>{shortSha(currentHumanDecision.applicableHeadSha)}</code></dd></div><div><dt>Alignment</dt><dd>{humanDecisionDivergence.replaceAll("-", " ")}</dd></div></dl>
+                    <dl><div><dt>Actor</dt><dd>{currentHumanDecision.actor.displayLabel}</dd></div><div><dt>Recorded</dt><dd><time dateTime={currentHumanDecision.recordedAt}>{timelineTime(currentHumanDecision.recordedAt)}</time></dd></div>{currentHumanDecision.applicableHeadSha && <div><dt>Applies to</dt><dd><code>{shortSha(currentHumanDecision.applicableHeadSha)}</code></dd></div>}</dl>
                     {currentHumanDecision.reason && <p>{currentHumanDecision.reason}</p>}
+                    <span className="current-decision-alignment">{humanDecisionDivergence.replaceAll("-", " ")}</span>
                   </div>
-                ) : <p className="decision-awaiting"><strong>Engineer decision pending.</strong> Review the open proof and contract requirements, then record one bounded decision.</p>}
-                <fieldset><legend>Record decision for <code>{shortSha(humanDecisionLedgerContext.currentHeadSha)}</code></legend><div className="decision-studio-options">{studioDecisionOptions.map((option) => <label key={option}><input type="radio" name="studio-decision-case-file" value={option} checked={studioDecision === option} onChange={() => { setStudioDecision(option); setAcceptedRiskReason(""); }} /><span>{option}</span></label>)}</div></fieldset>
-                {studioDecisionDiverges && <p className="decision-divergence-preview" role="status"><strong>Differs from Lintel's recommendation</strong> — reason required. Lintel remains {verdict.recommendation.replaceAll("_", " ").toLowerCase()}.</p>}
-                {studioDecisionReasonRequired && <label className="decision-studio-reason"><span>{studioDecision === "Approved with accepted risk" ? "Accepted risk reason" : "Decision reason"}</span><textarea value={acceptedRiskReason} rows={3} maxLength={700} required onChange={(event) => setAcceptedRiskReason(event.target.value)} placeholder={studioDecision === "Approved with accepted risk" ? "State the risk and why proceeding is acceptable." : "Explain why the human decision differs from Lintel's recommendation."} /></label>}
-                <button className="decision-studio-save" type="button" onClick={saveStudioDecision} disabled={studioDecisionReasonRequired && acceptedRiskReason.trim().length === 0}>{studioDecisionState === "copied" ? "Decision recorded" : studioDecisionState === "failed" ? "Reason required" : currentHumanDecision ? "Record new decision" : "Record decision"}</button>
-                <p className="decision-studio-impact">Current handoff: <strong>{studioDecisionText}</strong></p>
+                ) : <div className="decision-awaiting"><strong>Engineer decision pending.</strong><p>Record the next bounded decision after reviewing open proof and requirements.</p></div>}
+                {!decisionStudioExpanded ? <button className="decision-studio-save" type="button" onClick={() => setDecisionStudioExpanded(true)}>{currentHumanDecision ? "Record new decision" : "Record decision"}</button> : <>
+                  <fieldset><legend>Record decision for {humanDecisionLedgerContext.currentHeadSha ? <code>{shortSha(humanDecisionLedgerContext.currentHeadSha)}</code> : "this review"}</legend><div className="decision-studio-options">{studioDecisionOptions.map((option) => <label key={option}><input type="radio" name="studio-decision-case-file" value={option} checked={studioDecision === option} onChange={() => { setStudioDecision(option); setAcceptedRiskReason(""); }} /><span>{option}</span></label>)}</div></fieldset>
+                  {studioDecisionDiverges && <p className="decision-divergence-preview" role="status"><strong>Differs from Lintel's recommendation</strong> — reason required. Lintel remains {verdict.recommendation.replaceAll("_", " ").toLowerCase()}.</p>}
+                  {studioDecisionReasonRequired && <label className="decision-studio-reason"><span>{studioDecision === "Approved with accepted risk" ? "Accepted risk reason" : "Decision reason"}</span><textarea value={acceptedRiskReason} rows={3} maxLength={700} required onChange={(event) => setAcceptedRiskReason(event.target.value)} placeholder={studioDecision === "Approved with accepted risk" ? "State the risk and why proceeding is acceptable." : "Explain why the human decision differs from Lintel's recommendation."} /></label>}
+                  <div className="decision-studio-form-actions"><button className="decision-studio-save" type="button" onClick={saveStudioDecision} disabled={studioDecisionReasonRequired && acceptedRiskReason.trim().length === 0}>{studioDecisionState === "copied" ? "Decision recorded" : studioDecisionState === "failed" ? "Reason required" : "Record decision"}</button><button type="button" onClick={() => setDecisionStudioExpanded(false)}>Cancel</button></div>
+                  <p className="decision-studio-impact">Current handoff: <strong>{studioDecisionText}</strong></p>
+                </>}
               </section>
+              <details className="verdict-rail-local-state" aria-label="Local review state">
+                <summary>Local review state and owner</summary>
+                <div className="verdict-rail-local-state-fields">
+                  <label><span>Review state</span><select value={reviewState.status} onChange={(event) => updateReviewStatus(event.target.value as ReviewStatus)}>{REVIEW_STATUSES.map((status) => <option key={status} value={status}>{status}</option>)}</select></label>
+                  <label><span>Review owner</span><select value={reviewState.owner} onChange={(event) => updateReviewOwner(event.target.value as ReviewerOwner)}>{reportOwnerOptions.map((owner) => <option key={owner} value={owner}>{owner}</option>)}{reportOwnerIsHistorical && <option value={reviewState.owner}>{reviewState.owner} (historical)</option>}</select></label>
+                  <label><span>Private reviewer note</span><textarea value={reviewState.note} maxLength={1000} rows={3} onChange={(event) => updateReviewNote(event.target.value)} onBlur={handleReviewNoteBlur} placeholder="Stored locally on this device." /></label>
+                </div>
+              </details>
               <details className="verdict-ledger" open={humanDecisionProjection.reaffirmationRequired}>
                 <summary><span>Human Decision Ledger</span><strong>{humanDecisionLedger.entries.length}</strong></summary>
                 <dl className="verdict-ledger-summary"><div><dt>Current</dt><dd>{humanDecisionOutcomeLabel(humanDecisionProjection.latestEffectiveEntry?.outcome)}</dd></div><div><dt>Alignment</dt><dd>{humanDecisionDivergence.replaceAll("-", " ")}</dd></div><div><dt>Applicability</dt><dd>{humanDecisionProjection.applicability.replaceAll("-", " ")}</dd></div></dl>

@@ -1933,6 +1933,224 @@ button.review-diff-row-line:focus-visible { outline:2px solid var(--color-focus-
 @media (prefers-reduced-motion:reduce) {
   .lp *, .lp *::before, .lp *::after { scroll-behavior:auto !important; transition:none !important; animation:none !important; }
 }
+
+/* W2C — restrained editorial refinement. These overrides remain wholly inside
+   the public landing surface so application routes retain the E7 treatment. */
+.lp {
+  --lp-bleed:clamp(48px,6vw,96px);
+  --lp-primary-background:var(--color-text-primary);
+  --lp-primary-foreground:var(--color-text-inverse);
+}
+.lp-btn { text-decoration:none; }
+.lp-btn--primary,
+.lp-btn--small {
+  border-color:var(--lp-primary-background);
+  background:var(--lp-primary-background);
+  color:var(--lp-primary-foreground);
+}
+.lp-btn--primary:visited,
+.lp-btn--small:visited,
+.lp-btn--primary > *,
+.lp-btn--small > * { color:var(--lp-primary-foreground); }
+.lp-btn--primary:hover,
+.lp-btn--small:hover {
+  border-color:var(--lp-primary-background);
+  background:color-mix(in srgb, var(--lp-primary-background) 88%, var(--lp-canvas));
+  color:var(--lp-primary-foreground);
+  opacity:1;
+}
+.lp-btn--primary:active,
+.lp-btn--small:active {
+  background:color-mix(in srgb, var(--lp-primary-background) 78%, var(--lp-canvas));
+  color:var(--lp-primary-foreground);
+}
+.lp-btn--primary[aria-disabled="true"],
+.lp-btn--small[aria-disabled="true"],
+.lp-btn--primary:disabled,
+.lp-btn--small:disabled {
+  border-color:var(--lp-border);
+  background:var(--lp-surface-hover, var(--color-surface-hover));
+  color:var(--lp-muted);
+  cursor:not-allowed;
+}
+.lp-btn--primary:focus-visible,
+.lp-btn--small:focus-visible { outline-color:var(--lp-focus); }
+
+.lp-nav { min-height:64px; gap:20px; }
+.lp-nav-links { gap:5px; }
+.lp-nav-links a { padding-inline:9px; }
+.lp-nav-cta { gap:12px; }
+.lp-btn--small { min-height:38px; padding-inline:14px; }
+.lp-mobile-menu { gap:2px; padding-bottom:16px; }
+.lp-mobile-menu .lp-mobile-action { width:100%; min-height:46px; margin-top:8px; }
+
+/* 1. A generous but content-led opening: the report has equal weight to copy. */
+.lp-hero { padding-top:clamp(54px,6vw,82px); padding-bottom:clamp(38px,4.5vw,64px); }
+.lp-hero-grid { grid-template-columns:minmax(0,42fr) minmax(0,58fr); gap:clamp(38px,4vw,58px); align-items:center; }
+.lp-hero-copy h1 { margin:16px 0 18px; font-size:clamp(44px,4vw,58px); line-height:1.03; letter-spacing:-.03em; }
+.lp-lede { max-width:490px; line-height:1.62; }
+.lp-hero-copy .lp-actions { margin-top:26px; }
+.lp-frame--hero { width:calc(100% + clamp(48px,3.33vw,64px)); min-width:0; }
+.lp-case-identity { padding:18px 22px 12px; }
+.lp-case-title { padding-bottom:18px; }
+.lp-case-title h2 { font-size:20px; line-height:1.28; }
+.lp-case-verdict { gap:20px; padding:18px 22px 20px; }
+.lp-case-verdict dd strong { font-size:25px; }
+
+/* 2. The readiness gap is a measured instrument rather than a slide. */
+.lp-problem { gap:30px clamp(56px,6vw,88px); padding-top:clamp(72px,8vw,104px); }
+.lp-problem-copy > p:last-child, .lp-exhibit-copy > p:last-child, .lp-decision-heading > p:last-child { margin-top:15px; line-height:1.65; }
+.lp-failures li { padding-block:15px; }
+.lp-editorial-trace {
+  position:relative;
+  grid-column:1 / -1;
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:0;
+  margin:30px 0 0;
+  padding:20px 0 18px;
+  border-top:1px solid var(--lp-border-strong);
+  border-bottom:1px solid var(--lp-border);
+  list-style:none;
+}
+.lp-editorial-trace::before {
+  content:"";
+  position:absolute;
+  top:28px;
+  left:9%;
+  right:9%;
+  height:1px;
+  background:var(--lp-border-strong);
+}
+.lp-editorial-trace-node { position:relative; display:grid; grid-template-columns:18px minmax(0,1fr); gap:2px 9px; min-width:0; padding:0 12px; }
+.lp-editorial-trace-mark { position:relative; z-index:1; grid-row:1 / 3; width:12px; height:12px; margin-top:2px; border:1px solid var(--lp-border-strong); border-radius:50%; background:var(--lp-canvas); }
+.lp-editorial-trace-node--satisfied .lp-editorial-trace-mark { border-color:var(--color-success); background:var(--color-success); }
+.lp-editorial-trace-node--partial .lp-editorial-trace-mark { border-color:var(--color-warning); }
+.lp-editorial-trace-node--partial .lp-editorial-trace-mark::after { content:""; position:absolute; right:1px; bottom:1px; left:1px; height:4px; border-radius:0 0 6px 6px; background:var(--color-warning); }
+.lp-editorial-trace-node--open .lp-editorial-trace-mark { border-color:var(--color-danger); border-radius:2px; transform:rotate(45deg); }
+.lp-editorial-trace-node strong { color:var(--lp-ink); font-size:12px; font-weight:600; line-height:1.25; }
+.lp-editorial-trace-node small { color:var(--lp-muted); font-size:10px; line-height:1.35; }
+.lp-trace-node--open .lp-trace-index { border-radius:1px; transform:rotate(45deg); }
+
+/* 3–4. Keep proof adjacent to its explanation and keep its readable zone safe. */
+.lp-exhibit { gap:clamp(52px,5vw,76px); padding-top:clamp(70px,7vw,96px); }
+.lp-exhibit-copy h2, .lp-problem-copy h2, .lp-decision-heading h2 { font-size:clamp(30px,3.15vw,42px); line-height:1.12; }
+.lp-exhibit-copy { max-width:455px; }
+.lp-finding-record { padding:22px; }
+.lp-finding-record h3 { font-size:17px; }
+.lp-finding-explanation { margin-top:17px; font-size:12.5px; line-height:1.64; }
+.lp-evidence-record p, .lp-record-links dd { font-size:11.5px; }
+.lp-evidence-record { margin-top:16px; padding:15px; }
+.lp-record-links { margin-top:16px; }
+.lp-exhibit--contract .lp-frame { width:calc(100% + var(--lp-bleed)); margin-left:calc(-1 * var(--lp-bleed)); }
+.lp-frame--contract .lp-frame-header { padding-left:calc(18px + var(--lp-bleed)); }
+.lp-contract-summary { padding-left:calc(22px + var(--lp-bleed)); }
+.lp-contract-summary dl { gap:18px; }
+.lp-clause { margin-left:calc(18px + var(--lp-bleed)); }
+.lp-clause > header strong { font-size:12.5px; }
+.lp-clause > p, .lp-clause dd { font-size:11.5px; }
+.lp-collapsed-clauses > div { padding-left:calc(20px + var(--lp-bleed)); }
+
+/* 5–7. Preserve the quiet thesis, then let the accountable decision land. */
+.lp-thesis { padding-top:clamp(104px,11vw,146px); }
+.lp-thesis > p:not(.lp-eyebrow) { margin-top:20px; }
+.lp-trust-records { margin-top:38px; }
+.lp-decision { padding-top:clamp(110px,12vw,158px); }
+.lp-decision-heading { max-width:700px; margin-bottom:36px; }
+.lp-decision-heading h2 { font-size:clamp(31px,3.35vw,45px); }
+.lp-frame--decision { box-shadow:var(--shadow-panel); }
+.lp-decision-context { padding:26px 28px; }
+.lp-human-record { padding:clamp(34px,4.5vw,56px); }
+.lp-final { margin-top:clamp(88px,8vw,112px); padding-block:clamp(56px,6vw,76px); }
+.lp-final .lp-trace { width:min(100%,760px); }
+.lp-final > h2 { margin-top:24px; font-size:clamp(40px,5vw,62px); }
+.lp-final > p { margin-top:16px; }
+.lp-final .lp-actions { margin-top:26px; }
+.lp-run-reference { margin-top:22px; }
+.lp-footer { padding-top:28px; padding-bottom:46px; }
+.lp-footer nav a { color:var(--lp-text); }
+
+@media (max-width:1100px) {
+  .lp-hero-grid { gap:30px; }
+  .lp-frame--hero { width:100%; min-width:0; }
+  .lp-exhibit { gap:48px; }
+}
+
+@media (max-width:900px) {
+  .lp-nav-cta { gap:7px; }
+  .lp-hero { padding-top:48px; }
+  .lp-problem { padding-top:68px; }
+  .lp-exhibit { padding-top:76px; }
+  .lp-exhibit--contract .lp-frame { width:100%; margin-left:0; }
+  .lp-frame--contract .lp-frame-header, .lp-contract-summary { padding-left:18px; }
+  .lp-clause { margin-left:18px; }
+  .lp-collapsed-clauses > div { padding-left:20px; }
+  .lp-thesis { padding-top:92px; }
+  .lp-decision { padding-top:100px; }
+  .lp-final { margin-top:82px; }
+}
+
+@media (max-width:768px) {
+  .lp-editorial-trace { grid-template-columns:1fr; gap:0; margin-top:24px; padding-block:12px; }
+  .lp-editorial-trace::before { top:24px; bottom:24px; left:17px; right:auto; width:1px; height:auto; }
+  .lp-editorial-trace-node { min-height:54px; padding:9px 0; }
+  .lp-editorial-trace-node strong { font-size:13px; }
+  .lp-exhibit { gap:28px; }
+  .lp-decision-heading { margin-bottom:28px; }
+}
+
+@media (max-width:560px) {
+  .lp-nav-cta .lp-btn--small { display:none; }
+  .lp-mobile-menu .lp-mobile-action { display:inline-flex; }
+  .lp-hero { padding-top:38px; padding-bottom:32px; }
+  .lp-hero-copy h1 { margin-top:14px; margin-bottom:16px; font-size:34px; }
+  .lp-lede { font-size:14px; }
+  .lp-case-verdict dl { grid-template-columns:repeat(3,minmax(0,1fr)); }
+  .lp-case-verdict dl > div:last-child { display:grid; }
+  .lp-case-verdict dl > div { padding-inline:7px; }
+  .lp-case-verdict dd { display:grid; gap:1px; }
+  .lp-case-verdict dd strong { font-size:21px; }
+  .lp-case-verdict dd span { font-size:9px; }
+  .lp-problem { padding-top:58px; }
+  .lp-problem-copy > p:last-child, .lp-exhibit-copy > p:last-child, .lp-decision-heading > p:last-child { font-size:13px; }
+  .lp-exhibit { padding-top:66px; }
+  .lp-finding-record { padding:18px 15px; }
+  .lp-finding-record h3 { font-size:16px; }
+  .lp-finding-explanation { font-size:12px; }
+  .lp-evidence-record p, .lp-record-links dd { font-size:11px; }
+  .lp-thesis { padding-top:80px; }
+  .lp-decision { padding-top:88px; }
+  .lp-final { margin-top:70px; padding-block:54px; }
+  .lp-final > h2 { font-size:40px; }
+  .lp-footer { padding-top:28px; padding-bottom:38px; }
+}
+
+/* W2C micro-polish: keep the paper theme plane-led and exhibit content safe. */
+html[data-theme="light"] .lp-frame:not(.lp-frame--decision) {
+  box-shadow:0 6px 18px color-mix(in srgb, var(--color-text-primary) 9%, transparent);
+}
+html[data-theme="light"] .lp-frame--decision {
+  box-shadow:0 10px 30px color-mix(in srgb, var(--color-text-primary) 14%, transparent);
+}
+html[data-theme="light"] .lp-trace-node:not(:last-child)::after,
+html[data-theme="light"] .lp-editorial-trace::before {
+  background:color-mix(in srgb, var(--color-text-primary) 28%, var(--lp-border-strong));
+}
+html[data-theme="light"] .lp-editorial-trace-node small { color:var(--color-text-secondary); }
+html[data-theme="light"] :is(.lp-trace-node--partial .lp-trace-index, .lp-editorial-trace-node--partial .lp-editorial-trace-mark) {
+  box-shadow:0 0 0 1px color-mix(in srgb, var(--color-warning) 18%, transparent);
+}
+html[data-theme="light"] :is(.lp-trace-node--open .lp-trace-index, .lp-editorial-trace-node--open .lp-editorial-trace-mark) {
+  box-shadow:0 0 0 1px color-mix(in srgb, var(--color-danger) 18%, transparent);
+}
+
+/* The frame may bleed; its readable edge remains inside the viewport. */
+.lp-exhibit--finding .lp-frame { width:calc(100% + 48px); }
+.lp-final { padding-bottom:clamp(40px,3.5vw,44px); }
+
+@media (max-width:1100px) {
+  .lp-exhibit--finding .lp-frame { width:calc(100% + 24px); }
+}
 /* E7.3A — Report Case File structure */
 .report-case-file { width:min(100%, 1320px); margin:0 auto; padding:34px clamp(18px,2vw,28px) 96px; }
 .report-case-file button, .report-case-file a, .report-case-file select, .report-case-file textarea, .report-case-file input { font-family:var(--font-sans); }

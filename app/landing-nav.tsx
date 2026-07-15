@@ -66,6 +66,9 @@ export default function LandingNav() {
         {NAV_LINKS.map((link) => (
           <Link key={link.href} href={link.href} onClick={() => setOpen(false)}>{link.label}</Link>
         ))}
+        <Link className="lp-mobile-action lp-btn lp-btn--primary" href="/new" onClick={() => setOpen(false)}>
+          Check a pull request
+        </Link>
       </nav>
     </header>
   );

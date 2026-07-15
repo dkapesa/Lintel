@@ -33,11 +33,11 @@ const expandedClause = contract.clauses[0];
 const collapsedClauses = contract.clauses.slice(1, 3);
 
 const verificationTrace = [
-  { label: "Change", state: "satisfied" },
-  { label: "Observation", state: "satisfied" },
-  { label: "Evidence", state: "partial" },
-  { label: "Requirement", state: "partial" },
-  { label: "Human decision", state: "open" },
+  { label: "Change", detail: "Diff received", state: "satisfied" },
+  { label: "Observation", detail: "Behaviour mapped", state: "satisfied" },
+  { label: "Evidence", detail: "Proof attached", state: "partial" },
+  { label: "Requirement", detail: "Clause remains open", state: "partial" },
+  { label: "Human decision", detail: "Engineer accountable", state: "open" },
 ] as const;
 
 const failureModes = [
@@ -92,6 +92,20 @@ function Trace({ compact = false }: { compact?: boolean }) {
         <li className={`lp-trace-node lp-trace-node--${stage.state}`} key={stage.label}>
           <span className="lp-trace-index" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
           <span>{stage.label}</span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+function EditorialTrace() {
+  return (
+    <ol className="lp-editorial-trace" aria-label="Change to human decision verification path">
+      {verificationTrace.map((stage) => (
+        <li className={`lp-editorial-trace-node lp-editorial-trace-node--${stage.state}`} key={stage.label}>
+          <span className="lp-editorial-trace-mark" aria-hidden="true" />
+          <strong>{stage.label}</strong>
+          <small>{stage.detail}</small>
         </li>
       ))}
     </ol>
@@ -184,6 +198,8 @@ export default function Home() {
               </li>
             ))}
           </ol>
+          <EditorialTrace />
+          {/*
           <div className="lp-editorial-trace" aria-label="Change to human decision verification path">
             {verificationTrace.map((stage, index) => (
               <div key={stage.label}>
@@ -192,6 +208,7 @@ export default function Home() {
               </div>
             ))}
           </div>
+          */}
         </section>
 
         <section className="lp-exhibit lp-exhibit--finding" aria-labelledby="lp-finding-title">

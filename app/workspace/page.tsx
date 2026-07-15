@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type KeyboardEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
-import AppShell from "../app-shell";
+import AppShell, { SHELL_NAVIGATION_OPEN_EVENT } from "../app-shell";
 import { GuidedTourStartButton } from "../guided-tour";
+import styles from "./workspace.module.css";
 import {
   conditionKey,
   readConditionProgress,
@@ -50,15 +51,14 @@ import {
 
 const QUEUES = [
   ["inbox", "Inbox"],
-  ["needs-tests", "Needs tests"],
-  ["needs-review", "Needs review"],
-  ["operational-risk", "Operational risk"],
-  ["ready", "Ready to merge"],
+  ["assigned", "Assigned locally"],
+  ["awaiting-evidence", "Awaiting evidence"],
+  ["ready", "Ready"],
   ["reviewed", "Reviewed"],
 ] as const;
 
 const SELECTED_WORKSPACE_GROUP_STORAGE_KEY = "lintel.workspaceSelectedGroup.v1";
-const COMPACT_INSPECTOR_QUERY = "(max-width: 900px)";
+const COMPACT_INSPECTOR_QUERY = "(max-width: 1179px)";
 
 type WorkspaceQueue = (typeof QUEUES)[number][0];
 type CopyFeedback = { key: string; state: "copied" | "failed" } | null;
@@ -146,13 +146,33 @@ function hasOperationalRisk(entry: ReportHistoryEntry) {
     || report.verdict.riskLevel === "CRITICAL";
 }
 
+function groupAwaitingEvidence(group: WorkspaceGroup) {
+  const report = group.latest.report;
+  return group.reviewState.status === "Tests requested"
+    || report.missingTests.length > 0
+    || evidenceGapSummary(group.latest) !== null;
+}
+
+function groupHasBlockingRequirements(group: WorkspaceGroup, conditionProgressLabel?: string) {
+  const contract = contractClauseSummary(group.latest);
+  return (reportConditions(group.latest.report).length > 0 && conditionProgressLabel !== "All conditions cleared")
+    || (contract?.blockingOpenCount ?? 0) > 0;
+}
+
+function groupNeedsReaffirmation(group: WorkspaceGroup) {
+  const pack = group.latest.verificationPack;
+  return pack?.humanDecision.stale === true
+    || pack?.contractRecheck?.humanDecisionApplicability === "predates-current-head"
+    || pack?.humanDecisionLedger?.applicability === "predates-current-head"
+    || (pack?.evidence.records.items.some((record) => record.status === "stale" || record.stale) ?? false);
+}
+
 function groupMatchesQueue(group: WorkspaceGroup, queue: WorkspaceQueue) {
   const status = group.reviewState.status;
 
   if (queue === "inbox") return true;
-  if (queue === "needs-tests") return status === "Tests requested";
-  if (queue === "needs-review") return status === "Review required" || status === "Blocked";
-  if (queue === "operational-risk") return hasOperationalRisk(group.latest);
+  if (queue === "assigned") return group.reviewState.owner !== "Unassigned";
+  if (queue === "awaiting-evidence") return groupAwaitingEvidence(group);
   if (queue === "ready") return status === "Ready to merge";
   if (queue === "reviewed") return status === "Reviewed" || status === "Archived";
   return true;
@@ -164,21 +184,40 @@ function groupNeedsAttention(group: WorkspaceGroup) {
 
 const ATTENTION_EMPTY_COPY: Record<WorkspaceQueue, string> = {
   inbox: "Nothing needs attention right now. New reports land in the inbox automatically when you check a pull request.",
-  "needs-tests": "No PRs are waiting on tests. Set a report's review state to “Tests requested” to queue it here.",
-  "needs-review": "No PRs are waiting on focused review. Reports marked “Review required” or “Blocked” queue here.",
-  "operational-risk": "No PRs carry operational, security or reliability attention right now.",
-  ready: "Ready PRs never need attention — they are listed under Ready / reviewed below.",
-  reviewed: "Reviewed PRs never need attention — they are listed under Ready / reviewed below.",
+  assigned: "No locally owned reports need attention in this workspace.",
+  "awaiting-evidence": "No reports are waiting on missing test or verification evidence.",
+  ready: "Ready reports are listed in the completed section below.",
+  reviewed: "Reviewed reports are listed in the completed section below.",
 };
 
 const READY_EMPTY_COPY: Record<WorkspaceQueue, string> = {
   inbox: "No PRs are marked ready or reviewed yet. Clear a report's merge conditions, then set its review state to “Ready to merge”.",
-  "needs-tests": "PRs stay in the list above while they wait on test evidence.",
-  "needs-review": "PRs stay in the list above until their focused review completes.",
-  "operational-risk": "PRs stay in the list above until their operational signals clear.",
+  assigned: "No locally owned reports are ready or reviewed.",
+  "awaiting-evidence": "Reports waiting on evidence remain in the attention section above.",
   ready: "Nothing is marked “Ready to merge” yet. Clear conditions and update the review state to move a PR here.",
   reviewed: "Nothing is marked “Reviewed” or “Archived” yet. Reviewed PRs are kept here for reference.",
 };
+
+const VIEW_EMPTY_COPY: Record<WorkspaceQueue, string> = {
+  inbox: "No reports are stored in this local workspace.",
+  assigned: "No reports have a local owner in this workspace. Inbox continues to show every stored report.",
+  "awaiting-evidence": "No reports are waiting on test or verification evidence. Inbox continues to show every stored report.",
+  ready: "No reports are locally marked Ready to merge. Inbox continues to show every stored report.",
+  reviewed: "No reports are locally marked Reviewed or Archived. Inbox continues to show every stored report.",
+};
+
+function conciseBecause(entry: ReportHistoryEntry) {
+  const summary = entry.report.verdict.summary.trim();
+  return summary || topConditionOrRisk(entry);
+}
+
+function primaryRequirement(entry: ReportHistoryEntry, conditionProgressLabel: string) {
+  const contract = contractClauseSummary(entry);
+  if ((contract?.blockingOpenCount ?? 0) > 0) return `${contract?.blockingOpenCount} blocking`;
+  if (reportConditions(entry.report).length > 0) return conditionProgressLabel;
+  if (entry.report.missingTests.length > 0) return `${entry.report.missingTests.length} proof gaps`;
+  return "No open requirement";
+}
 
 function topConditionOrRisk(entry: ReportHistoryEntry) {
   const report = entry.report;
@@ -292,24 +331,24 @@ function isWorkspaceTextEntry(target: EventTarget | null) {
 }
 
 function WorkspaceSummaryStrip({
-  tracked,
   needsAttention,
-  needsTests,
-  highRisk,
+  awaitingEvidence,
+  blockingRequirements,
   ready,
+  needsReaffirmation,
 }: {
-  tracked: number;
   needsAttention: number;
-  needsTests: number;
-  highRisk: number;
+  awaitingEvidence: number;
+  blockingRequirements: number;
   ready: number;
+  needsReaffirmation: number;
 }) {
-  const cells: Array<{ label: string; value: number; tone?: "attention" | "tests" | "risk" | "ready" }> = [
-    { label: "Tracked", value: tracked },
+  const cells: Array<{ label: string; value: number; tone?: "attention" | "ready" | "stale" }> = [
     { label: "Needs attention", value: needsAttention, tone: "attention" },
-    { label: "Needs tests", value: needsTests, tone: "tests" },
-    { label: "High risk", value: highRisk, tone: "risk" },
+    { label: "Awaiting evidence", value: awaitingEvidence, tone: "attention" },
+    { label: "Blocking requirements", value: blockingRequirements, tone: "attention" },
     { label: "Ready", value: ready, tone: "ready" },
+    { label: "Reaffirmation", value: needsReaffirmation, tone: "stale" },
   ];
 
   return (
@@ -327,7 +366,7 @@ function WorkspaceSummaryStrip({
   );
 }
 
-function WorkspaceToolbar({
+function WorkspaceViewTabs({
   activeQueue,
   queueCounts,
   onSelectQueue,
@@ -336,21 +375,39 @@ function WorkspaceToolbar({
   queueCounts: Record<WorkspaceQueue, number>;
   onSelectQueue: (queue: WorkspaceQueue) => void;
 }) {
+  function moveFocus(event: KeyboardEvent<HTMLButtonElement>, index: number) {
+    let nextIndex = index;
+    if (event.key === "ArrowRight") nextIndex = (index + 1) % QUEUES.length;
+    else if (event.key === "ArrowLeft") nextIndex = (index - 1 + QUEUES.length) % QUEUES.length;
+    else if (event.key === "Home") nextIndex = 0;
+    else if (event.key === "End") nextIndex = QUEUES.length - 1;
+    else return;
+
+    event.preventDefault();
+    const queue = QUEUES[nextIndex][0];
+    onSelectQueue(queue);
+    document.getElementById(`workspace-view-${queue}`)?.focus();
+  }
+
   return (
-    <div className="workspace-toolbar" role="tablist" aria-label="Review queues">
-      {QUEUES.map(([value, label]) => {
+    <div className="workspace-view-tabs" role="tablist" aria-label="Verification queue views">
+      {QUEUES.map(([value, label], index) => {
         const active = activeQueue === value;
         return (
           <button
             key={value}
-            className={`workspace-segment workspace-segment--${value}${active ? " workspace-segment--active" : ""}`}
+            id={`workspace-view-${value}`}
+            className={`workspace-view-tab${active ? " workspace-view-tab--active" : ""}`}
             type="button"
             role="tab"
             aria-selected={active}
+            aria-controls="workspace-queue-panel"
+            tabIndex={active ? 0 : -1}
             onClick={() => onSelectQueue(value)}
+            onKeyDown={(event) => moveFocus(event, index)}
           >
-            <span className="workspace-segment-label">{label}</span>
-            <span className="workspace-segment-count">{queueCounts[value]}</span>
+            <span>{label}</span>
+            <span className="workspace-view-count">{queueCounts[value]}</span>
           </button>
         );
       })}
@@ -374,53 +431,80 @@ function WorkspaceQueueRow({
   const entry = group.latest;
   const report = entry.report;
   const recommendation = entry.metadata.recommendation.toLowerCase();
-  const missingTests = report.missingTests.length > 0;
-  const operational = hasOperationalRisk(entry);
+  const conditions = reportConditions(report);
+  const primary = primaryRequirement(entry, conditionProgressLabel);
+  const subordinate = conditions[0]
+    ?? report.missingTests[0]
+    ?? (hasOperationalRisk(entry) ? operationalSignal(entry) : null);
+  const prNumber = report.pr.number > 0 ? `#${report.pr.number}` : null;
+  const branch = report.pr.branch && !["sample", "pasted-diff", "github-pr"].includes(report.pr.branch)
+    ? report.pr.branch
+    : null;
+  const stale = groupNeedsReaffirmation(group);
+  const stateTone = stale
+    ? "stale"
+    : group.reviewState.status === "Ready to merge"
+      ? "ready"
+      : group.reviewState.status === "Reviewed" || group.reviewState.status === "Archived"
+        ? "reviewed"
+        : groupNeedsAttention(group) ? "attention" : "neutral";
 
   return (
     <article
-      className={`workspace-row workspace-row--${recommendation}${isSelected ? " workspace-row--selected" : ""}`}
-      role="button"
+      className={`workspace-row${isSelected ? " workspace-row--selected" : ""}`}
+      role="option"
       tabIndex={0}
       ref={(element) => setCardRef(group.key, element)}
       data-workspace-group-key={group.key}
-      aria-label={`Preview ${entry.metadata.title}`}
+      aria-label={`Select ${entry.metadata.title}`}
       aria-selected={isSelected}
-      aria-current={isSelected ? "true" : undefined}
       onClick={() => onSelect(group, { openInspector: true })}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
+          event.stopPropagation();
           onSelect(group, { openInspector: true });
         }
       }}
     >
-      <div className="workspace-row-main">
-        <h3 className="workspace-row-title">{entry.metadata.title}</h3>
-        <div className="workspace-row-sub">
-          <span className="workspace-row-repo">{entry.metadata.repository}</span>
-          {group.entries.length > 1 && <span className="workspace-row-runs">{group.entries.length} runs</span>}
-          <span className="workspace-row-state">{group.reviewState.status}</span>
-        </div>
-        <p className="workspace-row-blocker">{topConditionOrRisk(entry)}</p>
-      </div>
-
-      <div className="workspace-row-signals" aria-hidden={false}>
-        <span className="workspace-row-signal">{conditionProgressLabel}</span>
-        {missingTests && <span className="workspace-row-signal workspace-row-signal--attention">{testSignal(entry)}</span>}
-        {operational && <span className="workspace-row-signal workspace-row-signal--attention">{operationalSignal(entry)}</span>}
-        {group.reviewState.note.trim().length > 0 && <span className="workspace-row-signal">Local note</span>}
-      </div>
-
-      <div className="workspace-row-decision">
-        <span className={`workspace-recommendation workspace-recommendation--${recommendation}`}>
-          {recommendationLabel(entry.metadata.recommendation)}
+      <div className="workspace-row-state-cell" data-label="State">
+        <span className={`workspace-state-chip workspace-state-chip--${stateTone}`}>
+          {stale ? "Reaffirm" : group.reviewState.status}
         </span>
-        <span className={`workspace-row-risk${elevatedRisk(report.verdict.riskLevel) ? " workspace-row-risk--elevated" : ""}`}>
+      </div>
+
+      <div className="workspace-row-identity" data-label="Pull request">
+        <h3 className="workspace-row-title">{entry.metadata.title}</h3>
+        <p className="workspace-row-repo">{entry.metadata.repository}</p>
+        {(prNumber || branch || group.entries.length > 1) && (
+          <p className="workspace-row-technical">
+            {[prNumber, branch, group.entries.length > 1 ? `${group.entries.length} runs` : null].filter(Boolean).join(" · ")}
+          </p>
+        )}
+      </div>
+
+      <div className="workspace-row-recommendation" data-label="Recommendation">
+        <strong className={`workspace-recommendation-text workspace-recommendation-text--${recommendation}`}>
+          {recommendationLabel(entry.metadata.recommendation)}
+        </strong>
+        <p>{conciseBecause(entry)}</p>
+      </div>
+
+      <div className="workspace-row-requirements" data-label="Requirements">
+        <strong>{primary}</strong>
+        {subordinate && <p>{subordinate}</p>}
+      </div>
+
+      <div className="workspace-row-owner" data-label="Owner">
+        <span>{group.reviewState.owner === "Unassigned" ? "Unassigned" : group.reviewState.owner}</span>
+        {group.reviewState.note.trim() && <small>Local note</small>}
+      </div>
+
+      <div className="workspace-row-updated" data-label="Updated">
+        <time dateTime={entry.createdAt}>{createdTime(entry.createdAt)}</time>
+        <span className={elevatedRisk(report.verdict.riskLevel) ? "workspace-risk-text workspace-risk-text--elevated" : "workspace-risk-text"}>
           {report.verdict.riskLevel} · {entry.metadata.riskScore}/100
         </span>
-        <time className="workspace-row-time" dateTime={entry.createdAt}>{createdTime(entry.createdAt)}</time>
-        {isSelected && <span className="workspace-row-current">Selected</span>}
       </div>
     </article>
   );
@@ -456,7 +540,7 @@ function WorkspaceQueueGroup({
       <p className="workspace-queue-group-desc">{description}</p>
 
       {groups.length > 0 ? (
-        <div className="workspace-queue-list">
+        <div className="workspace-queue-list" role="listbox" aria-label={`${title} reports`}>
           {groups.map((group) => (
             <WorkspaceQueueRow
               key={group.key}
@@ -553,13 +637,10 @@ function WorkspaceInspector({
   const entry = group.latest;
   const report = entry.report;
   const recommendation = entry.metadata.recommendation.toLowerCase();
-  const riskLevel = report.verdict.riskLevel.toLowerCase();
   const conditions = reportConditions(report);
-  const visibleConditions = conditions.slice(0, 4);
   const focus = pruneUnsupportedReviewerFocus(report) ?? [];
   const qualityStatus = report.reportQuality?.status ?? "Not assessed";
   const operationalStatus = report.operationalReadiness?.status ?? "Not assessed";
-  const topRisk = report.findings[0]?.title ?? topConditionOrRisk(entry);
   const feedback = copyFeedback?.key === group.key ? copyFeedback.state : null;
   const action = nextAction(entry);
   const suggestedOwners = suggestedReviewerOwners(report);
@@ -577,6 +658,20 @@ function WorkspaceInspector({
   const assumptions = openAssumptionSummary(entry);
   const evolution = reviewEvolutionSummary(entry);
   const humanSignal = humanDecisionSignal(entry);
+  const evidenceTotal = entry.verificationPack?.evidence.records.total;
+  const visibleRequirements = [
+    ...conditions,
+    ...(clauseSummary?.open.map((clause) => clause.title) ?? []),
+  ].filter((value, index, values) => values.indexOf(value) === index).slice(0, 4);
+  const missingProof = evidenceGaps?.gaps.map((record) => record.title)
+    ?? (report.missingTests.length > 0 ? report.missingTests : []);
+  const trace = [
+    { label: "Change", value: `${report.changedFiles.length} files`, state: "known" },
+    { label: "Observation", value: `${report.findings.length} findings`, state: "known" },
+    { label: "Evidence", value: evidenceTotal === undefined ? "Unknown" : `${evidenceTotal} records`, state: evidenceTotal === undefined ? "unknown" : evidenceGaps ? "attention" : "known" },
+    { label: "Requirement", value: visibleRequirements.length > 0 ? `${visibleRequirements.length} open` : "None open", state: visibleRequirements.length > 0 ? "attention" : "known" },
+    { label: "Human decision", value: group.reviewState.status, state: "decision" },
+  ];
 
   return (
     <aside
@@ -589,11 +684,8 @@ function WorkspaceInspector({
       ref={containerRef}
     >
       <div className="workspace-inspector-topbar">
-        <span className="workspace-inspector-kicker">Decision</span>
+        <span className="workspace-inspector-kicker">Selected case</span>
         <div className="workspace-inspector-topbar-end">
-          <span className={`workspace-recommendation workspace-recommendation--${recommendation}`}>
-            {recommendationLabel(entry.metadata.recommendation)}
-          </span>
           {closeButton}
         </div>
       </div>
@@ -602,111 +694,64 @@ function WorkspaceInspector({
         <div className="workspace-inspector-headline">
           <h2>{entry.metadata.title}</h2>
           <p className="workspace-inspector-repo">{entry.metadata.repository}</p>
+          <p className="workspace-inspector-identity">
+            {[report.pr.number > 0 ? `#${report.pr.number}` : null, report.pr.branch, `${group.entries.length} run${group.entries.length === 1 ? "" : "s"}`].filter(Boolean).join(" · ")}
+          </p>
         </div>
 
-        <div className={`workspace-inspector-risk workspace-inspector-risk--${riskLevel}`}>
-          <strong>{report.verdict.riskLevel} risk</strong>
-          <span>Risk score: {entry.metadata.riskScore}/100</span>
-        </div>
+        <ol className="workspace-verification-trace" aria-label="Verification trace">
+          {trace.map((step) => (
+            <li key={step.label} className={`workspace-trace-step workspace-trace-step--${step.state}`}>
+              <span className="workspace-trace-mark" aria-hidden="true" />
+              <span className="workspace-trace-label">{step.label}</span>
+              <strong>{step.value}</strong>
+            </li>
+          ))}
+        </ol>
 
-        <InspectorBlock label="Next action" aside={<span className="workspace-inspector-tag">{action}</span>}>
-          <p>{topConditionOrRisk(entry)}</p>
-        </InspectorBlock>
-
-        <InspectorBlock label="Why it is not ready">
-          <p>{topRisk}</p>
+        <InspectorBlock
+          label="Recommendation"
+          aside={<span className={`workspace-recommendation-text workspace-recommendation-text--${recommendation}`}>{recommendationLabel(entry.metadata.recommendation)}</span>}
+        >
+          <p>{conciseBecause(entry)}</p>
         </InspectorBlock>
 
         <InspectorBlock
-          label="Conditions before merge"
+          label="Open requirements"
           aside={<span className="workspace-inspector-tag">{conditionProgressLabel}</span>}
         >
-          {conditions.length > 0 ? (
+          {visibleRequirements.length > 0 ? (
             <>
               <ol className="workspace-inspector-conditions">
-                {visibleConditions.map((condition) => <li key={condition}>{condition}</li>)}
+                {visibleRequirements.map((condition) => <li key={condition}>{condition}</li>)}
               </ol>
-              {conditions.length > visibleConditions.length && (
-                <p className="workspace-inspector-more">+{conditions.length - visibleConditions.length} more conditions</p>
+              {conditions.length + (clauseSummary?.open.length ?? 0) > visibleRequirements.length && (
+                <p className="workspace-inspector-more">Additional requirements are available in the Case File.</p>
               )}
             </>
           ) : (
-            <p>No merge conditions detected.</p>
-          )}
-          {clauseSummary && (
-            <p className="workspace-inspector-note">
-              Merge contract: {clauseSummary.total} clauses · {clauseSummary.open.length} open
-              {clauseSummary.blockingOpenCount > 0 && ` (${clauseSummary.blockingOpenCount} blocking)`}
-            </p>
+            <p>No open requirement is captured in the latest local report.</p>
           )}
         </InspectorBlock>
 
-        {clauseSummary && clauseSummary.open.length > 0 && (
-          <InspectorBlock label="Open merge-contract clauses">
-            <ul className="workspace-inspector-clauses">
-              {clauseSummary.open.slice(0, 4).map((clause) => (
-                <li key={clause.clauseId} className={clause.importance === "blocking" ? "workspace-inspector-clause--blocking" : undefined}>
-                  <span className="workspace-inspector-clause-title">{clause.title}</span>
-                  <span className="workspace-inspector-clause-meta">{clause.importance}{clause.ownerCue ? ` · ${clause.ownerCue}` : ""}</span>
-                </li>
-              ))}
-            </ul>
-          </InspectorBlock>
-        )}
-
-        {evidenceGaps && (
-          <InspectorBlock
-            label="Evidence gaps"
-            aside={<span className="workspace-inspector-tag">{evidenceGaps.gaps.length} of {evidenceGaps.total}</span>}
-          >
+        <InspectorBlock
+          label="Missing proof"
+          aside={missingProof.length > 0 ? <span className="workspace-inspector-tag">{missingProof.length} open</span> : undefined}
+        >
+          {missingProof.length > 0 ? (
             <ul className="workspace-inspector-evidence">
-              {evidenceGaps.gaps.slice(0, 4).map((record) => (
-                <li key={record.evidenceId}>
-                  <span className="workspace-inspector-evidence-title">{record.title}</span>
-                  <span className="workspace-inspector-evidence-status">{record.status}</span>
-                </li>
-              ))}
+              {missingProof.slice(0, 3).map((proof, index) => <li key={`${proof}-${index}`}><span>{proof}</span></li>)}
             </ul>
-          </InspectorBlock>
-        )}
+          ) : (
+            <p>No missing proof is captured in the latest local report.</p>
+          )}
+        </InspectorBlock>
 
-        {assumptions && (
-          <InspectorBlock
-            label="Open assumptions"
-            aside={<span className="workspace-inspector-tag">{assumptions.openBlocking} blocking · {assumptions.openAdvisory} advisory</span>}
-          >
-            {assumptions.open.length > 0 ? (
-              <ul className="workspace-inspector-assumptions">
-                {assumptions.open.slice(0, 3).map((record) => (
-                  <li key={record.assumptionId}>{record.statement}</li>
-                ))}
-              </ul>
-            ) : (
-              <p>No open assumption statements captured.</p>
-            )}
-          </InspectorBlock>
-        )}
+        <InspectorBlock label="Required next action" aside={<span className="workspace-inspector-tag">{action}</span>}>
+          <p>{topConditionOrRisk(entry)}</p>
+        </InspectorBlock>
 
-        {evolution && (
-          <InspectorBlock label="Latest readiness delta">
-            <div className="workspace-inspector-delta">
-              {evolution.recommendationMovement && <span>{evolution.recommendationMovement}</span>}
-              {evolution.riskMovement && <span>{evolution.riskMovement}</span>}
-              {evolution.scoreMovement && <span>{evolution.scoreMovement}</span>}
-            </div>
-            <p className="workspace-inspector-note">
-              {evolution.clearedConditions} cleared · {evolution.openedConditions} opened · {evolution.stillOpenConditions} still open
-            </p>
-          </InspectorBlock>
-        )}
-
-        <div className="workspace-inspector-stats" aria-label="Selected report status">
-          <div><span>Test signal</span><strong>{testSignal(entry)}</strong></div>
-          <div><span>Operations</span><strong>{operationalStatus}</strong></div>
-          <div><span>Quality</span><strong>{qualityStatus}</strong></div>
-        </div>
-
-        <InspectorBlock label="Human decision">
+        <InspectorBlock label="Owner and local review state">
           <div className="workspace-inspector-controls">
             <label className="workspace-inspector-field">
               <span>Review state</span>
@@ -724,38 +769,84 @@ function WorkspaceInspector({
           </div>
           {workspace && (
             <p className="workspace-inspector-note">
-              Owner choices use active members in {workspace.name}; roles are responsibility metadata, not access control.
+              Owners are local responsibility metadata in {workspace.name}, not access control.
             </p>
           )}
-          {group.reviewState.owner === "Unassigned" && (
-            <p className="workspace-inspector-note">{displayedOwner}</p>
-          )}
-          {humanSignal && (
-            <p className="workspace-inspector-note">Decision {humanSignal.applicability} · {humanSignal.divergence}</p>
-          )}
+          {group.reviewState.owner === "Unassigned" && <p className="workspace-inspector-note">{displayedOwner}</p>}
+          {humanSignal && <p className="workspace-inspector-note">Decision {humanSignal.applicability} · {humanSignal.divergence}</p>}
           <p className="workspace-inspector-decision-note">{group.reviewState.note.trim() || "No local note saved for this report."}</p>
         </InspectorBlock>
 
-        <details className="workspace-inspector-provenance">
-          <summary>Provenance &amp; metadata</summary>
-          <dl className="workspace-inspector-meta">
-            <div><dt>Review mode</dt><dd>{entry.metadata.reviewProfile}</dd></div>
-            <div><dt>Analysis</dt><dd>{sourceLabel(entry.source)}</dd></div>
-            <div><dt>Input</dt><dd>{inputPreviewLabel(entry)}</dd></div>
-            <div><dt>Runs</dt><dd>{group.entries.length}</dd></div>
-            <div><dt>Latest</dt><dd><time dateTime={entry.createdAt}>{createdTime(entry.createdAt)}</time></dd></div>
-            <div><dt>Local update</dt><dd>{group.reviewState.updatedAt ? createdTime(group.reviewState.updatedAt) : "Not saved yet"}</dd></div>
-          </dl>
-          {focus.length > 0 && (
-            <div className="workspace-inspector-focus">
-              {focus.slice(0, 4).map((item) => <span key={`${item.area}-${item.priority}`}>{item.priority}: {item.area}</span>)}
+        <details className="workspace-inspector-details">
+          <summary>Progressive details</summary>
+          <div className="workspace-inspector-details-body">
+            <dl className="workspace-inspector-status-list">
+              <div><dt>Tests</dt><dd>{testSignal(entry)}</dd></div>
+              <div><dt>Operations</dt><dd>{operationalStatus}</dd></div>
+              <div><dt>Quality</dt><dd>{qualityStatus}</dd></div>
+              <div><dt>Risk</dt><dd>{report.verdict.riskLevel} · {entry.metadata.riskScore}/100</dd></div>
+            </dl>
+
+            {clauseSummary && clauseSummary.open.length > 0 && (
+              <div className="workspace-inspector-detail-section">
+                <h3>Merge-contract clauses</h3>
+                <ul className="workspace-inspector-clauses">
+                  {clauseSummary.open.slice(0, 4).map((clause) => (
+                    <li key={clause.clauseId} className={clause.importance === "blocking" ? "workspace-inspector-clause--blocking" : undefined}>
+                      <span className="workspace-inspector-clause-title">{clause.title}</span>
+                      <span className="workspace-inspector-clause-meta">{clause.importance}{clause.ownerCue ? ` · ${clause.ownerCue}` : ""}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {assumptions && (
+              <div className="workspace-inspector-detail-section">
+                <h3>Open assumptions</h3>
+                <p>{assumptions.openBlocking} blocking · {assumptions.openAdvisory} advisory</p>
+                {assumptions.open.length > 0 && (
+                  <ul className="workspace-inspector-assumptions">
+                    {assumptions.open.slice(0, 3).map((record) => <li key={record.assumptionId}>{record.statement}</li>)}
+                  </ul>
+                )}
+              </div>
+            )}
+
+            {evolution && (
+              <div className="workspace-inspector-detail-section">
+                <h3>Latest readiness delta</h3>
+                <div className="workspace-inspector-delta">
+                  {evolution.recommendationMovement && <span>{evolution.recommendationMovement}</span>}
+                  {evolution.riskMovement && <span>{evolution.riskMovement}</span>}
+                  {evolution.scoreMovement && <span>{evolution.scoreMovement}</span>}
+                </div>
+                <p>{evolution.clearedConditions} cleared · {evolution.openedConditions} opened · {evolution.stillOpenConditions} still open</p>
+              </div>
+            )}
+
+            <div className="workspace-inspector-detail-section">
+              <h3>Provenance and metadata</h3>
+              <dl className="workspace-inspector-meta">
+                <div><dt>Review mode</dt><dd>{entry.metadata.reviewProfile}</dd></div>
+                <div><dt>Analysis</dt><dd>{sourceLabel(entry.source)}</dd></div>
+                <div><dt>Input</dt><dd>{inputPreviewLabel(entry)}</dd></div>
+                <div><dt>Runs</dt><dd>{group.entries.length}</dd></div>
+                <div><dt>Latest</dt><dd><time dateTime={entry.createdAt}>{createdTime(entry.createdAt)}</time></dd></div>
+                <div><dt>Local update</dt><dd>{group.reviewState.updatedAt ? createdTime(group.reviewState.updatedAt) : "Not saved yet"}</dd></div>
+              </dl>
+              {focus.length > 0 && (
+                <div className="workspace-inspector-focus">
+                  {focus.slice(0, 4).map((item) => <span key={`${item.area}-${item.priority}`}>{item.priority}: {item.area}</span>)}
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </details>
       </div>
 
       <div className="workspace-inspector-actions">
-        <button className="workspace-inspector-primary" type="button" onClick={() => onOpen(entry)}>Open full report</button>
+        <button className="workspace-inspector-primary" type="button" onClick={() => onOpen(entry)}>Open Case File</button>
         <button type="button" onClick={() => onCopyConditions(group)}>
           {feedback === "copied" ? "Copied" : feedback === "failed" ? "Copy failed" : "Copy conditions"}
         </button>
@@ -791,6 +882,12 @@ export default function ReportsWorkspacePage() {
   const [error, setError] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [inspectorOpen, setInspectorOpen] = useState(false);
+
+  useEffect(() => {
+    const closeForShellNavigation = () => setInspectorOpen(false);
+    window.addEventListener(SHELL_NAVIGATION_OPEN_EVENT, closeForShellNavigation);
+    return () => window.removeEventListener(SHELL_NAVIGATION_OPEN_EVENT, closeForShellNavigation);
+  }, []);
   const copyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cardRefs = useRef<Record<string, HTMLElement | null>>({});
   const compactMatchRef = useRef<MediaQueryList | null>(null);
@@ -882,15 +979,16 @@ export default function ReportsWorkspacePage() {
   const visibleGroups = useMemo(() => [...needsAttention, ...ready], [needsAttention, ready]);
   const selectedGroup = visibleGroups.find((group) => group.key === selectedGroupKey) ?? null;
   const needsAttentionCount = groups.filter(groupNeedsAttention).length;
-  const testsRequiredCount = groups.filter((group) => groupMatchesQueue(group, "needs-tests")).length;
-  const operationalRiskCount = groups.filter((group) => hasOperationalRisk(group.latest)).length;
+  const awaitingEvidenceCount = groups.filter(groupAwaitingEvidence).length;
+  const blockingRequirementsCount = groups.filter((group) => (
+    groupHasBlockingRequirements(group, conditionProgressByGroup[group.key])
+  )).length;
+  const reaffirmationCount = groups.filter(groupNeedsReaffirmation).length;
   const readyCount = groups.filter((group) => groupMatchesQueue(group, "ready")).length;
-  const highRiskCount = groups.filter((group) => riskRank(group.latest.report.verdict.riskLevel) >= 3).length;
   const queueCounts: Record<WorkspaceQueue, number> = {
     inbox: groups.length,
-    "needs-tests": groups.filter((group) => groupMatchesQueue(group, "needs-tests")).length,
-    "needs-review": groups.filter((group) => groupMatchesQueue(group, "needs-review")).length,
-    "operational-risk": operationalRiskCount,
+    assigned: groups.filter((group) => groupMatchesQueue(group, "assigned")).length,
+    "awaiting-evidence": awaitingEvidenceCount,
     ready: readyCount,
     reviewed: groups.filter((group) => groupMatchesQueue(group, "reviewed")).length,
   };
@@ -1175,21 +1273,26 @@ export default function ReportsWorkspacePage() {
     : currentWorkspace ? `${currentWorkspace.name} · ${workspaceLabel(currentWorkspace)}` : undefined;
   const shellActions = (
     <>
-      <GuidedTourStartButton className="workspace-shell-action" />
+      <GuidedTourStartButton className={styles.shellAction} />
       {hasHistory && (
-        <button className="workspace-shell-action" type="button" onClick={clearHistory}>Clear history</button>
+        <button className={styles.shellAction} type="button" onClick={clearHistory}>Clear history</button>
       )}
-      <Link className="workspace-shell-action workspace-shell-action--primary" href="/new">Check a pull request</Link>
     </>
   );
 
   return (
     <AppShell context={shellContext} actions={shellActions}>
-      <div className="workspace-main" data-tour="risk-inbox">
-        <p className="workspace-context">
-          {currentWorkspace ? `${currentWorkspace.name} · ${workspaceLabel(currentWorkspace)} · data stored on this device` : "Local merge-readiness triage"} ·{" "}
-          <Link href="/docs/security-model.md">Security model</Link>
-        </p>
+      <div className={styles.root} data-tour="risk-inbox">
+        <header className="workspace-context">
+          <div>
+            <h1>Risk inbox</h1>
+            <p>What requires engineering attention now, based on reports stored in this browser.</p>
+          </div>
+          <p className="workspace-context-scope">
+            {currentWorkspace ? `${currentWorkspace.name} · ${workspaceLabel(currentWorkspace)}` : "Local merge-readiness triage"} ·{" "}
+            <Link href="/docs/security-model.md">Security boundary</Link>
+          </p>
+        </header>
 
         {error && <p className="workspace-error" role="alert">{error}</p>}
 
@@ -1203,38 +1306,55 @@ export default function ReportsWorkspacePage() {
             onKeyDown={handleWorkspaceInboxKeyDown}
           >
             <WorkspaceSummaryStrip
-              tracked={groups.length}
               needsAttention={needsAttentionCount}
-              needsTests={testsRequiredCount}
-              highRisk={highRiskCount}
+              awaitingEvidence={awaitingEvidenceCount}
+              blockingRequirements={blockingRequirementsCount}
               ready={readyCount}
+              needsReaffirmation={reaffirmationCount}
             />
 
-            <WorkspaceToolbar activeQueue={activeQueue} queueCounts={queueCounts} onSelectQueue={setActiveQueue} />
+            <WorkspaceViewTabs activeQueue={activeQueue} queueCounts={queueCounts} onSelectQueue={setActiveQueue} />
 
             <div className="workspace-workbench">
-              <div className="workspace-queue">
-                <WorkspaceQueueGroup
-                  title="Needs attention"
-                  description="Tests required, focused review, unresolved conditions or blocking risk."
-                  groups={needsAttention}
-                  emptyCopy={ATTENTION_EMPTY_COPY[activeQueue]}
-                  conditionProgressByGroup={conditionProgressByGroup}
-                  selectedGroupKey={selectedGroupKey}
-                  setCardRef={setCardRef}
-                  onSelect={selectWorkspaceGroup}
-                />
+              <div
+                className="workspace-queue"
+                id="workspace-queue-panel"
+                role="tabpanel"
+                aria-labelledby={`workspace-view-${activeQueue}`}
+              >
+                <div className="workspace-queue-surface">
+                  <div className="workspace-queue-columns" aria-hidden="true">
+                    <span>State</span><span>PR identity</span><span>Recommendation</span><span>Requirements</span><span>Owner</span><span>Updated</span>
+                  </div>
 
-                <WorkspaceQueueGroup
-                  title="Ready / reviewed"
-                  description="Marked ready, reviewed or archived — plus changes the latest local run approved."
-                  groups={ready}
-                  emptyCopy={READY_EMPTY_COPY[activeQueue]}
-                  conditionProgressByGroup={conditionProgressByGroup}
-                  selectedGroupKey={selectedGroupKey}
-                  setCardRef={setCardRef}
-                  onSelect={selectWorkspaceGroup}
-                />
+                  {visibleGroups.length === 0 ? (
+                    <p className="workspace-queue-empty workspace-queue-empty--view">{VIEW_EMPTY_COPY[activeQueue]}</p>
+                  ) : (
+                    <>
+                      <WorkspaceQueueGroup
+                        title="Needs attention"
+                        description="Tests, focused review, unresolved requirements or blocking risk."
+                        groups={needsAttention}
+                        emptyCopy={ATTENTION_EMPTY_COPY[activeQueue]}
+                        conditionProgressByGroup={conditionProgressByGroup}
+                        selectedGroupKey={selectedGroupKey}
+                        setCardRef={setCardRef}
+                        onSelect={selectWorkspaceGroup}
+                      />
+
+                      <WorkspaceQueueGroup
+                        title="Ready / reviewed"
+                        description="Locally ready, reviewed or archived — plus latest runs without an attention state."
+                        groups={ready}
+                        emptyCopy={READY_EMPTY_COPY[activeQueue]}
+                        conditionProgressByGroup={conditionProgressByGroup}
+                        selectedGroupKey={selectedGroupKey}
+                        setCardRef={setCardRef}
+                        onSelect={selectWorkspaceGroup}
+                      />
+                    </>
+                  )}
+                </div>
               </div>
 
               <WorkspaceInspector
@@ -1266,7 +1386,6 @@ export default function ReportsWorkspacePage() {
           </section>
         ) : (
           <section className="workspace-empty">
-            <span className="workspace-empty-mark" aria-hidden="true" />
             <h2>No tracked pull requests yet</h2>
             <p>Check a PR, review the merge-readiness decision, then return here to track what is blocked, waiting on tests, or ready to merge.</p>
             <div className="workspace-empty-actions">

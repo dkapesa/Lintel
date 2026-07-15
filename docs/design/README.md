@@ -16,6 +16,7 @@ Implementation convenience never overrides LVOS. Audits and roadmaps explain cur
 - [LVOS typography proof](./LVOS_TYPOGRAPHY_PROOF.md) — LVOS-1 role contract, internal proof and approval checklist.
 - [LVOS typography adoption ledger](./LVOS_TYPOGRAPHY_ADOPTION_LEDGER.md) — pending ownership map for LVOS-2 through LVOS-7.
 - [LVOS shell route map](./LVOS_SHELL_ROUTE_MAP.md) — LVOS-2 route ownership, contextual navigation, command-bar and responsive shell contract.
+- [LVOS Workspace Command Centre](./LVOS_WORKSPACE_COMMAND_CENTRE.md) — LVOS-3 Archetype A queue, inspector, responsive and local-state implementation record; pending visual review.
 
 ## Use and versioning
 

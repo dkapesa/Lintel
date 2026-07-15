@@ -57,6 +57,18 @@ Each finding has one owner milestone. Route references later in this document po
 | AU-19 | Motion foundation | Existing transitions are selector-specific and do not form named state primitives for evidence attachment, clause clearance, trace progression or decision recording. | Implement only approved motion primitives after the storyboard and after static consolidation. | P2 | `design-system.css` transition tokens; keyframes and transition rules in `globals.css` | V8B |
 | AU-20 | Motion tuning | Durations cluster around 130–180ms and reduced-motion rules exist for several surfaces, but cross-theme, compact-sheet and website/product timing has not been tuned as one system. | Tune timing, easing and reduced-motion equivalence only after the foundation is stable. | P3 | Transition tokens; `prefers-reduced-motion` blocks; website and application motion selectors | V8C |
 
+### Resolution and closure register
+
+The audit table above remains the original repository evidence recorded on 15 July 2026. Closure entries below record subsequent approved implementation outcomes without deleting or rewriting that historical evidence. Findings not listed remain open under their original owning milestone.
+
+| Finding | Resolution status | Resolving milestone | Approval date | Approved final route state |
+| --- | --- | --- | --- | --- |
+| AU-05 — Records, lists and tables | Closed | LVOS-4 — Administrative Surfaces | 16 July 2026 | All six administrative routes use the approved shared grammar for connected summaries where applicable, administrative groups, aligned records and tables, disclosures, empty states and labelled mobile transformations. |
+| AU-08 — Review operations | Closed | LVOS-4 — Administrative Surfaces | 16 July 2026 | `/review-operations` is approved as Archetype E for genuine local report-derived relationships and chronology. The generic KPI dashboard, percentage bars and decorative chart composition are removed; no hosted organisation analytics were introduced. |
+| AU-09 — Team | Closed | LVOS-4 — Administrative Surfaces | 16 July 2026 | `/team` is approved as Archetype D. Responsibility, repository, ownership and activity evidence use the shared administrative grammar while the route remains a local responsibility workspace rather than authenticated collaboration. |
+| AU-10 — Settings and policies | Closed | LVOS-4 — Administrative Surfaces | 16 July 2026 | `/settings` and `/review-policies` are approved as Archetype D. Settings remain read-only where configuration does not exist, and policies remain local structured gates rather than an enterprise policy engine. |
+| AU-17 — Integration/settings-adjacent surfaces | Closed | LVOS-4 — Administrative Surfaces | 16 July 2026 | `/github-action` and `/slack-handoff` are approved as Archetype D. GitHub Action remains a non-posting blueprint and Slack Handoff remains copy/export-only; preview theatre was replaced without adding delivery capability. |
+
 ## 3. Route-by-route matrix
 
 | Route | Current archetype | Required LVOS archetype | Compliance status | Strengths to preserve | Structural / visual / typography / responsive gaps | Likely files affected | Roadmap milestone |

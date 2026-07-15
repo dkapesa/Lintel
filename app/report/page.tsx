@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import AppShell from "../app-shell";
+import AppShell, { SHELL_NAVIGATION_OPEN_EVENT } from "../app-shell";
 import { useGuidedTour } from "../guided-tour";
 import { compareChangePassport, passportHandoffSummary, type ChangePassport, type ChangePassportComparison } from "../../lib/change-passport";
 import { buildBuilderVerifierAssessment, builderVerifierHandoffSummary, type BuilderVerifierAssessment } from "../../lib/builder-verifier-boundary";
@@ -2496,6 +2496,12 @@ export default function ReportPage() {
   const [clearedConditionKeys, setClearedConditionKeys] = useState<Set<string>>(new Set());
   const [activeDossierSection, setActiveDossierSection] = useState<DossierSectionId>("what-changed");
   const [decisionSheetOpen, setDecisionSheetOpen] = useState(false);
+
+  useEffect(() => {
+    const closeForShellNavigation = () => setDecisionSheetOpen(false);
+    window.addEventListener(SHELL_NAVIGATION_OPEN_EVENT, closeForShellNavigation);
+    return () => window.removeEventListener(SHELL_NAVIGATION_OPEN_EVENT, closeForShellNavigation);
+  }, []);
   const [timelineFilter, setTimelineFilter] = useState<TimelineFilter>("All");
   const [reviewDiffFilter, setReviewDiffFilter] = useState<(typeof reviewDiffFilters)[number]>("All");
   const [selectedTimelineEventId, setSelectedTimelineEventId] = useState<string | null>(null);
@@ -3643,6 +3649,7 @@ export default function ReportPage() {
   return (
     <AppShell
       context={<>{pr.project} · PR #{pr.number}</>}
+      contextTone="technical"
       actions={
         <>
           <SourceBadge source={source} />

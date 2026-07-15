@@ -1,10 +1,11 @@
 # LVOS typography adoption ledger
 
-**Status:** LVOS-1 Approved — 15 July 2026; LVOS-2 shell typography Approved — 15 July 2026; LVOS-3 Workspace typography Approved — 15 July 2026
+**Status:** LVOS-1 Approved — 15 July 2026; LVOS-2 shell typography Approved — 15 July 2026; LVOS-3 Workspace typography Approved — 15 July 2026; LVOS-4 typography Approved and closed — 16 July 2026
+
 **LVOS baseline:** v1.0  
 **Contract source:** [LVOS typography proof](./LVOS_TYPOGRAPHY_PROOF.md)
 
-This ledger assigns ownership for staged adoption of the approved LVOS-1 semantic typography contract. LVOS-1 introduces and proves the roles; it does not migrate live routes. LVOS-2 shell typography and LVOS-3 `/workspace` typography are approved following final manual review on 15 July 2026. LVOS-4 through LVOS-6 route-body adoption and LVOS-7 global zero-violation enforcement remain pending until each owning milestone is implemented, visually verified and recorded here.
+This ledger assigns ownership for staged adoption of the approved LVOS-1 semantic typography contract. LVOS-1 introduces and proves the roles; it does not migrate live routes. LVOS-2 shell typography and LVOS-3 `/workspace` typography are approved following final manual review on 15 July 2026. LVOS-4 administrative typography is approved following final manual review on 16 July 2026. LVOS-5 and LVOS-6 route-body adoption and LVOS-7 global zero-violation enforcement remain pending until each owning milestone is implemented, visually verified and recorded here.
 
 ## LVOS-1 corrected contract state
 
@@ -12,13 +13,13 @@ The semantic role contract is approved for staged adoption unchanged: role names
 
 Primary body uses the primary text tier; secondary/support uses the secondary tier; micro-labels, technical metadata and tertiary annotations may use the corrected muted tier. The light muted token targets at least 4.5:1 for normal text on canvas, inset and selected planes.
 
-Technical identifiers remain mono. Human-readable unavailable and empty explanations remain sans; mixed identifier/prose values must separate the identifier from the explanation. LVOS-2 shell and LVOS-3 `/workspace` adoption are approved; `/new` body typography remains pending. LVOS-4 through LVOS-6 route-body adoption and LVOS-7 global zero-violation enforcement remain pending.
+Technical identifiers remain mono. Human-readable unavailable and empty explanations remain sans; mixed identifier/prose values must separate the identifier from the explanation. LVOS-2 shell, LVOS-3 `/workspace` and all six LVOS-4 administrative-route adoptions are approved; `/new` body typography remains pending. LVOS-5 and LVOS-6 route-body adoption and LVOS-7 global zero-violation enforcement remain pending.
 
 | Milestone | Routes / surfaces | Role families to adopt | Known current violations | Migration owner | Completion status | Verification notes |
 | --- | --- | --- | --- | --- | --- | --- |
 | LVOS-2 | Shared shell, global rail, contextual navigation, command bar and shell integration around `/new` | Record title; support; micro-label; technical metadata; action text | `/new` body still contains 26–32px headings, 700-weight labels, decorative mono and route-local type rules outside this milestone's shell-only adoption scope | LVOS-2 — Application Shell and Navigation | Approved — 15 July 2026 | Shell, rail, contextual navigation, command bar, drawers and shared command overflow adopt the approved roles. Final manual review passed in dark and light across desktop, intermediate and mobile. `/new` body typography remains pending later milestones. |
 | LVOS-3 | `/workspace` | Page title; major heading; section heading; record title; body; support; micro-label; technical metadata | Superseded segmented view styling and active workbench type drift were removed; earlier shared `.workspace-*` compatibility selectors remain deferred to LVOS-7 because other routes still consume them | LVOS-3 — Workspace Command Centre | Approved — 15 July 2026 | Final dark/light, desktop/intermediate/mobile, state, interaction and runtime review passed. Summary strip, sibling tabs, aligned queue, selected inspector and responsive transformations are approved; local history/review behaviour is preserved, the duplicate React-key warning is resolved, development runtime is clean, AU-06 is closed and the global shell/other route bodies are unchanged. |
-| LVOS-4 | `/team`, `/settings`, `/review-policies`, `/github-action`, `/slack-handoff`, `/review-operations` | Full application role family, especially administrative headings, row titles, support copy, scarce labels and genuine technical metadata | `/review-operations` retains dashboard typography; superseded global route selectors remain until LVOS-7 even though the five migrated route bodies no longer consume them | LVOS-4 — Administrative Surfaces | In progress — 4A and 4B approved; 4C pending | `/settings`, `/review-policies`, `/team`, `/github-action` and `/slack-handoff` are approved. `/review-operations` remains pending. |
+| LVOS-4 | `/team`, `/settings`, `/review-policies`, `/github-action`, `/slack-handoff`, `/review-operations` | Full application role family, especially administrative headings, row titles, support copy, scarce labels and genuine technical metadata | Broad superseded global route selector families remain bounded LVOS-7 cascade debt; the obsolete Operations dashboard type generation was removed in LVOS-4C | LVOS-4 — Administrative Surfaces | Approved and closed — 16 July 2026 | All six routes and the shared administrative typography grammar are approved. LVOS-4 typography adoption is complete. |
 | LVOS-5 | `/report` | Full application role family with 65–80 character document measure and 35–50 character verdict/inspector measure | 25–34px application headings, dense legacy copy, residual record/card generations and overlapping disclosure labels | LVOS-5 — Case File Convergence | Pending | Verify every report/recommendation/decision state, outline and verdict transformations, mono eligibility, Human Decision Ledger emphasis and no application serif. |
 | LVOS-6 | `/` | Display serif at exactly three approved moments; product-section sans heading; website lede; website action; website eyebrow; embedded application roles | W2 remains a separate scoped grammar pending continuity lock; final product exhibits have not adopted the approved application contract | LVOS-6 — Website and Product Continuity | Pending | Verify the three Newsreader moments, shared sample data/terminology, dark/light continuity and desktop/intermediate/mobile product crops. |
 | LVOS-7 | All live routes and shared visual systems | Final enforcement of every application and website role; family boundaries; tracking; casing; numerals; line measures | Legacy cascade retains sub-10px text, weights above 600, decorative mono, oversized application titles and duplicated route-level rules until owners migrate them | LVOS-7 — Cross-Surface Visual QA and Migration Lock | Pending | Require zero remaining sub-10px application text, over-600 application weights, decorative mono, application serif and unapproved application-title sizes; document any approved exception. |
@@ -33,9 +34,9 @@ Technical identifiers remain mono. Human-readable unavailable and empty explanat
 - Shared administrative document grammar: Approved.
 - Desktop, intermediate and mobile typography transformations: Approved.
 - `/team`, `/github-action` and `/slack-handoff` typography adoption is approved under LVOS-4B.
-- `/review-operations` remains pending under LVOS-4C.
+- `/review-operations` remained pending under LVOS-4C at this approval checkpoint and is approved in the final record below.
 
-The LVOS-4 milestone remains in progress. AU-10 remains partially open until the complete LVOS-4 milestone closes, and AU-05 remains open until all administrative surfaces adopt the shared grammar.
+At this LVOS-4A checkpoint, the LVOS-4 milestone remained in progress. AU-10 remained partially open and AU-05 remained open; both are now closed by the final LVOS-4 approval recorded below.
 
 ## LVOS-4B approval status
 
@@ -45,7 +46,7 @@ The LVOS-4 milestone remains in progress. AU-10 remains partially open until the
 - `/team` Archetype D typography adoption: Approved.
 - `/github-action` Archetype D typography adoption: Approved.
 - `/slack-handoff` Archetype D typography adoption: Approved.
-- `/review-operations` remains pending.
+- `/review-operations` remained pending at this approval checkpoint and is approved in the final record below.
 - Page titles, major and group headings, record titles, body/support copy, scarce labels and aligned counts use the approved application roles.
 - Mono is limited to genuine YAML, commands, identifiers, the stable comment marker and export evidence; Team human-readable records remain sans.
 - The three routes introduce no sub-10px application text, weight above 600, application serif or decorative mono.
@@ -56,7 +57,23 @@ The LVOS-4 milestone remains in progress. AU-10 remains partially open until the
 - LVOS-2 shell and unrelated routes: Unchanged.
 - Fake product capability introduced: No.
 
-LVOS-4 remains in progress. AU-05, AU-09 and AU-17 remain pending final LVOS-4 closure; no audit finding is closed by this approval record.
+At this LVOS-4B checkpoint, LVOS-4 remained in progress and AU-05, AU-09 and AU-17 remained open. They are now closed by the final LVOS-4 approval recorded below; no audit finding was closed by the earlier LVOS-4B record itself.
+
+## LVOS-4C and final LVOS-4 approval status
+
+**Implementation date:** 16 July 2026
+
+**Approval date:** 16 July 2026
+
+**Status:** Approved and closed
+
+- `/settings`, `/review-policies`, `/team`, `/github-action` and `/slack-handoff` are approved as Archetype D administrative documents.
+- `/review-operations` is approved as an Archetype E operational evidence surface and uses the approved roles for its route introduction, connected summary strip, recurring-blocker records, repository-activity records, decision history and limitation states.
+- All six LVOS-4 routes now have approved page-title, major-heading, group-heading, record-title, body, support, micro-label and genuine technical-metadata adoption.
+- Review Operations human-readable timestamps, unavailable values and empty states remain sans; aligned counts and timestamps use tabular numerals.
+- Mono is limited to genuine run or head identifiers in the Operations chronology.
+- No LVOS-4 route introduces sub-10px application text, weight above 600, application serif or decorative mono through the scoped grammar.
+- LVOS-4 typography adoption is complete. LVOS-5, LVOS-6 and LVOS-7 remain pending.
 
 ## Completion rule
 

@@ -323,12 +323,12 @@ body {
   font-family: var(--font-sans);
 }
 
-:where(.new-intro h1, .workspace-header h1, .report-header h1, .settings-header h1, .action-header h1, .slack-header h1, .operations-header h1, .policies-header h1) {
+:where(.new-intro h1, .workspace-header h1, .report-header h1, .settings-header h1, .action-header h1, .slack-header h1, .policies-header h1) {
   font-weight: 600;
   text-wrap: balance;
 }
 
-:where(.section-heading h2, .workspace-section-heading h2, .settings-section-heading h2, .operations-section-heading h2) {
+:where(.section-heading h2, .workspace-section-heading h2, .settings-section-heading h2) {
   font-weight: 600;
   line-height: 1.2;
   text-wrap: balance;
@@ -396,11 +396,11 @@ html.theme-transitioning :where(.fetch-diff-button, .generate-button, .history-d
 }
 
 /* Shared dark controls */
-:where(.app-shell .copy-summary-button, .app-shell .download-markdown-button, .app-shell .copy-conditions-button, .app-shell .icon-button, .app-shell .workspace-primary-action, .app-shell .workspace-secondary-action, .app-shell .workspace-header-actions button, .app-shell .workspace-row-actions button, .app-shell .workspace-preview-actions button, .app-shell .report-decision-panel-actions button, .app-shell .report-decision-panel-actions a, .app-shell .report-export-grid button, .app-shell .report-export-grid a, .app-shell .quick-actions-grid button, .app-shell .settings-doc-links a, .app-shell .operations-link-row a) {
+:where(.app-shell .copy-summary-button, .app-shell .download-markdown-button, .app-shell .copy-conditions-button, .app-shell .icon-button, .app-shell .workspace-primary-action, .app-shell .workspace-secondary-action, .app-shell .workspace-header-actions button, .app-shell .workspace-row-actions button, .app-shell .workspace-preview-actions button, .app-shell .report-decision-panel-actions button, .app-shell .report-decision-panel-actions a, .app-shell .report-export-grid button, .app-shell .report-export-grid a, .app-shell .quick-actions-grid button, .app-shell .settings-doc-links a) {
   border-radius: var(--radius-control);
 }
 
-:where(.app-shell .copy-summary-button, .app-shell .download-markdown-button, .app-shell .copy-conditions-button, .app-shell .icon-button, .app-shell .workspace-secondary-action, .app-shell .workspace-header-actions button, .app-shell .workspace-row-actions button, .app-shell .workspace-preview-actions button, .app-shell .report-decision-panel-actions button, .app-shell .report-decision-panel-actions a, .app-shell .report-export-grid button, .app-shell .report-export-grid a, .app-shell .quick-actions-grid button, .app-shell .settings-doc-links a, .app-shell .operations-link-row a):hover:not(:disabled) {
+:where(.app-shell .copy-summary-button, .app-shell .download-markdown-button, .app-shell .copy-conditions-button, .app-shell .icon-button, .app-shell .workspace-secondary-action, .app-shell .workspace-header-actions button, .app-shell .workspace-row-actions button, .app-shell .workspace-preview-actions button, .app-shell .report-decision-panel-actions button, .app-shell .report-decision-panel-actions a, .app-shell .report-export-grid button, .app-shell .report-export-grid a, .app-shell .quick-actions-grid button, .app-shell .settings-doc-links a):hover:not(:disabled) {
   border-color: var(--color-border-strong);
 }
 
@@ -481,7 +481,7 @@ html.theme-transitioning :where(.app-shell .nav-item, .app-shell .report-tab, .a
     grid-template-columns: minmax(0, 1fr);
   }
 
-  :is(.main-content, .workspace-main, .settings-main, .operations-main, .policies-main, .action-main, .slack-main) {
+  :is(.main-content, .workspace-main, .settings-main, .policies-main, .action-main, .slack-main) {
     min-width: 0;
   }
 

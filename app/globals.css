@@ -805,49 +805,6 @@ button.review-diff-row-line:focus-visible { outline:2px solid var(--color-focus-
 .slack-trust-section li { display:flex; gap:9px; color:var(--dtext); font-size:11px; line-height:1.6; }
 .slack-trust-section li:before { content:""; flex:0 0 auto; width:5px; height:5px; margin-top:7px; border-radius:50%; background:var(--color-success); }
 
-/* V4.9 local review operations dashboard */
-.operations-main { background:radial-gradient(circle at 52% 0%, rgba(255,255,255,.015), transparent 36%), var(--dcanvas); }
-.operations-header { margin-bottom:22px; }
-.operations-demo-note { max-width:1440px; margin:0 auto 16px; padding:12px 14px; border:1px solid color-mix(in srgb, var(--color-warning) 32%, transparent); border-radius:var(--radius-card); display:flex; flex-wrap:wrap; gap:6px; background:var(--dwarm-soft); color:var(--color-warning-muted); font-size:11px; line-height:1.5; }
-.operations-demo-note strong { color:var(--color-warning); }
-.operations-metric-grid { max-width:1440px; margin:0 auto 18px; display:grid; grid-template-columns:repeat(6, minmax(0,1fr)); gap:10px; }
-.operations-metric-grid article { min-height:94px; padding:16px; border:1px solid var(--dline); border-radius:var(--radius-panel); background:var(--dpanel); box-shadow:0 8px 24px rgba(0,0,0,.25); }
-.operations-metric-grid span { display:block; color:var(--dmuted); font-size:var(--type-label); font-weight:600; letter-spacing:var(--type-label-tracking); text-transform:uppercase; }
-.operations-metric-grid strong { display:block; margin-top:16px; color:var(--dink); font-size:30px; line-height:1; letter-spacing:-.02em; }
-.operations-layout { max-width:1440px; margin:0 auto; display:grid; grid-template-columns:minmax(0,1fr) minmax(310px,380px); gap:18px; align-items:start; }
-.operations-main-column, .operations-side-column { display:grid; gap:16px; min-width:0; }
-.operations-side-column { position:sticky; top:24px; }
-.operations-panel { min-width:0; padding:22px; border:1px solid var(--dline); border-radius:var(--radius-panel); background:var(--dpanel); box-shadow:0 12px 34px rgba(0,0,0,.28); }
-.operations-panel h2 { margin:6px 0 0; color:var(--dink); font-size:20px; line-height:1.15; letter-spacing:-.02em; }
-.operations-distribution { display:grid; gap:12px; margin-top:18px; }
-.operations-distribution article { display:grid; gap:8px; }
-.operations-distribution article > div:first-child { display:flex; align-items:center; justify-content:space-between; gap:14px; }
-.operations-distribution strong { color:var(--color-text-primary); font-size:12px; }
-.operations-distribution span { color:var(--dmuted); font:10px var(--font-mono); white-space:nowrap; }
-.operations-bar { overflow:hidden; height:10px; border-radius:var(--radius-pill); background:var(--color-surface-selected); }
-.operations-bar-fill { display:block; height:100%; border-radius:inherit; background:var(--color-border-strong); }
-.operations-bar-fill--ready { background:var(--color-success); }.operations-bar-fill--tests { background:var(--color-warning-strong); }.operations-bar-fill--review { background:var(--color-information-muted); }.operations-bar-fill--blocked { background:var(--color-danger-strong); }
-.operations-ranked-list { display:grid; gap:8px; margin:18px 0 0; padding:0; list-style:none; }
-.operations-ranked-list li { display:grid; grid-template-columns:34px minmax(0,1fr); gap:10px; align-items:start; padding:12px; border:1px solid var(--color-border); border-radius:var(--radius-card); background:var(--dpanel2); }
-.operations-ranked-list span { display:grid; width:28px; height:28px; place-items:center; border-radius:var(--radius-row); background:var(--color-surface-selected); color:#fff; font-size:10px; font-weight:600; }
-.operations-ranked-list p { margin:0; color:var(--color-text-secondary); font-size:11px; line-height:1.55; }
-.operations-signal-list { display:grid; gap:9px; margin:18px 0 0; padding:0; list-style:none; }
-.operations-signal-list li { display:flex; gap:9px; color:var(--dtext); font-size:11px; line-height:1.6; }
-.operations-signal-list li:before { content:""; flex:0 0 auto; width:5px; height:5px; margin-top:7px; border-radius:50%; background:var(--color-success); }
-.operations-compact-list { display:grid; gap:8px; margin:16px 0 0; padding:0; list-style:none; }
-.operations-compact-list li { display:flex; gap:9px; align-items:flex-start; padding:10px; border:1px solid var(--color-border); border-radius:var(--radius-row); background:var(--dpanel2); }
-.operations-compact-list strong { flex:0 0 auto; padding:4px 6px; border-radius:var(--radius-pill); background:var(--dgreen-soft); color:var(--dgreen); font-size:var(--type-label); font-weight:600; white-space:nowrap; }
-.operations-compact-list span { color:var(--dtext); font-size:10px; line-height:1.5; }
-.operations-empty { margin:16px 0 0; color:var(--dmuted); font-size:11px; line-height:1.55; }
-.operations-latest-panel p { margin:8px 0 0; color:var(--dtext); font:10px var(--font-mono); overflow-wrap:anywhere; }
-.operations-latest-panel dl { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:16px 0 0; }
-.operations-latest-panel dl div { padding:10px; border:1px solid var(--color-border); border-radius:var(--radius-row); background:var(--dpanel2); }
-.operations-latest-panel dt { margin:0 0 5px; color:var(--dmuted); font-size:var(--type-label); font-weight:600; letter-spacing:var(--type-label-tracking); text-transform:uppercase; }
-.operations-latest-panel dd { margin:0; color:var(--color-text-primary); font-size:10px; font-weight:600; line-height:1.35; overflow-wrap:anywhere; }
-.operations-link-row { display:flex; flex-wrap:wrap; gap:7px; margin-top:16px; }
-.operations-link-row a { min-height:var(--control-height-sm); padding:0 10px; border:1px solid var(--dline); border-radius:var(--radius-control); display:inline-flex; align-items:center; justify-content:center; background:var(--dpanel); color:var(--dtext); font-size:var(--type-label); font-weight:600; text-align:center; }
-.operations-link-row a:hover { border-color:var(--color-border-strong); background:var(--dpanel2); color:var(--dink); }
-
 @media (max-width:900px) {
   .workspace-sidebar-panel, .workspace-nav-label { display:none; }
   .workspace-shell .workspace-brand { min-height:auto; padding:0; background:transparent; }
@@ -860,9 +817,6 @@ button.review-diff-row-line:focus-visible { outline:2px solid var(--color-focus-
   .action-hero { grid-template-columns:1fr; }
   .action-workflow-list { grid-template-columns:1fr 1fr; }
   .slack-hero, .slack-variant-grid { grid-template-columns:1fr; }
-  .operations-metric-grid { grid-template-columns:repeat(3, minmax(0,1fr)); }
-  .operations-layout { grid-template-columns:1fr; }
-  .operations-side-column { position:static; }
 }
 
 @media (max-width:680px) {
@@ -886,9 +840,6 @@ button.review-diff-row-line:focus-visible { outline:2px solid var(--color-focus-
   .slack-message { grid-template-columns:1fr; }
   .slack-variant-header { flex-direction:column; }
   .slack-variant-header button { width:100%; }
-  .operations-metric-grid { grid-template-columns:1fr 1fr; }
-  .operations-panel { padding:18px; }
-  .operations-latest-panel dl { grid-template-columns:1fr; }
 }
 
 
@@ -918,7 +869,7 @@ button.review-diff-row-line:focus-visible { outline:2px solid var(--color-focus-
 .app-shell .score-row strong { font-family:var(--dmono); font-weight:500; }
 .app-shell .evidence-summary-grid strong, .app-shell .surface-summary-grid strong,
 .app-shell .action-progress-grid strong, .app-shell .timeline-summary-grid strong,
-.app-shell .operations-metric-grid strong, .app-shell .workspace-triage-strip strong,
+.app-shell .workspace-triage-strip strong,
 .app-shell .report-decision-panel-snapshot dt { font-family:var(--dmono); font-weight:500; letter-spacing:-.02em; }
 
 /* active tab treatments: quiet mint ring instead of solid block */
@@ -938,7 +889,7 @@ button.review-diff-row-line:focus-visible { outline:2px solid var(--color-focus-
 .app-shell .workspace-table th { background:var(--color-surface); }
 .app-shell .workspace-table tbody tr:hover { background:var(--color-surface-raised); }
 .app-shell .slack-window-top { background:var(--color-surface); }
-.app-shell .workspace-main, .app-shell .action-main, .app-shell .slack-main, .app-shell .operations-main { background:radial-gradient(ellipse 60% 34% at 50% 0%, rgba(255,255,255,.015), transparent), var(--dcanvas); }
+.app-shell .workspace-main, .app-shell .action-main, .app-shell .slack-main { background:radial-gradient(ellipse 60% 34% at 50% 0%, rgba(255,255,255,.015), transparent), var(--dcanvas); }
 
 @media (max-width:900px) {
   .app-shell .sidebar, .app-shell .workspace-sidebar { border-right:0; border-bottom:1px solid var(--color-border); }
@@ -1009,7 +960,7 @@ button.review-diff-row-line:focus-visible { outline:2px solid var(--color-focus-
 .app-shell .sidebar, .app-shell .workspace-sidebar { background:var(--color-sidebar); box-shadow:none; }
 .app-shell .nav-item--active { background:var(--color-surface-selected); box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 20%, transparent), inset 2px 0 0 color-mix(in srgb, var(--color-accent) 60%, transparent); }
 .app-shell .nav-item--active span { color:var(--color-accent); }
-.app-shell .workspace-main, .app-shell .action-main, .app-shell .slack-main, .app-shell .operations-main { background:var(--color-page-primary); }
+.app-shell .workspace-main, .app-shell .action-main, .app-shell .slack-main { background:var(--color-page-primary); }
 .app-shell .workspace-header--app, .app-shell .workspace-preview, .app-shell .report-decision-panel, .app-shell .finding-detail-panel, .app-shell .quick-actions-panel { background:var(--color-surface-secondary); }
 .app-shell .workspace-inbox-card, .app-shell .workspace-triage-card { box-shadow:none; }
 .app-shell .workspace-inbox-card--selected { transform:none; }
@@ -2265,11 +2216,11 @@ html[data-theme="light"] :is(.lp-trace-node--open .lp-trace-index, .lp-editorial
 
 /* Administrative routes: one quiet connected working plane, hairline rules,
    and aligned records in place of floating dashboard cards. */
-.app-shell .workspace-main, .app-shell .action-main, .app-shell .slack-main, .app-shell .operations-main { background:var(--color-canvas); }
-.operations-metric-grid, .team-overview { gap:0; overflow:hidden; border:1px solid var(--color-border); border-radius:var(--radius-card); background:var(--color-surface); }
-.operations-metric-grid article, .team-overview article { min-height:0; border:0; border-right:1px solid var(--color-border); border-radius:0; background:transparent; box-shadow:none; }
-.operations-metric-grid article:last-child, .team-overview article:last-child { border-right:0; }
-.operations-panel, .team-surface, .team-hero, .action-comment-card, .action-explanation-card, .action-yaml-section, .action-trust-section, .slack-preview-card, .slack-explanation-card, .slack-variant-card, .slack-trust-section { border-color:var(--color-border); background:var(--color-surface); box-shadow:none; }
+.app-shell .workspace-main, .app-shell .action-main, .app-shell .slack-main { background:var(--color-canvas); }
+.team-overview { gap:0; overflow:hidden; border:1px solid var(--color-border); border-radius:var(--radius-card); background:var(--color-surface); }
+.team-overview article { min-height:0; border:0; border-right:1px solid var(--color-border); border-radius:0; background:transparent; box-shadow:none; }
+.team-overview article:last-child { border-right:0; }
+.team-surface, .team-hero, .action-comment-card, .action-explanation-card, .action-yaml-section, .action-trust-section, .slack-preview-card, .slack-explanation-card, .slack-variant-card, .slack-trust-section { border-color:var(--color-border); background:var(--color-surface); box-shadow:none; }
 .team-main { gap:0; border:1px solid var(--color-border); border-radius:var(--radius-panel); background:var(--color-surface); overflow:hidden; }
 .team-hero, .team-surface { border:0; border-bottom:1px solid var(--color-border); border-radius:0; }
 .team-surface:last-child { border-bottom:0; }
@@ -2292,20 +2243,20 @@ html[data-theme="light"] :is(.lp-trace-node--open .lp-trace-index, .lp-editorial
 .app-shell .report-tab--active, .app-shell .workspace-queue-tab--active, .app-shell .quick-actions-trigger--active, .app-shell .quick-actions-trigger:hover { background:var(--color-surface-selected); color:var(--color-text-primary); box-shadow:var(--shadow-selected); }
 .app-shell .report-tab--active strong, .app-shell .workspace-queue-tab--active strong, .app-shell .quick-actions-trigger:hover span, .app-shell .quick-actions-trigger--active span { color:var(--color-accent-strong); background:var(--color-information-soft); }
 .app-shell :is(.final-recommendation h2, .conditions h3) { color:var(--color-text-primary); }
-.app-shell :is(.workspace-sidebar, .action-main, .slack-main, .operations-main) { background-image:none; box-shadow:none; }
+.app-shell :is(.workspace-sidebar, .action-main, .slack-main) { background-image:none; box-shadow:none; }
 .app-shell :is(.action-yaml-preview, .slack-handoff-preview, .handoff-preview pre) { border-color:var(--color-border); background:var(--color-code-background); color:var(--color-text-primary); }
 
 @media (max-width:900px) {
-  .operations-metric-grid article:nth-child(2n), .team-overview article:nth-child(2n) { border-right:0; }
-  .operations-metric-grid article:nth-child(n+3), .team-overview article:nth-child(n+3) { border-top:1px solid var(--color-border); }
+  .team-overview article:nth-child(2n) { border-right:0; }
+  .team-overview article:nth-child(n+3) { border-top:1px solid var(--color-border); }
   .action-workflow-list li:nth-child(2n) { border-right:0; }
   .action-workflow-list li:nth-child(n+3) { border-top:1px solid var(--color-border); }
 }
 
 @media (max-width:680px) {
-  .operations-metric-grid, .team-overview, .action-workflow-list { border-radius:var(--radius-row); }
-  .operations-metric-grid article, .team-overview article, .action-workflow-list li { border-right:0; border-bottom:1px solid var(--color-border); }
-  .operations-metric-grid article:last-child, .team-overview article:last-child, .action-workflow-list li:last-child { border-bottom:0; }
-  .operations-metric-grid article:nth-child(n+3), .team-overview article:nth-child(n+3), .action-workflow-list li:nth-child(n+3) { border-top:0; }
+  .team-overview, .action-workflow-list { border-radius:var(--radius-row); }
+  .team-overview article, .action-workflow-list li { border-right:0; border-bottom:1px solid var(--color-border); }
+  .team-overview article:last-child, .action-workflow-list li:last-child { border-bottom:0; }
+  .team-overview article:nth-child(n+3), .action-workflow-list li:nth-child(n+3) { border-top:0; }
   .team-main { border-radius:var(--radius-card); }
 }

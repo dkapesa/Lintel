@@ -3,6 +3,8 @@
 **Status:** fixed implementation sequence derived from [LVOS v1.0](./LVOS_V1.md) and the [current-state audit](./LVOS_CURRENT_STATE_AUDIT.md).  
 **Rule:** each milestone has exclusive ownership of its listed audit findings and must be implementable, validated, committed and merged independently. Changing ownership or order requires an explicit governance decision.
 
+**Current position:** LVOS-4 — Administrative Surfaces is Complete / Closed as of 16 July 2026. LVOS-5 — Case File Convergence is the next implementation milestone.
+
 ## Phase gating
 
 - Major new Phase 4 and Phase 5 capability expansion pauses during LVOS-1 through LVOS-7.
@@ -90,6 +92,10 @@
 
 ## LVOS-4 — Administrative Surfaces
 
+**Status:** Complete / Closed — 16 July 2026
+
+**Closure:** The six-route dark/light and desktop/intermediate/mobile matrix is approved. AU-05, AU-08, AU-09, AU-10 and AU-17 are closed; the purpose, scope, ownership and acceptance criteria below remain the governing historical milestone record.
+
 - **Purpose:** consolidate administrative, integration-adjacent and supporting operations surfaces into record-led approved compositions.
 - **User-visible outcome:** Team, Settings, Policies, integrations and local operations read as one engineering administration system rather than route-specific dashboards or showcases.
 - **Approved archetype or layer:** D — Administrative document for `/team`, `/settings`, `/review-policies`, `/github-action` and `/slack-handoff`; E — Timeline or graph surface for `/review-operations` where relationships genuinely require it.
@@ -110,6 +116,8 @@
 - **Exit artifact:** Archetype D reference set, justified Archetype E operations surface and removed-card inventory.
 
 ## LVOS-5 — Case File Convergence
+
+**Status:** Next implementation milestone.
 
 - **Purpose:** refine the flagship report into the definitive Archetype C without changing product logic.
 - **User-visible outcome:** one disciplined verification dossier with a clear evidence-to-contract chain and the human decision as the heaviest record.

@@ -715,41 +715,7 @@ button.review-diff-row-line:focus-visible { outline:2px solid var(--color-focus-
 /* Legacy header--app / split-view / preview compatibility remains for routes
    outside LVOS-3; the Risk Inbox no longer consumes this generation. */
 
-/* V4.5 analysis settings concept */
-.settings-main { background:radial-gradient(circle at 50% 0%, rgba(255,255,255,.015), transparent 36%), var(--dcanvas); }
-.settings-header { margin-bottom:22px; }
-.settings-overview { max-width:1440px; margin:0 auto 24px; display:grid; grid-template-columns:minmax(0,1.35fr) minmax(280px,.65fr); gap:14px; }
-.settings-current-card, .settings-principle-card, .settings-mode-card, .settings-trust-section { border:1px solid var(--dline); border-radius:var(--radius-panel); background:var(--dpanel); box-shadow:0 10px 28px rgba(0,0,0,.25); }
-.settings-current-card { padding:24px; }
-.settings-current-card h2 { margin:8px 0 10px; font-size:20px; line-height:1.15; letter-spacing:-.02em; }
-.settings-current-card p, .settings-principle-card p, .settings-mode-card dd, .settings-provider-row span, .settings-trust-section li { color:var(--dtext); font-size:11px; line-height:1.6; }
-.settings-current-card dl { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; margin:18px 0 0; }
-.settings-current-card dl div { padding:11px; border:1px solid var(--color-border); border-radius:var(--radius-card); background:var(--dpanel2); }
-.settings-current-card dt, .settings-mode-card dt { margin:0 0 5px; color:var(--dmuted); font-size:var(--type-label); font-weight:600; letter-spacing:var(--type-label-tracking); text-transform:uppercase; }
-.settings-current-card dd, .settings-mode-card dd { margin:0; }
-.settings-principle-card { display:grid; align-content:start; gap:12px; padding:22px; background:var(--color-surface-selected); color:var(--color-text-primary); }
-.settings-principle-card span { color:var(--color-text-muted); font-size:var(--type-label); font-weight:600; letter-spacing:.1em; text-transform:uppercase; }
-.settings-principle-card strong { color:#fff; font-size:20px; line-height:1.25; letter-spacing:-.035em; }
-.settings-principle-card p { color:var(--color-text-secondary); }
 .settings-section { max-width:1440px; margin:26px auto 0; }
-.settings-mode-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin-top:16px; }
-.settings-mode-card { display:grid; gap:14px; padding:18px; }
-.settings-mode-card > div { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
-.settings-mode-card h3 { margin:0; font-size:14px; letter-spacing:-.025em; }
-.settings-mode-card > div span { padding:4px 7px; border:1px solid var(--dline); border-radius:var(--radius-pill); background:var(--dpanel2); color:var(--dgreen); font-size:var(--type-label); font-weight:600; white-space:nowrap; }
-.settings-mode-card dl { display:grid; gap:10px; margin:0; }
-.settings-provider-table { margin-top:16px; overflow:hidden; border:1px solid var(--dline); border-radius:var(--radius-panel); background:var(--dpanel); }
-.settings-provider-row { display:grid; grid-template-columns:.8fr .95fr 1.4fr 1.3fr; gap:0; border-top:1px solid var(--dline); }
-.settings-provider-row:first-child { border-top:0; }
-.settings-provider-row > * { padding:14px 15px; border-left:1px solid var(--dline); }
-.settings-provider-row > *:first-child { border-left:0; }
-.settings-provider-row--head { background:var(--dpanel2); color:var(--dmuted); font-size:var(--type-label); font-weight:600; letter-spacing:var(--type-label-tracking); text-transform:uppercase; }
-.settings-provider-row strong { color:var(--color-text-primary); font-size:12px; }
-.settings-trust-section { display:grid; gap:16px; padding:24px; }
-.settings-trust-section h2 { margin:6px 0 0; font-size:22px; letter-spacing:-.02em; }
-.settings-trust-section ul { display:grid; gap:9px; margin:0; padding:0; list-style:none; }
-.settings-trust-section li { display:flex; gap:9px; }
-.settings-trust-section li:before { content:""; flex:0 0 auto; width:5px; height:5px; margin-top:7px; border-radius:50%; background:var(--color-success); }
 .settings-doc-links { display:flex; flex-wrap:wrap; gap:8px; }
 .settings-doc-links a { min-height:var(--control-height-sm); padding:0 11px; border:1px solid var(--dline); border-radius:var(--radius-row); display:inline-flex; align-items:center; background:var(--dpanel); color:var(--dgreen); font-size:10px; font-weight:600; }
 .settings-doc-links a:hover { border-color:var(--color-border-strong); background:var(--dpanel2); }
@@ -882,21 +848,6 @@ button.review-diff-row-line:focus-visible { outline:2px solid var(--color-focus-
 .operations-link-row a { min-height:var(--control-height-sm); padding:0 10px; border:1px solid var(--dline); border-radius:var(--radius-control); display:inline-flex; align-items:center; justify-content:center; background:var(--dpanel); color:var(--dtext); font-size:var(--type-label); font-weight:600; text-align:center; }
 .operations-link-row a:hover { border-color:var(--color-border-strong); background:var(--dpanel2); color:var(--dink); }
 
-/* V4.11 review policies and merge gates */
-.policies-main { background:radial-gradient(circle at 52% 0%, rgba(255,255,255,.015), transparent 36%), var(--dcanvas); }
-.policies-header { margin-bottom:22px; }
-.policy-levels { max-width:1440px; margin:0 auto 18px; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; }
-.policy-levels article { min-height:92px; padding:16px; border:1px solid var(--dline); border-radius:var(--radius-panel); background:var(--dpanel); box-shadow:0 8px 24px rgba(0,0,0,.25); }
-.policy-levels p { margin:11px 0 0; color:var(--dtext); font-size:11px; line-height:1.6; }
-.policy-gate-level { display:inline-flex; width:max-content; padding:5px 7px; border:1px solid var(--dline); border-radius:var(--radius-pill); background:var(--dpanel); color:var(--dtext); font-size:var(--type-label); font-weight:600; letter-spacing:.06em; text-transform:uppercase; white-space:nowrap; }
-.policy-gate-level--required { border-color:color-mix(in srgb, var(--color-danger-strong) 32%, transparent); background:var(--dorange-soft); color:var(--dorange); }.policy-gate-level--recommended { border-color:color-mix(in srgb, var(--color-warning) 32%, transparent); background:var(--dwarm-soft); color:var(--damber); }.policy-gate-level--optional { border-color:color-mix(in srgb, var(--color-information) 32%, transparent); background:var(--dblue-soft); color:var(--dblue); }
-.policies-grid { max-width:1440px; margin:0 auto; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
-.policy-card { min-width:0; padding:22px; border:1px solid var(--dline); border-radius:var(--radius-panel); background:var(--dpanel); box-shadow:0 12px 34px rgba(0,0,0,.28); }
-.policy-card-header { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }.policy-card h2 { margin:7px 0 0; color:var(--dink); font-size:20px; line-height:1.12; letter-spacing:-.02em; }.policy-card > p { margin:13px 0 0; color:var(--dtext); font-size:11px; line-height:1.65; }
-.policy-best-for { margin:16px 0 0; padding:12px; border:1px solid var(--color-border); border-radius:var(--radius-card); background:var(--dpanel2); }.policy-best-for span { display:block; color:var(--dmuted); font-size:var(--type-label); font-weight:600; letter-spacing:var(--type-label-tracking); text-transform:uppercase; }.policy-best-for strong { display:block; margin-top:6px; color:var(--color-text-primary); font-size:11px; line-height:1.45; }
-.policy-gate-groups { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-top:16px; }.policy-gate-groups section { min-width:0; padding:12px; border:1px solid var(--color-border); border-radius:var(--radius-card); background:var(--dpanel2); }.policy-gate-groups h3 { margin:0 0 11px; }.policy-gate-groups ul { display:grid; gap:9px; margin:0; padding:0; list-style:none; }.policy-gate-groups li { display:grid; gap:4px; }.policy-gate-groups strong { color:var(--color-text-primary); font-size:10px; line-height:1.35; }.policy-gate-groups span, .policy-gate-groups p { margin:0; color:var(--dtext); font-size:var(--type-label); line-height:1.5; }
-.policy-note { max-width:1440px; margin:18px auto 0; padding:24px; border:1px solid var(--dline); border-radius:var(--radius-panel); background:var(--color-surface-selected); color:var(--color-text-primary); }.policy-note .card-kicker { color:var(--color-text-muted); }.policy-note h2 { margin:7px 0 0; color:var(--color-text-primary); font-size:25px; letter-spacing:-.02em; }.policy-note p { max-width:900px; margin:14px 0 18px; color:var(--color-text-secondary); font-size:12px; line-height:1.7; }.policy-note .settings-doc-links a { border-color:var(--color-border-strong); background:var(--color-surface-hover); color:var(--color-text-primary); }.policy-note .settings-doc-links a:hover { border-color:var(--color-border-strong); background:var(--color-surface-selected); }
-
 @media (max-width:900px) {
   .workspace-sidebar-panel, .workspace-nav-label { display:none; }
   .workspace-shell .workspace-brand { min-height:auto; padding:0; background:transparent; }
@@ -906,17 +857,12 @@ button.review-diff-row-line:focus-visible { outline:2px solid var(--color-focus-
   .workspace-preview { position:static; order:-1; }
   .workspace-triage-strip { grid-template-columns:repeat(2, minmax(0,1fr)); }
   .workspace-queue-tabs { grid-template-columns:repeat(3, minmax(0,1fr)); }
-  .settings-overview, .settings-mode-grid { grid-template-columns:1fr 1fr; }
-  .settings-current-card dl { grid-template-columns:1fr 1fr; }
-  .settings-provider-row { grid-template-columns:1fr 1fr; }
   .action-hero { grid-template-columns:1fr; }
   .action-workflow-list { grid-template-columns:1fr 1fr; }
   .slack-hero, .slack-variant-grid { grid-template-columns:1fr; }
   .operations-metric-grid { grid-template-columns:repeat(3, minmax(0,1fr)); }
   .operations-layout { grid-template-columns:1fr; }
   .operations-side-column { position:static; }
-  .policies-grid { grid-template-columns:1fr; }
-  .policy-gate-groups { grid-template-columns:1fr; }
 }
 
 @media (max-width:680px) {
@@ -934,10 +880,6 @@ button.review-diff-row-line:focus-visible { outline:2px solid var(--color-focus-
   .workspace-preview-meta, .workspace-preview-stats { grid-template-columns:1fr; }
   .workspace-preview-risk { align-items:flex-start; flex-direction:column; }
   .workspace-preview-actions button { flex:1; }
-  .settings-overview, .settings-mode-grid, .settings-current-card dl, .settings-provider-row { grid-template-columns:1fr; }
-  .settings-current-card, .settings-principle-card, .settings-mode-card, .settings-trust-section { padding:18px; }
-  .settings-provider-row > * { border-left:0; border-top:1px solid var(--dline); }
-  .settings-provider-row > *:first-child { border-top:0; }
   .action-comment-card, .action-explanation-card, .action-yaml-section, .action-trust-section { padding:18px; }
   .action-comment-title { align-items:flex-start; }
   .action-comment-metadata, .action-workflow-list { grid-template-columns:1fr; }
@@ -947,8 +889,6 @@ button.review-diff-row-line:focus-visible { outline:2px solid var(--color-focus-
   .operations-metric-grid { grid-template-columns:1fr 1fr; }
   .operations-panel { padding:18px; }
   .operations-latest-panel dl { grid-template-columns:1fr; }
-  .policy-levels { grid-template-columns:1fr; }
-  .policy-card, .policy-note { padding:18px; }
 }
 
 
@@ -970,7 +910,7 @@ button.review-diff-row-line:focus-visible { outline:2px solid var(--color-focus-
 
 /* status/risk labels read as technical values, not prose */
 .app-shell .recommendation, .app-shell .risk-badge, .app-shell .severity, .app-shell .review-status,
-.app-shell .surface-status, .app-shell .test-priority, .app-shell .policy-gate-level, .app-shell .quality-status,
+.app-shell .surface-status, .app-shell .test-priority, .app-shell .quality-status,
 .app-shell .workspace-recommendation, .app-shell .evidence-impact, .app-shell .finding-provenance,
 .app-shell .source-badge, .app-shell .operational-status-legacy { font-family:var(--dmono); font-weight:600; }
 .app-shell .workspace-preview-repo, .app-shell .report-decision-panel-title p { color:var(--dmuted); }
@@ -992,13 +932,13 @@ button.review-diff-row-line:focus-visible { outline:2px solid var(--color-focus-
 .app-shell .workspace-header--app { border-color:var(--dline); }
 .app-shell .final-recommendation { border:1px solid var(--color-border); background:var(--color-surface-raised); }
 .app-shell .final-recommendation .conditions { border-left-color:var(--color-border-strong); }
-.app-shell .settings-principle-card, .app-shell .action-explanation-card, .app-shell .slack-explanation-card, .app-shell .policy-note { border:1px solid var(--color-border); background:var(--color-surface-raised); }
+.app-shell .action-explanation-card, .app-shell .slack-explanation-card { border:1px solid var(--color-border); background:var(--color-surface-raised); }
 .app-shell .merge-summary-preview, .app-shell .action-yaml-preview, .app-shell .slack-handoff-preview { border-color:var(--color-surface-selected); background:var(--color-surface-inset); }
 .app-shell .decision-timeline-marker { border-color:var(--dcanvas); }
 .app-shell .workspace-table th { background:var(--color-surface); }
 .app-shell .workspace-table tbody tr:hover { background:var(--color-surface-raised); }
 .app-shell .slack-window-top { background:var(--color-surface); }
-.app-shell .workspace-main, .app-shell .settings-main, .app-shell .action-main, .app-shell .slack-main, .app-shell .operations-main, .app-shell .policies-main { background:radial-gradient(ellipse 60% 34% at 50% 0%, rgba(255,255,255,.015), transparent), var(--dcanvas); }
+.app-shell .workspace-main, .app-shell .action-main, .app-shell .slack-main, .app-shell .operations-main { background:radial-gradient(ellipse 60% 34% at 50% 0%, rgba(255,255,255,.015), transparent), var(--dcanvas); }
 
 @media (max-width:900px) {
   .app-shell .sidebar, .app-shell .workspace-sidebar { border-right:0; border-bottom:1px solid var(--color-border); }
@@ -1069,7 +1009,7 @@ button.review-diff-row-line:focus-visible { outline:2px solid var(--color-focus-
 .app-shell .sidebar, .app-shell .workspace-sidebar { background:var(--color-sidebar); box-shadow:none; }
 .app-shell .nav-item--active { background:var(--color-surface-selected); box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--color-accent) 20%, transparent), inset 2px 0 0 color-mix(in srgb, var(--color-accent) 60%, transparent); }
 .app-shell .nav-item--active span { color:var(--color-accent); }
-.app-shell .workspace-main, .app-shell .settings-main, .app-shell .action-main, .app-shell .slack-main, .app-shell .operations-main, .app-shell .policies-main { background:var(--color-page-primary); }
+.app-shell .workspace-main, .app-shell .action-main, .app-shell .slack-main, .app-shell .operations-main { background:var(--color-page-primary); }
 .app-shell .workspace-header--app, .app-shell .workspace-preview, .app-shell .report-decision-panel, .app-shell .finding-detail-panel, .app-shell .quick-actions-panel { background:var(--color-surface-secondary); }
 .app-shell .workspace-inbox-card, .app-shell .workspace-triage-card { box-shadow:none; }
 .app-shell .workspace-inbox-card--selected { transform:none; }
@@ -2325,11 +2265,11 @@ html[data-theme="light"] :is(.lp-trace-node--open .lp-trace-index, .lp-editorial
 
 /* Administrative routes: one quiet connected working plane, hairline rules,
    and aligned records in place of floating dashboard cards. */
-.app-shell .workspace-main, .app-shell .settings-main, .app-shell .action-main, .app-shell .slack-main, .app-shell .operations-main, .app-shell .policies-main { background:var(--color-canvas); }
+.app-shell .workspace-main, .app-shell .action-main, .app-shell .slack-main, .app-shell .operations-main { background:var(--color-canvas); }
 .operations-metric-grid, .team-overview { gap:0; overflow:hidden; border:1px solid var(--color-border); border-radius:var(--radius-card); background:var(--color-surface); }
 .operations-metric-grid article, .team-overview article { min-height:0; border:0; border-right:1px solid var(--color-border); border-radius:0; background:transparent; box-shadow:none; }
 .operations-metric-grid article:last-child, .team-overview article:last-child { border-right:0; }
-.operations-panel, .team-surface, .team-hero, .settings-current-card, .settings-principle-card, .settings-mode-card, .settings-trust-section, .policy-card, .policy-note, .action-comment-card, .action-explanation-card, .action-yaml-section, .action-trust-section, .slack-preview-card, .slack-explanation-card, .slack-variant-card, .slack-trust-section { border-color:var(--color-border); background:var(--color-surface); box-shadow:none; }
+.operations-panel, .team-surface, .team-hero, .action-comment-card, .action-explanation-card, .action-yaml-section, .action-trust-section, .slack-preview-card, .slack-explanation-card, .slack-variant-card, .slack-trust-section { border-color:var(--color-border); background:var(--color-surface); box-shadow:none; }
 .team-main { gap:0; border:1px solid var(--color-border); border-radius:var(--radius-panel); background:var(--color-surface); overflow:hidden; }
 .team-hero, .team-surface { border:0; border-bottom:1px solid var(--color-border); border-radius:0; }
 .team-surface:last-child { border-bottom:0; }
@@ -2337,21 +2277,8 @@ html[data-theme="light"] :is(.lp-trace-node--open .lp-trace-index, .lp-editorial
 .team-row, .team-table, .team-activity li { border-color:var(--color-border); border-radius:0; background:transparent; }
 .team-row + .team-row, .team-activity li + li { border-top:0; }
 .team-empty { border-color:var(--color-border); background:var(--color-surface-inset); }
-.settings-overview { gap:0; overflow:hidden; border:1px solid var(--color-border); border-radius:var(--radius-panel); background:var(--color-surface); }
-.settings-current-card, .settings-principle-card { border:0; border-radius:0; }
-.settings-current-card { border-right:1px solid var(--color-border); }
-.settings-current-card dl div, .settings-mode-card > div span, .action-mini-grid div { border-color:var(--color-border); background:var(--color-surface-inset); }
-.settings-principle-card strong, .action-explanation-card h2, .action-mini-grid strong, .slack-explanation-card h2 { color:var(--color-text-primary); }
-.settings-mode-grid { gap:0; overflow:hidden; border:1px solid var(--color-border); border-radius:var(--radius-card); background:var(--color-surface); }
-.settings-mode-card { border:0; border-right:1px solid var(--color-border); border-radius:0; }
-.settings-mode-card:last-child { border-right:0; }
-.settings-provider-table { border-color:var(--color-border); background:var(--color-surface); }
-.settings-provider-row--head { background:var(--color-surface-inset); }
-.policy-levels { gap:0; overflow:hidden; border:1px solid var(--color-border); border-radius:var(--radius-card); background:var(--color-surface); }
-.policy-levels article { border:0; border-right:1px solid var(--color-border); border-radius:0; background:transparent; box-shadow:none; }
-.policy-levels article:last-child { border-right:0; }
-.policies-grid { gap:0; border-top:1px solid var(--color-border); }
-.policy-card { border:0; border-bottom:1px solid var(--color-border); border-radius:0; }
+.action-mini-grid div { border-color:var(--color-border); background:var(--color-surface-inset); }
+.action-explanation-card h2, .action-mini-grid strong, .slack-explanation-card h2 { color:var(--color-text-primary); }
 .action-explanation-card, .slack-explanation-card { background:var(--color-surface-raised); }
 .action-comment-title, .slack-window-top, .slack-message-block { border-color:var(--color-border); background:var(--color-surface-inset); }
 .action-workflow-list { gap:0; overflow:hidden; border:1px solid var(--color-border); border-radius:var(--radius-card); background:var(--color-surface); }
@@ -2364,24 +2291,21 @@ html[data-theme="light"] :is(.lp-trace-node--open .lp-trace-index, .lp-editorial
 .app-shell .report-tabs, .app-shell .quick-actions-panel, .app-shell .report-decision-panel, .app-shell .finding-detail-panel { background:var(--color-surface); box-shadow:none; backdrop-filter:none; }
 .app-shell .report-tab--active, .app-shell .workspace-queue-tab--active, .app-shell .quick-actions-trigger--active, .app-shell .quick-actions-trigger:hover { background:var(--color-surface-selected); color:var(--color-text-primary); box-shadow:var(--shadow-selected); }
 .app-shell .report-tab--active strong, .app-shell .workspace-queue-tab--active strong, .app-shell .quick-actions-trigger:hover span, .app-shell .quick-actions-trigger--active span { color:var(--color-accent-strong); background:var(--color-information-soft); }
-.app-shell :is(.final-recommendation h2, .conditions h3, .policy-note h2) { color:var(--color-text-primary); }
-.app-shell :is(.workspace-sidebar, .settings-main, .action-main, .slack-main, .operations-main, .policies-main) { background-image:none; box-shadow:none; }
+.app-shell :is(.final-recommendation h2, .conditions h3) { color:var(--color-text-primary); }
+.app-shell :is(.workspace-sidebar, .action-main, .slack-main, .operations-main) { background-image:none; box-shadow:none; }
 .app-shell :is(.action-yaml-preview, .slack-handoff-preview, .handoff-preview pre) { border-color:var(--color-border); background:var(--color-code-background); color:var(--color-text-primary); }
 
 @media (max-width:900px) {
   .operations-metric-grid article:nth-child(2n), .team-overview article:nth-child(2n) { border-right:0; }
   .operations-metric-grid article:nth-child(n+3), .team-overview article:nth-child(n+3) { border-top:1px solid var(--color-border); }
-  .settings-current-card { border-right:0; border-bottom:1px solid var(--color-border); }
-  .settings-mode-card:nth-child(2n) { border-right:0; }
-  .settings-mode-card:nth-child(n+3) { border-top:1px solid var(--color-border); }
   .action-workflow-list li:nth-child(2n) { border-right:0; }
   .action-workflow-list li:nth-child(n+3) { border-top:1px solid var(--color-border); }
 }
 
 @media (max-width:680px) {
-  .operations-metric-grid, .team-overview, .settings-mode-grid, .policy-levels, .action-workflow-list { border-radius:var(--radius-row); }
-  .operations-metric-grid article, .team-overview article, .settings-mode-card, .policy-levels article, .action-workflow-list li { border-right:0; border-bottom:1px solid var(--color-border); }
-  .operations-metric-grid article:last-child, .team-overview article:last-child, .settings-mode-card:last-child, .policy-levels article:last-child, .action-workflow-list li:last-child { border-bottom:0; }
-  .operations-metric-grid article:nth-child(n+3), .team-overview article:nth-child(n+3), .settings-mode-card:nth-child(n+3), .action-workflow-list li:nth-child(n+3) { border-top:0; }
-  .team-main, .settings-overview { border-radius:var(--radius-card); }
+  .operations-metric-grid, .team-overview, .action-workflow-list { border-radius:var(--radius-row); }
+  .operations-metric-grid article, .team-overview article, .action-workflow-list li { border-right:0; border-bottom:1px solid var(--color-border); }
+  .operations-metric-grid article:last-child, .team-overview article:last-child, .action-workflow-list li:last-child { border-bottom:0; }
+  .operations-metric-grid article:nth-child(n+3), .team-overview article:nth-child(n+3), .action-workflow-list li:nth-child(n+3) { border-top:0; }
+  .team-main { border-radius:var(--radius-card); }
 }

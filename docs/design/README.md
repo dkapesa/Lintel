@@ -18,6 +18,8 @@ Implementation convenience never overrides LVOS. Audits and roadmaps explain cur
 - [LVOS shell route map](./LVOS_SHELL_ROUTE_MAP.md) — LVOS-2 route ownership, contextual navigation, command-bar and responsive shell contract.
 - [LVOS Workspace Command Centre](./LVOS_WORKSPACE_COMMAND_CENTRE.md) — LVOS-3 Archetype A queue, inspector, responsive and local-state implementation record; pending visual review.
 
+- [LVOS administrative surfaces](./LVOS_ADMINISTRATIVE_SURFACES.md) — LVOS-4A Archetype D settings and review-policy implementation record; pending visual review.
+
 ## Use and versioning
 
 - Every Claude or Codex visual implementation prompt must include the [implementation checklist](./LVOS_IMPLEMENTATION_CHECKLIST.md).

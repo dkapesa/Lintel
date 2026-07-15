@@ -23,6 +23,19 @@ Technical identifiers remain mono. Human-readable unavailable and empty explanat
 | LVOS-6 | `/` | Display serif at exactly three approved moments; product-section sans heading; website lede; website action; website eyebrow; embedded application roles | W2 remains a separate scoped grammar pending continuity lock; final product exhibits have not adopted the approved application contract | LVOS-6 — Website and Product Continuity | Pending | Verify the three Newsreader moments, shared sample data/terminology, dark/light continuity and desktop/intermediate/mobile product crops. |
 | LVOS-7 | All live routes and shared visual systems | Final enforcement of every application and website role; family boundaries; tracking; casing; numerals; line measures | Legacy cascade retains sub-10px text, weights above 600, decorative mono, oversized application titles and duplicated route-level rules until owners migrate them | LVOS-7 — Cross-Surface Visual QA and Migration Lock | Pending | Require zero remaining sub-10px application text, over-600 application weights, decorative mono, application serif and unapproved application-title sizes; document any approved exception. |
 
+## LVOS-4A approval status
+
+**Approved:** 15 July 2026
+
+- LVOS-4A: Approved.
+- `/settings` Archetype D typography adoption: Approved.
+- `/review-policies` Archetype D typography adoption: Approved.
+- Shared administrative document grammar: Approved.
+- Desktop, intermediate and mobile typography transformations: Approved.
+- `/team`, `/github-action`, `/slack-handoff` and `/review-operations` remain pending under LVOS-4.
+
+The LVOS-4 milestone remains in progress. AU-10 remains partially open until the complete LVOS-4 milestone closes, and AU-05 remains open until all administrative surfaces adopt the shared grammar.
+
 ## Completion rule
 
 An entry changes from pending only after its full route/surface matrix passes TypeScript, production build, dark/light visual review, desktop/intermediate/mobile reflow, keyboard/focus checks and the role-specific checks above. LVOS-7 closes the ledger only when all prior entries are complete and no unapproved violation remains.

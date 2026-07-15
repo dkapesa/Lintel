@@ -1,86 +1,231 @@
-/* E7.1 — single route/navigation configuration for the application shell.
-   Desktop sidebar, collapsed rail and the mobile drawer all render from
-   this list so labels, destinations, grouping and active-route matching
-   stay defined once. */
+import type { ReactNode } from "react";
+
+/* LVOS-2 — definitive authenticated-shell route ownership.
+   Global areas, contextual destinations, command-bar context and active-state
+   matching are defined here once. Query strings remain owned by route links
+   and are never used to decide shell ownership. */
 
 export type ShellIconName =
-  | "new-report"
   | "risk-inbox"
   | "team-workspace"
   | "review-operations"
   | "reports"
   | "review-policies"
-  | "analysis-settings"
-  | "github-action"
-  | "slack-handoff"
-  | "evaluation"
-  | "security-model";
+  | "analysis-settings";
 
-export type ShellNavItem = {
+export type ShellGlobalAreaId =
+  | "workspace"
+  | "reports"
+  | "operations"
+  | "policies"
+  | "team"
+  | "settings";
+
+export type ShellGlobalArea = {
+  id: ShellGlobalAreaId;
   label: string;
   href: string;
   icon: ShellIconName;
-  /* Match nested routes (e.g. /report with query-driven views) without
-     changing any URL. Exact-match items omit this. */
-  activePrefix?: string;
 };
 
-export type ShellNavGroup = {
+export type ShellContextDestination = {
   label: string;
-  items: ShellNavItem[];
+  href: string;
+  pathname: string;
 };
 
-export const SHELL_NAV_GROUPS: ShellNavGroup[] = [
+export type ShellCommandLink = {
+  label: string;
+  href: string;
+};
+
+export type ShellCommandActionConfig = {
+  overflowLabel: string;
+  metadataActionIndexes: number[];
+  visibleDesktopActionIndexes: number[];
+  destructiveActionIndexes: number[];
+};
+
+export type ShellRouteContext = {
+  pathname: string;
+  area: ShellGlobalAreaId;
+  currentItemPathname: string;
+  contextLabel: string;
+  accessiblePageName: string;
+  primaryAction: ShellCommandLink | null;
+  secondaryActions: ShellCommandLink[];
+  commandActions: ShellCommandActionConfig;
+};
+
+const NO_COMMAND_ACTIONS: ShellCommandActionConfig = {
+  overflowLabel: "More actions",
+  metadataActionIndexes: [],
+  visibleDesktopActionIndexes: [],
+  destructiveActionIndexes: [],
+};
+
+export const SHELL_GLOBAL_AREAS: ShellGlobalArea[] = [
+  { id: "workspace", label: "Workspace", href: "/workspace", icon: "risk-inbox" },
+  { id: "reports", label: "Reports", href: "/report", icon: "reports" },
+  { id: "operations", label: "Operations", href: "/review-operations", icon: "review-operations" },
+  { id: "policies", label: "Policies", href: "/review-policies", icon: "review-policies" },
+  { id: "team", label: "Team", href: "/team", icon: "team-workspace" },
+  { id: "settings", label: "Settings", href: "/settings", icon: "analysis-settings" },
+];
+
+export const SHELL_CONTEXT_DESTINATIONS: Record<ShellGlobalAreaId, ShellContextDestination[]> = {
+  workspace: [
+    { label: "Risk Inbox", href: "/workspace", pathname: "/workspace" },
+    { label: "New Review", href: "/new", pathname: "/new" },
+  ],
+  reports: [
+    { label: "Case File", href: "/report", pathname: "/report" },
+    { label: "New Review", href: "/new", pathname: "/new" },
+    { label: "Risk Inbox", href: "/workspace", pathname: "/workspace" },
+  ],
+  operations: [
+    { label: "Review Operations", href: "/review-operations", pathname: "/review-operations" },
+    { label: "GitHub Action", href: "/github-action", pathname: "/github-action" },
+    { label: "Slack Handoff", href: "/slack-handoff", pathname: "/slack-handoff" },
+  ],
+  policies: [
+    { label: "Review Policies", href: "/review-policies", pathname: "/review-policies" },
+    { label: "Security Model", href: "/docs/security-model.md", pathname: "/docs/security-model.md" },
+  ],
+  team: [
+    { label: "Team Workspace", href: "/team", pathname: "/team" },
+    { label: "Review Operations", href: "/review-operations", pathname: "/review-operations" },
+  ],
+  settings: [
+    { label: "Analysis Settings", href: "/settings", pathname: "/settings" },
+    { label: "GitHub Action", href: "/github-action", pathname: "/github-action" },
+    { label: "Slack Handoff", href: "/slack-handoff", pathname: "/slack-handoff" },
+  ],
+};
+
+export const SHELL_ROUTE_CONTEXTS: ShellRouteContext[] = [
   {
-    label: "Workspace",
-    items: [
-      { label: "New report", href: "/new", icon: "new-report" },
-      { label: "Risk inbox", href: "/workspace", icon: "risk-inbox" },
-      { label: "Team workspace", href: "/team", icon: "team-workspace" },
-      { label: "Review operations", href: "/review-operations", icon: "review-operations" },
-      { label: "Reports", href: "/report", icon: "reports", activePrefix: "/report" },
-    ],
+    pathname: "/workspace",
+    area: "workspace",
+    currentItemPathname: "/workspace",
+    contextLabel: "Risk Inbox",
+    accessiblePageName: "Risk Inbox workspace",
+    primaryAction: { label: "Check a pull request", href: "/new" },
+    secondaryActions: [],
+    commandActions: {
+      overflowLabel: "More actions",
+      metadataActionIndexes: [],
+      visibleDesktopActionIndexes: [0, 1],
+      destructiveActionIndexes: [1],
+    },
   },
   {
-    label: "System",
-    items: [
-      { label: "Review policies", href: "/review-policies", icon: "review-policies" },
-      { label: "Analysis settings", href: "/settings", icon: "analysis-settings" },
-      { label: "GitHub Action", href: "/github-action", icon: "github-action" },
-      { label: "Slack handoff", href: "/slack-handoff", icon: "slack-handoff" },
-    ],
+    pathname: "/new",
+    area: "workspace",
+    currentItemPathname: "/new",
+    contextLabel: "New Review",
+    accessiblePageName: "New Review",
+    primaryAction: null,
+    secondaryActions: [],
+    commandActions: NO_COMMAND_ACTIONS,
   },
   {
-    label: "Evidence",
-    items: [
-      { label: "Evaluation", href: "/docs/evaluation-results.md", icon: "evaluation" },
-      { label: "Security model", href: "/docs/security-model.md", icon: "security-model" },
-    ],
+    pathname: "/report",
+    area: "reports",
+    currentItemPathname: "/report",
+    contextLabel: "Case File",
+    accessiblePageName: "Report Case File",
+    primaryAction: null,
+    secondaryActions: [],
+    commandActions: {
+      overflowLabel: "More actions",
+      metadataActionIndexes: [0],
+      visibleDesktopActionIndexes: [1, 2],
+      destructiveActionIndexes: [],
+    },
+  },
+  {
+    pathname: "/review-operations",
+    area: "operations",
+    currentItemPathname: "/review-operations",
+    contextLabel: "Review Operations",
+    accessiblePageName: "Review Operations",
+    primaryAction: null,
+    secondaryActions: [],
+    commandActions: NO_COMMAND_ACTIONS,
+  },
+  {
+    pathname: "/github-action",
+    area: "operations",
+    currentItemPathname: "/github-action",
+    contextLabel: "GitHub Action",
+    accessiblePageName: "GitHub Action",
+    primaryAction: null,
+    secondaryActions: [],
+    commandActions: NO_COMMAND_ACTIONS,
+  },
+  {
+    pathname: "/slack-handoff",
+    area: "operations",
+    currentItemPathname: "/slack-handoff",
+    contextLabel: "Slack Handoff",
+    accessiblePageName: "Slack Handoff",
+    primaryAction: null,
+    secondaryActions: [],
+    commandActions: NO_COMMAND_ACTIONS,
+  },
+  {
+    pathname: "/review-policies",
+    area: "policies",
+    currentItemPathname: "/review-policies",
+    contextLabel: "Review Policies",
+    accessiblePageName: "Review Policies",
+    primaryAction: null,
+    secondaryActions: [],
+    commandActions: NO_COMMAND_ACTIONS,
+  },
+  {
+    pathname: "/team",
+    area: "team",
+    currentItemPathname: "/team",
+    contextLabel: "Team Workspace",
+    accessiblePageName: "Team Workspace",
+    primaryAction: null,
+    secondaryActions: [],
+    commandActions: NO_COMMAND_ACTIONS,
+  },
+  {
+    pathname: "/settings",
+    area: "settings",
+    currentItemPathname: "/settings",
+    contextLabel: "Analysis Settings",
+    accessiblePageName: "Analysis Settings",
+    primaryAction: null,
+    secondaryActions: [],
+    commandActions: NO_COMMAND_ACTIONS,
   },
 ];
 
-export function isShellNavItemActive(item: ShellNavItem, pathname: string): boolean {
-  if (pathname === item.href) return true;
-  if (item.activePrefix) {
-    return pathname === item.activePrefix || pathname.startsWith(`${item.activePrefix}/`);
-  }
-  return false;
+export function findShellRoute(pathname: string): ShellRouteContext | null {
+  return SHELL_ROUTE_CONTEXTS.find((route) => route.pathname === pathname) ?? null;
 }
 
-export function findShellRoute(pathname: string): { group: ShellNavGroup; item: ShellNavItem } | null {
-  for (const group of SHELL_NAV_GROUPS) {
-    for (const item of group.items) {
-      if (isShellNavItemActive(item, pathname)) return { group, item };
-    }
-  }
-  return null;
+export function findShellArea(areaId: ShellGlobalAreaId): ShellGlobalArea {
+  return SHELL_GLOBAL_AREAS.find((area) => area.id === areaId) ?? SHELL_GLOBAL_AREAS[0];
 }
 
-/* Minimal geometric line icons for navigation. Functional (they identify
-   destinations in the collapsed rail), monochrome via currentColor, and
-   defined once here so the sidebar and drawer stay in sync. */
-const SHELL_ICON_PATHS: Record<ShellIconName, React.ReactNode> = {
-  "new-report": <path d="M8 3.25v9.5M3.25 8h9.5" />,
+export function isShellAreaActive(area: ShellGlobalArea, route: ShellRouteContext): boolean {
+  return route.area === area.id;
+}
+
+export function isShellContextDestinationActive(
+  destination: ShellContextDestination,
+  route: ShellRouteContext,
+): boolean {
+  return destination.pathname === route.currentItemPathname;
+}
+
+const SHELL_ICON_PATHS: Record<ShellIconName, ReactNode> = {
   "risk-inbox": (
     <>
       <path d="M2.75 5.5a1 1 0 0 1 1-1h8.5a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-8.5a1 1 0 0 1-1-1z" />
@@ -112,22 +257,6 @@ const SHELL_ICON_PATHS: Record<ShellIconName, React.ReactNode> = {
       <path d="M2.5 5.25h1.6M8 5.25h5.5M2.5 10.75h5.5M12 10.75h1.5" />
       <circle cx="5.9" cy="5.25" r="1.7" />
       <circle cx="9.9" cy="10.75" r="1.7" />
-    </>
-  ),
-  "github-action": (
-    <>
-      <circle cx="8" cy="8" r="5.5" />
-      <path d="M6.9 5.9l2.9 2.1-2.9 2.1z" />
-    </>
-  ),
-  "slack-handoff": (
-    <path d="M13.25 7.4c0 2.6-2.35 4.35-5.25 4.35-.55 0-1.1-.06-1.6-.18L3 12.9l.6-2.4c-.55-.85-.85-1.85-.85-3.1C2.75 4.8 5.1 3.05 8 3.05s5.25 1.75 5.25 4.35z" />
-  ),
-  evaluation: <path d="M2.25 13.25h11.5M3.75 13.25V8.75M8 13.25V4.25M12.25 13.25V6.75" />,
-  "security-model": (
-    <>
-      <rect x="3.5" y="7" width="9" height="6.25" rx="1" />
-      <path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2" />
     </>
   ),
 };

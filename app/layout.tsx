@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Newsreader } from "next/font/google";
 import "./globals.css";
 import "./design-system.css";
+import "./app-shell.css";
 import GuidedTour from "./guided-tour";
 import { ThemeProvider, THEME_PREFERENCE_STORAGE_KEY } from "./theme-provider";
 

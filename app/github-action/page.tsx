@@ -1,5 +1,6 @@
 import Link from "next/link";
 import AppShell from "../app-shell";
+import styles from "../administrative-document.module.css";
 
 const workflowSteps = [
   [
@@ -99,117 +100,144 @@ const yamlSnippet = [
 export default function GitHubActionPrototypePage() {
   return (
     <AppShell>
-      <div className="workspace-main action-main">
-        <header className="workspace-header workspace-header--app action-header">
-          <div className="workspace-header-copy">
-            <span className="eyebrow">GITHUB ACTION BLUEPRINT</span>
-            <h1>PR comment prototype</h1>
-            <p>Lintel can move from local handoff to the pull request workflow by running a CLI inside GitHub Actions and updating one concise merge-readiness comment.</p>
-            <span className="workspace-header-note">Prototype only / no GitHub posting / no pull_request_target / <Link href="/docs/security-model.md">Security model</Link></span>
-          </div>
-          <div className="workspace-header-actions">
-            <Link className="workspace-secondary-action" href="/settings">Analysis settings</Link>
-            <Link className="workspace-primary-action" href="/new">Check a pull request</Link>
-          </div>
-        </header>
-
-        <section className="action-hero" aria-label="GitHub PR comment preview">
-          <article className="action-comment-card">
-            <div className="action-comment-top">
-              <span>Future PR comment</span>
-              <strong>Updated in place</strong>
+      <div className={styles.page}>
+        <div className={styles.document}>
+          <header className={styles.pageHeader}>
+            <h1>GitHub Action blueprint</h1>
+            <p>Lintel can move from local handoff to a pull request workflow by running a CLI inside GitHub Actions and updating one concise merge-readiness comment.</p>
+            <div className={styles.statusLine}>Prototype only · no GitHub posting · no <span className={styles.technicalInline}>pull_request_target</span> · <Link href="/docs/security-model.md">Security model</Link></div>
+            <div className={styles.pageActions}>
+              <Link className={styles.secondaryAction} href="/settings">Analysis settings</Link>
+              <Link className={styles.secondaryAction} href="/new">Check a pull request</Link>
             </div>
-            <div className="action-comment-title">
-              <span aria-hidden="true" />
-              <div>
-                <h2>Lintel merge-readiness</h2>
-                <p>Prototype preview. This page does not post to GitHub.</p>
+          </header>
+
+          <nav className={styles.sectionNav} aria-label="GitHub Action blueprint sections">
+            <a href="#action-status">Current status</a>
+            <a href="#action-workflow">Intended workflow</a>
+            <a href="#action-configuration">Workflow configuration</a>
+            <a href="#action-comment">Decision-comment contract</a>
+            <a href="#action-security">Security boundaries</a>
+            <a href="#action-setup">Setup references</a>
+          </nav>
+
+          <section className={styles.section} id="action-status" aria-labelledby="action-status-title">
+            <div className={styles.sectionHeader}>
+              <h2 id="action-status-title">Current status and limitation</h2>
+              <p>This route documents an intended integration shape. It does not install an Action, connect a repository or execute a check.</p>
+            </div>
+            <ul className={styles.summaryStrip} aria-label="GitHub Action blueprint status">
+              <li><span>Implementation</span><strong>Prototype</strong><p>Documentation blueprint only</p></li>
+              <li><span>Posting</span><strong>Does not post</strong><p>No GitHub API behavior</p></li>
+              <li><span>Enforcement</span><strong>Non-blocking</strong><p>Default intended direction</p></li>
+              <li><span>Execution</span><strong>Planned</strong><p>User-controlled CI runner</p></li>
+            </ul>
+          </section>
+
+          <section className={styles.section} id="action-workflow" aria-labelledby="action-workflow-title">
+            <div className={styles.sectionHeader}>
+              <h2 id="action-workflow-title">Intended workflow</h2>
+              <p>The sequence is planned architecture, not evidence that checks are currently executing.</p>
+            </div>
+            <div className={styles.group}>
+              <div className={styles.groupHeader}>
+                <h3>CLI-first, thin Action wrapper</h3>
+                <p>Deterministic review remains first; optional synthesis and the one-comment update remain explicit.</p>
+              </div>
+              <ol className={styles.workflowList}>
+                {workflowSteps.map(([title, description]) => (
+                  <li key={title}><strong>{title}</strong><p>{description}</p></li>
+                ))}
+              </ol>
+            </div>
+          </section>
+
+          <section className={styles.section} id="action-configuration" aria-labelledby="action-configuration-title">
+            <div className={styles.sectionHeader}>
+              <h2 id="action-configuration-title">Workflow configuration</h2>
+              <p>Selectable YAML is retained as technical evidence, without terminal chrome or a simulated GitHub interface.</p>
+            </div>
+            <div className={styles.group}>
+              <div className={styles.groupHeader}>
+                <h3>Illustrative YAML</h3>
+                <p>This snippet is documentation only. It shows the intended direction, not a working published Action.</p>
+              </div>
+              <pre className={styles.codeBlock} aria-label="Illustrative GitHub Actions YAML"><code>{yamlSnippet}</code></pre>
+            </div>
+          </section>
+
+          <section className={styles.section} id="action-comment" aria-labelledby="action-comment-title">
+            <div className={styles.sectionHeader}>
+              <h2 id="action-comment-title">Decision-comment contract</h2>
+              <p>A checklist, not a lecture. The intended output is one structured merge-readiness record, not a full GitHub application preview.</p>
+            </div>
+            <div className={styles.group}>
+              <div className={styles.groupHeader}>
+                <h3>Lintel merge-readiness</h3>
+                <p>Prototype preview. This page does not post to GitHub. A future wrapper would update one marked comment instead of adding noisy inline comments.</p>
+              </div>
+              <dl className={styles.definitionList}>
+                {commentSections.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
+              </dl>
+              <div className={styles.evidenceColumns}>
+                <section aria-labelledby="action-conditions-title">
+                  <h4 id="action-conditions-title">Conditions before merge</h4>
+                  <ul className={styles.evidenceList}>{conditions.map((condition) => <li key={condition}>{condition}</li>)}</ul>
+                </section>
+                <section aria-labelledby="action-tests-title">
+                  <h4 id="action-tests-title">Missing tests</h4>
+                  <ul className={styles.evidenceList}>{missingTests.map((test) => <li className={styles.technicalInline} key={test}>{test}</li>)}</ul>
+                </section>
+              </div>
+              <div className={styles.evidenceColumns}>
+                <section aria-labelledby="action-reviewer-focus-title">
+                  <h4 id="action-reviewer-focus-title">Reviewer focus</h4>
+                  <ul className={styles.evidenceList}>{reviewerFocus.map((focus) => <li key={focus}>{focus}</li>)}</ul>
+                </section>
+                <section aria-labelledby="action-comment-strategy-title">
+                  <h4 id="action-comment-strategy-title">Comment strategy</h4>
+                  <ul className={styles.evidenceList}>
+                    <li>One marker: <span className={styles.technicalInline}>&lt;!-- lintel-report --&gt;</span></li>
+                    <li>No default blocking: comment first, enforcement later.</li>
+                    <li>No inline noise: decision summary over annotation spam.</li>
+                  </ul>
+                </section>
+              </div>
+              <div className={styles.artifactActions}>
+                <p>Generated by a future CLI-first Action. Deterministic checks run by default; model-assisted analysis requires explicit configuration.</p>
               </div>
             </div>
-            <dl className="action-comment-metadata">
-              {commentSections.map(([label, value]) => (
-                <div key={label}>
-                  <dt>{label}</dt>
-                  <dd>{value}</dd>
-                </div>
-              ))}
-            </dl>
-            <section className="action-comment-section">
-              <h3>Conditions before merge</h3>
-              <ul>
-                {conditions.map((condition) => <li key={condition}>[ ] {condition}</li>)}
-              </ul>
-            </section>
-            <section className="action-comment-section">
-              <h3>Missing tests</h3>
-              <ul>
-                {missingTests.map((test) => <li key={test}>{test}</li>)}
-              </ul>
-            </section>
-            <section className="action-comment-section action-comment-section--inline">
-              <h3>Reviewer focus</h3>
-              <div>
-                {reviewerFocus.map((focus) => <span key={focus}>{focus}</span>)}
+          </section>
+
+          <section className={styles.section} id="action-security" aria-labelledby="action-security-title">
+            <div className={styles.sectionHeader}>
+              <h2 id="action-security-title">Security and trust boundaries</h2>
+              <p>Current page behavior and planned CI architecture remain distinctly worded.</p>
+            </div>
+            <div className={`${styles.group} ${styles.limitationGroup}`}>
+              <div className={styles.groupHeader}>
+                <h3>CI-safe by design</h3>
+                <p>This page stores no credentials and has no repository access. The remaining statements describe the intended first-version architecture.</p>
               </div>
-            </section>
-            <p className="action-comment-disclaimer">Generated by a future CLI-first Action. Deterministic checks run by default; model-assisted analysis requires explicit configuration.</p>
-          </article>
-
-          <article className="action-explanation-card">
-            <span className="card-kicker">WHY ONE COMMENT</span>
-            <h2>A checklist, not a lecture.</h2>
-            <p>Lintel should reduce review noise. The future Action should not spray inline comments across a PR. It should update one structured merge-readiness summary that focuses reviewers on the decision: what is blocked, what needs tests, and what conditions must be cleared before merge.</p>
-            <div className="action-mini-grid">
-              <div><strong>One marker</strong><span>&lt;!-- lintel-report --&gt;</span></div>
-              <div><strong>No default blocking</strong><span>Comment first, enforcement later</span></div>
-              <div><strong>No inline noise</strong><span>Decision summary over annotation spam</span></div>
+              <ul className={styles.boundaryList}>{trustBoundaries.map((item) => <li key={item}>{item}</li>)}</ul>
             </div>
-          </article>
-        </section>
+          </section>
 
-        <section className="settings-section" aria-labelledby="action-workflow-title">
-          <div className="section-heading">
-            <div>
-              <span className="card-kicker">WORKFLOW</span>
-              <h2 id="action-workflow-title">CLI-first, thin Action wrapper</h2>
+          <section className={styles.section} id="action-setup" aria-labelledby="action-setup-title">
+            <div className={styles.sectionHeader}>
+              <h2 id="action-setup-title">Setup and export references</h2>
+              <p>These links document the prototype and adjacent export surface; they do not install or enable an integration.</p>
             </div>
-          </div>
-          <ol className="action-workflow-list">
-            {workflowSteps.map(([title, description]) => (
-              <li key={title}>
-                <strong>{title}</strong>
-                <p>{description}</p>
-              </li>
-            ))}
-          </ol>
-        </section>
-
-        <section className="settings-section action-yaml-section" aria-labelledby="action-yaml-title">
-          <div className="section-heading">
-            <div>
-              <span className="card-kicker">ILLUSTRATIVE YAML</span>
-              <h2 id="action-yaml-title">Prototype workflow shape</h2>
+            <div className={styles.group}>
+              <nav className={styles.routeLinks} aria-label="GitHub Action setup and related references">
+                <Link href="/settings">Analysis settings</Link>
+                <Link href="/slack-handoff">Slack handoff concept</Link>
+                <Link href="/docs/security-model.md">Security model</Link>
+                <Link href="/docs/cli-github-action-blueprint.md">CLI / GitHub Action blueprint</Link>
+              </nav>
             </div>
-          </div>
-          <p>This snippet is documentation only. It shows the intended direction, not a working published Action.</p>
-          <pre className="action-yaml-preview" aria-label="Illustrative GitHub Actions YAML"><code>{yamlSnippet}</code></pre>
-        </section>
-
-        <section className="settings-section action-trust-section" aria-labelledby="action-trust-title">
-          <div>
-            <span className="card-kicker">TRUST BOUNDARIES</span>
-            <h2 id="action-trust-title">CI-safe by design</h2>
-          </div>
-          <ul>
-            {trustBoundaries.map((item) => <li key={item}>{item}</li>)}
-          </ul>
-          <div className="settings-doc-links">
-            <Link href="/settings">Analysis settings</Link>
-            <Link href="/slack-handoff">Slack handoff concept</Link>
-            <Link href="/docs/security-model.md">Security model</Link>
-            <Link href="/docs/cli-github-action-blueprint.md">CLI / GitHub Action blueprint</Link>
-          </div>
-        </section>
+          </section>
+        </div>
       </div>
     </AppShell>
   );

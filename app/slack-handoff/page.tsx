@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import AppShell from "../app-shell";
+import styles from "../administrative-document.module.css";
 
 type HandoffVariant = {
   id: "short-alert" | "reviewer-handoff" | "daily-digest";
   name: string;
   description: string;
+  includedEvidence: string;
   body: string;
 };
 
@@ -18,6 +20,7 @@ const handoffVariants: HandoffVariant[] = [
     id: "short-alert",
     name: "Short alert",
     description: "Use when a risky PR needs quick channel attention.",
+    includedEvidence: "Recommendation, blocker, test gaps, owner cue and next action",
     body: [
       "Lintel merge readiness: TESTS_REQUIRED / HIGH risk",
       "PR: Add fallback handling for failed discount-code retrieval",
@@ -36,6 +39,7 @@ const handoffVariants: HandoffVariant[] = [
     id: "reviewer-handoff",
     name: "Reviewer handoff",
     description: "Use when assigning review attention across engineering areas.",
+    includedEvidence: "Recommendation, conditions, reviewer focus, owner cues and next action",
     body: [
       "Lintel reviewer handoff",
       "",
@@ -72,6 +76,7 @@ const handoffVariants: HandoffVariant[] = [
     id: "daily-digest",
     name: "Daily digest concept",
     description: "Use as a future team-summary shape, not a live digest.",
+    includedEvidence: "Three readiness groups and one team action",
     body: [
       "Lintel daily merge-readiness digest concept",
       "",
@@ -132,13 +137,19 @@ function copyWithFallback(text: string) {
   }
 }
 
+function wordCount(text: string) {
+  return text.trim().split(/\s+/).length;
+}
+
 export default function SlackHandoffPage() {
+  const [selectedId, setSelectedId] = useState<HandoffVariant["id"]>("short-alert");
   const [copyStates, setCopyStates] = useState<Record<HandoffVariant["id"], CopyState>>({
     "short-alert": "idle",
     "reviewer-handoff": "idle",
     "daily-digest": "idle",
   });
   const resetTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const selectedVariant = handoffVariants.find((variant) => variant.id === selectedId) ?? handoffVariants[0];
 
   useEffect(() => () => {
     Object.values(resetTimers.current).forEach((timer) => clearTimeout(timer));
@@ -167,107 +178,123 @@ export default function SlackHandoffPage() {
 
   return (
     <AppShell>
-      <div className="workspace-main slack-main">
-        <header className="workspace-header workspace-header--app slack-header">
-          <div className="workspace-header-copy">
-            <span className="eyebrow">SLACK-READY HANDOFF</span>
-            <h1>Share the merge decision.</h1>
-            <p>Lintel produces concise, structured merge decisions that teams can paste into the channels they already use. This is copy/export-only — not a live Slack integration.</p>
-            <span className="workspace-header-note">Prototype only / no Slack API calls / raw-diff-free handoff / <Link href="/docs/security-model.md">Security model</Link></span>
-          </div>
-          <div className="workspace-header-actions">
-            <Link className="workspace-secondary-action" href="/github-action">GitHub Action concept</Link>
-            <Link className="workspace-primary-action" href="/new">Check a pull request</Link>
-          </div>
-        </header>
-
-        <section className="slack-hero" aria-label="Slack-ready summary preview">
-          <article className="slack-preview-card">
-            <div className="slack-window-top">
-              <span>team-review</span>
-              <strong>Preview</strong>
+      <div className={styles.page}>
+        <div className={styles.document}>
+          <header className={styles.pageHeader}>
+            <h1>Slack handoff export</h1>
+            <p>Lintel produces concise, structured merge decisions that teams can copy into tools they already use. This is copy/export-only—not a live Slack integration.</p>
+            <div className={styles.statusLine}>Prototype only · no Slack API calls · raw-diff-free handoff · <Link href="/docs/security-model.md">Security model</Link></div>
+            <div className={styles.pageActions}>
+              <Link className={styles.secondaryAction} href="/github-action">GitHub Action concept</Link>
+              <Link className={styles.secondaryAction} href="/new">Check a pull request</Link>
             </div>
-            <div className="slack-message">
-              <div className="slack-avatar">L</div>
-              <div>
-                <div className="slack-message-heading">
-                  <strong>Lintel</strong>
-                  <span>merge-readiness handoff</span>
+          </header>
+
+          <nav className={styles.sectionNav} aria-label="Slack handoff export sections">
+            <a href="#slack-status">Current status</a>
+            <a href="#slack-formats">Handoff formats</a>
+            <a href="#slack-content">Selected content</a>
+            <a href="#slack-boundary">Data boundary</a>
+            <a href="#slack-export">Export action</a>
+          </nav>
+
+          <section className={styles.section} id="slack-status" aria-labelledby="slack-status-title">
+            <div className={styles.sectionHeader}>
+              <h2 id="slack-status-title">Current export status</h2>
+              <p>A checklist for the channel, not another chat product or a simulated Slack workspace.</p>
+            </div>
+            <ul className={styles.summaryStrip} aria-label="Slack handoff export status">
+              <li><span>Surface</span><strong>Prototype</strong><p>Local export record</p></li>
+              <li><span>Delivery</span><strong>Does not send</strong><p>No Slack API behavior</p></li>
+              <li><span>Connection</span><strong>None</strong><p>No OAuth or workspace</p></li>
+              <li><span>Content boundary</span><strong>Raw-diff-free</strong><p>Structured decision text</p></li>
+            </ul>
+            <div className={styles.groupStack}>
+              <div className={styles.group}>
+                <div className={styles.groupHeader}>
+                  <h3>Handoff purpose</h3>
+                  <p>Lintel hands over the decision, blocker, reviewer focus and next action so coordination can remain elsewhere.</p>
                 </div>
-                <p><strong>TESTS_REQUIRED / HIGH risk</strong></p>
-                <p>Add fallback handling for failed discount-code retrieval - acme/redemption-api</p>
-                <div className="slack-message-block">
-                  <span>Top blocker</span>
-                  <p>Retry fallback may duplicate customer-facing redemption side effects.</p>
-                </div>
-                <div className="slack-message-block">
-                  <span>Next action</span>
-                  <p>Prove retries cannot issue duplicate discount codes before merge.</p>
-                </div>
-                <div className="slack-tags">
-                  <span>7 missing tests</span>
-                  <span>Backend reliability</span>
-                  <span>API contract</span>
-                  <span>Security/privacy</span>
-                </div>
+                <ul className={styles.boundaryList}>{handoffPrinciples.map((item) => <li key={item}>{item}</li>)}</ul>
               </div>
             </div>
-          </article>
+          </section>
 
-          <article className="slack-explanation-card">
-            <span className="card-kicker">HANDOFF, NOT CHAT</span>
-            <h2>A checklist for the channel.</h2>
-            <p>Lintel is not another place to discuss code. It hands over the merge-readiness decision, the top blocker, the reviewer focus and the next action — so coordination stays in the tools teams already use.</p>
-            <ul>
-              {handoffPrinciples.map((item) => <li key={item}>{item}</li>)}
-            </ul>
-          </article>
-        </section>
-
-        <section className="settings-section" aria-labelledby="slack-variants-title">
-          <div className="section-heading">
-            <div>
-              <span className="card-kicker">COPY VARIANTS</span>
-              <h2 id="slack-variants-title">Slack-ready formats</h2>
+          <section className={styles.section} id="slack-formats" aria-labelledby="slack-formats-title">
+            <div className={styles.sectionHeader}>
+              <h2 id="slack-formats-title">Handoff formats</h2>
+              <p>Select one existing text variant. Selection changes only the local export artifact below; it does not identify a channel or delivery target.</p>
             </div>
-          </div>
-          <div className="slack-variant-grid">
-            {handoffVariants.map((variant) => (
-              <article className="slack-variant-card" key={variant.id}>
-                <div className="slack-variant-header">
-                  <div>
-                    <h3>{variant.name}</h3>
-                    <p>{variant.description}</p>
-                  </div>
-                  <button
-                    className={`copy-summary-button copy-summary-button--${copyStates[variant.id]}`}
-                    type="button"
-                    onClick={() => handleCopy(variant)}
-                    aria-live="polite"
-                  >
-                    {copyLabels[copyStates[variant.id]]}
-                  </button>
-                </div>
-                <pre className="slack-handoff-preview" aria-label={`${variant.name} Slack handoff text`}>{variant.body}</pre>
-              </article>
-            ))}
-          </div>
-        </section>
+            <div className={styles.group}>
+              <div className={styles.groupHeader}>
+                <h3>Available formats</h3>
+                <p>Every record is keyboard-selectable and keeps its export-only state explicit.</p>
+              </div>
+              <div className={styles.formatColumns} aria-hidden="true"><span /><span>Format</span><span>Intended use</span><span>Included evidence</span><span>Length / state</span></div>
+              <ul className={styles.formatList} aria-label="Slack handoff formats">
+                {handoffVariants.map((variant) => {
+                  const selected = variant.id === selectedId;
+                  return (
+                    <li key={variant.id}>
+                      <label className={styles.formatOption}>
+                        <input type="radio" name="handoff-format" value={variant.id} checked={selected} onChange={() => setSelectedId(variant.id)} />
+                        <span className={styles.formatName}>{variant.name}</span>
+                        <span className={styles.formatDescription}>{variant.description}</span>
+                        <span className={styles.formatEvidence}>{variant.includedEvidence}</span>
+                        <span className={styles.formatLength}>{wordCount(variant.body)} words{selected && <span className={styles.selectedLabel}>Selected</span>}</span>
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </section>
 
-        <section className="settings-section slack-trust-section" aria-labelledby="slack-trust-title">
-          <div>
-            <span className="card-kicker">TRUST BOUNDARIES</span>
-            <h2 id="slack-trust-title">Export-only by design</h2>
-          </div>
-          <ul>
-            {trustBoundaries.map((item) => <li key={item}>{item}</li>)}
-          </ul>
-          <div className="settings-doc-links">
-            <Link href="/github-action">GitHub Action prototype</Link>
-            <Link href="/settings">Analysis settings</Link>
-            <Link href="/docs/security-model.md">Security model</Link>
-          </div>
-        </section>
+          <section className={styles.section} id="slack-content" aria-labelledby="slack-content-title">
+            <div className={styles.sectionHeader}>
+              <h2 id="slack-content-title">Selected handoff content</h2>
+              <p>The generated text is presented as a technical export artifact, not as a sent message or third-party application window.</p>
+            </div>
+            <div className={styles.group}>
+              <div className={styles.groupHeader}>
+                <h3>{selectedVariant.name}</h3>
+                <p>{selectedVariant.description}</p>
+              </div>
+              <dl className={styles.definitionList}>
+                <div><dt>Format identity</dt><dd>{selectedVariant.name}</dd></div>
+                <div><dt>Included fields</dt><dd>{selectedVariant.includedEvidence}</dd></div>
+                <div><dt>Excluded sensitive content</dt><dd>Raw diff content</dd></div>
+                <div><dt>Delivery state</dt><dd>Export only · not sent</dd></div>
+              </dl>
+              <pre className={styles.exportText} aria-label={`${selectedVariant.name} handoff text`}>{selectedVariant.body}</pre>
+              <div className={styles.artifactActions} id="slack-export">
+                <p>Copying uses local browser behavior only. No workspace, channel or sender is known to Lintel.</p>
+                <button className={styles.primaryAction} type="button" onClick={() => handleCopy(selectedVariant)}>
+                  <span aria-live="polite">{copyLabels[copyStates[selectedVariant.id]]}</span>
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <section className={styles.section} id="slack-boundary" aria-labelledby="slack-boundary-title">
+            <div className={styles.sectionHeader}>
+              <h2 id="slack-boundary-title">Data boundary</h2>
+              <p>The handoff excludes raw diff content and makes every unavailable integration capability explicit.</p>
+            </div>
+            <div className={`${styles.group} ${styles.limitationGroup}`}>
+              <div className={styles.groupHeader}>
+                <h3>Export-only by design</h3>
+                <p>No OAuth, delivery, scheduling, workspace connection or channel lookup is implemented.</p>
+              </div>
+              <ul className={styles.boundaryList}>{trustBoundaries.map((item) => <li key={item}>{item}</li>)}</ul>
+              <nav className={styles.routeLinks} aria-label="Slack handoff related documentation">
+                <Link href="/github-action">GitHub Action prototype</Link>
+                <Link href="/settings">Analysis settings</Link>
+                <Link href="/docs/security-model.md">Security model</Link>
+              </nav>
+            </div>
+          </section>
+        </div>
       </div>
     </AppShell>
   );

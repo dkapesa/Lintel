@@ -4,7 +4,7 @@ Lintel is a local-first merge-readiness workspace for pull requests.
 
 It helps engineering teams decide whether a PR is safe, tested, operationally ready, maintainable, and ready to merge.
 
-> Agents create code. Lintel decides what is ready to merge.
+> Agents create code. Lintel verifies what is ready.
 
 Lintel is not a generic AI code review chatbot. It creates a decision artifact for reviewers: recommendation, risk band, missing tests, merge conditions, operational readiness, reviewer focus, and shareable Markdown.
 
@@ -200,7 +200,7 @@ Lintel is still a prototype.
 - No authentication.
 - No billing.
 - No database-backed team workspace.
-- No team dashboard.
+- No production team account system or database-backed shared workspace.
 - No line-level diff hunk evidence.
 - No test execution.
 - No static-analysis engine.
@@ -284,6 +284,7 @@ docs/
 
 ## Documentation
 
+- [Design documentation and LVOS governance](docs/design/README.md)
 - [Case study](docs/case-study.md)
 - [Demo script](docs/demo-script.md)
 - [Evaluation workflow](docs/evaluation.md)
@@ -298,22 +299,17 @@ docs/
 
 ## Roadmap
 
-Near-term:
+The current consolidation programme is:
 
-- CLI and GitHub Action blueprint validation.
-- Minimal PR comment workflow.
-- Before/after verification.
-- More public and anonymized real-world PR evaluations.
-- Frontend/API reviewer routing refinement.
+1. Typography Proof and Core Type System
+2. Application Shell and Navigation
+3. Workspace Command Centre
+4. Administrative Surfaces
+5. Case File Convergence
+6. Website and Product Continuity
+7. Cross-Surface Visual QA and Migration Lock
+8. Motion Constitution, Foundation and Tuning
 
-Later:
+Major Phase 4 and Phase 5 capability expansion resumes after the static migration lock unless an explicit bounded exception is approved.
 
-- Private repo support.
-- Hosted GitHub App.
-- Team workflow.
-- Database-backed report history.
-- Authentication.
-- Billing.
-- Model modes and provider configuration.
-
-Lintel should only expand into heavier SaaS infrastructure after validating that teams use the report artifact during real merge decisions.
+See the [LVOS implementation roadmap](docs/design/LVOS_IMPLEMENTATION_ROADMAP.md) for scope, dependencies and acceptance criteria.

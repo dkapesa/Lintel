@@ -11,6 +11,11 @@ This directory governs Lintel's visual implementation across the application, pu
 
 Implementation convenience never overrides LVOS. Audits and roadmaps explain current evidence and delivery order; they do not amend the normative specification.
 
+## Implementation artifacts
+
+- [LVOS typography proof](./LVOS_TYPOGRAPHY_PROOF.md) — LVOS-1 role contract, internal proof and approval checklist.
+- [LVOS typography adoption ledger](./LVOS_TYPOGRAPHY_ADOPTION_LEDGER.md) — pending ownership map for LVOS-2 through LVOS-7.
+
 ## Use and versioning
 
 - Every Claude or Codex visual implementation prompt must include the [implementation checklist](./LVOS_IMPLEMENTATION_CHECKLIST.md).

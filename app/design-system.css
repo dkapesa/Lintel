@@ -25,7 +25,62 @@
   --font-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 
-  /* Application type scale */
+  /* LVOS v1.0 semantic typography contract. These role tokens are
+     introduced for the isolated LVOS-1 proof and future staged adoption.
+     Existing route variables below intentionally remain unchanged until
+     their owning LVOS milestone migrates each consumer. */
+  --type-family-application: var(--font-sans);
+  --type-family-technical: var(--font-mono);
+  --type-family-public-serif: var(--font-newsreader), Georgia, serif;
+
+  --type-role-page-title-size: 20px;
+  --type-role-page-title-line: 28px;
+  --type-role-page-title-weight: 550;
+  --type-role-major-heading-size: 16px;
+  --type-role-major-heading-line: 24px;
+  --type-role-major-heading-weight: 550;
+  --type-role-section-heading-size: 14px;
+  --type-role-section-heading-line: 20px;
+  --type-role-section-heading-weight: 600;
+  --type-role-record-title-size: 13px;
+  --type-role-record-title-line: 19px;
+  --type-role-record-title-weight: 550;
+  --type-role-body-size: 13px;
+  --type-role-body-line: 20px;
+  --type-role-body-weight: 400;
+  --type-role-support-size: 12px;
+  --type-role-support-line: 18px;
+  --type-role-support-weight: 400;
+  --type-role-micro-label-size: 10px;
+  --type-role-micro-label-line: 14px;
+  --type-role-micro-label-weight: 600;
+  --type-role-micro-label-tracking: 0.12em;
+  --type-role-technical-size: 11px;
+  --type-role-technical-line: 16px;
+  --type-role-technical-weight: 400;
+  --type-role-technical-tracking: 0;
+
+  --type-role-display-serif-size: clamp(52px, 6vw, 68px);
+  --type-role-display-serif-line: 1;
+  --type-role-display-serif-weight: 500;
+  --type-role-display-serif-tracking: -0.02em;
+  --type-role-product-heading-size: clamp(32px, 4vw, 44px);
+  --type-role-product-heading-line: 1.08;
+  --type-role-product-heading-weight: 550;
+  --type-role-product-heading-tracking: -0.025em;
+  --type-role-website-lede-size: clamp(15px, 1.5vw, 17px);
+  --type-role-website-lede-line: 1.6;
+  --type-role-website-lede-weight: 400;
+  --type-role-website-action-size: 13px;
+  --type-role-website-action-line: 20px;
+  --type-role-website-action-weight: 500;
+  --type-role-website-eyebrow-size: 10px;
+  --type-role-website-eyebrow-line: 14px;
+  --type-role-website-eyebrow-weight: 600;
+  --type-role-website-eyebrow-tracking: 0.14em;
+
+  /* Legacy application type scale. Do not adopt for new work; route
+     consumers migrate through LVOS-2 to LVOS-6 and close at LVOS-7. */
   --type-page-title: 28px;      /* page titles, semibold */
   --type-section: 18px;         /* section headings, semibold */
   --type-row-title: 14px;       /* primary row titles */
@@ -217,7 +272,7 @@
   --color-border-strong: #bcb8af;
   --color-text-primary: #24262a;
   --color-text-secondary: #555b63;
-  --color-text-muted: #70757d;
+  --color-text-muted: #626870;
   --color-text-faint: #666a71;
   --color-text-inverse: #f8f7f3;
   --color-accent: #426f9e;

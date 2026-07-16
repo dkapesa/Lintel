@@ -2087,6 +2087,129 @@ html[data-theme="light"] :is(.lp-trace-node--open .lp-trace-index, .lp-editorial
 .merge-contract-clause-actions button { min-height:30px; padding:0 8px; border:1px solid var(--color-border); border-radius:var(--radius-control); background:transparent; color:var(--color-text-secondary); font-size:10px; font-weight:600; cursor:pointer; }
 .contract-ledger-row--blocking.contract-ledger-row--open > summary .merge-contract-clause-main > strong { font-weight:600; }
 
+/* LVOS-5A — Case File dossier and ledger convergence.
+   This block adopts the approved LVOS-1 type roles and keeps the report
+   document-led without changing report state, persistence, or actions. */
+.report-case-file { width:min(100%,1320px); padding:28px 0 96px; font-family:var(--type-family-application); font-size:var(--type-role-body-size); line-height:var(--type-role-body-line); }
+.report-case-file :where(h1,h2,h3,h4,h5,h6,strong,b,summary,button,label,legend,dt) { font-weight:600; }
+.report-case-file small { font-size:var(--type-role-micro-label-size); line-height:var(--type-role-micro-label-line); }
+.report-case-file time { font-weight:var(--type-role-technical-weight); }
+.report-case-file :where(button,select,textarea,input) { font-size:var(--type-role-support-size); line-height:var(--type-role-support-line); }
+.quick-actions-panel--case-file { width:auto; margin:0 24px 24px; }
+.quick-actions-panel--case-file h2 { font-size:var(--type-role-major-heading-size); line-height:var(--type-role-major-heading-line); font-weight:var(--type-role-major-heading-weight); }
+
+.case-file-header { margin-inline:24px; gap:16px 24px; padding:12px 0 24px; }
+.case-file-header h1 { max-width:760px; margin:8px 0 6px; font-size:var(--type-role-page-title-size); line-height:var(--type-role-page-title-line); font-weight:var(--type-role-page-title-weight); letter-spacing:-.02em; }
+.case-file-header-main > p { font-size:var(--type-role-technical-size); line-height:var(--type-role-technical-line); }
+.case-file-eyebrow { font-size:var(--type-role-micro-label-size); line-height:var(--type-role-micro-label-line); font-weight:var(--type-role-micro-label-weight); }
+.case-file-identity { gap:8px 20px; }
+.case-file-identity dt { font-size:var(--type-role-micro-label-size); line-height:var(--type-role-micro-label-line); font-weight:var(--type-role-micro-label-weight); }
+.case-file-identity dd { font-size:var(--type-role-support-size); line-height:var(--type-role-support-line); }
+.case-file-identity code, .case-file-header code { font-size:var(--type-role-technical-size); line-height:var(--type-role-technical-line); }
+.case-file-trace { font-size:var(--type-role-micro-label-size); line-height:var(--type-role-micro-label-line); }
+.case-file-trace-node strong { font-size:var(--type-role-micro-label-size); line-height:var(--type-role-micro-label-line); }
+.case-file-trace-node small, .case-file-trace-note, .case-file-delta-summary { font-size:var(--type-role-technical-size); line-height:var(--type-role-technical-line); }
+
+.case-file-grid { grid-template-columns:150px minmax(0,760px) 300px; justify-content:center; gap:8px; margin-top:24px; }
+.case-file-outline { gap:12px; }
+.case-file-outline-label { font-family:var(--type-family-application); font-size:var(--type-role-micro-label-size); line-height:var(--type-role-micro-label-line); font-weight:var(--type-role-micro-label-weight); }
+.case-file-outline-links a { grid-template-columns:22px minmax(0,1fr) auto; padding:9px 0; font-size:var(--type-role-support-size); line-height:var(--type-role-support-line); font-weight:var(--type-role-support-weight); }
+.case-file-outline-links a > span, .case-file-outline-links a small { font-size:var(--type-role-technical-size); line-height:var(--type-role-technical-line); font-weight:var(--type-role-technical-weight); }
+.case-file-dossier { width:100%; max-width:760px; }
+.dossier-section { padding:6px 0 40px; }
+.dossier-section + .dossier-section { padding-top:36px; }
+.dossier-section-header { margin-bottom:16px; }
+.dossier-section-header > span, .dossier-section-header > strong { font-size:var(--type-role-technical-size); line-height:var(--type-role-technical-line); font-weight:var(--type-role-technical-weight); }
+.dossier-section-header p { font-size:var(--type-role-micro-label-size); line-height:var(--type-role-micro-label-line); font-weight:var(--type-role-micro-label-weight); }
+.dossier-section-header h2 { font-size:var(--type-role-section-heading-size); line-height:var(--type-role-section-heading-line); font-weight:var(--type-role-section-heading-weight); letter-spacing:-.01em; }
+.dossier-lede { gap:14px; padding:0 0 20px 46px; }
+.dossier-lede > p, .dossier-summary-record p, .dossier-contract-introduction, .dossier-finding-explanation, .contract-clause-rationale { max-width:56ch; font-size:var(--type-role-body-size); line-height:var(--type-role-body-line); font-weight:var(--type-role-body-weight); }
+.dossier-lede dt, .dossier-contract-summary dt, .verdict-rail-recommendation dt, .verdict-rail-requirements dt, .verdict-ledger-summary dt { font-size:var(--type-role-micro-label-size); line-height:var(--type-role-micro-label-line); font-weight:var(--type-role-micro-label-weight); }
+.dossier-lede dd, .dossier-contract-summary dd, .verdict-rail-recommendation dd, .verdict-rail-requirements dd, .verdict-ledger-summary dd { font-size:var(--type-role-support-size); line-height:var(--type-role-support-line); }
+.dossier-file-row { min-height:40px; }
+.dossier-file-row code, .dossier-file-row > span, .dossier-lede code { font-size:var(--type-role-technical-size); line-height:var(--type-role-technical-line); }
+.dossier-record > summary { min-height:44px; padding:9px 0; font-size:var(--type-role-record-title-size); line-height:var(--type-role-record-title-line); font-weight:var(--type-role-record-title-weight); }
+.dossier-record > summary strong { font-size:var(--type-role-technical-size); line-height:var(--type-role-technical-line); font-weight:var(--type-role-technical-weight); }
+.dossier-detail-stack > p, .dossier-action-conclusion, .dossier-historical-contract { font-size:var(--type-role-support-size); line-height:var(--type-role-support-line); }
+
+.dossier-summary-record { gap:14px; padding:0 0 18px 46px; }
+.dossier-finding { gap:10px; padding:14px 0 15px 10px; }
+.dossier-finding-header > div strong, .uncertainty-record strong, .contract-ledger-row .merge-contract-clause-main > strong { font-size:var(--type-role-record-title-size); line-height:var(--type-role-record-title-line); font-weight:var(--type-role-record-title-weight); }
+.dossier-finding-header > div span, .dossier-finding-header > small { font-size:var(--type-role-micro-label-size); line-height:var(--type-role-micro-label-line); }
+.dossier-finding-explanation { margin-left:37px; }
+.dossier-finding-technical, .dossier-finding-related, .dossier-finding-action { font-size:var(--type-role-support-size); line-height:var(--type-role-support-line); }
+.dossier-finding-technical > span, .dossier-finding-related > span, .dossier-finding-action > span, .finding-evidence-links > span { font-size:var(--type-role-micro-label-size); line-height:var(--type-role-micro-label-line); font-weight:var(--type-role-micro-label-weight); }
+.dossier-finding-related > span code { margin-left:4px; color:var(--color-accent); font:var(--type-role-technical-weight) var(--type-role-technical-size)/var(--type-role-technical-line) var(--type-family-technical); }
+.finding-evidence-links summary, .finding-evidence-links details p, .finding-evidence-links details small, .finding-evidence-links > p { font-size:var(--type-role-support-size); line-height:var(--type-role-support-line); }
+.finding-evidence-links summary code, .dossier-finding-header > code, .dossier-finding-technical code { font-size:var(--type-role-technical-size); line-height:var(--type-role-technical-line); }
+
+.evidence-class-distribution span, .evidence-class-distribution strong { font-size:var(--type-role-technical-size); line-height:var(--type-role-technical-line); }
+.evidence-register-row > summary { min-height:42px; }
+.evidence-register-row > summary code, .evidence-register-row > summary > span, .evidence-register-row > summary .evidence-register-state { font-size:var(--type-role-technical-size); line-height:var(--type-role-technical-line); }
+.evidence-register-row > summary > strong { font-size:var(--type-role-record-title-size); line-height:var(--type-role-record-title-line); font-weight:var(--type-role-record-title-weight); }
+.evidence-register-detail > p { font-size:var(--type-role-body-size); line-height:var(--type-role-body-line); }
+.evidence-register-detail dt, .evidence-register-detail dd { font-size:var(--type-role-support-size); line-height:var(--type-role-support-line); }
+
+.uncertainty-record { grid-template-columns:72px minmax(0,1fr) 112px; padding:12px 0; }
+.uncertainty-record > div:nth-child(2), .uncertainty-record .assumption-registry-main { min-width:0; }
+.uncertainty-record strong, .uncertainty-record p { overflow-wrap:anywhere; }
+.uncertainty-record-state code, .uncertainty-record-state span { font-size:var(--type-role-technical-size); line-height:var(--type-role-technical-line); }
+.uncertainty-record-state span { color:var(--color-text-muted); }
+.uncertainty-record p, .uncertainty-record > small { font-size:var(--type-role-support-size); line-height:var(--type-role-support-line); }
+.assumption-registry-row > summary { min-height:48px; }
+.assumption-registry-row .assumption-registry-main strong { font-size:var(--type-role-record-title-size); line-height:var(--type-role-record-title-line); font-weight:var(--type-role-record-title-weight); }
+.assumption-registry-row .assumption-registry-main small, .assumption-importance { font-size:var(--type-role-technical-size); line-height:var(--type-role-technical-line); font-weight:var(--type-role-technical-weight); }
+.assumption-registry-detail > p { font-size:var(--type-role-body-size); line-height:var(--type-role-body-line); }
+.assumption-registry-detail dt, .assumption-registry-detail dd { font-size:var(--type-role-support-size); line-height:var(--type-role-support-line); }
+
+.dossier-contract-introduction { margin:0 0 16px 46px; color:var(--color-text-secondary); }
+.dossier-contract-summary { margin-bottom:16px; }
+.dossier-contract-summary dd { font-family:var(--type-family-technical); font-size:var(--type-role-technical-size); line-height:var(--type-role-technical-line); font-weight:500; }
+.contract-ledger-row--blocking.contract-ledger-row--open { border-left-color:var(--color-warning); }
+.contract-ledger-row > summary { min-height:48px; }
+.contract-ledger-reference code, .contract-ledger-importance, .contract-ledger-state { font-size:var(--type-role-technical-size); line-height:var(--type-role-technical-line); font-weight:var(--type-role-technical-weight); }
+.contract-ledger-expanded { gap:9px; }
+.contract-ledger-links dt, .contract-ledger-links dd, .contract-recheck-annotation, .merge-contract-clause-details > summary, .merge-contract-clause-details small { font-size:var(--type-role-support-size); line-height:var(--type-role-support-line); }
+.review-action-list--dossier { gap:0; border-top:1px solid var(--color-border); }
+.report-case-file .review-action-list--dossier .review-action-card { padding:12px 0; border:0; border-bottom:1px solid var(--color-border); border-radius:0; background:transparent; }
+.review-action-list--dossier .review-action-card h3, .reviewer-focus-item h3 { font-size:var(--type-role-record-title-size); line-height:var(--type-role-record-title-line); font-weight:var(--type-role-record-title-weight); }
+.review-action-list--dossier .review-action-card p, .reviewer-focus-item p { font-size:var(--type-role-support-size); line-height:var(--type-role-support-line); }
+.reviewer-focus-list { gap:0; border-top:1px solid var(--color-border); }
+.report-case-file .reviewer-focus-item { padding:12px 0; border:0; border-bottom:1px solid var(--color-border); border-radius:0; background:transparent; box-shadow:none; }
+
+.report-verdict-rail { width:300px; border-radius:var(--radius-row); }
+.verdict-rail-body > section, .verdict-ledger { padding:14px 16px; }
+.verdict-rail-recommendation > strong { font-size:var(--type-role-major-heading-size); line-height:var(--type-role-major-heading-line); font-weight:var(--type-role-major-heading-weight); letter-spacing:-.01em; text-transform:none; }
+.verdict-rail-recommendation > p, .verdict-rail-requirements > p, .decision-studio--rail .decision-studio-header p, .decision-awaiting, .current-human-decision > p { font-size:var(--type-role-support-size); line-height:var(--type-role-support-line); }
+.verdict-rail-recommendation dd, .verdict-rail-requirements dd { font-size:var(--type-role-technical-size); line-height:var(--type-role-technical-line); font-weight:500; }
+.verdict-rail-requirements > div span { font-size:var(--type-role-micro-label-size); line-height:var(--type-role-micro-label-line); font-weight:var(--type-role-micro-label-weight); }
+.verdict-rail-requirements > div strong { font-size:var(--type-role-record-title-size); line-height:var(--type-role-record-title-line); font-weight:var(--type-role-record-title-weight); }
+.decision-studio--rail { background:transparent; }
+.decision-awaiting { padding:8px 0; }
+.current-human-decision { gap:10px; padding:14px; }
+.current-decision-outcome { display:grid; gap:2px; }
+.current-decision-outcome > span { color:var(--color-text-muted); font-size:var(--type-role-micro-label-size); line-height:var(--type-role-micro-label-line); font-weight:var(--type-role-micro-label-weight); letter-spacing:var(--type-role-micro-label-tracking); text-transform:uppercase; }
+.current-decision-outcome > strong { color:var(--color-text-primary); font-size:var(--type-role-major-heading-size); line-height:var(--type-role-major-heading-line); font-weight:600; }
+.current-human-decision dl { gap:8px 12px; }
+.current-human-decision dt, .current-human-decision dd { font-size:var(--type-role-technical-size); line-height:var(--type-role-technical-line); }
+.verdict-rail-local-state > summary, .verdict-ledger > summary { font-size:var(--type-role-support-size); line-height:var(--type-role-support-line); font-weight:var(--type-role-record-title-weight); }
+.verdict-rail-footer-actions { border-top:0; }
+
+/* Legacy report subviews remain functional inside Appendix disclosures, but
+   their inherited pre-LVOS type values are capped to the approved roles. */
+.report-case-file .affected-surface-card h3,
+.report-case-file .operational-area h3,
+.report-case-file .boundary-context-grid strong,
+.report-case-file .boundary-dimension strong,
+.report-case-file .verification-pack-summary-grid strong,
+.report-case-file .decision-timeline-header h3,
+.report-case-file .review-card h3,
+.report-case-file .score-breakdown-list h3 { font-size:var(--type-role-record-title-size); line-height:var(--type-role-record-title-line); font-weight:var(--type-role-record-title-weight); }
+.report-case-file .affected-surface-evidence strong { font-weight:var(--type-role-record-title-weight); }
+.report-case-file .boundary-context-grid span, .report-case-file .boundary-dimension span { font-size:var(--type-role-micro-label-size); line-height:var(--type-role-micro-label-line); font-weight:var(--type-role-micro-label-weight); }
+.report-case-file .boundary-details > summary { font-size:var(--type-role-support-size); line-height:var(--type-role-support-line); font-weight:var(--type-role-record-title-weight); }
+.report-case-file .decision-timeline-header time { font-size:var(--type-role-technical-size); line-height:var(--type-role-technical-line); font-weight:var(--type-role-technical-weight); }
+
 @media (max-width:640px) {
   .assumption-registry-row > summary { grid-template-columns:62px minmax(0,1fr); }
   .assumption-importance { grid-column:2; justify-self:start; }
@@ -2099,7 +2222,7 @@ html[data-theme="light"] :is(.lp-trace-node--open .lp-trace-index, .lp-editorial
   .contract-disclosure-control { align-items:flex-start; flex-direction:column; padding:8px 0; }
 }
 
-@media (max-width:1100px) {
+@media (max-width:1360px) {
   .case-file-grid { grid-template-columns:minmax(0,1fr) 290px; gap:26px; }
   .case-file-outline { position:static; grid-column:1 / -1; }
   .case-file-outline-label, .case-file-outline-links { display:none; }
@@ -2108,13 +2231,13 @@ html[data-theme="light"] :is(.lp-trace-node--open .lp-trace-index, .lp-editorial
   .case-file-jump select { min-height:var(--control-height-sm); padding:0 34px 0 10px; border:1px solid var(--color-border); border-radius:var(--radius-control); background:var(--color-surface-secondary); color:var(--color-text-primary); font-size:11px; }
 }
 
-@media (max-width:1100px) {
+@media (max-width:1360px) {
   .report-case-file { padding-bottom:92px; }
   .case-file-header { grid-template-columns:1fr; }
   .case-file-identity { min-width:0; }
   .case-file-grid { grid-template-columns:1fr; }
   .case-file-dossier { max-width:760px; margin:0 auto; }
-  .report-verdict-rail { position:fixed; z-index:70; inset:auto 12px 12px; max-height:none; overflow:visible; border-color:var(--color-border-strong); box-shadow:none; }
+  .report-verdict-rail { position:fixed; z-index:70; inset:auto 12px 12px; width:auto; max-height:none; overflow:visible; border-color:var(--color-border-strong); box-shadow:none; }
   .verdict-rail-compact { min-height:58px; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:9px 10px 9px 13px; }
   .verdict-rail-compact > div { display:flex; align-items:center; gap:9px; }
   .verdict-rail-compact > div > span { color:var(--color-text-secondary); font:10px var(--font-mono); }
@@ -2131,8 +2254,9 @@ html[data-theme="light"] :is(.lp-trace-node--open .lp-trace-index, .lp-editorial
 
 @media (max-width:640px) {
   .report-case-file { padding-inline:16px; padding-top:22px; }
-  .case-file-header { gap:18px; padding-top:4px; }
-  .case-file-header h1 { font-size:25px; }
+  .quick-actions-panel--case-file { margin-inline:0; }
+  .case-file-header { gap:18px; margin-inline:0; padding-top:4px; }
+  .case-file-header h1 { font-size:var(--type-role-page-title-size); line-height:var(--type-role-page-title-line); }
   .case-file-identity { grid-template-columns:1fr 1fr; }
   .case-file-trace { justify-content:space-between; }
   .case-file-trace span { width:8px; height:8px; overflow:hidden; border:1px solid var(--color-border-strong); border-radius:50%; font-size:0; }
@@ -2145,6 +2269,7 @@ html[data-theme="light"] :is(.lp-trace-node--open .lp-trace-index, .lp-editorial
   .dossier-section-header { grid-template-columns:24px minmax(0,1fr); }
   .dossier-section-header > strong { grid-column:2; padding-top:0; }
   .dossier-lede, .dossier-summary-record { padding-left:0; }
+  .dossier-contract-introduction { margin-left:0; }
   .dossier-lede dl, .dossier-two-column, .appendix-provenance > dl { grid-template-columns:1fr; }
   .dossier-file-row { grid-template-columns:minmax(0,1fr) auto; }
   .dossier-file-row .risk-badge { grid-column:1 / -1; }
@@ -2208,7 +2333,8 @@ html[data-theme="light"] :is(.lp-trace-node--open .lp-trace-index, .lp-editorial
 .report-case-file .quick-actions-panel--case-file, .report-case-file .report-verdict-rail { background:var(--color-surface); box-shadow:none; }
 .report-case-file .report-verdict-rail { border-color:var(--color-border-strong); }
 .report-case-file .current-human-decision { border-color:var(--color-border-strong); background:var(--color-surface-raised); }
-.report-case-file .decision-studio--rail, .report-case-file .verdict-rail-sheet-header { background:var(--color-surface-raised); }
+.report-case-file .decision-studio--rail { background:transparent; }
+.report-case-file .verdict-rail-sheet-header { background:var(--color-surface-raised); }
 .report-case-file .evidence-class-grid article, .report-case-file .evidence-hierarchy-row, .report-case-file .assumption-registry-row, .report-case-file .boundary-context-grid article, .report-case-file .boundary-dimension { border-color:var(--color-border); background:transparent; }
 .report-case-file .evidence-hierarchy-details summary, .report-case-file .boundary-details summary, .report-case-file .evidence-hierarchy-row dd, .report-case-file .assumption-registry-row dd { color:var(--color-text-secondary); }
 .report-case-file .boundary-warning { border-color:color-mix(in srgb, var(--color-information) 42%, var(--color-border)); background:var(--color-information-soft); color:var(--color-text-secondary); }

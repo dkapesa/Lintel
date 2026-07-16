@@ -2966,6 +2966,15 @@ export default function ReportPage() {
       ...clause.relatedAssumptionIds.flatMap((id) => assumptionReferenceById.get(id) ?? []),
     ])],
   ]));
+  const findingRelatedContractReferences = report.findings.map((finding, findingIndex) => {
+    const relatedFindingIds = new Set([
+      `finding-${findingIndex}`,
+      `finding-${normalizedRecordKey(finding.title)}`,
+    ]);
+    return displayedContractClauses.flatMap(({ clause }, clauseIndex) => (
+      clause.relatedFindingIds.some((id) => relatedFindingIds.has(id)) ? [`C${clauseIndex + 1}`] : []
+    ));
+  });
   const findingEvidenceRecords = report.findings.map((finding, index) => evidenceHierarchy.records.filter((record) => (
     record.relatedFindingIds.includes(`finding-${index}`)
     || record.relatedFindingIds.includes(`finding-${normalizedRecordKey(finding.title)}`)
@@ -3839,8 +3848,13 @@ export default function ReportPage() {
               <div className="dossier-finding-list" aria-label="Report findings">
                 {report.findings.length > 0 ? report.findings.map((finding, index) => {
                   const relatedEvidence = findingEvidenceRecords[index] ?? [];
+                  const relatedRequirements = findingRelatedContractReferences[index] ?? [];
                   const relatedFiles = affectedFilesForFinding(report, finding);
                   const relatedCondition = bestRelatedText(finding, displayedConditions);
+                  const matchingClauseIndex = relatedCondition
+                    ? displayedContractClauses.findIndex(({ clause }) => normalizedRecordKey(clause.statement) === normalizedRecordKey(relatedCondition))
+                    : -1;
+                  const relatedRequirement = matchingClauseIndex >= 0 ? `C${matchingClauseIndex + 1}` : relatedRequirements[0];
                   const relatedMissingTest = bestRelatedText(finding, report.missingTests);
                   const movement = reviewDiff?.findings.find((item) => normalizedRecordKey(item.title) === normalizedRecordKey(finding.title));
                   return (
@@ -3863,14 +3877,14 @@ export default function ReportPage() {
                           </details>
                         )) : <p>No attached structured evidence reference. The finding explanation remains the observed record.</p>}
                       </div>
-                      {relatedCondition && <p className="dossier-finding-related"><span>Related condition</span>{relatedCondition}</p>}
+                      {relatedCondition && <p className="dossier-finding-related"><span>Related requirement {relatedRequirement && <code>{relatedRequirement}</code>}</span>{relatedCondition}</p>}
                       {relatedMissingTest && <p className="dossier-finding-related"><span>Related missing test</span>{relatedMissingTest}</p>}
                       <p className="dossier-finding-action"><span>Required action</span>{finding.action}</p>
                     </article>
                   );
                 }) : <p className="section-empty section-empty--positive">No risk findings detected.</p>}
               </div>
-              <details className="dossier-record evidence-register" id="dossier-evidence-register" open>
+              <details className="dossier-record evidence-register" id="dossier-evidence-register">
                 <summary><span>Evidence register</span><strong>{evidenceHierarchy.records.length} records</strong></summary>
                 <div className="evidence-class-distribution" aria-label="Evidence classes">
                   {evidenceClassOrder.map((evidenceClass) => <span key={evidenceClass}><strong>{evidenceHierarchy.countsByClass[evidenceClass]}</strong> {evidenceClassLabels[evidenceClass]}</span>)}
@@ -3908,7 +3922,7 @@ export default function ReportPage() {
                 ))}
                 {report.suggestedTests.map((test, index) => (
                   <article className="uncertainty-record uncertainty-record--review" key={test.title}>
-                    <div className="uncertainty-record-state"><code>R{index + 1}</code><span>MISSING</span></div>
+                    <div className="uncertainty-record-state"><code>M{report.missingTests.length + index + 1}</code><span>MISSING</span></div>
                     <div><strong>{test.title}</strong><p>{test.description ?? "Reviewer verification remains useful before the decision."}</p></div>
                     <small>{test.priority ?? "Suggested"} verification</small>
                   </article>
@@ -3931,7 +3945,7 @@ export default function ReportPage() {
               </details>
               <details className="dossier-record" open={evidenceLedger.missing.length > 0}>
                 <summary><span>Evidence gaps</span><strong>{evidenceLedger.missing.length}</strong></summary>
-                <div className="uncertainty-register">{evidenceLedger.missing.map((item, index) => <article className="uncertainty-record uncertainty-record--missing" key={`${item.label}-${item.detail}`}><div className="uncertainty-record-state"><code>G{index + 1}</code><span>MISSING</span></div><div><strong>{item.label}</strong><p>{item.detail}</p></div><small>{item.relation}</small></article>)}</div>
+                <div className="uncertainty-register">{evidenceLedger.missing.map((item, index) => <article className="uncertainty-record uncertainty-record--missing" key={`${item.label}-${item.detail}`}><div className="uncertainty-record-state"><code>M{report.missingTests.length + report.suggestedTests.length + index + 1}</code><span>MISSING</span></div><div><strong>{item.label}</strong><p>{item.detail}</p></div><small>{item.relation}</small></article>)}</div>
               </details>
               <details className="dossier-record">
                 <summary><span>Reviewer focus</span><strong>{supportedReviewerFocus ? supportedReviewerFocus.length : "Historical"}</strong></summary>
@@ -3942,9 +3956,10 @@ export default function ReportPage() {
             <section className="dossier-section" id="dossier-merge-contract" data-dossier-section="merge-contract" data-tour="merge-contract" aria-labelledby="merge-contract-title">
               <header className="dossier-section-header">
                 <span>04</span>
-                <div><p>Requirements before merge</p><h2 id="merge-contract-title">Evidence-backed Merge Contract</h2></div>
+                <div><p>Requirements before merge</p><h2 id="merge-contract-title">Merge Contract</h2></div>
                 <strong>{mergeContract.state}</strong>
               </header>
+              <p className="dossier-contract-introduction">{mergeContractSummaryText}</p>
               <dl className="dossier-contract-summary">
                 <div><dt>Blocking open</dt><dd>{mergeContractBlockingOpen}</dd></div>
                 <div><dt>Advisory open</dt><dd>{mergeContractAdvisoryOpen}</dd></div>
@@ -4103,7 +4118,7 @@ export default function ReportPage() {
                 {currentHumanDecision ? (
                   <div className="current-human-decision">
                     <span className="current-decision-lintel">Lintel recommended: {verdict.recommendation.replaceAll("_", " ")}</span>
-                    <strong>{humanDecisionOutcomeLabel(currentHumanDecision.outcome)}</strong>
+                    <div className="current-decision-outcome"><span>Engineer decided</span><strong>{humanDecisionOutcomeLabel(currentHumanDecision.outcome)}</strong></div>
                     <dl><div><dt>Actor</dt><dd>{currentHumanDecision.actor.displayLabel}</dd></div><div><dt>Recorded</dt><dd><time dateTime={currentHumanDecision.recordedAt}>{timelineTime(currentHumanDecision.recordedAt)}</time></dd></div>{currentHumanDecision.applicableHeadSha && <div><dt>Applies to</dt><dd><code>{shortSha(currentHumanDecision.applicableHeadSha)}</code></dd></div>}</dl>
                     {currentHumanDecision.reason && <p>{currentHumanDecision.reason}</p>}
                     <span className="current-decision-alignment">{humanDecisionDivergence.replaceAll("-", " ")}</span>
@@ -4132,7 +4147,7 @@ export default function ReportPage() {
                 <div className="human-ledger-actions"><button type="button" onClick={withdrawCurrentHumanDecision} disabled={!humanDecisionProjection.latestEffectiveEntry}>Withdraw current decision</button>{humanDecisionProjection.activeAcceptedRisks.slice(0, 2).map((entry) => <button type="button" key={entry.entryId} onClick={() => revokeAcceptedRisk(entry)}>Revoke risk {fingerprintPrefix(entry.entryId)}</button>)}</div>
                 <div className="human-ledger-rows">{[...humanDecisionLedger.entries].reverse().slice(0, 10).map((entry) => <HumanDecisionLedgerRow entry={entry} currentHeadSha={humanDecisionLedgerContext.currentHeadSha} key={entry.entryId} />)}</div>
               </details>
-              <div className="verdict-rail-footer-actions"><button type="button" onClick={handleCopyMergeSummary}>{copyMergeSummaryLabels[mergeSummaryCopyState]}</button><button type="button" onClick={() => quickJumpTo("merge-contract", "Merge Contract")}>View contract</button></div>
+              <div className="verdict-rail-footer-actions"><button type="button" onClick={handleCopyMergeSummary}>{copyMergeSummaryLabels[mergeSummaryCopyState]}</button><button type="button" onClick={handleDownloadMarkdown}>{downloadLabels[downloadState]}</button><button type="button" onClick={() => quickJumpTo("merge-contract", "Merge Contract")}>View contract</button></div>
             </div>
           </aside>
         </div>

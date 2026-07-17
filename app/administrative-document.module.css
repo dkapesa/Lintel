@@ -859,6 +859,73 @@
   margin-bottom: 20px;
 }
 
+.operationsLedger {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  margin: 0 0 18px;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.operationsLedger > div {
+  min-width: 124px;
+  padding: 10px 18px 10px 0;
+  margin-right: 18px;
+  border-right: 1px solid var(--color-border);
+}
+
+.operationsLedger > div:last-child { border-right: 0; }
+
+.operationsLedger dt {
+  color: var(--color-text-muted);
+  font: var(--type-role-micro-label-weight) var(--type-role-micro-label-size) / var(--type-role-micro-label-line) var(--type-family-application);
+  letter-spacing: var(--type-role-micro-label-tracking);
+  text-transform: uppercase;
+}
+
+.operationsLedger dd {
+  margin: 2px 0 0;
+  color: var(--color-text-primary);
+  font: var(--type-role-record-title-weight) var(--type-role-record-title-size) / var(--type-role-record-title-line) var(--type-family-application);
+  font-variant-numeric: tabular-nums;
+}
+
+.operationsViewBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 14px;
+  margin: 0 0 26px;
+  padding: 0 0 10px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.operationsViewBar button {
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: 600 var(--type-role-support-size) / var(--type-role-support-line) var(--type-family-application);
+  cursor: pointer;
+}
+
+.operationsViewBar button span {
+  margin-left: 4px;
+  color: var(--color-text-muted);
+  font-family: var(--type-family-technical);
+  font-size: var(--type-role-technical-size);
+}
+
+.operationsViewBar button:hover,
+.operationsViewActive { color: var(--color-text-primary) !important; }
+.operationsViewActive { border-bottom-color: var(--color-accent-strong) !important; }
+.operationsViewBar button:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
+
+.operationsEmpty { margin-bottom: 28px; }
+.operationsEmptyActions { display: flex; flex-wrap: wrap; gap: 8px; }
+
 .operationsSummaryStrip li {
   padding: 8px 14px;
 }
@@ -1034,6 +1101,10 @@
   .operationsHistoryList li { grid-template-columns: 1fr; gap: 4px; }
   .operationsHistoryState { justify-items: start; text-align: left; }
   .operationsHistoryState .recordLink { min-height: 44px; display: inline-flex; align-items: center; }
+  .operationsLedger > div { min-width: 42%; border-right: 0; border-top: 1px solid var(--color-border); }
+  .operationsLedger > div:nth-child(-n + 2) { border-top: 0; }
+  .operationsViewBar { gap: 4px 16px; overflow-x: auto; flex-wrap: nowrap; }
+  .operationsViewBar button { min-height: 44px; flex: 0 0 auto; }
   .workflowList li { grid-template-columns: 28px minmax(0, 1fr); gap: 5px 10px; }
   .workflowList p { grid-column: 2; }
   .definitionList > div { grid-template-columns: 1fr; gap: 3px; }
@@ -1091,6 +1162,8 @@
   .formActions button,
   .artifactActions button,
   .artifactActions a { width: 100%; }
+  .operationsEmptyActions { align-items: stretch; flex-direction: column; }
+  .operationsEmptyActions a { width: 100%; }
   .record { grid-template-columns: 1fr; gap: 5px; min-height: 0; }
   .recordValue { text-align: left; }
 }

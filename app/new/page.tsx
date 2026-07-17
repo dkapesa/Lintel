@@ -1161,6 +1161,13 @@ export default function NewReportPage() {
   }
 
   const showInspector = activeSource !== "manual";
+  const sourceStage = activeSource === "connected"
+    ? ["02", "Choose a pull request Lintel can access"]
+    : activeSource === "public-url"
+      ? ["02", "Import a public pull request"]
+      : activeSource === "manual"
+        ? ["02", "Provide the change"]
+        : ["02", "Choose a built-in change"];
 
   return (
     <AppShell>
@@ -1168,14 +1175,17 @@ export default function NewReportPage() {
         <section className="new-intro">
           <span className="eyebrow">NEW REVIEW</span>
           <h1>Check merge readiness</h1>
-          <p>Choose a pull request Lintel already understands, or bring another change source.</p>
-          <p className="new-trust-note">Local-first history stores generated reports, not raw diffs. <Link href="/docs/security-model.md">Read the security model.</Link></p>
+          <p>Bring one change into a review sequence: source, change context, review behaviour, then a Case File for the human decision.</p>
+          <div className="new-route-links">
+            <Link href="/workspace">Back to Workspace</Link>
+            <span>Generated reports stay on this device; raw diffs do not enter local history.</span>
+          </div>
         </section>
 
         <form className="report-form review-workbench" onSubmit={handleSubmit}>
           <div className={showInspector ? "workbench-body" : "workbench-body workbench-body--no-inspector"}>
             <aside className="source-rail" aria-label="Change source">
-              <span className="source-rail-label" id="source-rail-primary">Primary source</span>
+              <span className="source-rail-label" id="source-rail-primary">01 / Change source</span>
               <button
                 type="button"
                 className={activeSource === "connected" ? "source-option source-option--primary source-option--active" : "source-option source-option--primary"}
@@ -1185,7 +1195,7 @@ export default function NewReportPage() {
                 <strong>Connected GitHub</strong>
                 <span>{connectedRailCaption}</span>
               </button>
-              <span className="source-rail-label">Other sources</span>
+              <span className="source-rail-label">Other available sources</span>
               <button
                 type="button"
                 className={activeSource === "public-url" ? "source-option source-option--active" : "source-option"}
@@ -1216,6 +1226,10 @@ export default function NewReportPage() {
             </aside>
 
             <div className="workbench-main">
+              <div className="intake-stage-header">
+                <span>{sourceStage[0]} / Change material</span>
+                <p>{sourceStage[1]}. Fields remain editable after import.</p>
+              </div>
               {activeSource === "connected" && (
                 <>
                   <div className="connection-strip">
@@ -1507,7 +1521,7 @@ export default function NewReportPage() {
 
               <details className="change-passport-input" open={passportOpen} onToggle={(event) => setPassportOpen(event.currentTarget.open)}>
                 <summary>
-                  <span>Add Change Passport</span>
+                  <span>03 / Add review context — Change Passport</span>
                   <small>Optional builder-declared context. It never clears blockers or changes the recommendation.</small>
                 </summary>
                 {importedPullRequest?.changePassport || selectedSample?.input.changePassport ? (
@@ -1586,7 +1600,7 @@ export default function NewReportPage() {
                 <span className="command-target">{commandTarget}</span>
               </div>
               <label className="command-mode">
-                <span>Review mode</span>
+                <span>04 / Review behaviour</span>
                 <select name="reviewProfile" value={reviewProfile} onChange={(event) => setReviewProfile(event.target.value as ReviewProfile)}>
                   {REVIEW_PROFILES.map((profile) => <option key={profile.id} value={profile.id}>{profile.label}</option>)}
                 </select>
@@ -1595,7 +1609,7 @@ export default function NewReportPage() {
               <div className="command-run">
                 {!hasLoadedChange && <span className="command-hint">Load a change to enable the review</span>}
                 <button className="generate-button" type="submit" disabled={isGenerating || isFetchingDiff || !hasLoadedChange}>
-                  {isGenerating ? "Running review…" : "Run readiness review"}<span aria-hidden="true">→</span>
+                  {isGenerating ? "Generating Case File…" : "05 / Generate Case File"}<span aria-hidden="true">→</span>
                 </button>
               </div>
             </div>

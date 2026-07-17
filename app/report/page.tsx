@@ -2677,8 +2677,10 @@ export default function ReportPage() {
     document.documentElement.style.overflow = "hidden";
     document.body.style.overflow = "hidden";
 
-    const focusable = Array.from(rail.querySelectorAll<HTMLElement>("button:not([disabled]), a[href], select:not([disabled]), textarea:not([disabled]), input:not([disabled]), details > summary"))
+    const focusableSelector = "button:not([disabled]), a[href], select:not([disabled]), textarea:not([disabled]), input:not([disabled]), details > summary";
+    const getFocusable = () => Array.from(rail.querySelectorAll<HTMLElement>(focusableSelector))
       .filter((element) => element.offsetParent !== null);
+    const focusable = getFocusable();
     const focusFrame = window.requestAnimationFrame(() => focusable[0]?.focus());
 
     function handleSheetKeyDown(event: globalThis.KeyboardEvent) {
@@ -2688,7 +2690,9 @@ export default function ReportPage() {
         window.setTimeout(() => (decisionSheetReturnFocusRef.current ?? decisionSheetTriggerRef.current)?.focus(), 0);
         return;
       }
-      if (event.key !== "Tab" || focusable.length === 0) return;
+      if (event.key !== "Tab") return;
+      const focusable = getFocusable();
+      if (focusable.length === 0) return;
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
       if (event.shiftKey && document.activeElement === first) {
@@ -2712,6 +2716,17 @@ export default function ReportPage() {
       document.documentElement.style.overflow = previousHtmlOverflow;
       document.body.style.overflow = previousBodyOverflow;
     };
+  }, [decisionSheetOpen]);
+
+  useEffect(() => {
+    const desktopQuery = window.matchMedia("(min-width: 1180px)");
+    const closeForDesktop = () => {
+      if (desktopQuery.matches && decisionSheetOpen) closeDecisionSheet({ restoreFocus: false });
+    };
+
+    desktopQuery.addEventListener("change", closeForDesktop);
+    closeForDesktop();
+    return () => desktopQuery.removeEventListener("change", closeForDesktop);
   }, [decisionSheetOpen]);
 
   const { report, source } = displayedReport;
@@ -3805,6 +3820,7 @@ export default function ReportPage() {
             <label className="case-file-jump">
               <span>Jump to section</span>
               <select
+                aria-label="Jump to Case File section"
                 value={activeDossierSection}
                 onChange={(event) => {
                   const section = event.target.value as DossierSectionId;

@@ -21,26 +21,11 @@ import {
   type HumanDecisionLedgerEntry,
   type HumanDecisionOutcome,
 } from "../../lib/human-decision-ledger";
-import { report as demoReport, type Report } from "../../lib/mock-report";
+import type { Report } from "../../lib/mock-report";
 import { readReportHistory, type ReportHistoryEntry } from "../../lib/report-history";
 import { readReviewState } from "../../lib/review-state";
-import { reviewProfileLabel } from "../../lib/review-profiles";
-
-const demoEntry: ReportHistoryEntry = {
-  report: demoReport,
-  source: "deterministic",
-  inputLabel: "Demo report",
-  createdAt: "2026-01-01T00:00:00.000Z",
-  metadata: {
-    title: demoReport.pr.title,
-    repository: demoReport.pr.repository,
-    recommendation: demoReport.verdict.recommendation,
-    riskScore: demoReport.verdict.riskScore,
-    reviewProfile: reviewProfileLabel(demoReport.pr.reviewProfile),
-  },
-};
-
-type LoadState = "loading" | "local" | "demo" | "unavailable";
+type LoadState = "loading" | "local" | "empty" | "unavailable";
+type OperationsView = "records" | "requirements" | "decisions";
 
 type OperationalRecord = {
   entry: ReportHistoryEntry;
@@ -261,13 +246,13 @@ function stableEventIdentity(parts: Array<string | number | undefined>) {
   return parts.map((part) => encodeURIComponent(String(part ?? "unavailable"))).join(":");
 }
 
-function buildHistoryRecords(records: OperationalRecord[], demo: boolean) {
+function buildHistoryRecords(records: OperationalRecord[]) {
   const events: HistoryRecord[] = [];
 
   records.forEach((record, recordIndex) => {
     const report = record.entry.report;
     const repository = repositoryIdentity(report);
-    const caseFileHref = demo ? "/report?demo=1" : recordIndex === 0 ? "/report" : undefined;
+    const caseFileHref = recordIndex === 0 ? "/report" : undefined;
     const reportRecordIdentity = stableEventIdentity([
       record.entry.canonicalRun?.runId,
       record.entry.createdAt,
@@ -342,13 +327,14 @@ function recommendationClass(value: Report["verdict"]["recommendation"]) {
 export default function ReviewOperationsPage() {
   const [records, setRecords] = useState<OperationalRecord[]>([]);
   const [loadState, setLoadState] = useState<LoadState>("loading");
+  const [activeView, setActiveView] = useState<OperationsView>("records");
 
   useEffect(() => {
     try {
       const history = readReportHistory(window.localStorage);
       if (history.length === 0) {
         setRecords([]);
-        setLoadState("demo");
+        setLoadState("empty");
         return;
       }
 
@@ -386,24 +372,13 @@ export default function ReviewOperationsPage() {
     }
   }, []);
 
-  const showingDemo = loadState !== "local";
-  const displayRecords = useMemo<OperationalRecord[]>(() => (
-    records.length > 0 ? records : [{
-      entry: demoEntry,
-      clearedConditionKeys: new Set<string>(),
-      decisionHistory: [],
-      humanDecisions: [],
-      latestHumanDecision: undefined,
-      reaffirmationRequired: false,
-    }]
-  ), [records]);
-  const blockers = useMemo(() => buildBlockerRecords(displayRecords), [displayRecords]);
-  const repositories = useMemo(() => buildRepositoryRecords(displayRecords), [displayRecords]);
-  const history = useMemo(() => buildHistoryRecords(displayRecords, showingDemo), [displayRecords, showingDemo]);
-  const attentionCount = displayRecords.filter((record) => record.entry.report.verdict.recommendation !== "APPROVE").length;
+  const blockers = useMemo(() => buildBlockerRecords(records), [records]);
+  const repositories = useMemo(() => buildRepositoryRecords(records), [records]);
+  const history = useMemo(() => buildHistoryRecords(records), [records]);
+  const attentionCount = records.filter((record) => record.entry.report.verdict.recommendation !== "APPROVE").length;
   const recurringCount = blockers.filter((blocker) => blocker.occurrences.length > 1).length;
-  const decisionCount = displayRecords.reduce((total, record) => total + record.humanDecisions.filter((entry) => entry.outcome).length, 0);
-  const reaffirmationCount = displayRecords.filter((record) => record.reaffirmationRequired).length;
+  const decisionCount = records.reduce((total, record) => total + record.humanDecisions.filter((entry) => entry.outcome).length, 0);
+  const reaffirmationCount = records.filter((record) => record.reaffirmationRequired).length;
   const activeRepositoryCount = repositories.filter((repository) => repository.identity !== "Repository unavailable").length;
 
   const boundaryText = loadState === "loading"
@@ -414,6 +389,14 @@ export default function ReviewOperationsPage() {
         ? "Local storage unavailable · demo report shown · no organisation telemetry"
         : "Demo report shown · generate a local report to replace it · not organisation analytics";
 
+  const operationalBoundaryText = loadState === "loading"
+    ? "Loading report history stored on this device · not hosted organisation analytics"
+    : loadState === "local"
+      ? `${records.length} local ${records.length === 1 ? "report" : "reports"} stored on this device · not hosted organisation analytics`
+      : loadState === "unavailable"
+        ? "Local storage is unavailable · no review history can be shown"
+        : "No local review history yet · this is not an organisation activity feed";
+
   return (
     <AppShell>
       <div className={styles.page} data-tour="review-operations">
@@ -421,25 +404,40 @@ export default function ReviewOperationsPage() {
           <header className={styles.pageHeader}>
             <h1>Review operations</h1>
             <p>Review recurring requirements, repository activity and recorded verification decisions from reports stored in this workspace.</p>
-            <div className={styles.statusLine}>{boundaryText}</div>
+            <div className={styles.statusLine}>{operationalBoundaryText}</div>
           </header>
 
-          <ul className={`${styles.summaryStrip} ${styles.operationsSummaryStrip}`} aria-label="Review operations summary">
-            <li><span>Reviews needing attention</span><strong>{attentionCount}</strong></li>
-            <li><span>Recurring blockers</span><strong>{recurringCount}</strong></li>
-            <li><span>Active repositories</span><strong>{activeRepositoryCount}</strong></li>
-            <li><span>Decisions recorded</span><strong>{decisionCount}</strong></li>
-            <li><span>Reaffirmation required</span><strong>{reaffirmationCount}</strong></li>
-          </ul>
+          {records.length === 0 ? (
+            <section className={`${styles.group} ${styles.operationsEmpty}`} aria-labelledby="operations-empty-title">
+              <div className={styles.groupHeader}>
+                <h2 id="operations-empty-title">No verification records yet</h2>
+                <p>Once you generate reviews on this device, this ledger will show their requirements, recommendations, missing proof and recorded human decisions.</p>
+              </div>
+              <div className={styles.artifactActions}>
+                <p>Start with a pull request or pasted diff, or return to the Workspace to inspect the current queue.</p>
+                <div className={styles.operationsEmptyActions}>
+                  <Link className={styles.primaryAction} href="/new">Start a review</Link>
+                  <Link className={styles.secondaryAction} href="/workspace">Open Workspace</Link>
+                </div>
+              </div>
+            </section>
+          ) : (
+            <>
+              <dl className={styles.operationsLedger} aria-label="Local verification record summary">
+                <div><dt>Stored reviews</dt><dd>{records.length}</dd></div>
+                <div><dt>Need follow-up</dt><dd>{attentionCount}</dd></div>
+                <div><dt>Recurring requirements</dt><dd>{recurringCount}</dd></div>
+                <div><dt>Recorded decisions</dt><dd>{decisionCount}</dd></div>
+                {reaffirmationCount > 0 && <div><dt>Reaffirmation required</dt><dd>{reaffirmationCount}</dd></div>}
+              </dl>
 
-          <nav className={`${styles.sectionNav} ${styles.operationsSectionNav}`} aria-label="Review operations sections">
-            <a href="#recurring-blockers">Recurring blockers</a>
-            <a href="#repository-activity">Repository activity</a>
-            <a href="#decision-history">Decision history</a>
-            <a href="#operations-limitations">Limitations</a>
-          </nav>
+              <div className={styles.operationsViewBar} role="tablist" aria-label="Review operations view">
+                <button type="button" role="tab" aria-selected={activeView === "records"} className={activeView === "records" ? styles.operationsViewActive : undefined} onClick={() => setActiveView("records")}>Review records <span>{activeRepositoryCount}</span></button>
+                <button type="button" role="tab" aria-selected={activeView === "requirements"} className={activeView === "requirements" ? styles.operationsViewActive : undefined} onClick={() => setActiveView("requirements")}>Requirements <span>{blockers.length}</span></button>
+                <button type="button" role="tab" aria-selected={activeView === "decisions"} className={activeView === "decisions" ? styles.operationsViewActive : undefined} onClick={() => setActiveView("decisions")}>Decision history <span>{history.length}</span></button>
+              </div>
 
-          <section className={styles.section} id="recurring-blockers" aria-labelledby="recurring-blockers-title">
+              {activeView === "requirements" && <section className={styles.section} id="recurring-blockers" aria-labelledby="recurring-blockers-title">
             <div className={styles.sectionHeader}>
               <h2 id="recurring-blockers-title">Recurring blockers</h2>
               <p>Repeated evidence is grouped by normalized requirement text. Single-report requirements remain visible without being presented as a trend.</p>
@@ -488,9 +486,9 @@ export default function ReviewOperationsPage() {
                 </div>
               ) : <p className={styles.emptyState}>No requirement or blocker evidence is present in the available reports.</p>}
             </div>
-          </section>
+          </section>}
 
-          <section className={styles.section} id="repository-activity" aria-labelledby="repository-activity-title">
+          {activeView === "records" && <section className={styles.section} id="repository-activity" aria-labelledby="repository-activity-title">
             <div className={styles.sectionHeader}>
               <h2 id="repository-activity-title">Repository verification activity</h2>
               <p>Repository records connect stored reviews with the latest open requirements, recommendation, activity and recorded human decision.</p>
@@ -540,9 +538,9 @@ export default function ReviewOperationsPage() {
                 </div>
               ) : <p className={styles.emptyState}>No repository identity is available. Generate a local report to create repository activity.</p>}
             </div>
-          </section>
+          </section>}
 
-          <section className={styles.section} id="decision-history" aria-labelledby="decision-history-title">
+          {activeView === "decisions" && <section className={styles.section} id="decision-history" aria-labelledby="decision-history-title">
             <div className={styles.sectionHeader}>
               <h2 id="decision-history-title">Decision and readiness history</h2>
               <p>Newest-first events combine stored report timestamps with existing local workflow events and Human Decision Ledger entries.</p>
@@ -569,14 +567,16 @@ export default function ReviewOperationsPage() {
                       <div className={styles.operationsHistoryState}>
                         <span>{event.state}</span>
                         {event.technicalId && <code title={event.technicalId}>{shortIdentifier(event.technicalId)}</code>}
-                        {event.caseFileHref && <Link className={styles.recordLink} href={event.caseFileHref}>Open Case File</Link>}
+                        {event.caseFileHref && <Link className={styles.recordLink} href={event.caseFileHref}>Open current Case File</Link>}
                       </div>
                     </li>
                   ))}
                 </ol>
               ) : <p className={styles.emptyState}>No recorded review or decision history is available.</p>}
             </div>
-          </section>
+          </section>}
+            </>
+          )}
 
           <section className={styles.section} id="operations-limitations" aria-labelledby="operations-limitations-title">
             <div className={styles.sectionHeader}>
@@ -585,18 +585,11 @@ export default function ReviewOperationsPage() {
             </div>
             <div className={`${styles.group} ${styles.limitationGroup}`}>
               <ul className={styles.boundaryList}>
-                {showingDemo && <li>The displayed records come from the existing demo report because no usable local report history is available.</li>}
                 <li>Report history is limited to the reports retained on this device; it is not organisation-wide telemetry.</li>
-                <li>Archived reports do not have stable per-report URLs. The Case File link opens the current session report or the explicitly labelled demo.</li>
+                <li>Archived reports do not have stable per-report URLs. A Case File link opens only the current review when that identity is available.</li>
                 <li>Missing timestamps, repository identities and human decisions remain unavailable rather than being inferred.</li>
                 <li>Review status, condition progress and human decisions remain owned by their existing local workflows.</li>
               </ul>
-              {showingDemo && (
-                <div className={styles.artifactActions}>
-                  <p>Generate a report to replace the demo evidence with local workspace history.</p>
-                  <Link className={styles.secondaryAction} href="/new">Check a pull request</Link>
-                </div>
-              )}
             </div>
           </section>
         </div>

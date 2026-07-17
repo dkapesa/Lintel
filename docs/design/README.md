@@ -28,6 +28,10 @@ Implementation convenience never overrides LVOS. Audits and roadmaps explain cur
 
 LVOS-7 — Cross-System Final Audit and Consolidation is complete and APPROVED. LVOS v1.0 is APPROVED AND CLOSED. The next programme is Visual Convergence, beginning with VC-1 Workspace and Command-Centre Refinement; subsequent visual and motion work remains within the approved architecture, not another architectural reset. The authority order above remains unchanged.
 
+## Current visual-convergence status
+
+LVOS v1.0 remains APPROVED AND CLOSED. VC-1 Workspace and Command-Centre Refinement is APPROVED AND COMPLETE after final VC-1C review. VC-2 — Case File and Cross-Route Refinement is next; all subsequent visual work remains refinement within the approved LVOS architecture rather than an architectural reset.
+
 ## Use and versioning
 
 - Every Claude or Codex visual implementation prompt must include the [implementation checklist](./LVOS_IMPLEMENTATION_CHECKLIST.md).

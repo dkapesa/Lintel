@@ -456,7 +456,7 @@ function WorkspaceQueueRow({
       tabIndex={0}
       ref={(element) => setCardRef(group.key, element)}
       data-workspace-group-key={group.key}
-      aria-label={`Select ${entry.metadata.title}`}
+      aria-label={`${isSelected ? "Selected" : "Select"} ${entry.metadata.title}`}
       aria-selected={isSelected}
       onClick={() => onSelect(group, { openInspector: true })}
       onKeyDown={(event) => {
@@ -493,6 +493,10 @@ function WorkspaceQueueRow({
       <div className="workspace-row-requirements" data-label="Requirements">
         <strong>{primary}</strong>
         {subordinate && <p>{subordinate}</p>}
+      </div>
+
+      <div className="workspace-row-next-action" data-label="Next action">
+        <span>{nextAction(entry)}</span>
       </div>
 
       <div className="workspace-row-owner" data-label="Owner">
@@ -1072,11 +1076,14 @@ export default function ReportsWorkspacePage() {
 
     document.addEventListener("keydown", onKeyDown, true);
     const previousOverflow = document.documentElement.style.overflow;
+    const previousBodyOverflow = document.body.style.overflow;
     document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
 
     return () => {
       document.removeEventListener("keydown", onKeyDown, true);
       document.documentElement.style.overflow = previousOverflow;
+      document.body.style.overflow = previousBodyOverflow;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inspectorOpen]);
@@ -1285,6 +1292,7 @@ export default function ReportsWorkspacePage() {
       <div className={styles.root} data-tour="risk-inbox">
         <header className="workspace-context">
           <div>
+            <span className="workspace-context-kicker">Local verification queue</span>
             <h1>Risk inbox</h1>
             <p>What requires engineering attention now, based on reports stored in this browser.</p>
           </div>
@@ -1305,15 +1313,17 @@ export default function ReportsWorkspacePage() {
             tabIndex={0}
             onKeyDown={handleWorkspaceInboxKeyDown}
           >
-            <WorkspaceSummaryStrip
-              needsAttention={needsAttentionCount}
-              awaitingEvidence={awaitingEvidenceCount}
-              blockingRequirements={blockingRequirementsCount}
-              ready={readyCount}
-              needsReaffirmation={reaffirmationCount}
-            />
+            <div className="workspace-inbox-controls" aria-hidden={inspectorOpen ? true : undefined} inert={inspectorOpen ? true : undefined}>
+              <WorkspaceSummaryStrip
+                needsAttention={needsAttentionCount}
+                awaitingEvidence={awaitingEvidenceCount}
+                blockingRequirements={blockingRequirementsCount}
+                ready={readyCount}
+                needsReaffirmation={reaffirmationCount}
+              />
 
-            <WorkspaceViewTabs activeQueue={activeQueue} queueCounts={queueCounts} onSelectQueue={setActiveQueue} />
+              <WorkspaceViewTabs activeQueue={activeQueue} queueCounts={queueCounts} onSelectQueue={setActiveQueue} />
+            </div>
 
             <div className="workspace-workbench">
               <div
@@ -1321,6 +1331,8 @@ export default function ReportsWorkspacePage() {
                 id="workspace-queue-panel"
                 role="tabpanel"
                 aria-labelledby={`workspace-view-${activeQueue}`}
+                aria-hidden={inspectorOpen ? true : undefined}
+                inert={inspectorOpen ? true : undefined}
               >
                 <div className="workspace-queue-surface">
                   <div className="workspace-queue-columns" aria-hidden="true">

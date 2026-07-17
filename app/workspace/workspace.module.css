@@ -1,6 +1,6 @@
 .root {
   min-width: 0;
-  padding: 24px clamp(16px, 2.4vw, 32px) 56px;
+  padding: 18px clamp(16px, 2.4vw, 28px) 48px;
   color: var(--color-text-primary);
   font-family: var(--type-family-application);
   overflow-x: clip;
@@ -47,7 +47,18 @@
   align-items: flex-start;
   justify-content: space-between;
   gap: 24px;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
+}
+
+.root :global(.workspace-context-kicker) {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--color-text-muted);
+  font-size: var(--type-role-micro-label-size);
+  line-height: var(--type-role-micro-label-line);
+  font-weight: var(--type-role-micro-label-weight);
+  letter-spacing: var(--type-role-micro-label-tracking);
+  text-transform: uppercase;
 }
 
 .root :global(.workspace-context h1) {
@@ -56,7 +67,7 @@
   font-size: var(--type-role-major-heading-size);
   line-height: var(--type-role-major-heading-line);
   font-weight: var(--type-role-major-heading-weight);
-  letter-spacing: -0.005em;
+  letter-spacing: -0.01em;
 }
 
 .root :global(.workspace-context p) {
@@ -100,12 +111,12 @@
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   border-block: 1px solid var(--color-border);
-  background: var(--color-surface);
+  background: var(--color-surface-inset);
 }
 
 .root :global(.workspace-summary-cell) {
   min-width: 0;
-  padding: 8px 14px;
+  padding: 8px 12px;
   display: flex;
   align-items: baseline;
   gap: 8px;
@@ -147,8 +158,8 @@
 .root :global(.workspace-view-tabs) {
   min-width: 0;
   display: flex;
-  gap: 20px;
-  margin: 10px 0 16px;
+  gap: 18px;
+  margin: 8px 0 10px;
   border-bottom: 1px solid var(--color-border);
   overflow-x: auto;
   scrollbar-width: none;
@@ -212,8 +223,10 @@
 .root :global(.workspace-workbench) {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(360px, 380px);
-  gap: 16px;
-  align-items: start;
+  gap: 0;
+  align-items: stretch;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
 }
 
 .root :global(.workspace-queue) {
@@ -222,7 +235,9 @@
 
 .root :global(.workspace-queue-surface) {
   min-width: 0;
-  border: 1px solid var(--color-border);
+  height: 100%;
+  border: 0;
+  border-right: 1px solid var(--color-border);
   background: var(--color-surface);
   overflow: hidden;
 }
@@ -230,13 +245,13 @@
 .root :global(.workspace-queue-columns),
 .root :global(.workspace-row) {
   display: grid;
-  grid-template-columns: minmax(0, .8fr) minmax(0, 1.75fr) minmax(0, 1.4fr) minmax(0, 1.15fr) minmax(0, .8fr) minmax(0, .9fr);
-  column-gap: 12px;
+  grid-template-columns: minmax(72px, .72fr) minmax(150px, 1.7fr) minmax(120px, 1.25fr) minmax(112px, 1.1fr) minmax(76px, .72fr) minmax(80px, .78fr);
+  column-gap: 10px;
 }
 
 .root :global(.workspace-queue-columns) {
-  min-height: 30px;
-  padding: 7px 12px 6px 14px;
+  min-height: 29px;
+  padding: 7px 11px 5px 12px;
   border-bottom: 1px solid var(--color-border);
   background: var(--color-surface-inset);
   color: var(--color-text-muted);
@@ -256,8 +271,8 @@
 }
 
 .root :global(.workspace-queue-group-heading) {
-  min-height: 31px;
-  padding: 7px 12px;
+  min-height: 30px;
+  padding: 6px 11px;
   border-bottom: 1px solid var(--color-border);
   display: flex;
   align-items: center;
@@ -284,7 +299,7 @@
 
 .root :global(.workspace-queue-group-desc) {
   margin: 0;
-  padding: 5px 12px 7px;
+  padding: 4px 11px 6px;
   border-bottom: 1px solid var(--color-border);
   background: var(--color-surface-raised);
   color: var(--color-text-muted);
@@ -295,8 +310,8 @@
 
 .root :global(.workspace-row) {
   position: relative;
-  min-height: 58px;
-  padding: 9px 12px 9px 12px;
+  min-height: 56px;
+  padding: 8px 11px 8px 10px;
   border-left: 2px solid transparent;
   border-bottom: 1px solid var(--color-border);
   align-items: start;
@@ -355,7 +370,7 @@
   line-height: var(--type-role-support-line);
   font-weight: var(--type-role-support-weight);
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 1;
   overflow-wrap: anywhere;
 }
 
@@ -384,7 +399,7 @@
   max-width: 100%;
   padding: 2px 6px;
   border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-xs);
+  border-radius: 2px;
   display: inline-flex;
   color: var(--color-text-secondary);
   font-size: var(--type-role-micro-label-size);
@@ -448,6 +463,16 @@
   gap: 1px;
 }
 
+.root :global(.workspace-row-next-action) {
+  display: none;
+  min-width: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--type-role-support-size);
+  line-height: var(--type-role-support-line);
+  font-weight: var(--type-role-support-weight);
+  overflow-wrap: anywhere;
+}
+
 .root :global(.workspace-queue-empty) {
   margin: 0;
   padding: 14px 12px;
@@ -459,10 +484,10 @@
 
 .root :global(.workspace-inspector) {
   position: sticky;
-  top: 68px;
+  top: 52px;
   align-self: start;
-  max-height: calc(100dvh - 84px);
-  border: 1px solid var(--color-border);
+  max-height: calc(100dvh - 68px);
+  border: 0;
   display: flex;
   flex-direction: column;
   background: var(--color-surface-raised);
@@ -470,8 +495,8 @@
 }
 
 .root :global(.workspace-inspector-topbar) {
-  min-height: 40px;
-  padding: 8px 12px;
+  min-height: 36px;
+  padding: 7px 12px;
   border-bottom: 1px solid var(--color-border);
   display: flex;
   align-items: center;
@@ -525,9 +550,9 @@
 .root :global(.workspace-inspector-scroll) {
   flex: 1 1 auto;
   min-height: 0;
-  padding: 14px;
+  padding: 13px;
   display: grid;
-  gap: 14px;
+  gap: 12px;
   overflow-y: auto;
   scrollbar-width: thin;
 }
@@ -535,9 +560,9 @@
 .root :global(.workspace-inspector-headline h2) {
   margin: 0;
   color: var(--color-text-primary);
-  font-size: var(--type-role-major-heading-size);
-  line-height: var(--type-role-major-heading-line);
-  font-weight: var(--type-role-major-heading-weight);
+  font-size: var(--type-role-section-heading-size);
+  line-height: var(--type-role-section-heading-line);
+  font-weight: var(--type-role-section-heading-weight);
   overflow-wrap: anywhere;
 }
 
@@ -621,7 +646,7 @@
 }
 
 .root :global(.workspace-inspector-block) {
-  padding-top: 12px;
+  padding-top: 10px;
   border-top: 1px solid var(--color-border);
   display: grid;
   gap: 7px;
@@ -804,7 +829,7 @@
 
 .root :global(.workspace-inspector-actions) {
   flex: 0 0 auto;
-  padding: 12px 14px;
+  padding: 10px 13px;
   border-top: 1px solid var(--color-border);
   display: flex;
   flex-wrap: wrap;
@@ -818,7 +843,7 @@
   min-height: 36px;
   padding: 0 11px;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-control);
+  border-radius: var(--radius-xs);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -942,9 +967,35 @@
   border-bottom: 0;
 }
 
+/* Compact desktop retains the approved persistent inspector while reserving
+   enough queue width for an aligned five-field working ledger. Owner remains
+   available in the selected record rather than becoming an unusable column. */
+@media (min-width: 1180px) and (max-width: 1279px) {
+  .root :global(.workspace-workbench) {
+    grid-template-columns: minmax(0, 1fr) minmax(332px, 344px);
+  }
+
+  .root :global(.workspace-queue-columns),
+  .root :global(.workspace-row) {
+    grid-template-columns: minmax(70px, .68fr) minmax(142px, 1.55fr) minmax(108px, 1.08fr) minmax(104px, 1fr) minmax(78px, .72fr);
+    column-gap: 8px;
+  }
+
+  .root :global(.workspace-queue-columns span:nth-child(5)),
+  .root :global(.workspace-row-owner) {
+    display: none;
+  }
+}
+
 @media (max-width: 1179px) {
   .root :global(.workspace-workbench) {
     grid-template-columns: minmax(0, 1fr);
+    border: 0;
+    background: transparent;
+  }
+
+  .root :global(.workspace-queue-surface) {
+    border: 1px solid var(--color-border);
   }
 
   .root :global(.workspace-inspector) {
@@ -1035,6 +1086,7 @@
       "state recommendation"
       "identity identity"
       "requirements requirements"
+      "next-action next-action"
       "owner updated";
     gap: 7px 12px;
   }
@@ -1043,6 +1095,7 @@
   .root :global(.workspace-row-recommendation) { grid-area: recommendation; text-align: right; }
   .root :global(.workspace-row-identity) { grid-area: identity; }
   .root :global(.workspace-row-requirements) { grid-area: requirements; }
+  .root :global(.workspace-row-next-action) { display: block; grid-area: next-action; }
   .root :global(.workspace-row-owner) { grid-area: owner; }
   .root :global(.workspace-row-updated) { grid-area: updated; text-align: right; }
 
@@ -1063,9 +1116,22 @@
     text-transform: uppercase;
   }
 
-  .root :global(.workspace-row-identity::before),
-  .root :global(.workspace-row-requirements::before) {
-    display: none !important;
+  .root :global(.workspace-risk-text) {
+    display: block;
+    margin-top: 5px;
+  }
+
+  .root :global(.workspace-risk-text::before) {
+    content: "Risk / urgency";
+    display: block;
+    margin-bottom: 2px;
+    color: var(--color-text-muted);
+    font-family: var(--type-family-application);
+    font-size: var(--type-role-micro-label-size);
+    line-height: var(--type-role-micro-label-line);
+    font-weight: var(--type-role-micro-label-weight);
+    letter-spacing: var(--type-role-micro-label-tracking);
+    text-transform: uppercase;
   }
 
   .root :global(.workspace-inspector) {

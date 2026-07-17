@@ -1,5 +1,7 @@
 # LVOS v1.0 implementation roadmap
 
+> **Current visual-convergence status — 17 July 2026:** LVOS v1.0 remains APPROVED AND CLOSED. VC-1 Workspace and Command-Centre Refinement is APPROVED AND COMPLETE following final VC-1C review. VC-2 — Case File and Cross-Route Refinement is next. Subsequent work remains refinement within LVOS v1.0, not an architectural reset.
+
 **Status:** fixed implementation sequence derived from [LVOS v1.0](./LVOS_V1.md) and the [current-state audit](./LVOS_CURRENT_STATE_AUDIT.md).  
 **Rule:** each milestone has exclusive ownership of its listed audit findings and must be implementable, validated, committed and merged independently. Changing ownership or order requires an explicit governance decision.
 

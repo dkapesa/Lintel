@@ -299,6 +299,8 @@ docs/
 
 ## Roadmap
 
+The LVOS v1.0 programme remains APPROVED AND CLOSED. VC-1 Workspace and Command-Centre Refinement is APPROVED AND COMPLETE after final VC-1C review. VC-2 — Case File and Cross-Route Refinement is next; subsequent visual work continues as refinement within LVOS rather than an architectural reset.
+
 The current consolidation programme is:
 
 1. Typography Proof and Core Type System

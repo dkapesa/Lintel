@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTheme } from "./theme-provider";
 
 const NAV_LINKS = [
+  { href: "#case-file", label: "Product" },
   { href: "/report?demo=1", label: "Sample report" },
   { href: "/workspace", label: "Workspace" },
   { href: "/docs/security-model.md", label: "Security model" },

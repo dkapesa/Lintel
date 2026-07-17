@@ -50,3 +50,25 @@ A milestone is not complete merely because it builds or works. It must have:
 - [ ] Unchanged product semantics, data continuity and preserved interactions.
 - [ ] Browser validation of representative states.
 - [ ] Passing TypeScript check and production build.
+
+## F. LVOS-6 final approval record
+
+The reusable checklist above remains unchanged for future milestones. This completed record applies specifically to **LVOS-6 — Website and Product Continuity**.
+
+- [x] Approved layer: normative public website movements using the shared Archetype C verification case.
+- [x] Scope remained bounded to `/`, landing navigation/footer, public product exhibits and continuity documentation.
+- [x] `/report` changes on the branch were treated as corrective LVOS-5 alignment changes, not new LVOS-6 scope.
+- [x] Existing page sequence, wording, canonical sample data, interactions and responsive composition were preserved.
+- [x] The seven normative website movements remain represented; Movement 6 is intentionally carried within Movement 4 as the accepted sequence interpretation.
+- [x] Website and application use the same canonical report identity, finding/evidence/contract relationships, terminology, trace states, status grammar and Human Decision state.
+- [x] B1 passed: Risk, Requirements and Conditions remain visible and contained at 1180px and 1024px in dark and light.
+- [x] B2 passed: the four product-section headings compute at weight 550 and no public-website weight exceeds 600.
+- [x] B3 passed: the hero is the sole elevated product frame; finding, contract and decision frames have no light-theme shadow; open and pending trace states are neutral; the pending decision diamond has no red halo.
+- [x] Exactly three approved Newsreader moments remain and no text is below 10px.
+- [x] Dark/light verification passed at 1440px, 1180px, 1024px and 390px with identical geometry and no page-level horizontal overflow.
+- [x] Mobile navigation, Escape/focus return and theme controls remain functional.
+- [x] `/report?demo=1` and `/workspace` remain operational with no new console errors.
+- [x] No motion, animation, component, dependency, route, data or product-functionality scope was introduced.
+- [x] `git diff --check`, TypeScript and the production build passed.
+- [x] Exit record, typography adoption decision and AU-11 closure are recorded.
+- [x] Final verdict: **APPROVED**; no LVOS-6 blocker remains.

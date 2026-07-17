@@ -405,11 +405,11 @@ html.theme-transitioning :where(.fetch-diff-button, .generate-button, .history-d
 }
 
 /* Tabs, navigation, and selectable rows share one interaction language */
-html.theme-transitioning :where(.app-shell .nav-item, .app-shell .report-tab, .app-shell .workspace-queue-tab, .app-shell .workspace-inbox-card, .app-shell .finding--selectable) {
+html.theme-transitioning :where(.app-shell .nav-item, .app-shell .workspace-queue-tab, .app-shell .workspace-inbox-card, .app-shell .finding--selectable) {
   transition: color var(--transition-base), background-color var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base);
 }
 
-:where(.app-shell .report-tab--active, .app-shell .workspace-queue-tab--active) {
+:where(.app-shell .workspace-queue-tab--active) {
   border-color: color-mix(in srgb, var(--color-accent) 42%, transparent);
   box-shadow: var(--shadow-selected);
 }
@@ -485,7 +485,7 @@ html.theme-transitioning :where(.app-shell .nav-item, .app-shell .report-tab, .a
     min-width: 0;
   }
 
-  :where(.report-tabs, .workspace-queue-tabs) {
+  :where(.workspace-queue-tabs) {
     max-width: 100%;
     overflow-x: auto;
     overscroll-behavior-inline: contain;
@@ -500,7 +500,7 @@ html.theme-transitioning :where(.app-shell .nav-item, .app-shell .report-tab, .a
     --space-section: 36px;
   }
 
-  :where(.report-tabs, .workspace-queue-tabs) {
+  :where(.workspace-queue-tabs) {
     padding-bottom: var(--space-2);
   }
 

@@ -146,12 +146,23 @@ export default function Home() {
             </div>
 
             <div
+              id="case-file"
               className="lp-frame lp-frame--hero"
               role="img"
               aria-label={`Sample Lintel Case File for ${report.pr.repository} pull request ${report.pr.number}, ${report.pr.title}. Run ${run.runId}. The verification trace shows change and observation satisfied, evidence and requirement partial, and human decision open. Lintel recommends tests required with medium risk ${report.verdict.riskScore} out of 100, ${openBlockingClauses} blocking requirements open, and ${openConditions} report conditions open.`}
             >
-              <FrameHeader label="Case file / verification ledger" />
-              <div className="lp-case-identity" aria-hidden="true">
+              <FrameHeader label="Case File / verification dossier" />
+              <div className="lp-case-body" aria-hidden="true">
+                <aside className="lp-case-outline">
+                  <span className="lp-ui-label">Case File</span>
+                  <span><code>01</code> What changed</span>
+                  <span><code>02</code> What Lintel observed</span>
+                  <span><code>03</code> Uncertain or missing</span>
+                  <span><code>04</code> Merge Contract</span>
+                  <span><code>05</code> Human decision</span>
+                </aside>
+                <div className="lp-case-main">
+              <div className="lp-case-identity">
                 <div>
                   <span className="lp-ui-label">Report identity</span>
                   <code>{run.runId}</code>
@@ -177,6 +188,8 @@ export default function Home() {
                   <div><dt>Requirements</dt><dd><strong>{openBlockingClauses}</strong><span>blocking open</span></dd></div>
                   <div><dt>Conditions</dt><dd><strong>{openConditions}</strong><span>open</span></dd></div>
                 </dl>
+              </div>
+                </div>
               </div>
             </div>
           </div>
@@ -334,9 +347,9 @@ export default function Home() {
                 <div><dt>Timestamp</dt><dd>Not recorded</dd></div>
                 <div><dt>Recommendation alignment</dt><dd>No decision to compare</dd></div>
               </dl>
-              <span className="lp-static-affordance">Record decision in the sample report</span>
             </div>
           </div>
+          <Link className="lp-decision-report-link" href="/report?demo=1">Open the sample report to review the decision ledger <span aria-hidden="true">→</span></Link>
         </section>
 
         <section className="lp-final" aria-labelledby="lp-final-title">

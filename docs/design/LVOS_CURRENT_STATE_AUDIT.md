@@ -68,6 +68,7 @@ The audit table above remains the original repository evidence recorded on 15 Ju
 | AU-09 — Team | Closed | LVOS-4 — Administrative Surfaces | 16 July 2026 | `/team` is approved as Archetype D. Responsibility, repository, ownership and activity evidence use the shared administrative grammar while the route remains a local responsibility workspace rather than authenticated collaboration. |
 | AU-10 — Settings and policies | Closed | LVOS-4 — Administrative Surfaces | 16 July 2026 | `/settings` and `/review-policies` are approved as Archetype D. Settings remain read-only where configuration does not exist, and policies remain local structured gates rather than an enterprise policy engine. |
 | AU-17 — Integration/settings-adjacent surfaces | Closed | LVOS-4 — Administrative Surfaces | 16 July 2026 | `/github-action` and `/slack-handoff` are approved as Archetype D. GitHub Action remains a non-posting blueprint and Slack Handoff remains copy/export-only; preview theatre was replaced without adding delivery capability. |
+| AU-11 — Website/application continuity | Closed | LVOS-6 — Website and Product Continuity | 17 July 2026 | `/` and `/report?demo=1` are approved as one continuous product narrative using canonical shared sample data, terminology, trace/status semantics and theme materials. The public layer retains exactly three Newsreader moments, one elevated hero frame and neutral open/pending trace states; the responsive dark/light matrix passed with no LVOS-6 blocker remaining. |
 
 ## 3. Route-by-route matrix
 

@@ -2498,7 +2498,7 @@ export default function ReportPage() {
   const [decisionSheetOpen, setDecisionSheetOpen] = useState(false);
 
   useEffect(() => {
-    const closeForShellNavigation = () => setDecisionSheetOpen(false);
+    const closeForShellNavigation = () => closeDecisionSheet({ restoreFocus: false });
     window.addEventListener(SHELL_NAVIGATION_OPEN_EVENT, closeForShellNavigation);
     return () => window.removeEventListener(SHELL_NAVIGATION_OPEN_EVENT, closeForShellNavigation);
   }, []);
@@ -2655,9 +2655,27 @@ export default function ReportPage() {
   }, [displayedReport.report]);
 
   useEffect(() => {
-    if (!decisionSheetOpen || !window.matchMedia("(max-width: 900px)").matches) return;
+    if (!decisionSheetOpen || !window.matchMedia("(max-width: 1179px)").matches) return;
     const rail = decisionRailRef.current;
     if (!rail) return;
+
+    const backgroundRegions = Array.from(document.querySelectorAll<HTMLElement>(
+      ".shell-command-bar, .shell-context-navigation, .shell-global-rail, .report-case-file [data-report-sheet-background]",
+    ));
+    const backgroundState = backgroundRegions.map((region) => ({
+      region,
+      ariaHidden: region.getAttribute("aria-hidden"),
+      inert: region.hasAttribute("inert"),
+    }));
+    backgroundRegions.forEach((region) => {
+      region.setAttribute("aria-hidden", "true");
+      region.setAttribute("inert", "");
+    });
+
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    const previousBodyOverflow = document.body.style.overflow;
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
 
     const focusable = Array.from(rail.querySelectorAll<HTMLElement>("button:not([disabled]), a[href], select:not([disabled]), textarea:not([disabled]), input:not([disabled]), details > summary"))
       .filter((element) => element.offsetParent !== null);
@@ -2686,6 +2704,13 @@ export default function ReportPage() {
     return () => {
       window.cancelAnimationFrame(focusFrame);
       document.removeEventListener("keydown", handleSheetKeyDown);
+      backgroundState.forEach(({ region, ariaHidden, inert }) => {
+        if (ariaHidden === null) region.removeAttribute("aria-hidden");
+        else region.setAttribute("aria-hidden", ariaHidden);
+        if (!inert) region.removeAttribute("inert");
+      });
+      document.documentElement.style.overflow = previousHtmlOverflow;
+      document.body.style.overflow = previousBodyOverflow;
     };
   }, [decisionSheetOpen]);
 
@@ -3406,8 +3431,15 @@ export default function ReportPage() {
     showQuickActionMessage("success", `Jumped to ${label}.`);
   }
 
+  function closeDecisionSheet({ restoreFocus = true }: { restoreFocus?: boolean } = {}) {
+    setDecisionSheetOpen(false);
+    if (restoreFocus) {
+      window.setTimeout(() => (decisionSheetReturnFocusRef.current ?? decisionSheetTriggerRef.current)?.focus(), 0);
+    }
+  }
+
   function openDecisionStudio() {
-    if (window.matchMedia("(max-width: 900px)").matches) {
+    if (window.matchMedia("(max-width: 1179px)").matches) {
       setDecisionSheetOpen(true);
       return;
     }
@@ -3682,7 +3714,7 @@ export default function ReportPage() {
     >
       <div className="main-content report-surface report-case-file" id="report">
         {quickActionsOpen && (
-          <section className="quick-actions-panel quick-actions-panel--case-file" id="report-quick-actions" aria-label="Report quick actions">
+          <section className="quick-actions-panel quick-actions-panel--case-file" id="report-quick-actions" aria-label="Report quick actions" data-report-sheet-background>
             <div className="quick-actions-header">
               <div>
                 <span className="card-kicker">QUICK ACTIONS</span>
@@ -3707,7 +3739,7 @@ export default function ReportPage() {
           </section>
         )}
 
-        <header className="case-file-header" id="overview">
+        <header className="case-file-header" id="overview" data-report-sheet-background>
           <div className="case-file-header-main">
             <span className="case-file-eyebrow">Pull request #{pr.number}</span>
             <h1>{pr.title}</h1>
@@ -3723,7 +3755,7 @@ export default function ReportPage() {
             {traceNodes.map((node, index) => (
               <div className="case-file-trace-step" key={node.label}>
                 <a className={`case-file-trace-node case-file-trace-node--${node.state}${node.decision ? " case-file-trace-node--decision" : ""}`} href={node.href} aria-label={`${node.label}: ${node.state}`} onClick={(event) => {
-                  if (node.decision && window.matchMedia("(max-width: 900px)").matches) {
+                  if (node.decision && window.matchMedia("(max-width: 1179px)").matches) {
                     event.preventDefault();
                     decisionSheetReturnFocusRef.current = event.currentTarget;
                     setDecisionSheetOpen(true);
@@ -3754,7 +3786,7 @@ export default function ReportPage() {
         </header>
 
         <div className="case-file-grid">
-          <nav className="case-file-outline" aria-label="Report dossier sections">
+          <nav className="case-file-outline" aria-label="Report dossier sections" data-report-sheet-background>
             <span className="case-file-outline-label">Case file</span>
             <div className="case-file-outline-links">
               {dossierSections.map((section, index) => (
@@ -3785,7 +3817,7 @@ export default function ReportPage() {
             </label>
           </nav>
 
-          <article className="case-file-dossier" aria-label="Merge-readiness verification dossier">
+          <article className="case-file-dossier" aria-label="Merge-readiness verification dossier" data-report-sheet-background>
             <section className="dossier-section" id="dossier-what-changed" data-dossier-section="what-changed" aria-labelledby="dossier-what-changed-title">
               <header className="dossier-section-header">
                 <span>01</span>
@@ -4087,20 +4119,24 @@ export default function ReportPage() {
             </section>
           </article>
 
-          {decisionSheetOpen && <button className="verdict-sheet-scrim" type="button" aria-label="Close decision details" onClick={() => { setDecisionSheetOpen(false); window.setTimeout(() => (decisionSheetReturnFocusRef.current ?? decisionSheetTriggerRef.current)?.focus(), 0); }} />}
+          {decisionSheetOpen && <button className="verdict-sheet-scrim" type="button" tabIndex={-1} aria-label="Close decision details" onClick={() => closeDecisionSheet()} />}
           <aside
             className={decisionSheetOpen ? "report-verdict-rail report-verdict-rail--open" : "report-verdict-rail"}
             aria-label="Merge-readiness verdict and human decision"
             aria-modal={decisionSheetOpen ? true : undefined}
+            aria-labelledby={decisionSheetOpen ? "verdict-sheet-title" : undefined}
+            aria-describedby={decisionSheetOpen ? "verdict-sheet-description" : undefined}
             role={decisionSheetOpen ? "dialog" : "complementary"}
             ref={decisionRailRef}
+            id="case-file-decision-sheet"
           >
             <div className="verdict-rail-compact">
               <div><RecommendationBadge recommendation={verdict.recommendation} /><span>{verdict.riskScore}/100 · {verdict.riskLevel}</span></div>
-              <button ref={decisionSheetTriggerRef} type="button" onClick={(event) => { decisionSheetReturnFocusRef.current = event.currentTarget; setDecisionSheetOpen(true); }}>Review decision</button>
+              <span className="verdict-rail-compact-context">{mergeContractBlockingOpen} open · {missingProofCount} missing proof</span>
+              <button ref={decisionSheetTriggerRef} type="button" aria-haspopup="dialog" aria-expanded={decisionSheetOpen} aria-controls="case-file-decision-sheet" onClick={(event) => { decisionSheetReturnFocusRef.current = event.currentTarget; setDecisionSheetOpen(true); }}>Review decision</button>
             </div>
             <div className="verdict-rail-body">
-              <div className="verdict-rail-sheet-header"><span>Decision record</span><button type="button" onClick={() => { setDecisionSheetOpen(false); window.setTimeout(() => (decisionSheetReturnFocusRef.current ?? decisionSheetTriggerRef.current)?.focus(), 0); }}>Close</button></div>
+              <div className="verdict-rail-sheet-header"><div><span id="verdict-sheet-title">Decision record</span><p id="verdict-sheet-description">Recommendation, open proof and the final Human Decision record.</p></div><button type="button" aria-label="Close decision sheet" onClick={() => closeDecisionSheet()}>Close</button></div>
               <section className="verdict-rail-recommendation">
                 <span className="card-kicker">LINTEL RECOMMENDATION</span>
                 <strong>{verdict.recommendation.replaceAll("_", " ")}</strong>

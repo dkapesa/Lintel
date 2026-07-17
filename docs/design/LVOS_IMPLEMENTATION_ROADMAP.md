@@ -3,7 +3,7 @@
 **Status:** fixed implementation sequence derived from [LVOS v1.0](./LVOS_V1.md) and the [current-state audit](./LVOS_CURRENT_STATE_AUDIT.md).  
 **Rule:** each milestone has exclusive ownership of its listed audit findings and must be implementable, validated, committed and merged independently. Changing ownership or order requires an explicit governance decision.
 
-**Current position:** LVOS-4 — Administrative Surfaces is Complete / Closed as of 16 July 2026. LVOS-5 — Case File Convergence is the next implementation milestone.
+**Current position:** LVOS-6 — Website and Product Continuity is Complete / Approved as of 17 July 2026. LVOS-7 — Cross-System Final Audit and Consolidation is the next implementation milestone. Corrective `/report` changes on the current branch remain LVOS-5 alignment work rather than LVOS-6 scope.
 
 ## Phase gating
 
@@ -22,7 +22,7 @@
 | 4 | LVOS-4 — Administrative Surfaces | AU-05, AU-08, AU-09, AU-10, AU-17 |
 | 5 | LVOS-5 — Case File Convergence | AU-07 |
 | 6 | LVOS-6 — Website and Product Continuity | AU-11 |
-| 7 | LVOS-7 — Cross-Surface Visual QA and Migration Lock | AU-04, AU-12, AU-13, AU-14, AU-15 |
+| 7 | LVOS-7 — Cross-System Final Audit and Consolidation | AU-04, AU-12, AU-13, AU-14, AU-15 |
 | 8 | V8A — Motion Constitution and Storyboard | AU-18 |
 | 9 | V8B — Motion Foundation | AU-19 |
 | 10 | V8C — Motion Tuning | AU-20 |
@@ -117,7 +117,7 @@
 
 ## LVOS-5 — Case File Convergence
 
-**Status:** Next implementation milestone.
+**Status:** Implemented — pending final independent review.
 
 - **Purpose:** refine the flagship report into the definitive Archetype C without changing product logic.
 - **User-visible outcome:** one disciplined verification dossier with a clear evidence-to-contract chain and the human decision as the heaviest record.
@@ -140,6 +140,8 @@
 
 ## LVOS-6 — Website and Product Continuity
 
+**Status:** Complete / APPROVED — 17 July 2026. AU-11 is closed; no LVOS-6 blocker remains.
+
 - **Purpose:** align the public website with the final static application without turning the milestone into motion work.
 - **User-visible outcome:** moving from `/` to `/report` feels like entering the same product shown publicly.
 - **Approved archetype or layer:** normative website movements using the same Archetype C verification case and shared system materials.
@@ -159,7 +161,9 @@
 - **Commit checkpoint:** static continuity implementation followed by a separate responsive/QA checkpoint; both production-build clean.
 - **Exit artifact:** website/application terminology-and-data parity matrix plus representative captures.
 
-## LVOS-7 — Cross-Surface Visual QA and Migration Lock
+## LVOS-7 — Cross-System Final Audit and Consolidation
+
+**Status:** Next implementation milestone.
 
 - **Purpose:** verify the complete static system, remove only superseded dialects and lock the migration before feature expansion.
 - **User-visible outcome:** every in-scope route belongs unmistakably to one product in dark/light and desktop/mobile states.

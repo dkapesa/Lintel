@@ -3,7 +3,7 @@
 **Status:** fixed implementation sequence derived from [LVOS v1.0](./LVOS_V1.md) and the [current-state audit](./LVOS_CURRENT_STATE_AUDIT.md).  
 **Rule:** each milestone has exclusive ownership of its listed audit findings and must be implementable, validated, committed and merged independently. Changing ownership or order requires an explicit governance decision.
 
-**Current position:** LVOS-6 — Website and Product Continuity is Complete / Approved as of 17 July 2026. LVOS-7 — Cross-System Final Audit and Consolidation is the next implementation milestone. Corrective `/report` changes on the current branch remain LVOS-5 alignment work rather than LVOS-6 scope.
+**Current position:** LVOS-7 — Cross-System Final Audit and Consolidation is complete and APPROVED as of 17 July 2026. The LVOS v1.0 programme is APPROVED AND CLOSED. The next programme is Visual Convergence, beginning with VC-1 Workspace and Command-Centre Refinement; motion refinement remains later work within the approved LVOS v1.0 architecture.
 
 ## Phase gating
 
@@ -117,7 +117,7 @@
 
 ## LVOS-5 — Case File Convergence
 
-**Status:** Implemented — pending final independent review.
+**Status:** Complete / APPROVED — 17 July 2026. The LVOS-7 independent route, interaction and responsive pass closes AU-07; the approved Case File remains the definitive Archetype C reference.
 
 - **Purpose:** refine the flagship report into the definitive Archetype C without changing product logic.
 - **User-visible outcome:** one disciplined verification dossier with a clear evidence-to-contract chain and the human decision as the heaviest record.
@@ -163,7 +163,9 @@
 
 ## LVOS-7 — Cross-System Final Audit and Consolidation
 
-**Status:** Next implementation milestone.
+**Status:** Complete / APPROVED — 17 July 2026. AU-04, AU-12, AU-13, AU-14 and AU-15 are closed; the LVOS v1.0 static migration lock is complete.
+
+**Closure:** The final dark/light matrix passed across all ten routes at 1440px and the representative five-route set at 1024px and 390px. `/new` typography/family drift, undersized mobile Case File controls and the final landing Merge Contract semantic-colour mismatch were corrected. The semantic-colour gate passed, proven zero-consumer dialects were removed, live compatibility ownership was retained, and no product behaviour or data changed. LVOS-7 and the LVOS v1.0 programme are complete. See [LVOS-7 final system audit](./LVOS_FINAL_SYSTEM_AUDIT.md).
 
 - **Purpose:** verify the complete static system, remove only superseded dialects and lock the migration before feature expansion.
 - **User-visible outcome:** every in-scope route belongs unmistakably to one product in dark/light and desktop/mobile states.

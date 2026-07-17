@@ -4,6 +4,8 @@
 **Repository evidence reviewed:** 15 July 2026  
 **Method:** source-led audit of all requested routes and shared visual systems. A representative browser pass was attempted, but the local Next development server could not spawn in the available sandbox; no visual conclusion depends on that unavailable preview.
 
+**Final closure update — 17 July 2026:** the historical baseline below is preserved unchanged. The completed [LVOS-7 final system audit](./LVOS_FINAL_SYSTEM_AUDIT.md) adds the previously unavailable live browser evidence, closes every remaining finding and records the final migration lock. LVOS-7 is APPROVED and LVOS v1.0 is APPROVED AND CLOSED.
+
 ## 1. Executive summary
 
 The current product is materially aligned with LVOS in semantics and strongest flagship surfaces, but not yet in system-wide composition. E7 established a credible semantic theme, shared shell, Risk Inbox workbench and Case File; W2 established a truthful public narrative. Those are foundations to consolidate, not redesign.
@@ -59,16 +61,27 @@ Each finding has one owner milestone. Route references later in this document po
 
 ### Resolution and closure register
 
-The audit table above remains the original repository evidence recorded on 15 July 2026. Closure entries below record subsequent approved implementation outcomes without deleting or rewriting that historical evidence. Findings not listed remain open under their original owning milestone.
+The audit table above remains the original repository evidence recorded on 15 July 2026. Closure entries below record subsequent approved implementation outcomes without deleting or rewriting that historical evidence. All seventeen findings are now listed as closed.
 
 | Finding | Resolution status | Resolving milestone | Approval date | Approved final route state |
 | --- | --- | --- | --- | --- |
+| AU-01 — Typography contract | Closed | LVOS-1 — Typography Proof and Core Type System | 15 July 2026 | The semantic role contract, family boundaries, 10px floor, 600 ceiling and adoption ledger are approved; LVOS-7 confirms global enforcement. |
+| AU-02 — Shell and navigation | Closed | LVOS-2 — Application Shell and Navigation | 15 July 2026 | One 56px global rail, contextual navigation layer and fixed route ownership model are approved across the application. |
+| AU-03 — Responsive shell transformation | Closed | LVOS-2 — Application Shell and Navigation | 15 July 2026 | Desktop, intermediate drawer and mobile drawer transformations use the approved command-bar and navigation dimensions. |
+| AU-04 — Legacy CSS and dialects | Closed | LVOS-7 — Cross-System Final Audit and Consolidation | 17 July 2026 | Proven zero-consumer shell, Workspace, report and administrative generations were removed. Live or uncertain compatibility ownership was retained and documented. |
 | AU-05 — Records, lists and tables | Closed | LVOS-4 — Administrative Surfaces | 16 July 2026 | All six administrative routes use the approved shared grammar for connected summaries where applicable, administrative groups, aligned records and tables, disclosures, empty states and labelled mobile transformations. |
+| AU-06 — Workspace command centre | Closed | LVOS-3 — Workspace Command Centre | 15 July 2026 | `/workspace` is approved as Archetype A with sibling views, aligned queue records, fixed inspector order and deliberate compact transformation. |
+| AU-07 — Case File convergence | Closed | LVOS-5 — Case File Convergence, verified by LVOS-7 | 17 July 2026 | `/report` is approved as the definitive Archetype C. Final dark/light, responsive, trace, mobile-control and decision-sheet checks pass without product-logic changes. |
 | AU-08 — Review operations | Closed | LVOS-4 — Administrative Surfaces | 16 July 2026 | `/review-operations` is approved as Archetype E for genuine local report-derived relationships and chronology. The generic KPI dashboard, percentage bars and decorative chart composition are removed; no hosted organisation analytics were introduced. |
 | AU-09 — Team | Closed | LVOS-4 — Administrative Surfaces | 16 July 2026 | `/team` is approved as Archetype D. Responsibility, repository, ownership and activity evidence use the shared administrative grammar while the route remains a local responsibility workspace rather than authenticated collaboration. |
 | AU-10 — Settings and policies | Closed | LVOS-4 — Administrative Surfaces | 16 July 2026 | `/settings` and `/review-policies` are approved as Archetype D. Settings remain read-only where configuration does not exist, and policies remain local structured gates rather than an enterprise policy engine. |
 | AU-17 — Integration/settings-adjacent surfaces | Closed | LVOS-4 — Administrative Surfaces | 16 July 2026 | `/github-action` and `/slack-handoff` are approved as Archetype D. GitHub Action remains a non-posting blueprint and Slack Handoff remains copy/export-only; preview theatre was replaced without adding delivery capability. |
 | AU-11 — Website/application continuity | Closed | LVOS-6 — Website and Product Continuity | 17 July 2026 | `/` and `/report?demo=1` are approved as one continuous product narrative using canonical shared sample data, terminology, trace/status semantics and theme materials. The public layer retains exactly three Newsreader moments, one elevated hero frame and neutral open/pending trace states; the responsive dark/light matrix passed with no LVOS-6 blocker remaining. |
+| AU-12 — Inspectors, drawers and sheets | Closed | LVOS-7 — Cross-System Final Audit and Consolidation | 17 July 2026 | Shell drawer and Case File decision sheet focus, Escape, inert/scroll handling and restoration pass; Workspace compact-inspector mechanics remain source-verified and live. |
+| AU-13 — Theme and materials | Closed | LVOS-7 — Cross-System Final Audit and Consolidation | 17 July 2026 | Dark connected planes and light warm paper preserve structural parity. Ordinary surfaces remain rule-led; shadows are limited to real overlays and the approved public elevation. |
+| AU-14 — Spacing and density | Closed | LVOS-7 — Cross-System Final Audit and Consolidation | 17 July 2026 | The final route matrix has no clipped proof or page overflow; current route modules and shared primitives own deliberate responsive spacing and control dimensions. |
+| AU-15 — Semantic colour | Closed | LVOS-7 — Cross-System Final Audit and Consolidation | 17 July 2026 | The final landing Merge Contract mismatch is corrected: blocking-open uses warning/amber, generic open/unknown/pending states use neutral semantic text, and danger remains reserved for verified harm. Website and Case File semantics now agree, with no route-local decorative colour system remaining. |
+| AU-16 — Icons | Closed | LVOS-2 — Application Shell and Navigation | 15 July 2026 | The geometric line-icon language is retained on the fixed global destinations and current contextual ownership model. |
 
 ## 3. Route-by-route matrix
 

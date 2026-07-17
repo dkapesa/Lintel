@@ -277,7 +277,7 @@ export default function Home() {
               </dl>
             </div>
             <article className="lp-clause lp-clause--expanded" aria-hidden="true">
-              <header><code>C1</code><strong>{expandedClause.statement}</strong><Status tone="danger">OPEN · BLOCKING</Status></header>
+              <header><code>C1</code><strong>{expandedClause.statement}</strong><Status tone="warning">OPEN · BLOCKING</Status></header>
               <p>{expandedClause.rationale}</p>
               <dl>
                 <div><dt>Clears with</dt><dd>{expandedClause.evidenceRequired}</dd></div>

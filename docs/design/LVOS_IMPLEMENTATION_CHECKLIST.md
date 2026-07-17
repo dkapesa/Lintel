@@ -72,3 +72,28 @@ The reusable checklist above remains unchanged for future milestones. This compl
 - [x] `git diff --check`, TypeScript and the production build passed.
 - [x] Exit record, typography adoption decision and AU-11 closure are recorded.
 - [x] Final verdict: **APPROVED**; no LVOS-6 blocker remains.
+
+## G. LVOS-7 final approval record
+
+This completed record applies specifically to **LVOS-7 — Cross-System Final Audit and Consolidation**.
+
+- [x] LVOS v1.0 remained normative; no archetype, visual direction, motion, dependency or product behaviour was introduced.
+- [x] All ten in-scope routes passed the 1440px dark/light availability, typography, navigation, overflow and console matrix.
+- [x] `/`, `/workspace`, `/report?demo=1`, `/settings` and `/review-operations` passed the 1024px and 390px dark/light matrices.
+- [x] No rendered text is below 10px and no rendered weight is above 600.
+- [x] Newsreader appears only in the three approved public moments; application routes use no serif.
+- [x] Mono candidates are limited to genuine technical values; `/new` decorative mono and legacy title/weight rules were corrected.
+- [x] Verification trace wording remains visible and consistent through Human decision.
+- [x] No page-level horizontal overflow or clipped meaningful content remains.
+- [x] Mobile Case File buttons, selects, disclosures and labelled selection controls meet the 44px interaction floor after correction.
+- [x] Shell drawer, Case File decision sheet and landing menu Escape/focus restoration passed; source inspection confirms trapping, inert/scroll handling and restoration mechanics.
+- [x] No duplicate React-key warning or application console error appeared.
+- [x] Proven zero-consumer shell, Workspace, report and administrative selector generations were removed; live and uncertain compatibility ownership was retained.
+- [x] Dark/light hierarchy and material parity passed without gradients, glows or decorative topology.
+- [x] The landing Merge Contract semantic-colour mismatch is corrected: blocking-open uses warning, generic open uses neutral text, and danger remains reserved for verified harm.
+- [x] Website and `/report?demo=1` Merge Contract semantics agree; the final semantic-colour gate passed in dark and light.
+- [x] Product data, report generation, persistence, actors, metrics and decisions remain unchanged.
+- [x] `git diff --check`, TypeScript and the production build passed.
+- [x] The final audit, closure register, roadmap, typography ledger and documentation index were updated.
+- [x] Final LVOS-7 verdict: **APPROVED**; no architectural or system blocker remains.
+- [x] Final LVOS v1.0 verdict: **APPROVED AND CLOSED**; the next programme is Visual Convergence, beginning with VC-1 Workspace and Command-Centre Refinement.

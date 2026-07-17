@@ -337,7 +337,7 @@ body {
 /* Structural kickers and overlines are interface copy: Geist Sans,
    quiet weight. Monospace is reserved for genuine technical
    metadata (identifiers, hashes, counts, timestamps below). */
-:where(.card-kicker, .header-overline, .eyebrow, .workspace-preview-kicker, .workspace-section-kicker, .finding-detail-panel h4, .report-local-review-state label, .review-action-card-header span, .review-action-meta span) {
+:where(.card-kicker, .header-overline, .eyebrow, .report-local-review-state label, .review-action-card-header span, .review-action-meta span) {
   font-family: var(--font-sans);
   font-size: var(--type-label);
   font-weight: var(--type-label-weight);
@@ -345,16 +345,16 @@ body {
   text-transform: uppercase;
 }
 
-:where(.report-meta, .workspace-report-repository, .workspace-preview-repo, .history-repository, .file-row code, .finding code, .finding-detail-grid code, .merge-summary-preview, .action-yaml-preview, .slack-handoff-preview, time) {
+:where(.report-meta, .history-repository, .file-row code, .finding code, .merge-summary-preview, time) {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
 
-:where(.score-row strong, .workspace-preview-risk strong, .workspace-triage-strip strong, .evidence-summary-grid strong, .surface-summary-grid strong, .action-progress-grid strong, .timeline-summary-grid strong) {
+:where(.evidence-summary-grid strong, .surface-summary-grid strong, .action-progress-grid strong, .timeline-summary-grid strong) {
   font-variant-numeric: tabular-nums;
 }
 
-:where(.file-row code, .finding-detail-grid code, .workspace-report-repository, .workspace-preview-repo, .report-meta) {
+:where(.file-row code, .report-meta) {
   overflow-wrap: anywhere;
 }
 
@@ -396,27 +396,12 @@ html.theme-transitioning :where(.fetch-diff-button, .generate-button, .history-d
 }
 
 /* Shared dark controls */
-:where(.app-shell .copy-summary-button, .app-shell .download-markdown-button, .app-shell .copy-conditions-button, .app-shell .icon-button, .app-shell .workspace-primary-action, .app-shell .workspace-secondary-action, .app-shell .workspace-header-actions button, .app-shell .workspace-row-actions button, .app-shell .workspace-preview-actions button, .app-shell .report-decision-panel-actions button, .app-shell .report-decision-panel-actions a, .app-shell .report-export-grid button, .app-shell .report-export-grid a, .app-shell .quick-actions-grid button, .app-shell .settings-doc-links a) {
+:where(.app-shell .copy-summary-button, .app-shell .download-markdown-button, .app-shell .copy-conditions-button, .app-shell .icon-button, .app-shell .report-export-grid button, .app-shell .report-export-grid a, .app-shell .quick-actions-grid button, .app-shell .settings-doc-links a) {
   border-radius: var(--radius-control);
 }
 
-:where(.app-shell .copy-summary-button, .app-shell .download-markdown-button, .app-shell .copy-conditions-button, .app-shell .icon-button, .app-shell .workspace-secondary-action, .app-shell .workspace-header-actions button, .app-shell .workspace-row-actions button, .app-shell .workspace-preview-actions button, .app-shell .report-decision-panel-actions button, .app-shell .report-decision-panel-actions a, .app-shell .report-export-grid button, .app-shell .report-export-grid a, .app-shell .quick-actions-grid button, .app-shell .settings-doc-links a):hover:not(:disabled) {
+:where(.app-shell .copy-summary-button, .app-shell .download-markdown-button, .app-shell .copy-conditions-button, .app-shell .icon-button, .app-shell .report-export-grid button, .app-shell .report-export-grid a, .app-shell .quick-actions-grid button, .app-shell .settings-doc-links a):hover:not(:disabled) {
   border-color: var(--color-border-strong);
-}
-
-/* Tabs, navigation, and selectable rows share one interaction language */
-html.theme-transitioning :where(.app-shell .nav-item, .app-shell .workspace-queue-tab, .app-shell .workspace-inbox-card, .app-shell .finding--selectable) {
-  transition: color var(--transition-base), background-color var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base);
-}
-
-:where(.app-shell .workspace-queue-tab--active) {
-  border-color: color-mix(in srgb, var(--color-accent) 42%, transparent);
-  box-shadow: var(--shadow-selected);
-}
-
-:where(.app-shell .workspace-inbox-card--selected, .app-shell .finding--selected) {
-  border-color: color-mix(in srgb, var(--color-accent) 45%, transparent);
-  box-shadow: var(--shadow-selected);
 }
 
 /* Cards, panels, inspector surfaces, and code surfaces */
@@ -432,21 +417,17 @@ html.theme-transitioning :where(.app-shell .nav-item, .app-shell .workspace-queu
   border-radius: var(--radius-large);
 }
 
-:where(.app-shell .score-card, .app-shell .summary-card, .app-shell .review-card, .app-shell .suggested-test, .app-shell .operational-panel, .app-shell .reviewer-focus-item, .app-shell .ownership-cue-grid article, .app-shell .report-merge-contract, .app-shell .review-action-card, .app-shell .workspace-inbox-card, .app-shell .workspace-triage-card) {
+:where(.app-shell .review-card, .app-shell .operational-panel, .app-shell .reviewer-focus-item, .app-shell .ownership-cue-grid article, .app-shell .report-merge-contract, .app-shell .review-action-card) {
   border-color: var(--color-border);
   border-radius: var(--radius-card);
 }
 
-:where(.app-shell .finding-detail-panel, .app-shell .workspace-preview, .app-shell .report-decision-panel, .app-shell .quick-actions-panel, .app-shell .workspace-table-wrap) {
+:where(.app-shell .quick-actions-panel) {
   border-color: var(--color-border);
   border-radius: var(--radius-panel);
 }
 
-:where(.app-shell .finding-detail-panel, .app-shell .report-decision-panel) {
-  box-shadow: var(--shadow-panel);
-}
-
-:where(.app-shell .merge-summary-preview, .app-shell .action-yaml-preview, .app-shell .slack-handoff-preview) {
+:where(.app-shell .merge-summary-preview) {
   border-radius: var(--radius-card);
   font-family: var(--font-mono);
 }
@@ -485,12 +466,6 @@ html.theme-transitioning :where(.app-shell .nav-item, .app-shell .workspace-queu
     min-width: 0;
   }
 
-  :where(.workspace-queue-tabs) {
-    max-width: 100%;
-    overflow-x: auto;
-    overscroll-behavior-inline: contain;
-    scrollbar-width: thin;
-  }
 }
 
 @media (max-width: 680px) {
@@ -500,13 +475,6 @@ html.theme-transitioning :where(.app-shell .nav-item, .app-shell .workspace-queu
     --space-section: 36px;
   }
 
-  :where(.workspace-queue-tabs) {
-    padding-bottom: var(--space-2);
-  }
-
-  :where(.app-shell .workspace-inbox-card, .app-shell .report-decision-panel, .app-shell .finding-detail-panel) {
-    border-radius: var(--radius-card);
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {

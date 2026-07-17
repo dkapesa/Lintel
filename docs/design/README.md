@@ -17,15 +17,16 @@ Implementation convenience never overrides LVOS. Audits and roadmaps explain cur
 ## Implementation artifacts
 
 - [LVOS typography proof](./LVOS_TYPOGRAPHY_PROOF.md) — LVOS-1 role contract, internal proof and approval checklist.
-- [LVOS typography adoption ledger](./LVOS_TYPOGRAPHY_ADOPTION_LEDGER.md) — staged ownership and approval record; LVOS-6 website typography and continuity adoption is approved while LVOS-5 final independent review and LVOS-7 remain pending.
+- [LVOS typography adoption ledger](./LVOS_TYPOGRAPHY_ADOPTION_LEDGER.md) — completed staged ownership and approval record; LVOS-7 closes the final route and shared-system migration lock.
 - [LVOS shell route map](./LVOS_SHELL_ROUTE_MAP.md) — LVOS-2 route ownership, contextual navigation, command-bar and responsive shell contract.
-- [LVOS Workspace Command Centre](./LVOS_WORKSPACE_COMMAND_CENTRE.md) — LVOS-3 Archetype A queue, inspector, responsive and local-state implementation record; pending visual review.
+- [LVOS Workspace Command Centre](./LVOS_WORKSPACE_COMMAND_CENTRE.md) — LVOS-3 approved Archetype A queue, inspector, responsive and local-state implementation record.
 
 - [LVOS administrative surfaces](./LVOS_ADMINISTRATIVE_SURFACES.md) — LVOS-4 approved and closed on 16 July 2026 across the five Archetype D routes and the Archetype E Review Operations route.
-- [LVOS Case File convergence](./LVOS_CASE_FILE_CONVERGENCE.md) — LVOS-5B responsive implementation record; pending final independent review.
+- [LVOS Case File convergence](./LVOS_CASE_FILE_CONVERGENCE.md) — LVOS-5B responsive implementation record; final independent review passed under LVOS-7.
 - [LVOS website and product continuity](./LVOS_WEBSITE_PRODUCT_CONTINUITY.md) — LVOS-6 final APPROVED exit record, canonical continuity matrix and AU-11 closure evidence.
+- [LVOS final system audit](./LVOS_FINAL_SYSTEM_AUDIT.md) — LVOS-7 final APPROVED route/theme/width matrix, correction record, stale-system removal log and formal migration-lock decision.
 
-LVOS-6 — Website and Product Continuity is complete and approved. LVOS-7 — Cross-System Final Audit and Consolidation is next. The authority order above remains unchanged.
+LVOS-7 — Cross-System Final Audit and Consolidation is complete and APPROVED. LVOS v1.0 is APPROVED AND CLOSED. The next programme is Visual Convergence, beginning with VC-1 Workspace and Command-Centre Refinement; subsequent visual and motion work remains within the approved architecture, not another architectural reset. The authority order above remains unchanged.
 
 ## Use and versioning
 

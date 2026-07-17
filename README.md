@@ -310,6 +310,8 @@ The current consolidation programme is:
 7. Cross-Surface Visual QA and Migration Lock
 8. Motion Constitution, Foundation and Tuning
 
-Major Phase 4 and Phase 5 capability expansion resumes after the static migration lock unless an explicit bounded exception is approved.
+The LVOS-1 through LVOS-7 static consolidation sequence is complete and approved as of 17 July 2026. LVOS v1.0 is APPROVED AND CLOSED. See the [LVOS final system audit](docs/design/LVOS_FINAL_SYSTEM_AUDIT.md) for the final route matrix, corrections, removal log and migration-lock decision.
+
+The next programme is Visual Convergence, beginning with VC-1 Workspace and Command-Centre Refinement. Major Phase 4 and Phase 5 capability expansion may resume after the completed static migration lock unless an explicit bounded exception or later governance decision changes that order. Subsequent visual and motion work refines LVOS v1.0; it does not reopen the architecture.
 
 See the [LVOS implementation roadmap](docs/design/LVOS_IMPLEMENTATION_ROADMAP.md) for scope, dependencies and acceptance criteria.

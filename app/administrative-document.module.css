@@ -941,12 +941,14 @@
 .operationsBlockerTable th:nth-child(5) { width: 19%; }
 .operationsBlockerTable th:nth-child(6) { width: 15%; }
 
-.operationsRepositoryTable th:first-child { width: 26%; }
-.operationsRepositoryTable th:nth-child(2) { width: 8%; }
-.operationsRepositoryTable th:nth-child(3) { width: 13%; }
-.operationsRepositoryTable th:nth-child(4) { width: 16%; }
-.operationsRepositoryTable th:nth-child(5) { width: 19%; }
-.operationsRepositoryTable th:nth-child(6) { width: 18%; }
+.operationsRepositoryTable th:first-child { width: 22%; }
+.operationsRepositoryTable th:nth-child(2) { width: 7%; }
+.operationsRepositoryTable th:nth-child(3) { width: 10%; }
+.operationsRepositoryTable th:nth-child(4) { width: 14%; }
+.operationsRepositoryTable th:nth-child(5) { width: 8%; }
+.operationsRepositoryTable th:nth-child(6) { width: 14%; }
+.operationsRepositoryTable th:nth-child(7) { width: 15%; }
+.operationsRepositoryTable th:nth-child(8) { width: 10%; }
 
 .statePositive,
 .stateAttention,
@@ -1051,8 +1053,8 @@
 @media (min-width: 900px) and (max-width: 1179px) {
   .operationsBlockerTable th:nth-child(3),
   .operationsBlockerTable td:nth-child(3),
-  .operationsRepositoryTable th:nth-child(6),
-  .operationsRepositoryTable td:nth-child(6) { display: none; }
+  .operationsRepositoryTable th:nth-child(8),
+  .operationsRepositoryTable td:nth-child(8) { display: none; }
 
   .operationsBlockerTable th:first-child { width: 39%; }
   .operationsBlockerTable th:nth-child(2) { width: 11%; }
@@ -1060,11 +1062,13 @@
   .operationsBlockerTable th:nth-child(5) { width: 21%; }
   .operationsBlockerTable th:nth-child(6) { width: 15%; }
 
-  .operationsRepositoryTable th:first-child { width: 29%; }
-  .operationsRepositoryTable th:nth-child(2) { width: 9%; }
-  .operationsRepositoryTable th:nth-child(3) { width: 14%; }
-  .operationsRepositoryTable th:nth-child(4) { width: 20%; }
-  .operationsRepositoryTable th:nth-child(5) { width: 28%; }
+  .operationsRepositoryTable th:first-child { width: 25%; }
+  .operationsRepositoryTable th:nth-child(2) { width: 8%; }
+  .operationsRepositoryTable th:nth-child(3) { width: 12%; }
+  .operationsRepositoryTable th:nth-child(4) { width: 16%; }
+  .operationsRepositoryTable th:nth-child(5) { width: 8%; }
+  .operationsRepositoryTable th:nth-child(6) { width: 17%; }
+  .operationsRepositoryTable th:nth-child(7) { width: 14%; }
 }
 
 @media (max-width: 899px) {

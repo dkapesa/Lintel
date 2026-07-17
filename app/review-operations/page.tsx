@@ -23,7 +23,7 @@ import {
 } from "../../lib/human-decision-ledger";
 import type { Report } from "../../lib/mock-report";
 import { readReportHistory, type ReportHistoryEntry } from "../../lib/report-history";
-import { readReviewState } from "../../lib/review-state";
+import { readReviewState, type ReportReviewState } from "../../lib/review-state";
 type LoadState = "loading" | "local" | "empty" | "unavailable";
 type OperationsView = "records" | "requirements" | "decisions";
 
@@ -34,6 +34,7 @@ type OperationalRecord = {
   humanDecisions: HumanDecisionLedgerEntry[];
   latestHumanDecision?: HumanDecisionLedgerEntry;
   reaffirmationRequired: boolean;
+  reviewState: ReportReviewState;
 };
 
 type BlockerOccurrence = {
@@ -363,6 +364,7 @@ export default function ReviewOperationsPage() {
           humanDecisions: ledger.entries,
           latestHumanDecision: projection.latestEffectiveEntry,
           reaffirmationRequired: projection.reaffirmationRequired,
+          reviewState,
         };
       }));
       setLoadState("local");
@@ -507,6 +509,8 @@ export default function ReviewOperationsPage() {
                         <th scope="col">Reviews</th>
                         <th scope="col">Open requirements</th>
                         <th scope="col">Latest recommendation</th>
+                        <th scope="col">Risk</th>
+                        <th scope="col">Local workflow</th>
                         <th scope="col">Latest activity</th>
                         <th scope="col">Latest human decision</th>
                       </tr>
@@ -523,9 +527,15 @@ export default function ReviewOperationsPage() {
                           <td data-label="Latest recommendation">
                             <span className={recommendationClass(repository.latest.entry.report.verdict.recommendation)}>{recommendationLabel(repository.latest.entry.report.verdict.recommendation)}</span>
                           </td>
+                          <td data-label="Risk">{repository.latest.entry.report.verdict.riskLevel}</td>
+                          <td data-label="Local workflow">
+                            <span className={styles.stateNeutral}>{repository.latest.reviewState.status}</span>
+                            <span className={styles.rowSupport}>{repository.latest.reviewState.owner === "Unassigned" ? "No local owner" : `Local owner: ${repository.latest.reviewState.owner}`}</span>
+                          </td>
                           <td data-label="Latest activity">
                             <time className={styles.humanTime} dateTime={repository.latest.entry.createdAt}>{formatTimestamp(repository.latest.entry.createdAt)}</time>
                             <span className={styles.rowSupport}>{sourceLabel(repository.latest.entry)}</span>
+                            {records[0]?.entry === repository.latest.entry && <Link className={styles.recordLink} href="/report">Open current Case File</Link>}
                           </td>
                           <td data-label="Latest human decision">
                             {repository.latestDecision ? decisionOutcomeLabel(repository.latestDecision.outcome) : <span className={styles.stateNeutral}>No decision recorded</span>}

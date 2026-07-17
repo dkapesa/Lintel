@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type KeyboardEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { type KeyboardEvent, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import AppShell, { SHELL_NAVIGATION_OPEN_EVENT } from "../app-shell";
 import { GuidedTourStartButton } from "../guided-tour";
 import styles from "./workspace.module.css";
@@ -58,7 +58,7 @@ const QUEUES = [
 ] as const;
 
 const SELECTED_WORKSPACE_GROUP_STORAGE_KEY = "lintel.workspaceSelectedGroup.v1";
-const COMPACT_INSPECTOR_QUERY = "(max-width: 1179px)";
+const SELECTED_CASE_SURFACE_QUERY = "(max-width: 1179px)";
 
 type WorkspaceQueue = (typeof QUEUES)[number][0];
 type CopyFeedback = { key: string; state: "copied" | "failed" } | null;
@@ -70,7 +70,27 @@ type WorkspaceGroup = {
   reviewState: ReportReviewState;
 };
 
-type SelectOptions = { focusRow?: boolean; openInspector?: boolean };
+type SelectedCaseView = "canvas" | "inspector";
+type SelectOptions = { focusRow?: boolean; openSelectedCase?: boolean };
+
+const WORKSPACE_CANVAS_MODES = ["overview", "findings", "requirements", "decision"] as const;
+
+type WorkspaceCanvasMode = (typeof WORKSPACE_CANVAS_MODES)[number];
+
+type WorkspaceArtifactType = "case" | "finding" | "evidence" | "requirement" | "human-decision";
+
+type WorkspaceFocus = {
+  reportKey: string;
+  artifactType: WorkspaceArtifactType;
+  artifactId?: string;
+};
+
+const WORKSPACE_CANVAS_MODE_LABELS: Record<WorkspaceCanvasMode, string> = {
+  overview: "Overview",
+  findings: "Findings & evidence",
+  requirements: "Requirements",
+  decision: "Human decision",
+};
 
 function inputPreviewLabel(entry: ReportHistoryEntry) {
   if (entry.inputLabel === "GitHub PR import") return "GitHub import";
@@ -458,12 +478,12 @@ function WorkspaceQueueRow({
       data-workspace-group-key={group.key}
       aria-label={`${isSelected ? "Selected" : "Select"} ${entry.metadata.title}`}
       aria-selected={isSelected}
-      onClick={() => onSelect(group, { openInspector: true })}
+      onClick={() => onSelect(group, { openSelectedCase: true })}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           event.stopPropagation();
-          onSelect(group, { openInspector: true });
+          onSelect(group, { openSelectedCase: true });
         }
       }}
     >
@@ -563,9 +583,9 @@ function WorkspaceQueueGroup({
   );
 }
 
-function InspectorBlock({ label, aside, children }: { label: string; aside?: ReactNode; children: ReactNode }) {
+function InspectorBlock({ label, aside, children, section }: { label: string; aside?: ReactNode; children: ReactNode; section?: string }) {
   return (
-    <section className="workspace-inspector-block">
+    <section className="workspace-inspector-block" data-inspector-section={section}>
       <div className="workspace-inspector-block-head">
         <h3>{label}</h3>
         {aside}
@@ -575,15 +595,342 @@ function InspectorBlock({ label, aside, children }: { label: string; aside?: Rea
   );
 }
 
+function WorkspaceInspectorArtifact({
+  entry,
+  group,
+  focus,
+  conditionProgressLabel,
+}: {
+  entry: ReportHistoryEntry;
+  group: WorkspaceGroup;
+  focus: WorkspaceFocus;
+  conditionProgressLabel: string;
+}) {
+  const report = entry.report;
+  const evidenceRecords = entry.verificationPack?.evidence.records.items ?? [];
+  const clauses = entry.mergeContract?.clauses ?? [];
+  const conditions = reportConditions(report);
+  const missingProof = evidenceGapSummary(entry)?.gaps.map((record) => record.title) ?? report.missingTests;
+  const caseIdentity = [entry.metadata.repository, report.pr.number > 0 ? `#${report.pr.number}` : null, report.pr.branch].filter(Boolean).join(" · ");
+  const findingIndex = report.findings.findIndex((_, index) => `finding-${index}` === focus.artifactId);
+  const finding = findingIndex >= 0 ? report.findings[findingIndex] : undefined;
+  const evidence = evidenceRecords.find((record) => record.evidenceId === focus.artifactId);
+  const requirement = clauses.find((clause) => clause.clauseId === focus.artifactId)
+    ?? (clauses.length === 0 ? conditions.map((statement, index) => ({ id: `condition-${index}`, statement })).find((item) => item.id === focus.artifactId) : undefined);
+  const relatedFindingIndexes = requirement && "relatedFindingIds" in requirement
+    ? requirement.relatedFindingIds.map((findingId) => report.findings.findIndex((_, index) => `finding-${index}` === findingId)).filter((index) => index >= 0)
+    : [];
+
+  if (focus.artifactType === "finding" && finding) {
+    const attachedEvidence = evidenceRecords.filter((record) => record.relatedFindingIds.includes(`finding-${findingIndex}`));
+    const relatedRequirement = clauses.find((clause) => clause.relatedFindingIds.includes(`finding-${findingIndex}`));
+    return <>
+      <div className="workspace-inspector-headline"><h2>{finding.title}</h2><p className="workspace-inspector-identity">{caseIdentity}</p></div>
+      <InspectorBlock label="Observed finding" aside={<span className="workspace-inspector-tag">{finding.severity}</span>} section="finding">
+        <dl className="workspace-inspector-meta"><div><dt>Identifier</dt><dd>F{findingIndex + 1}</dd></div><div><dt>Interpretation</dt><dd>{finding.category}</dd></div><div><dt>Provenance</dt><dd>{finding.provenance ?? "Not recorded"}</dd></div><div><dt>Affected surface</dt><dd>{finding.file ?? "Not recorded"}</dd></div></dl>
+        <p>{finding.evidence}</p>
+      </InspectorBlock>
+      <InspectorBlock label="Attached evidence" section="evidence">
+        {attachedEvidence.length ? <ul className="workspace-inspector-evidence">{attachedEvidence.map((record) => <li key={record.evidenceId}><strong>{record.evidenceId} · {record.title}</strong><span>{record.statement}</span></li>)}</ul> : <p>No attached evidence record was captured for this finding.</p>}
+      </InspectorBlock>
+      <InspectorBlock label="Requirement influence" section="requirement"><p>{relatedRequirement ? `C${clauses.indexOf(relatedRequirement) + 1} · ${relatedRequirement.title}` : "No related requirement was recorded."}</p></InspectorBlock>
+      <InspectorBlock label="Next reviewer action" section="next-action"><p>{finding.action || "No next action was recorded for this finding."}</p></InspectorBlock>
+    </>;
+  }
+
+  if (focus.artifactType === "evidence" && evidence) {
+    const relatedFindingIndexes = evidence.relatedFindingIds.map((findingId) => report.findings.findIndex((_, index) => `finding-${index}` === findingId)).filter((index) => index >= 0);
+    const relatedRequirement = clauses.find((clause) => clause.relatedEvidenceIds.includes(evidence.evidenceId));
+    return <>
+      <div className="workspace-inspector-headline"><h2>{evidence.title}</h2><p className="workspace-inspector-identity">{caseIdentity}</p></div>
+      <InspectorBlock label="Observed proof" aside={<span className="workspace-inspector-tag">{evidence.status}</span>} section="evidence">
+        <dl className="workspace-inspector-meta"><div><dt>Identifier</dt><dd>{evidence.evidenceId}</dd></div><div><dt>Evidence class</dt><dd>{evidence.class.replaceAll("-", " ")}</dd></div><div><dt>Provenance</dt><dd>{evidence.provenance || "Not recorded"}</dd></div><div><dt>Technical source</dt><dd>{evidence.source || "Not recorded"}</dd></div></dl>
+        <p>{evidence.statement}</p>
+      </InspectorBlock>
+      <InspectorBlock label="Related records" section="related"><p>{relatedFindingIndexes.length ? `Supports ${relatedFindingIndexes.map((index) => `F${index + 1}`).join(" · ")}.` : "No related finding was recorded."}</p><p>{relatedRequirement ? `Related requirement: C${clauses.indexOf(relatedRequirement) + 1} · ${relatedRequirement.title}` : "No related requirement was recorded."}</p></InspectorBlock>
+      <InspectorBlock label="Clearance context" section="next-action"><p>{relatedRequirement ? (relatedRequirement.currentSupportingEvidenceIds.includes(evidence.evidenceId) ? "This evidence is listed as current supporting evidence; review the requirement state before treating it as cleared." : "This evidence is not listed as current supporting evidence for the related requirement.") : "No requirement clearance relationship was recorded."}</p></InspectorBlock>
+    </>;
+  }
+
+  if (focus.artifactType === "requirement" && requirement) {
+    const canonical = "clauseId" in requirement;
+    const requirementIndex = canonical ? clauses.indexOf(requirement) : -1;
+    const relatedEvidence = canonical ? evidenceRecords.filter((record) => requirement.relatedEvidenceIds.includes(record.evidenceId)) : [];
+    return <>
+      <div className="workspace-inspector-headline"><h2>{canonical ? requirement.title : requirement.statement}</h2><p className="workspace-inspector-identity">{caseIdentity}</p></div>
+      <InspectorBlock label={canonical ? `Requirement C${requirementIndex + 1}` : "Report merge condition"} aside={<span className="workspace-inspector-tag">{canonical ? requirement.status : conditionProgressLabel}</span>} section="requirement">
+        {canonical ? <><dl className="workspace-inspector-meta"><div><dt>Importance</dt><dd>{requirement.importance}</dd></div><div><dt>Owner cue</dt><dd>{requirement.ownerCue ?? "Not recorded"}</dd></div></dl><p>{requirement.statement}</p><p><strong>Clearance evidence:</strong> {requirement.evidenceRequired || "No exact clearance evidence was recorded."}</p></> : <><p>No canonical Merge Contract is available. This is a report merge condition, shown without a C identifier or owner cue.</p><p>{requirement.statement}</p></>}
+      </InspectorBlock>
+      <InspectorBlock label="Related findings and evidence" section="related"><p>{relatedFindingIndexes.length ? `Related findings: ${relatedFindingIndexes.map((index) => `F${index + 1}`).join(" · ")}` : "No related finding was recorded."}</p><p>{relatedEvidence.length ? `Evidence: ${relatedEvidence.map((record) => record.evidenceId).join(" · ")}` : "No related evidence was recorded."}</p></InspectorBlock>
+      <InspectorBlock label="Next reviewer action" section="next-action"><p>{canonical ? (requirement.status === "open" ? "Examine the recorded clearance evidence and confirm the requirement state." : "Review the recorded requirement state in the Case File.") : "Examine this report condition and record progress only through the existing local workflow."}</p></InspectorBlock>
+    </>;
+  }
+
+  const ledger = entry.verificationPack?.humanDecisionLedger;
+  const currentDecision = ledger?.currentDecision;
+  const currentEntry = ledger?.recentEntries.items[0];
+  return <>
+    <div className="workspace-inspector-headline"><h2>Human decision</h2><p className="workspace-inspector-identity">{caseIdentity}</p></div>
+    <InspectorBlock label="Decision alignment" section="decision"><dl className="workspace-inspector-meta"><div><dt>Lintel recommendation</dt><dd>{recommendationLabel(entry.metadata.recommendation)}</dd></div><div><dt>Canonical decision</dt><dd>{currentDecision ?? "No engineer decision has been recorded."}</dd></div><div><dt>Actor</dt><dd>{currentEntry?.actor ?? "Not recorded"}</dd></div><div><dt>Timestamp</dt><dd>{currentEntry?.recordedAt ? createdTime(currentEntry.recordedAt) : "Not recorded"}</dd></div></dl><p>{ledger?.summary ?? "No decision alignment is available to compare."}</p></InspectorBlock>
+    <InspectorBlock label="Open proof and requirements" section="requirements"><p>{missingProof.length ? `Open proof: ${missingProof.join(" · ")}` : "No missing proof is captured in the latest local report."}</p><p>{conditions.length ? `${conditions.length} report merge condition${conditions.length === 1 ? " remains" : "s remain"} recorded.` : "No report merge condition is recorded."}</p></InspectorBlock>
+    <InspectorBlock label="Local workflow metadata" section="local-state"><p>Local review state: {group.reviewState.status}. This local workflow metadata is not a final canonical merge decision.</p></InspectorBlock>
+    <InspectorBlock label="Next reviewer action" section="next-action"><p>{nextAction(entry)}. Use the complete Human Decision Ledger in the Case File for full context.</p></InspectorBlock>
+  </>;
+}
+
+function WorkspaceCanvas({
+  group,
+  conditionProgressLabel,
+  onOpen,
+  onFocusChange,
+}: {
+  group: WorkspaceGroup | null;
+  conditionProgressLabel: string;
+  onOpen: (entry: ReportHistoryEntry) => void;
+  onFocusChange: (focus: WorkspaceFocus | null) => void;
+}) {
+  const initialReport = group?.latest.report;
+  const initialClauses = group?.latest.mergeContract?.clauses ?? [];
+  const initialConditions = initialReport ? reportConditions(initialReport) : [];
+  const defaultFindingIndex = initialReport
+    ? initialReport.findings.findIndex((finding) => finding.severity === "CRITICAL" || finding.severity === "HIGH")
+    : -1;
+  const defaultFindingId = initialReport?.findings.length
+    ? `finding-${defaultFindingIndex >= 0 ? defaultFindingIndex : 0}`
+    : null;
+  const defaultRequirementId = initialClauses.length > 0
+    ? (initialClauses.find((clause) => clause.status === "open" && clause.importance === "blocking")
+      ?? initialClauses.find((clause) => clause.status === "open")
+      ?? initialClauses[0]).clauseId
+    : initialConditions[0] ? "condition-0" : null;
+  const [mode, setMode] = useState<WorkspaceCanvasMode>("overview");
+  const [selectedFindingId, setSelectedFindingId] = useState<string | null>(defaultFindingId);
+  const [selectedRequirementId, setSelectedRequirementId] = useState<string | null>(defaultRequirementId);
+  const [selectedEvidenceId, setSelectedEvidenceId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMode("overview");
+    setSelectedFindingId(defaultFindingId);
+    setSelectedRequirementId(defaultRequirementId);
+    setSelectedEvidenceId(null);
+  }, [group?.key, defaultFindingId, defaultRequirementId]);
+
+  const setWorkingMode = (nextMode: WorkspaceCanvasMode) => {
+    setMode(nextMode);
+    setSelectedEvidenceId(null);
+  };
+
+  const evidenceRecords = group?.latest.verificationPack?.evidence.records.items ?? [];
+  const activeEvidence = evidenceRecords.find((record) => record.evidenceId === selectedEvidenceId);
+
+  useEffect(() => {
+    if (!group) {
+      onFocusChange(null);
+      return;
+    }
+
+    if (mode === "overview") onFocusChange({ reportKey: group.key, artifactType: "case" });
+    else if (mode === "decision") onFocusChange({ reportKey: group.key, artifactType: "human-decision" });
+    else if (mode === "findings" && activeEvidence) onFocusChange({ reportKey: group.key, artifactType: "evidence", artifactId: activeEvidence.evidenceId });
+    else if (mode === "findings" && selectedFindingId) onFocusChange({ reportKey: group.key, artifactType: "finding", artifactId: selectedFindingId });
+    else if (mode === "requirements" && selectedRequirementId) onFocusChange({ reportKey: group.key, artifactType: "requirement", artifactId: selectedRequirementId });
+    else onFocusChange({ reportKey: group.key, artifactType: "case" });
+  }, [activeEvidence, group, mode, onFocusChange, selectedFindingId, selectedRequirementId]);
+
+  if (!group) {
+    return (
+      <section id="workspace-selected-case-canvas" className="workspace-canvas workspace-canvas--empty" aria-label="Selected verification case">
+        <div className="workspace-plane-header"><span>Working canvas</span><span>Awaiting selection</span></div>
+        <div className="workspace-canvas-empty-body">
+          <h2>Select a verification case</h2>
+          <p>The active case will connect its observed change, evidence, requirements and local human-decision state here.</p>
+        </div>
+      </section>
+    );
+  }
+
+  const entry = group.latest;
+  const report = entry.report;
+  const clauseSummary = contractClauseSummary(entry);
+  const evidenceGaps = evidenceGapSummary(entry);
+  const conditions = reportConditions(report);
+  const missingProof = evidenceGaps?.gaps.map((record) => record.title) ?? report.missingTests;
+  const canonicalClauses = entry.mergeContract?.clauses ?? [];
+  const fallbackRequirements = canonicalClauses.length === 0
+    ? conditions.map((statement, index) => ({ id: `condition-${index}`, statement }))
+    : [];
+  const requirements = canonicalClauses.length > 0 ? canonicalClauses : fallbackRequirements;
+
+  const selectedFindingIndex = Math.max(report.findings.findIndex((_, index) => `finding-${index}` === selectedFindingId), 0);
+  const selectedFinding = report.findings[selectedFindingIndex];
+  const selectedRequirement = canonicalClauses.length > 0
+    ? canonicalClauses.find((clause) => clause.clauseId === selectedRequirementId) ?? canonicalClauses[0]
+    : fallbackRequirements.find((requirement) => requirement.id === selectedRequirementId) ?? fallbackRequirements[0];
+  const focusLabel = mode === "overview" ? "Case overview"
+    : mode === "decision" ? "Human decision"
+      : mode === "findings" && selectedFinding ? `Finding F${selectedFindingIndex + 1}`
+        : mode === "requirements" && selectedRequirement
+          ? ("clauseId" in selectedRequirement ? `Requirement C${canonicalClauses.indexOf(selectedRequirement) + 1}` : "Merge condition")
+          : WORKSPACE_CANVAS_MODE_LABELS[mode];
+  const trace = [
+    { label: "Change", value: `${report.changedFiles.length} files`, state: "known" },
+    { label: "Observation", value: `${report.findings.length} findings`, state: "known" },
+    { label: "Evidence", value: evidenceGaps ? `${evidenceGaps.gaps.length} gaps` : "Captured", state: evidenceGaps ? "attention" : "known" },
+    { label: "Requirement", value: requirements.length ? `${requirements.length} recorded` : "No open requirement", state: requirements.length ? "attention" : "known" },
+    { label: "Human decision", value: group.reviewState.status, state: "decision" },
+  ];
+  return (
+    <section id="workspace-selected-case-canvas" className="workspace-canvas" aria-label="Selected verification case" data-tour="workspace-canvas">
+      <div className="workspace-plane-header"><span>Active verification</span><span>{focusLabel}</span></div>
+      <div className="workspace-canvas-modebar" role="tablist" aria-label="Selected case working modes">
+        {WORKSPACE_CANVAS_MODES.map((value, index) => (
+          <button
+            key={value}
+            id={`workspace-canvas-mode-${value}`}
+            className={`workspace-canvas-mode${mode === value ? " workspace-canvas-mode--active" : ""}`}
+            type="button"
+            role="tab"
+            aria-selected={mode === value}
+            aria-controls="workspace-canvas-mode-panel"
+            tabIndex={mode === value ? 0 : -1}
+            onClick={() => setWorkingMode(value)}
+            onKeyDown={(event) => {
+              let next = index;
+              if (event.key === "ArrowRight") next = (index + 1) % WORKSPACE_CANVAS_MODES.length;
+              else if (event.key === "ArrowLeft") next = (index - 1 + WORKSPACE_CANVAS_MODES.length) % WORKSPACE_CANVAS_MODES.length;
+              else if (event.key === "Home") next = 0;
+              else if (event.key === "End") next = WORKSPACE_CANVAS_MODES.length - 1;
+              else return;
+              event.preventDefault();
+              setWorkingMode(WORKSPACE_CANVAS_MODES[next]);
+              document.getElementById(`workspace-canvas-mode-${WORKSPACE_CANVAS_MODES[next]}`)?.focus();
+            }}
+          >{WORKSPACE_CANVAS_MODE_LABELS[value]}</button>
+        ))}
+      </div>
+      <div className="workspace-canvas-scroll">
+        <div id="workspace-canvas-mode-panel" role="tabpanel" aria-labelledby={`workspace-canvas-mode-${mode}`} className="workspace-canvas-mode-panel">
+        <header className="workspace-canvas-headline">
+          <div>
+            <p className="workspace-canvas-kicker">Selected case</p>
+            <h2>{entry.metadata.title}</h2>
+            <p className="workspace-canvas-identity">
+              {[entry.metadata.repository, report.pr.number > 0 ? `#${report.pr.number}` : null, report.pr.branch].filter(Boolean).join(" · ")}
+            </p>
+          </div>
+          <button className="workspace-canvas-case-link" type="button" onClick={() => onOpen(entry)}>Open Case File</button>
+        </header>
+
+        {mode === "overview" && <>
+        <ol className="workspace-verification-trace workspace-verification-trace--canvas" aria-label="Verification trace">
+          {trace.map((step) => (
+            <li key={step.label} className={`workspace-trace-step workspace-trace-step--${step.state}`}>
+              <span className="workspace-trace-mark" aria-hidden="true" />
+              <span className="workspace-trace-label">{step.label}</span>
+              <strong>{step.value}</strong>
+            </li>
+          ))}
+        </ol>
+
+        <section className="workspace-canvas-verdict">
+          <div>
+            <span className="workspace-canvas-label">Lintel recommendation</span>
+            <strong className={`workspace-recommendation-text workspace-recommendation-text--${entry.metadata.recommendation.toLowerCase()}`}>
+              {recommendationLabel(entry.metadata.recommendation)}
+            </strong>
+          </div>
+          <div>
+            <span className="workspace-canvas-label">Risk</span>
+            <strong className={`workspace-risk-text${elevatedRisk(report.verdict.riskLevel) ? " workspace-risk-text--elevated" : ""}`}>
+              {report.verdict.riskLevel} · {entry.metadata.riskScore}/100
+            </strong>
+          </div>
+          <p>{conciseBecause(entry)}</p>
+        </section>
+
+        <div className="workspace-canvas-ledgers">
+          <section className="workspace-canvas-ledger" aria-labelledby="workspace-observation-heading">
+            <div className="workspace-canvas-section-head"><h3 id="workspace-observation-heading">Observation and evidence</h3><span>{report.findings.length}</span></div>
+            {report.findings.length > 0 ? (
+              <ol className="workspace-canvas-records">
+                {report.findings.slice(0, 3).map((finding, index) => (
+                  <li key={`${finding.title}-${index}`}>
+                    <span className="workspace-canvas-record-id">F{index + 1}</span>
+                    <div><strong>{finding.title}</strong><p>{finding.evidence}</p></div>
+                  </li>
+                ))}
+              </ol>
+            ) : <p className="workspace-canvas-empty-copy">No finding is captured in this local report.</p>}
+          </section>
+
+          <section className="workspace-canvas-ledger" aria-labelledby="workspace-requirement-heading">
+            <div className="workspace-canvas-section-head"><h3 id="workspace-requirement-heading">Requirements and proof</h3><span>{conditionProgressLabel}</span></div>
+            {requirements.length > 0 ? (
+              <ol className="workspace-canvas-records workspace-canvas-records--requirements">
+                {requirements.slice(0, 4).map((requirement, index) => <li key={"clauseId" in requirement ? requirement.clauseId : requirement.id}><span className="workspace-canvas-record-id">{"clauseId" in requirement ? `C${index + 1}` : "Condition"}</span><div><strong>{"clauseId" in requirement ? requirement.title : requirement.statement}</strong></div></li>)}
+              </ol>
+            ) : <p className="workspace-canvas-empty-copy">No open requirement is captured in this local report.</p>}
+            {missingProof.length > 0 && <p className="workspace-canvas-proof">Missing proof: {missingProof.slice(0, 2).join(" · ")}</p>}
+          </section>
+        </div>
+
+        <section className="workspace-canvas-decision" aria-label="Current local decision state">
+          <div><span>Human decision</span><strong>{group.reviewState.status}</strong></div>
+          <div><span>Next reviewer action</span><strong>{nextAction(entry)}</strong></div>
+          <p>{group.reviewState.owner === "Unassigned" ? "No local owner recorded." : `Local owner: ${group.reviewState.owner}.`}</p>
+        </section>
+        </>}
+
+        {mode === "findings" && <section className="workspace-canvas-worklist" aria-labelledby="workspace-findings-heading">
+          <div className="workspace-canvas-worklist-head"><div><p className="workspace-canvas-kicker">Working records</p><h3 id="workspace-findings-heading">Findings and evidence</h3></div><span>{report.findings.length} findings</span></div>
+          {report.findings.length === 0 ? <p className="workspace-canvas-empty-copy">No findings were recorded for this report.</p> : <ol className="workspace-canvas-focus-list">
+            {report.findings.map((finding, index) => {
+              const findingId = `finding-${index}`;
+              const active = findingId === selectedFindingId;
+              const evidence = entry.verificationPack?.evidence.records.items.filter((record) => record.relatedFindingIds.includes(findingId)) ?? [];
+              const relatedClause = canonicalClauses.find((clause) => clause.relatedFindingIds.includes(findingId));
+              return <li key={findingId} className={active ? "workspace-canvas-focus-record workspace-canvas-focus-record--active" : "workspace-canvas-focus-record"}>
+                <button type="button" aria-pressed={active} onClick={() => { setSelectedFindingId(findingId); setSelectedEvidenceId(null); }}>
+                  <span className="workspace-canvas-record-id">F{index + 1}</span><span><strong>{finding.title}</strong><small>{finding.severity} · {finding.category}{finding.file ? ` · ${finding.file}` : ""}</small></span><span className="workspace-canvas-record-state">{evidence.length ? `${evidence.length} evidence` : "No attached evidence"}</span>
+                </button>
+                {active && <div className="workspace-canvas-focus-detail">
+                  <p>{finding.evidence}</p><p><span>Provenance</span>{finding.provenance ?? "Not recorded"}</p><p><span>Affected surface</span>{finding.file ?? finding.category}</p><p><span>Next action</span>{finding.action}</p>
+                  {evidence.length > 0 ? <ol className="workspace-canvas-attached-records">{evidence.map((record) => <li key={record.evidenceId}><button type="button" aria-pressed={selectedEvidenceId === record.evidenceId} onClick={() => setSelectedEvidenceId(record.evidenceId)}><span className="workspace-canvas-record-id">{record.evidenceId}</span><span><strong>{record.title}</strong><p>{record.statement}</p><small>{record.status} · {record.provenance}</small></span></button></li>)}</ol> : <p className="workspace-canvas-proof">No evidence records are attached.</p>}
+                  {relatedClause && <p className="workspace-canvas-related">Related requirement: C{canonicalClauses.indexOf(relatedClause) + 1} · {relatedClause.title}</p>}
+                </div>}
+              </li>;
+            })}
+          </ol>}
+        </section>}
+
+        {mode === "requirements" && <section className="workspace-canvas-worklist" aria-labelledby="workspace-requirements-heading">
+          <div className="workspace-canvas-worklist-head"><div><p className="workspace-canvas-kicker">Merge conditions</p><h3 id="workspace-requirements-heading">Requirements and clearance</h3></div><span>{canonicalClauses.length ? "Merge Contract" : "Report conditions"}</span></div>
+          {requirements.length === 0 ? <p className="workspace-canvas-empty-copy">{canonicalClauses.length === 0 ? "No canonical Merge Contract is available, and no merge conditions were recorded." : "No requirements were recorded in the Merge Contract."}</p> : <>
+            {canonicalClauses.length === 0 && <p className="workspace-canvas-limitation">No canonical Merge Contract is available. Report merge conditions are shown without C identifiers or owner cues.</p>}
+            <ol className="workspace-canvas-focus-list">{requirements.map((requirement, index) => {
+              const canonical = "clauseId" in requirement;
+              const id = canonical ? requirement.clauseId : requirement.id;
+              const active = id === selectedRequirementId;
+              const relatedFindings = canonical ? requirement.relatedFindingIds.map((findingId) => report.findings.findIndex((_, findingIndex) => findingId === `finding-${findingIndex}`)).filter((findingIndex) => findingIndex >= 0) : [];
+              return <li key={id} className={active ? "workspace-canvas-focus-record workspace-canvas-focus-record--active" : "workspace-canvas-focus-record"}><button type="button" aria-pressed={active} onClick={() => setSelectedRequirementId(id)}><span className="workspace-canvas-record-id">{canonical ? `C${index + 1}` : "Condition"}</span><span><strong>{canonical ? requirement.title : requirement.statement}</strong><small>{canonical ? `${requirement.importance} · ${requirement.status}` : conditionProgressLabel}</small></span><span className="workspace-canvas-record-state">{canonical && requirement.importance === "blocking" ? "Blocking" : "Review condition"}</span></button>
+                {active && <div className="workspace-canvas-focus-detail">{canonical ? <><p>{requirement.statement}</p><p><span>Clearance evidence</span>{requirement.currentSupportingEvidenceIds.length ? requirement.currentSupportingEvidenceIds.join(" · ") : requirement.evidenceRequired || "No clearance evidence recorded."}</p><p><span>Owner</span>{requirement.ownerCue ?? "No owner cue recorded."}</p>{relatedFindings.length > 0 && <p className="workspace-canvas-related">Related findings: {relatedFindings.map((findingIndex) => `F${findingIndex + 1}`).join(" · ")}</p>}</> : <><p><span>Local condition state</span>{conditionProgressLabel}</p><p>No clause-level clearance evidence is recorded for this report condition.</p></>}</div>}</li>;
+            })}</ol>
+          </>}
+        </section>}
+
+        {mode === "decision" && <section className="workspace-canvas-decision-view" aria-labelledby="workspace-decision-heading"><p className="workspace-canvas-kicker">Decision record</p><h3 id="workspace-decision-heading">Human decision</h3><div className="workspace-canvas-decision-ledger"><div><span>Lintel recommendation</span><strong className={`workspace-recommendation-text workspace-recommendation-text--${entry.metadata.recommendation.toLowerCase()}`}>{recommendationLabel(entry.metadata.recommendation)}</strong></div><div><span>Canonical decision</span><strong>{entry.verificationPack?.humanDecisionLedger?.currentDecision ?? "No engineer decision has been recorded."}</strong></div><div><span>Local review state</span><strong>{group.reviewState.status}</strong></div><div><span>Next bounded action</span><strong>{nextAction(entry)}</strong></div></div><p className="workspace-canvas-decision-note">{entry.verificationPack?.humanDecisionLedger?.summary ?? "The local review state is not a recorded merge decision."}</p>{missingProof.length > 0 && <p className="workspace-canvas-proof">Open proof: {missingProof.join(" · ")}</p>}{requirements.length > 0 && <p className="workspace-canvas-related">Open requirements: {requirements.filter((requirement) => !("status" in requirement) || requirement.status === "open").length}</p>}</section>}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function WorkspaceInspector({
   group,
+  activeFocus,
   copyFeedback,
   conditionProgressLabel,
   workspace,
-  open,
-  containerRef,
-  closeRef,
-  onClose,
   onOpen,
   onCopyConditions,
   onDeleteGroup,
@@ -591,44 +938,31 @@ function WorkspaceInspector({
   onOwnerChange,
 }: {
   group: WorkspaceGroup | null;
+  activeFocus: WorkspaceFocus | null;
   copyFeedback: CopyFeedback;
   conditionProgressLabel: string;
   workspace: TeamWorkspace | null;
-  open: boolean;
-  containerRef: (element: HTMLElement | null) => void;
-  closeRef: (element: HTMLButtonElement | null) => void;
-  onClose: () => void;
   onOpen: (entry: ReportHistoryEntry) => void;
   onCopyConditions: (group: WorkspaceGroup) => void;
   onDeleteGroup: (group: WorkspaceGroup) => void;
   onStatusChange: (group: WorkspaceGroup, status: ReviewStatus) => void;
   onOwnerChange: (group: WorkspaceGroup, owner: ReviewerOwner) => void;
 }) {
-  const closeButton = (
-    <button
-      className="workspace-inspector-close"
-      type="button"
-      ref={closeRef}
-      onClick={onClose}
-      aria-label="Close report detail"
-    >
-      <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" aria-hidden="true">
-        <path d="M4 4l8 8M12 4l-8 8" />
-      </svg>
-    </button>
-  );
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0 });
+  }, [activeFocus?.artifactId, activeFocus?.artifactType, group?.key]);
 
   if (!group) {
     return (
       <aside
+        id="workspace-selected-case-inspector"
         className="workspace-inspector workspace-inspector--empty"
-        data-open={open ? "true" : undefined}
         aria-label="Selected report detail"
-        ref={containerRef}
       >
         <div className="workspace-inspector-topbar">
           <span className="workspace-inspector-kicker">Decision</span>
-          {closeButton}
         </div>
         <div className="workspace-inspector-empty-body">
           <h2>No report selected</h2>
@@ -640,9 +974,10 @@ function WorkspaceInspector({
 
   const entry = group.latest;
   const report = entry.report;
+  const resolvedFocus = activeFocus?.reportKey === group.key ? activeFocus : { reportKey: group.key, artifactType: "case" as const };
   const recommendation = entry.metadata.recommendation.toLowerCase();
   const conditions = reportConditions(report);
-  const focus = pruneUnsupportedReviewerFocus(report) ?? [];
+  const reviewerFocus = pruneUnsupportedReviewerFocus(report) ?? [];
   const qualityStatus = report.reportQuality?.status ?? "Not assessed";
   const operationalStatus = report.operationalReadiness?.status ?? "Not assessed";
   const feedback = copyFeedback?.key === group.key ? copyFeedback.state : null;
@@ -676,25 +1011,26 @@ function WorkspaceInspector({
     { label: "Requirement", value: visibleRequirements.length > 0 ? `${visibleRequirements.length} open` : "None open", state: visibleRequirements.length > 0 ? "attention" : "known" },
     { label: "Human decision", value: group.reviewState.status, state: "decision" },
   ];
+  const focusedClauseIndex = (entry.mergeContract?.clauses ?? []).findIndex((clause) => clause.clauseId === resolvedFocus.artifactId);
+  const focusTopLabel = resolvedFocus.artifactType === "case" ? "Selected case"
+    : resolvedFocus.artifactType === "finding" ? `Finding / F${report.findings.findIndex((_, index) => `finding-${index}` === resolvedFocus.artifactId) + 1}`
+      : resolvedFocus.artifactType === "evidence" ? `Evidence / ${resolvedFocus.artifactId ?? "record"}`
+        : resolvedFocus.artifactType === "requirement" ? `Requirement / ${focusedClauseIndex >= 0 ? `C${focusedClauseIndex + 1}` : "condition"}`
+          : "Human decision";
 
   return (
     <aside
+      id="workspace-selected-case-inspector"
       className="workspace-inspector"
-      data-open={open ? "true" : undefined}
-      aria-label="Selected report detail"
+      aria-label={`${focusTopLabel} inspector`}
       data-tour="selected-pr"
-      role={open ? "dialog" : undefined}
-      aria-modal={open ? true : undefined}
-      ref={containerRef}
     >
       <div className="workspace-inspector-topbar">
-        <span className="workspace-inspector-kicker">Selected case</span>
-        <div className="workspace-inspector-topbar-end">
-          {closeButton}
-        </div>
+        <span className="workspace-inspector-kicker" aria-live="polite" aria-atomic="true">{focusTopLabel}</span>
       </div>
 
-      <div className="workspace-inspector-scroll">
+      <div className="workspace-inspector-scroll" ref={scrollRef}>
+        {resolvedFocus.artifactType === "case" ? <>
         <div className="workspace-inspector-headline">
           <h2>{entry.metadata.title}</h2>
           <p className="workspace-inspector-repo">{entry.metadata.repository}</p>
@@ -715,13 +1051,16 @@ function WorkspaceInspector({
 
         <InspectorBlock
           label="Recommendation"
+          section="recommendation"
           aside={<span className={`workspace-recommendation-text workspace-recommendation-text--${recommendation}`}>{recommendationLabel(entry.metadata.recommendation)}</span>}
         >
+          <p>Risk: {report.verdict.riskLevel}</p>
           <p>{conciseBecause(entry)}</p>
         </InspectorBlock>
 
         <InspectorBlock
           label="Open requirements"
+          section="requirements"
           aside={<span className="workspace-inspector-tag">{conditionProgressLabel}</span>}
         >
           {visibleRequirements.length > 0 ? (
@@ -740,6 +1079,7 @@ function WorkspaceInspector({
 
         <InspectorBlock
           label="Missing proof"
+          section="proof"
           aside={missingProof.length > 0 ? <span className="workspace-inspector-tag">{missingProof.length} open</span> : undefined}
         >
           {missingProof.length > 0 ? (
@@ -751,11 +1091,11 @@ function WorkspaceInspector({
           )}
         </InspectorBlock>
 
-        <InspectorBlock label="Required next action" aside={<span className="workspace-inspector-tag">{action}</span>}>
+        <InspectorBlock label="Required next action" section="next-action" aside={<span className="workspace-inspector-tag">{action}</span>}>
           <p>{topConditionOrRisk(entry)}</p>
         </InspectorBlock>
 
-        <InspectorBlock label="Owner and local review state">
+        <InspectorBlock label="Owner and local review state" section="decision">
           <div className="workspace-inspector-controls">
             <label className="workspace-inspector-field">
               <span>Review state</span>
@@ -839,22 +1179,23 @@ function WorkspaceInspector({
                 <div><dt>Latest</dt><dd><time dateTime={entry.createdAt}>{createdTime(entry.createdAt)}</time></dd></div>
                 <div><dt>Local update</dt><dd>{group.reviewState.updatedAt ? createdTime(group.reviewState.updatedAt) : "Not saved yet"}</dd></div>
               </dl>
-              {focus.length > 0 && (
+              {reviewerFocus.length > 0 && (
                 <div className="workspace-inspector-focus">
-                  {focus.slice(0, 4).map((item) => <span key={`${item.area}-${item.priority}`}>{item.priority}: {item.area}</span>)}
+                  {reviewerFocus.slice(0, 4).map((item) => <span key={`${item.area}-${item.priority}`}>{item.priority}: {item.area}</span>)}
                 </div>
               )}
             </div>
           </div>
         </details>
+        </> : <WorkspaceInspectorArtifact entry={entry} group={group} focus={resolvedFocus} conditionProgressLabel={conditionProgressLabel} />}
       </div>
 
       <div className="workspace-inspector-actions">
         <button className="workspace-inspector-primary" type="button" onClick={() => onOpen(entry)}>Open Case File</button>
-        <button type="button" onClick={() => onCopyConditions(group)}>
+        {resolvedFocus.artifactType === "case" && <button type="button" onClick={() => onCopyConditions(group)}>
           {feedback === "copied" ? "Copied" : feedback === "failed" ? "Copy failed" : "Copy conditions"}
-        </button>
-        <button className="workspace-inspector-delete" type="button" onClick={() => onDeleteGroup(group)}>Delete reports</button>
+        </button>}
+        {resolvedFocus.artifactType === "case" && <button className="workspace-inspector-delete" type="button" onClick={() => onDeleteGroup(group)}>Delete reports</button>}
       </div>
     </aside>
   );
@@ -882,21 +1223,23 @@ export default function ReportsWorkspacePage() {
   const [conditionProgressByGroup, setConditionProgressByGroup] = useState<Record<string, string>>({});
   const [activeQueue, setActiveQueue] = useState<WorkspaceQueue>("inbox");
   const [selectedGroupKey, setSelectedGroupKey] = useState<string | null>(null);
+  const [activeFocus, setActiveFocus] = useState<WorkspaceFocus | null>(null);
   const [copyFeedback, setCopyFeedback] = useState<CopyFeedback>(null);
   const [error, setError] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
-  const [inspectorOpen, setInspectorOpen] = useState(false);
+  const [selectedCaseOpen, setSelectedCaseOpen] = useState(false);
+  const [selectedCaseView, setSelectedCaseView] = useState<SelectedCaseView>("canvas");
 
   useEffect(() => {
-    const closeForShellNavigation = () => setInspectorOpen(false);
+    const closeForShellNavigation = () => setSelectedCaseOpen(false);
     window.addEventListener(SHELL_NAVIGATION_OPEN_EVENT, closeForShellNavigation);
     return () => window.removeEventListener(SHELL_NAVIGATION_OPEN_EVENT, closeForShellNavigation);
   }, []);
   const copyResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cardRefs = useRef<Record<string, HTMLElement | null>>({});
-  const compactMatchRef = useRef<MediaQueryList | null>(null);
-  const inspectorNodeRef = useRef<HTMLElement | null>(null);
-  const inspectorCloseNodeRef = useRef<HTMLButtonElement | null>(null);
+  const selectedCaseMatchRef = useRef<MediaQueryList | null>(null);
+  const selectedCaseNodeRef = useRef<HTMLElement | null>(null);
+  const selectedCaseCloseNodeRef = useRef<HTMLButtonElement | null>(null);
   const selectedGroupKeyRef = useRef<string | null>(null);
   selectedGroupKeyRef.current = selectedGroupKey;
 
@@ -956,14 +1299,13 @@ export default function ReportsWorkspacePage() {
     if (copyResetTimer.current) clearTimeout(copyResetTimer.current);
   }, []);
 
-  /* The inspector is a persistent pane on desktop and a slide-over drawer at
-     compact widths; the media query decides which and closes the drawer when
-     the viewport grows back to a two-pane width. */
+  /* Desktop retains the persistent three-plane workbench. Below it, a selected
+     case becomes one bounded surface with Canvas and Inspector views. */
   useEffect(() => {
-    const query = window.matchMedia(COMPACT_INSPECTOR_QUERY);
-    compactMatchRef.current = query;
+    const query = window.matchMedia(SELECTED_CASE_SURFACE_QUERY);
+    selectedCaseMatchRef.current = query;
     const onChange = (event: MediaQueryListEvent) => {
-      if (!event.matches) setInspectorOpen(false);
+      if (!event.matches) setSelectedCaseOpen(false);
     };
     query.addEventListener("change", onChange);
     return () => query.removeEventListener("change", onChange);
@@ -982,6 +1324,15 @@ export default function ReportsWorkspacePage() {
     .sort((a, b) => Date.parse(b.latest.createdAt) - Date.parse(a.latest.createdAt)), [filteredGroups]);
   const visibleGroups = useMemo(() => [...needsAttention, ...ready], [needsAttention, ready]);
   const selectedGroup = visibleGroups.find((group) => group.key === selectedGroupKey) ?? null;
+  const handleFocusChange = useCallback((nextFocus: WorkspaceFocus | null) => {
+    setActiveFocus((currentFocus) => (
+      currentFocus?.reportKey === nextFocus?.reportKey
+      && currentFocus?.artifactType === nextFocus?.artifactType
+      && currentFocus?.artifactId === nextFocus?.artifactId
+        ? currentFocus
+        : nextFocus
+    ));
+  }, []);
   const needsAttentionCount = groups.filter(groupNeedsAttention).length;
   const awaitingEvidenceCount = groups.filter(groupAwaitingEvidence).length;
   const blockingRequirementsCount = groups.filter((group) => (
@@ -1034,25 +1385,24 @@ export default function ReportsWorkspacePage() {
     });
   }, [visibleGroups]);
 
-  /* Keep the compact drawer from lingering once its report is gone. */
+  /* Keep the selected-case surface from lingering once its report is gone. */
   useEffect(() => {
-    if (inspectorOpen && !selectedGroupKey) setInspectorOpen(false);
-  }, [inspectorOpen, selectedGroupKey]);
+    if (selectedCaseOpen && !selectedGroupKey) setSelectedCaseOpen(false);
+  }, [selectedCaseOpen, selectedGroupKey]);
 
-  /* Focus management for the compact inspector drawer: focus the close control
-     on open, trap Tab within the drawer, close on Escape, lock body scroll, and
-     return focus to the originating row on close. */
+  /* The responsive selected-case surface owns its modal focus, Escape behavior,
+     background lock and safe restoration to its originating queue record. */
   useEffect(() => {
-    if (!inspectorOpen) return;
-    const node = inspectorNodeRef.current;
+    if (!selectedCaseOpen) return;
+    const node = selectedCaseNodeRef.current;
     if (!node) return;
 
-    (inspectorCloseNodeRef.current ?? node).focus();
+    (selectedCaseCloseNodeRef.current ?? node).focus();
 
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key === "Escape") {
         event.stopPropagation();
-        setInspectorOpen(false);
+        setSelectedCaseOpen(false);
         const key = selectedGroupKeyRef.current;
         if (key) focusWorkspaceCard(key);
         return;
@@ -1086,7 +1436,30 @@ export default function ReportsWorkspacePage() {
       document.body.style.overflow = previousBodyOverflow;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inspectorOpen]);
+  }, [selectedCaseOpen]);
+
+  useEffect(() => {
+    if (!selectedCaseOpen) return;
+    const shellBackground = Array.from(document.querySelectorAll<HTMLElement>(
+      ".shell-global-rail, .shell-context-navigation, .shell-command-bar",
+    ));
+    const previous = shellBackground.map((element) => ({
+      element,
+      ariaHidden: element.getAttribute("aria-hidden"),
+      inert: element.hasAttribute("inert"),
+    }));
+    for (const { element } of previous) {
+      element.setAttribute("aria-hidden", "true");
+      element.setAttribute("inert", "");
+    }
+    return () => {
+      for (const { element, ariaHidden, inert } of previous) {
+        if (ariaHidden === null) element.removeAttribute("aria-hidden");
+        else element.setAttribute("aria-hidden", ariaHidden);
+        if (!inert) element.removeAttribute("inert");
+      }
+    };
+  }, [selectedCaseOpen]);
 
   function setCardRef(key: string, element: HTMLElement | null) {
     cardRefs.current[key] = element;
@@ -1102,7 +1475,7 @@ export default function ReportsWorkspacePage() {
   }
 
   function selectWorkspaceGroup(group: WorkspaceGroup, options: SelectOptions = {}) {
-    const { focusRow = false, openInspector = false } = options;
+    const { focusRow = false, openSelectedCase = false } = options;
     setSelectedGroupKey(group.key);
 
     try {
@@ -1111,12 +1484,15 @@ export default function ReportsWorkspacePage() {
       // Local selection persistence is optional.
     }
 
-    if (openInspector && compactMatchRef.current?.matches) setInspectorOpen(true);
+    if (openSelectedCase && selectedCaseMatchRef.current?.matches) {
+      setSelectedCaseView("canvas");
+      setSelectedCaseOpen(true);
+    }
     if (focusRow) focusWorkspaceCard(group.key);
   }
 
-  function closeInspector() {
-    setInspectorOpen(false);
+  function closeSelectedCase() {
+    setSelectedCaseOpen(false);
     const key = selectedGroupKeyRef.current;
     if (key) focusWorkspaceCard(key);
   }
@@ -1245,7 +1621,7 @@ export default function ReportsWorkspacePage() {
       } catch {
         // Local selection persistence is optional.
       }
-      setInspectorOpen(false);
+      setSelectedCaseOpen(false);
       setError(null);
     } catch {
       setError("This report group could not be deleted.");
@@ -1267,7 +1643,7 @@ export default function ReportsWorkspacePage() {
         removeDecisionHistory(window.localStorage, group.key);
       }
       window.localStorage.removeItem(selectedStorageKey());
-      setInspectorOpen(false);
+      setSelectedCaseOpen(false);
       setError(null);
     } catch {
       setError("Report history could not be cleared.");
@@ -1290,7 +1666,7 @@ export default function ReportsWorkspacePage() {
   return (
     <AppShell context={shellContext} actions={shellActions}>
       <div className={styles.root} data-tour="risk-inbox">
-        <header className="workspace-context">
+        <header className="workspace-context" aria-hidden={selectedCaseOpen ? true : undefined} inert={selectedCaseOpen ? true : undefined}>
           <div>
             <span className="workspace-context-kicker">Local verification queue</span>
             <h1>Risk inbox</h1>
@@ -1313,7 +1689,7 @@ export default function ReportsWorkspacePage() {
             tabIndex={0}
             onKeyDown={handleWorkspaceInboxKeyDown}
           >
-            <div className="workspace-inbox-controls" aria-hidden={inspectorOpen ? true : undefined} inert={inspectorOpen ? true : undefined}>
+            <div className="workspace-inbox-controls" aria-hidden={selectedCaseOpen ? true : undefined} inert={selectedCaseOpen ? true : undefined}>
               <WorkspaceSummaryStrip
                 needsAttention={needsAttentionCount}
                 awaitingEvidence={awaitingEvidenceCount}
@@ -1331,14 +1707,13 @@ export default function ReportsWorkspacePage() {
                 id="workspace-queue-panel"
                 role="tabpanel"
                 aria-labelledby={`workspace-view-${activeQueue}`}
-                aria-hidden={inspectorOpen ? true : undefined}
-                inert={inspectorOpen ? true : undefined}
+                aria-hidden={selectedCaseOpen ? true : undefined}
+                inert={selectedCaseOpen ? true : undefined}
               >
                 <div className="workspace-queue-surface">
-                  <div className="workspace-queue-columns" aria-hidden="true">
-                    <span>State</span><span>PR identity</span><span>Recommendation</span><span>Requirements</span><span>Owner</span><span>Updated</span>
-                  </div>
+                  <div className="workspace-plane-header workspace-queue-header"><span>Verification queue</span><span>{visibleGroups.length} in view</span></div>
 
+                  <div className="workspace-queue-scroll">
                   {visibleGroups.length === 0 ? (
                     <p className="workspace-queue-empty workspace-queue-empty--view">{VIEW_EMPTY_COPY[activeQueue]}</p>
                   ) : (
@@ -1366,43 +1741,85 @@ export default function ReportsWorkspacePage() {
                       />
                     </>
                   )}
+                  </div>
                 </div>
               </div>
 
-              <WorkspaceInspector
-                group={selectedGroup}
-                copyFeedback={copyFeedback}
-                conditionProgressLabel={selectedGroup ? conditionProgressByGroup[selectedGroup.key] ?? "No merge conditions" : "No merge conditions"}
-                workspace={currentWorkspace}
-                open={inspectorOpen}
-                containerRef={(element) => { inspectorNodeRef.current = element; }}
-                closeRef={(element) => { inspectorCloseNodeRef.current = element; }}
-                onClose={closeInspector}
-                onOpen={openReport}
-                onCopyConditions={copyConditions}
-                onDeleteGroup={deleteGroup}
-                onStatusChange={updateLocalStatus}
-                onOwnerChange={updateLocalOwner}
-              />
+              <section
+                className="workspace-case-surface"
+                data-open={selectedCaseOpen ? "true" : undefined}
+                data-view={selectedCaseView}
+                role={selectedCaseOpen ? "dialog" : undefined}
+                aria-modal={selectedCaseOpen ? true : undefined}
+                aria-labelledby="workspace-selected-case-title"
+                ref={(element) => { selectedCaseNodeRef.current = element; }}
+              >
+                <header className="workspace-case-surface-bar">
+                  <div className="workspace-case-surface-identity">
+                    <span>Selected case</span>
+                    <strong id="workspace-selected-case-title">{selectedGroup?.latest.metadata.title ?? "Verification case"}</strong>
+                  </div>
+                  <div className="workspace-case-surface-actions">
+                    <div className="workspace-case-view-tabs" aria-label="Selected case detail view">
+                      <button type="button" aria-pressed={selectedCaseView === "canvas"} aria-controls="workspace-selected-case-canvas" onClick={() => setSelectedCaseView("canvas")}>Canvas</button>
+                      <button type="button" aria-pressed={selectedCaseView === "inspector"} aria-controls="workspace-selected-case-inspector" onClick={() => setSelectedCaseView("inspector")}>Inspector</button>
+                    </div>
+                    <button className="workspace-case-surface-close" type="button" ref={(element) => { selectedCaseCloseNodeRef.current = element; }} onClick={closeSelectedCase} aria-label="Close selected case">
+                      <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" /></svg>
+                    </button>
+                  </div>
+                </header>
+
+                <WorkspaceCanvas
+                  group={selectedGroup}
+                  conditionProgressLabel={selectedGroup ? conditionProgressByGroup[selectedGroup.key] ?? "No merge conditions" : "No merge conditions"}
+                  onOpen={openReport}
+                  onFocusChange={handleFocusChange}
+                />
+
+                <WorkspaceInspector
+                  group={selectedGroup}
+                  activeFocus={activeFocus}
+                  copyFeedback={copyFeedback}
+                  conditionProgressLabel={selectedGroup ? conditionProgressByGroup[selectedGroup.key] ?? "No merge conditions" : "No merge conditions"}
+                  workspace={currentWorkspace}
+                  onOpen={openReport}
+                  onCopyConditions={copyConditions}
+                  onDeleteGroup={deleteGroup}
+                  onStatusChange={updateLocalStatus}
+                  onOwnerChange={updateLocalOwner}
+                />
+              </section>
             </div>
 
-            {inspectorOpen && (
+            {selectedCaseOpen && (
               <button
-                className="workspace-inspector-backdrop"
+                className="workspace-case-surface-backdrop"
                 type="button"
-                aria-label="Close report detail"
+                aria-label="Close selected case"
                 tabIndex={-1}
-                onClick={closeInspector}
+                onClick={closeSelectedCase}
               />
             )}
           </section>
         ) : (
-          <section className="workspace-empty">
-            <h2>No tracked pull requests yet</h2>
-            <p>Check a PR, review the merge-readiness decision, then return here to track what is blocked, waiting on tests, or ready to merge.</p>
-            <div className="workspace-empty-actions">
-              <Link className="workspace-primary-action" href="/new">Check a pull request</Link>
-              <Link className="workspace-secondary-action" href="/report?demo=1">Load demo report</Link>
+          <section className="workspace-workbench workspace-workbench--empty" aria-label="Empty verification workbench">
+            <div className="workspace-empty-pane workspace-empty-queue">
+              <div className="workspace-plane-header"><span>Verification queue</span><span>Local</span></div>
+              <p>Reports checked in this browser appear here as an ordered verification queue.</p>
+            </div>
+            <div className="workspace-empty-pane workspace-empty-canvas">
+              <div className="workspace-plane-header"><span>Working canvas</span><span>Case flow</span></div>
+              <h2>Start with a change that needs judgment</h2>
+              <p>Selecting a stored report keeps the change, observed evidence, requirements and current human-decision state together.</p>
+              <div className="workspace-empty-actions">
+                <Link className="workspace-primary-action" href="/new">New Review</Link>
+                <Link className="workspace-secondary-action" href="/report?demo=1">Sample Case File</Link>
+              </div>
+            </div>
+            <div className="workspace-empty-pane workspace-empty-inspector">
+              <div className="workspace-plane-header"><span>Context inspector</span><span>Selection</span></div>
+              <p>When a case is selected, this plane holds its provenance, requirements, clearance context and local ownership.</p>
             </div>
           </section>
         )}

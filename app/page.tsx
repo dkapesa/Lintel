@@ -98,17 +98,29 @@ function Trace({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function EditorialTrace() {
+function CaseTraceSegment({ stages, label }: { stages: readonly number[]; label: string }) {
   return (
-    <ol className="lp-editorial-trace" aria-label="Change to human decision verification path">
-      {verificationTrace.map((stage) => (
-        <li className={`lp-editorial-trace-node lp-editorial-trace-node--${stage.state}`} key={stage.label}>
-          <span className="lp-editorial-trace-mark" aria-hidden="true" />
-          <strong>{stage.label}</strong>
-          <small>{stage.detail}</small>
-        </li>
-      ))}
+    <ol className="lp-case-segment" aria-label={label}>
+      {stages.map((index) => {
+        const stage = verificationTrace[index];
+        return (
+          <li className={`lp-case-segment-node lp-case-segment-node--${stage.state}`} key={stage.label}>
+            <span className="lp-case-segment-mark" aria-hidden="true" />
+            <span>{stage.label}</span>
+          </li>
+        );
+      })}
     </ol>
+  );
+}
+
+function CaseCoordinate({ section }: { section: string }) {
+  return (
+    <div className="lp-case-coordinate" aria-label={`Case coordinate ${section}`}>
+      <span>{section}</span>
+      <code>#{report.pr.number}</code>
+      <code>{run.runId}</code>
+    </div>
   );
 }
 
@@ -137,7 +149,7 @@ export default function Home() {
                 Lintel verifies what is ready.
               </h1>
               <p className="lp-lede">
-                Follow one pull request from observed change to evidence-backed requirements and an explicit human decision.
+                Lintel analyses pull-request changes, connects findings to evidence, and turns missing proof into explicit merge requirements. The final decision remains with the engineer accountable for it.
               </p>
               <div className="lp-actions">
                 <Link className="lp-btn lp-btn--primary" href="/new">Check a pull request</Link>
@@ -149,7 +161,7 @@ export default function Home() {
               id="case-file"
               className="lp-frame lp-frame--hero"
               role="img"
-              aria-label={`Sample Lintel Case File for ${report.pr.repository} pull request ${report.pr.number}, ${report.pr.title}. Run ${run.runId}. The verification trace shows change and observation satisfied, evidence and requirement partial, and human decision open. Lintel recommends tests required with medium risk ${report.verdict.riskScore} out of 100, ${openBlockingClauses} blocking requirements open, and ${openConditions} report conditions open.`}
+              aria-label={`Sample Lintel Case File for ${report.pr.repository} pull request ${report.pr.number}, ${report.pr.title}. Run ${run.runId}. The verification trace shows change and observation satisfied, evidence and requirement partial, and human decision open. Lintel recommends tests required with medium risk ${report.verdict.riskScore} out of 100, ${openBlockingClauses} blocking requirements open, and ${openConditions} report conditions open. Finding F1 is linked to evidence E1 and open blocking Merge Contract clause C1. The human engineer decision is pending.`}
             >
               <FrameHeader label="Case File / verification dossier" />
               <div className="lp-case-body" aria-hidden="true">
@@ -172,13 +184,13 @@ export default function Home() {
                   <strong>#{report.pr.number}</strong>
                 </div>
               </div>
-              <div className="lp-case-title" aria-hidden="true">
+              <div className="lp-case-title">
                 <code>{report.pr.repository}</code>
                 <h2>{report.pr.title}</h2>
                 <span>{report.pr.branch}</span>
               </div>
               <Trace compact />
-              <div className="lp-case-verdict" aria-hidden="true">
+              <div className="lp-case-verdict">
                 <div>
                   <span className="lp-ui-label">Lintel recommendation</span>
                   <Status tone="warning">TESTS REQUIRED</Status>
@@ -189,13 +201,34 @@ export default function Home() {
                   <div><dt>Conditions</dt><dd><strong>{openConditions}</strong><span>open</span></dd></div>
                 </dl>
               </div>
+              <div className="lp-hero-records">
+                <article className="lp-hero-finding">
+                  <header>
+                    <code>F1</code>
+                    <div><strong>{finding.title}</strong><span>{finding.category} · {finding.provenance}</span></div>
+                  </header>
+                  <p>{finding.evidence}</p>
+                  <div className="lp-hero-evidence">
+                    <code>E1</code>
+                    <div><strong>{findingEvidence?.title}</strong><span>{findingEvidence?.statement}</span></div>
+                  </div>
+                </article>
+                <aside className="lp-hero-decision">
+                  <div className="lp-hero-clause"><code>C1</code><span>OPEN · BLOCKING</span><strong>{expandedClause.statement}</strong></div>
+                  <div className="lp-hero-pending"><span className="lp-ui-label">Human decision</span><strong>Pending engineer decision</strong><p>Open proof and requirements remain.</p></div>
+                </aside>
+              </div>
                 </div>
               </div>
             </div>
           </div>
         </section>
 
-        <section className="lp-problem" aria-labelledby="lp-problem-title">
+        <section className="lp-problem lp-case-movement lp-case-movement--readiness" aria-labelledby="lp-problem-title">
+          <div className="lp-movement-spine" aria-hidden="true">
+            <CaseCoordinate section="01 / readiness" />
+            <CaseTraceSegment stages={[0, 1]} label="Readiness trace: change to observation" />
+          </div>
           <div className="lp-problem-copy">
             <p className="lp-eyebrow">The readiness gap</p>
             <h2 id="lp-problem-title">CI green does not mean the change is ready.</h2>
@@ -203,29 +236,29 @@ export default function Home() {
               A passing pipeline can still leave retry behaviour, failure handling and client contracts unverified. Lintel keeps those gaps as explicit records.
             </p>
           </div>
-          <ol className="lp-failures">
-            {failureModes.map((mode) => (
-              <li key={mode.reference}>
-                <code>{mode.reference}</code>
-                <div><h3>{mode.title}</h3><p>{mode.detail}</p></div>
-              </li>
-            ))}
-          </ol>
-          <EditorialTrace />
-          {/*
-          <div className="lp-editorial-trace" aria-label="Change to human decision verification path">
-            {verificationTrace.map((stage, index) => (
-              <div key={stage.label}>
-                <span>{stage.label}</span>
-                {index < verificationTrace.length - 1 && <b aria-hidden="true">→</b>}
-              </div>
-            ))}
+          <div className="lp-readiness-diagnostic">
+            <div className="lp-readiness-context">
+              <span className="lp-ui-label">Pipeline record</span>
+              <strong>CI passed</strong>
+              <p>Merge readiness remains unresolved.</p>
+            </div>
+            <ol className="lp-failures">
+              {failureModes.map((mode) => (
+                <li key={mode.reference}>
+                  <code>{mode.reference}</code>
+                  <div><h3>{mode.title}</h3><p>{mode.detail}</p></div>
+                </li>
+              ))}
+            </ol>
           </div>
-          */}
         </section>
 
-        <section className="lp-exhibit lp-exhibit--finding" aria-labelledby="lp-finding-title">
+        <section className="lp-exhibit lp-exhibit--finding lp-case-movement" aria-labelledby="lp-finding-title">
           <div className="lp-exhibit-copy">
+            <div className="lp-movement-heading-record">
+              <CaseCoordinate section="02 / finding" />
+              <CaseTraceSegment stages={[1, 2]} label="Finding trace: observation to evidence" />
+            </div>
             <p className="lp-eyebrow">Exhibit I · Finding and evidence</p>
             <h2 id="lp-finding-title">A finding is only useful when the proof travels with it.</h2>
             <p>
@@ -261,7 +294,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="lp-exhibit lp-exhibit--contract" aria-labelledby="lp-contract-title">
+        <section className="lp-exhibit lp-exhibit--contract lp-case-movement" aria-labelledby="lp-contract-title">
           <div
             className="lp-frame lp-frame--contract"
             role="img"
@@ -270,6 +303,7 @@ export default function Home() {
             <FrameHeader label="Evidence-backed Merge Contract" />
             <div className="lp-contract-summary" aria-hidden="true">
               <div><span className="lp-ui-label">Contract identity</span><code>{contract.contractId}</code></div>
+              <div className="lp-contract-trace"><CaseTraceSegment stages={[2, 3]} label="Contract trace: evidence to requirement" /></div>
               <dl>
                 <div><dt>Blocking open</dt><dd>{openBlockingClauses}</dd></div>
                 <div><dt>Advisory open</dt><dd>{advisoryOpenClauses}</dd></div>
@@ -293,6 +327,9 @@ export default function Home() {
             </div>
           </div>
           <div className="lp-exhibit-copy">
+            <div className="lp-movement-heading-record">
+              <CaseCoordinate section="03 / contract" />
+            </div>
             <p className="lp-eyebrow">Exhibit II · Merge Contract</p>
             <h2 id="lp-contract-title">Requirements stay open until stronger evidence clears them.</h2>
             <p>
@@ -301,7 +338,11 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="lp-thesis" aria-labelledby="lp-thesis-title">
+        <section className="lp-thesis lp-case-movement lp-case-movement--ledger" aria-labelledby="lp-thesis-title">
+          <div className="lp-ledger-intro">
+            <CaseCoordinate section="04 / verification ledger" />
+            <CaseTraceSegment stages={[3, 4]} label="Ledger trace: requirement to human decision" />
+          </div>
           <p className="lp-eyebrow">Verification ledger</p>
           <h2 id="lp-thesis-title" className="lp-serif">A quiet ledger of evidence, moving toward a human decision.</h2>
           <p>Each record keeps its meaning, source and state without pretending that analysis is authority.</p>
@@ -310,14 +351,19 @@ export default function Home() {
               <li key={record.title}><h3>{record.title}</h3><p>{record.detail}</p></li>
             ))}
           </ul>
+          <p className="lp-ledger-bridge">The case now reaches the decision ledger. Its engineer decision remains pending.</p>
           <Link className="lp-text-link" href="/docs/security-model.md">Read the security model <span aria-hidden="true">→</span></Link>
         </section>
 
         <section className="lp-decision" aria-labelledby="lp-decision-title">
+          <div className="lp-decision-arrival" aria-hidden="true">
+            <CaseCoordinate section="05 / human authority" />
+            <CaseTraceSegment stages={[3, 4]} label="Decision trace: requirement to human decision" />
+          </div>
           <div className="lp-decision-heading">
             <p className="lp-eyebrow">Exhibit III · Human authority</p>
             <h2 id="lp-decision-title">The analysis ends where accountable judgment begins.</h2>
-            <p>The demo ledger is truthful about its current state: Lintel has a recommendation; an engineer has not yet recorded the decision.</p>
+            <p>Lintel has reached a recommendation. The case now waits for the engineer who will record the decision.</p>
           </div>
           <div
             className="lp-frame lp-frame--decision"
@@ -327,7 +373,7 @@ export default function Home() {
             <FrameHeader label="Decision record / Human Decision Ledger" />
             <div className="lp-decision-context" aria-hidden="true">
               <div>
-                <span className="lp-ui-label">Verdict context</span>
+                <span className="lp-ui-label">Lintel analysis / recommendation</span>
                 <strong>#{report.pr.number} · {report.pr.title}</strong>
                 <code>{report.pr.repository} · {run.runId}</code>
               </div>
@@ -339,9 +385,12 @@ export default function Home() {
               </dl>
             </div>
             <div className="lp-human-record" aria-hidden="true">
-              <span className="lp-ui-label">Current human decision</span>
-              <strong>Engineer decision pending.</strong>
-              <p>Record the next bounded decision after reviewing open proof and requirements.</p>
+              <div className="lp-human-record-heading">
+                <span className="lp-ui-label">Current human decision</span>
+                <span className="lp-decision-state"><span aria-hidden="true" /> Pending</span>
+              </div>
+              <strong>Engineer decision pending</strong>
+              <p>Review the open proof and requirements, then record the accountable decision in the ledger.</p>
               <dl>
                 <div><dt>Actor</dt><dd>Not recorded</dd></div>
                 <div><dt>Timestamp</dt><dd>Not recorded</dd></div>
@@ -349,13 +398,21 @@ export default function Home() {
               </dl>
             </div>
           </div>
-          <Link className="lp-decision-report-link" href="/report?demo=1">Open the sample report to review the decision ledger <span aria-hidden="true">→</span></Link>
+          <div className="lp-decision-conclusion">
+            <p><span>Verification boundary</span>Evidence remains provenance-linked; raw diffs are processed transiently.</p>
+            <Link className="lp-decision-report-link" href="/report?demo=1">Open the sample report to review the decision ledger <span aria-hidden="true">→</span></Link>
+            <Link className="lp-text-link" href="/docs/security-model.md">Read the security model <span aria-hidden="true">→</span></Link>
+          </div>
         </section>
 
         <section className="lp-final" aria-labelledby="lp-final-title">
+          <div className="lp-final-record">
+            <CaseCoordinate section="case close / next review" />
+            <span>Example case remains open</span>
+          </div>
           <Trace compact />
           <h2 id="lp-final-title" className="lp-serif">Bring the change you’re unsure about.</h2>
-          <p>Open the verification case, inspect the proof and leave the final decision with the engineer accountable for it.</p>
+          <p>This sample remains pending. Inspect its full Case File, or start the next verification case with your change.</p>
           <div className="lp-actions">
             <Link className="lp-btn lp-btn--primary" href="/new">Check a pull request</Link>
             <Link className="lp-btn lp-btn--secondary" href="/report?demo=1">View the sample report</Link>

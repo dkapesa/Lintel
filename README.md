@@ -299,6 +299,8 @@ docs/
 
 ## Roadmap
 
+**Current visual-convergence update — 18 July 2026:** LVOS v1.0 and VC-1 through VC-4 are complete and closed foundations. The active programme is **V8A — Experience and Motion Constitution and Storyboard** on `v8-experience-and-motion`; it is documentation only and does not add animation. V8B landing choreography, V8C workbench interaction motion and V8D tuning/QA remain future bounded milestones. This update supersedes the historical sequencing statements below.
+
 **Current visual-convergence update — 17 July 2026:** VC-1, VC-2 and VC-3 are APPROVED AND COMPLETE. VC-3 Landing-page Final Art Direction has no blocking corrections remaining. The next programme is VC-4 — Product Workbench Final Art Direction, beginning with VC-4A — Workspace Three-Pane Workbench Composition. This update supersedes the historical sequencing statement below; LVOS v1.0 remains APPROVED AND CLOSED.
 
 The LVOS v1.0 programme remains APPROVED AND CLOSED. VC-1 Workspace and Command-Centre Refinement is APPROVED AND COMPLETE after final VC-1C review. VC-2 — Case File and Cross-Route Refinement is next; subsequent visual work continues as refinement within LVOS rather than an architectural reset.

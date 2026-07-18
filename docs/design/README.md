@@ -30,6 +30,8 @@ LVOS-7 — Cross-System Final Audit and Consolidation is complete and APPROVED. 
 
 ## Current visual-convergence status
 
+**Current programme update — 18 July 2026:** LVOS v1.0 and VC-1 through VC-4 are complete and closed foundations. **V8A — Experience and Motion Constitution and Storyboard** is active on `v8-experience-and-motion` and is documentation only. [V8 Motion Constitution](./V8_MOTION_CONSTITUTION.md) and [V8 Experience Storyboard](./V8_EXPERIENCE_STORYBOARD.md) govern future work; V8B landing choreography, V8C workbench interaction motion and V8D tuning/QA remain bounded future milestones. This update supersedes the historical sequencing statements below.
+
 **Current programme update — 17 July 2026:** VC-1, VC-2 and VC-3 are APPROVED AND COMPLETE. VC-3 Landing-page Final Art Direction has no blocking corrections remaining. The next programme is VC-4 — Product Workbench Final Art Direction, beginning with VC-4A — Workspace Three-Pane Workbench Composition. This update supersedes the historical sequencing statement below; all work remains refinement within the approved LVOS architecture rather than an architectural reset.
 
 LVOS v1.0 remains APPROVED AND CLOSED. VC-1 Workspace and Command-Centre Refinement is APPROVED AND COMPLETE after final VC-1C review. VC-2 — Case File and Cross-Route Refinement is next; all subsequent visual work remains refinement within the approved LVOS architecture rather than an architectural reset.

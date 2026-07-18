@@ -192,6 +192,8 @@
 
 ## V8A — Motion Constitution and Storyboard
 
+**Status:** Active — 18 July 2026, documentation only on `v8-experience-and-motion`. [V8 Motion Constitution](./V8_MOTION_CONSTITUTION.md) and [V8 Experience Storyboard](./V8_EXPERIENCE_STORYBOARD.md) are the governing V8A artifacts. No implementation, CSS, dependency, data or product-semantic change is included.
+
 - **Purpose:** translate LVOS motion rules into a reviewed verification-state storyboard before code.
 - **User-visible outcome:** none yet; motion intent becomes explicit and testable.
 - **Approved archetype or layer:** motion governance layer across the existing five archetypes and website movements.
@@ -211,44 +213,23 @@
 - **Commit checkpoint:** one approved constitution/storyboard commit.
 - **Exit artifact:** signed-off motion constitution, state storyboard and reduced-motion matrix.
 
-## V8B — Motion Foundation
+## V8B — Landing Product Choreography
 
-- **Purpose:** implement only the approved shared motion primitives.
-- **User-visible outcome:** verification state changes become clearer without ambient activity.
-- **Approved archetype or layer:** motion foundation system layer.
-- **Scope:** primitives approved in V8A across shell, workspace, Case File and website; adopt only where the storyboard names a consumer.
-- **Likely files/style regions:** shared motion tokens/primitives, approved component state selectors and reduced-motion blocks.
-- **Dependencies:** V8A approved.
-- **Functionality unchanged:** state machines, data, actions, routes, focus behaviour and static end states.
-- **Structural work:** expose stable state attributes/hooks; avoid animation-driven product logic.
-- **Styling work:** implement LVOS duration bands for selection/disclosure, overlays and meaningful state change; no infinite or decorative motion.
-- **Responsive work:** consistent drawer/sheet and state semantics across widths without delaying access to actions.
-- **Accessibility work:** preserve focus, announcements and full reduced-motion parity.
-- **Validation states:** every approved primitive, interruption, rapid repeat, theme switch, reduced motion, three widths and low-content/high-content cases.
-- **Acceptance criteria:** primitives are shared, state-led and removable without semantic loss; no unapproved motion appears; AU-19 closes.
-- **Explicit non-goals:** per-route flourish, motion tuning beyond safe defaults, new layout or new product state.
-- **Model/tool recommendation:** GPT-5.6 Sol for difficult shared implementation; GPT-5.6 Terra for controlled adoption; Claude Fable for storyboard compliance.
-- **Branch strategy:** `codex/v8b-motion-foundation`, based on approved V8A.
-- **Commit checkpoint:** primitive implementation then bounded adoption commits, each buildable and reduced-motion safe.
-- **Exit artifact:** shared motion primitives, adoption ledger and automated/manual state validation record.
+- **Purpose:** implement only the approved landing product-story sequences: hero orientation, product-stage ownership, readiness → finding → evidence → requirement continuity, Human Authority/final action and landing reduced motion.
+- **Permitted areas:** `/`, its named Case File exhibits and the smallest shared motion tokens required by those sequences.
+- **Fixed areas:** application routes, Case File route, landing content and geometry, data, recommendations, trace/decision semantics, dependencies and all un-storyboarded landing regions.
+- **Acceptance gates:** normal browser scroll remains authoritative; no fabricated progress; each stage has a static/reduced equivalent; dark/light parity at 1440px, intermediate and 390px; predictable back-scroll and rapid-scroll interruption.
 
-## V8C — Motion Tuning
+## V8C — Product Workbench Interaction Motion
 
-- **Purpose:** tune approved motion as one cross-surface system after the foundation is stable.
-- **User-visible outcome:** clear, restrained and consistent state transitions across website and product.
-- **Approved archetype or layer:** motion tuning layer; no new primitive.
-- **Scope:** all V8B consumers only.
-- **Likely files/style regions:** motion tokens and existing approved consumer selectors; no structural route work.
-- **Dependencies:** V8B complete and functionally stable.
-- **Functionality unchanged:** every state, action, focus path and static composition.
-- **Structural work:** none except fixes required to make approved primitives deterministic.
-- **Styling work:** tune duration, easing, distance and sequencing within LVOS timing bands; remove any motion that does not clarify state.
-- **Responsive work:** verify identical meaning and appropriate distance on desktop, intermediate and mobile overlays.
-- **Accessibility work:** revalidate reduced-motion, keyboard focus, announcements and no delay to essential actions.
-- **Validation states:** repeated interactions, rapid state changes, overlay interruption, dark/light, reduced motion, three widths and representative device performance.
-- **Acceptance criteria:** motion is quiet, state-explanatory and semantically consistent; reduced-motion comprehension is equal; AU-20 closes.
-- **Explicit non-goals:** ambient decoration, new storyboard items, new primitives, layout changes or feature development.
-- **Model/tool recommendation:** Claude Fable for motion QA; GPT-5.6 Terra for controlled tuning; GPT-5.6 Luna only for isolated mechanical timing corrections.
-- **Branch strategy:** `codex/v8c-motion-tuning`, based on merged V8B.
-- **Commit checkpoint:** one tuning commit plus a final cross-surface QA checkpoint.
-- **Exit artifact:** final motion QA matrix, tuned token record and documented intentional no-motion exceptions.
+- **Purpose:** implement approved Workspace selection, mode, artifact-focus, inspector-projection and responsive working-layer motion, plus bounded Case File interactions where the storyboard names them.
+- **Permitted areas:** `/workspace` queue/canvas/inspector state presentation, responsive selected-case surface, and `/report?demo=1` active-location, local record focus and decision-sheet ownership.
+- **Fixed areas:** VC-4 desktop composition, independent pane scrolling, queue grammar, pane widths, data, persistence, recommendation/risk/decision semantics, landing choreography and route architecture.
+- **Acceptance gates:** dark/light at desktop, 1024px, 768/620px and 390px; keyboard and visible-focus paths; repeated selection/mode input; filter/delete reconciliation; modal interruption, inertness and deterministic focus restoration. Unrelated planes remain static.
+
+## V8D — Motion Tuning, Performance and Final QA
+
+- **Purpose:** tune the approved V8B/V8C consumers as one system and give final reduced-motion, performance and interaction approval.
+- **Permitted areas:** timing/easing within constitutional bands, parity corrections, observer/listener cleanup and verified implementation defects only.
+- **Fixed areas:** storyboard scope, visual architecture, dependencies, product semantics, data contracts and all static regions not named by V8B/V8C.
+- **Acceptance gates:** constitution gates pass; dark/light and representative desktop/mobile profiling; no layout shift; no stale state under interruption or rapid input; focus/inertness correct before, during and after motion; reduced-motion static completeness verified.

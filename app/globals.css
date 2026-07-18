@@ -2589,3 +2589,100 @@ html[data-theme="light"] .lp-human-record { background:var(--color-surface-raise
   .lp-footer nav { padding-top:12px; }
   .lp-footer nav a { min-height:42px; overflow-wrap:anywhere; }
 }
+
+/* V8B — landing verification-state choreography. The document is complete
+   before this client-owned layer is enabled; these selectors only clarify
+   ownership of records already on the page. */
+.lp-motion {
+  --lp-motion-state:180ms cubic-bezier(.2,.65,.35,1);
+  --lp-motion-narrative:360ms cubic-bezier(.16,.76,.3,1);
+}
+.lp-motion[data-motion-ready="true"][data-reduced-motion="false"] [data-motion-focus] {
+  transition:opacity var(--lp-motion-state), transform var(--lp-motion-state), border-color var(--lp-motion-state), background-color var(--lp-motion-state), color var(--lp-motion-state);
+}
+.lp-motion[data-motion-ready="true"][data-reduced-motion="false"] [data-motion-section="hero"] .lp-frame--hero {
+  opacity:.94;
+  transform:translateY(6px);
+  transition:opacity var(--lp-motion-narrative), transform var(--lp-motion-narrative), border-color var(--lp-motion-state);
+}
+.lp-motion[data-motion-ready="true"][data-reduced-motion="false"] [data-motion-section="hero"][data-motion-state="active"] .lp-frame--hero {
+  opacity:1;
+  transform:translateY(0);
+}
+.lp-motion[data-motion-ready="true"][data-reduced-motion="false"] [data-motion-section="readiness"] [data-motion-focus="observations"] {
+  opacity:.86;
+}
+.lp-motion[data-motion-ready="true"][data-reduced-motion="false"] [data-motion-section="readiness"][data-motion-state="active"] [data-motion-focus="ci"] {
+  color:var(--lp-ink);
+}
+.lp-motion[data-motion-ready="true"][data-reduced-motion="false"] [data-motion-section="readiness"][data-motion-state="active"] [data-motion-focus="observations"] {
+  opacity:1;
+}
+.lp-motion[data-motion-ready="true"][data-reduced-motion="false"] [data-motion-section="readiness"][data-motion-state="active"] .lp-failures li {
+  border-color:var(--lp-border-strong);
+}
+.lp-motion[data-motion-ready="true"][data-reduced-motion="false"] [data-motion-section="finding"] [data-motion-focus="evidence"] {
+  opacity:.82;
+  transform:translateY(6px);
+}
+.lp-motion[data-motion-ready="true"][data-reduced-motion="false"] [data-motion-section="finding"][data-motion-state="active"] [data-motion-focus="finding"] {
+  border-color:var(--lp-border-strong);
+  background:var(--lp-surface);
+}
+.lp-motion[data-motion-ready="true"][data-reduced-motion="false"] [data-motion-section="finding"][data-motion-state="active"] [data-motion-focus="evidence"] {
+  opacity:1;
+  transform:translateY(0);
+  border-color:var(--color-information);
+}
+.lp-motion[data-motion-ready="true"][data-reduced-motion="false"] [data-motion-section="contract"] [data-motion-focus="clause"] {
+  opacity:.9;
+  transform:translateY(5px);
+}
+.lp-motion[data-motion-ready="true"][data-reduced-motion="false"] [data-motion-section="contract"][data-motion-state="active"] [data-motion-focus="clause"] {
+  opacity:1;
+  transform:translateY(0);
+  border-color:var(--color-warning);
+  background:var(--lp-surface-raised);
+}
+.lp-motion[data-motion-ready="true"][data-reduced-motion="false"] [data-motion-section="ledger"] .lp-ledger-bridge {
+  opacity:.82;
+  transition:opacity var(--lp-motion-state), color var(--lp-motion-state);
+}
+.lp-motion[data-motion-ready="true"][data-reduced-motion="false"] [data-motion-section="ledger"][data-motion-state="active"] .lp-ledger-bridge {
+  opacity:1;
+  color:var(--lp-ink);
+}
+.lp-motion[data-motion-ready="true"][data-reduced-motion="false"] [data-motion-section="decision"] [data-motion-focus="recommendation"] {
+  opacity:.78;
+}
+.lp-motion[data-motion-ready="true"][data-reduced-motion="false"] [data-motion-section="decision"] [data-motion-focus="human-decision"] {
+  opacity:.9;
+  transform:translateY(6px);
+}
+.lp-motion[data-motion-ready="true"][data-reduced-motion="false"] [data-motion-section="decision"][data-motion-state="active"] [data-motion-focus="recommendation"] {
+  opacity:.62;
+}
+.lp-motion[data-motion-ready="true"][data-reduced-motion="false"] [data-motion-section="decision"][data-motion-state="active"] [data-motion-focus="human-decision"] {
+  opacity:1;
+  transform:translateY(0);
+  border-color:var(--lp-border-strong);
+}
+
+@media (max-width:768px) {
+  .lp-motion[data-motion-ready="true"][data-reduced-motion="false"] [data-motion-section="hero"] .lp-frame--hero,
+  .lp-motion[data-motion-ready="true"][data-reduced-motion="false"] [data-motion-section="finding"] [data-motion-focus="evidence"],
+  .lp-motion[data-motion-ready="true"][data-reduced-motion="false"] [data-motion-section="contract"] [data-motion-focus="clause"],
+  .lp-motion[data-motion-ready="true"][data-reduced-motion="false"] [data-motion-section="decision"] [data-motion-focus="human-decision"] {
+    transform:translateY(3px);
+  }
+}
+
+@media (prefers-reduced-motion:reduce) {
+  .lp-motion [data-motion-focus],
+  .lp-motion [data-motion-section] .lp-frame--hero,
+  .lp-motion [data-motion-section] .lp-ledger-bridge {
+    opacity:1 !important;
+    transform:none !important;
+    transition:none !important;
+  }
+}

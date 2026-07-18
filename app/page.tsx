@@ -3,6 +3,7 @@ import { historicalCanonicalRunManifest } from "../lib/canonical-review-run";
 import { buildEvidenceHierarchy } from "../lib/evidence-hierarchy";
 import { buildMergeContract } from "../lib/merge-contract";
 import { report } from "../lib/mock-report";
+import LandingMotion from "./landing-motion";
 import LandingNav from "./landing-nav";
 
 const run = historicalCanonicalRunManifest(report, "demo");
@@ -136,11 +137,12 @@ function FrameHeader({ label }: { label: string }) {
 export default function Home() {
   return (
     <main className="lp">
+      <LandingMotion>
       <a className="lp-skip" href="#lp-main">Skip to content</a>
       <LandingNav />
 
       <div id="lp-main">
-        <section className="lp-hero" aria-labelledby="lp-hero-title">
+        <section className="lp-hero" data-motion-section="hero" aria-labelledby="lp-hero-title">
           <div className="lp-hero-grid">
             <div className="lp-hero-copy">
               <p className="lp-eyebrow">Engineering verification workspace</p>
@@ -224,7 +226,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="lp-problem lp-case-movement lp-case-movement--readiness" aria-labelledby="lp-problem-title">
+        <section className="lp-problem lp-case-movement lp-case-movement--readiness" data-motion-section="readiness" aria-labelledby="lp-problem-title">
           <div className="lp-movement-spine" aria-hidden="true">
             <CaseCoordinate section="01 / readiness" />
             <CaseTraceSegment stages={[0, 1]} label="Readiness trace: change to observation" />
@@ -237,12 +239,12 @@ export default function Home() {
             </p>
           </div>
           <div className="lp-readiness-diagnostic">
-            <div className="lp-readiness-context">
+            <div className="lp-readiness-context" data-motion-focus="ci">
               <span className="lp-ui-label">Pipeline record</span>
               <strong>CI passed</strong>
               <p>Merge readiness remains unresolved.</p>
             </div>
-            <ol className="lp-failures">
+            <ol className="lp-failures" data-motion-focus="observations">
               {failureModes.map((mode) => (
                 <li key={mode.reference}>
                   <code>{mode.reference}</code>
@@ -253,7 +255,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="lp-exhibit lp-exhibit--finding lp-case-movement" aria-labelledby="lp-finding-title">
+        <section className="lp-exhibit lp-exhibit--finding lp-case-movement" data-motion-section="finding" aria-labelledby="lp-finding-title">
           <div className="lp-exhibit-copy">
             <div className="lp-movement-heading-record">
               <CaseCoordinate section="02 / finding" />
@@ -271,14 +273,14 @@ export default function Home() {
             aria-label={`Sample finding F1, high severity: ${finding.title} Reliability, rule detected. Supporting evidence E1 says ${findingEvidence?.statement}. Related condition: ${report.conditionsBeforeMerge[0]}. Required action: ${finding.action}. The evidence register contains ${evidence.records.length} records.`}
           >
             <FrameHeader label="Finding record / F1" />
-            <article className="lp-finding-record" aria-hidden="true">
+            <article className="lp-finding-record" data-motion-focus="finding" aria-hidden="true">
               <header>
                 <code>F1</code>
                 <Status tone="danger">{finding.severity}</Status>
                 <div><h3>{finding.title}</h3><span>{finding.category} · {finding.provenance}</span></div>
               </header>
               <p className="lp-finding-explanation">{finding.evidence}</p>
-              <div className="lp-evidence-record">
+              <div className="lp-evidence-record" data-motion-focus="evidence">
                 <div><code>E1</code><strong>{findingEvidence?.title}</strong><Status tone="info">DIRECTLY OBSERVED</Status></div>
                 <p>{findingEvidence?.statement}</p>
                 <small>{findingEvidence?.source} · {findingEvidence?.provenance} · <code>{findingEvidence?.evidenceId}</code></small>
@@ -294,7 +296,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="lp-exhibit lp-exhibit--contract lp-case-movement" aria-labelledby="lp-contract-title">
+        <section className="lp-exhibit lp-exhibit--contract lp-case-movement" data-motion-section="contract" aria-labelledby="lp-contract-title">
           <div
             className="lp-frame lp-frame--contract"
             role="img"
@@ -310,7 +312,7 @@ export default function Home() {
                 <div><dt>Satisfied</dt><dd>{satisfiedClauses}</dd></div>
               </dl>
             </div>
-            <article className="lp-clause lp-clause--expanded" aria-hidden="true">
+            <article className="lp-clause lp-clause--expanded" data-motion-focus="clause" aria-hidden="true">
               <header><code>C1</code><strong>{expandedClause.statement}</strong><Status tone="warning">OPEN · BLOCKING</Status></header>
               <p>{expandedClause.rationale}</p>
               <dl>
@@ -338,7 +340,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="lp-thesis lp-case-movement lp-case-movement--ledger" aria-labelledby="lp-thesis-title">
+        <section className="lp-thesis lp-case-movement lp-case-movement--ledger" data-motion-section="ledger" aria-labelledby="lp-thesis-title">
           <div className="lp-ledger-intro">
             <CaseCoordinate section="04 / verification ledger" />
             <CaseTraceSegment stages={[3, 4]} label="Ledger trace: requirement to human decision" />
@@ -355,7 +357,7 @@ export default function Home() {
           <Link className="lp-text-link" href="/docs/security-model.md">Read the security model <span aria-hidden="true">→</span></Link>
         </section>
 
-        <section className="lp-decision" aria-labelledby="lp-decision-title">
+        <section className="lp-decision" data-motion-section="decision" aria-labelledby="lp-decision-title">
           <div className="lp-decision-arrival" aria-hidden="true">
             <CaseCoordinate section="05 / human authority" />
             <CaseTraceSegment stages={[3, 4]} label="Decision trace: requirement to human decision" />
@@ -371,7 +373,7 @@ export default function Home() {
             aria-label={`Sample human decision exhibit for ${report.pr.repository} pull request ${report.pr.number}. Lintel recommends tests required with medium risk ${report.verdict.riskScore} out of 100. ${openBlockingClauses} blocking requirements and ${openConditions} report conditions remain open. The current Human Decision Ledger has no entry, so the engineer decision is pending, with no actor or timestamp available and no recommendation divergence recorded.`}
           >
             <FrameHeader label="Decision record / Human Decision Ledger" />
-            <div className="lp-decision-context" aria-hidden="true">
+            <div className="lp-decision-context" data-motion-focus="recommendation" aria-hidden="true">
               <div>
                 <span className="lp-ui-label">Lintel analysis / recommendation</span>
                 <strong>#{report.pr.number} · {report.pr.title}</strong>
@@ -384,7 +386,7 @@ export default function Home() {
                 <div><dt>Conditions</dt><dd><strong>{openConditions}</strong><span>open</span></dd></div>
               </dl>
             </div>
-            <div className="lp-human-record" aria-hidden="true">
+            <div className="lp-human-record" data-motion-focus="human-decision" aria-hidden="true">
               <div className="lp-human-record-heading">
                 <span className="lp-ui-label">Current human decision</span>
                 <span className="lp-decision-state"><span aria-hidden="true" /> Pending</span>
@@ -405,7 +407,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="lp-final" aria-labelledby="lp-final-title">
+        <section className="lp-final" data-motion-section="final" aria-labelledby="lp-final-title">
           <div className="lp-final-record">
             <CaseCoordinate section="case close / next review" />
             <span>Example case remains open</span>
@@ -442,6 +444,7 @@ export default function Home() {
           <Link href="/docs/security-model.md">Security model</Link>
         </nav>
       </footer>
+      </LandingMotion>
     </main>
   );
 }

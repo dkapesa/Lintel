@@ -76,3 +76,55 @@ The dossier remains document-like and stable. It is not a scrolling presentation
 - Whether a named landing sequence needs `IntersectionObserver`, CSS only, Web Animations or progressive View Transitions.
 - Whether Case File smooth scroll should retain its current duration or become immediate except where a manual test proves navigation benefit.
 - Any dependency, visual redesign, new data/state, route transition or global animation primitive.
+
+## V8B — Landing Product Choreography implementation record
+
+**Status:** Implemented and validated; no commit or push.
+
+### Bounded scope and architecture
+
+V8B changes only the landing document (`/`), its landing-owned client controller and landing CSS. The VC-3 editorial hero, authentic PR #482 Case File, readiness gap, exhibits, verification ledger, Human Authority climax, unresolved final trace, CTA, typography, dark/light geometry and responsive reading order remain fixed. Canonical report data, evidence hierarchy, Merge Contract, recommendation/risk meaning, Human Decision semantics, routes, shell, Workspace and Case File are unchanged.
+
+`app/landing-motion.tsx` is the sole narrative controller. After hydration it annotates the already-rendered landing sections with `not-yet-owned`, `active`, or `revealed` state and exposes the active section at the landing root. A single `IntersectionObserver` uses a generous central ownership band; it has no scroll listener, wheel interception, snapping, sticky trap, animation frame loop or React render loop. Entries are reconciled to one nearest owned section, observers and preference listeners are removed on cleanup, and an unavailable observer falls back to the fully revealed static state.
+
+The server response contains the complete final reading state. `data-motion-ready` is applied only after hydration; lower-opacity and small transform starting positions are progressive visual emphasis, never hidden or withheld proof. Reduced motion and missing-observer fallback force every section to its readable final state.
+
+### Implemented landing movements
+
+- **Hero orientation:** the existing Case File frame settles as one restrained plane when Hero owns the view. PR #482, TESTS REQUIRED, risk 46/100, trace, C1 and pending human decision remain present from first paint; actions are never delayed.
+- **Readiness:** `CI passed` remains written and visible while the already-recorded observation list gains current interpretation emphasis. No issue is discovered or simulated.
+- **F1 → E1:** the F1 record stays present while its directly observed E1 inset gains a brief attached-plane emphasis. Provenance, related condition and required action remain readable throughout.
+- **E1 → C1 / Merge Contract:** Contract ownership transfers focus to the existing C1 plane and clearance path. C1 remains explicitly `OPEN · BLOCKING`; E1 and related-record text remain written, and C2/C3 stay static context.
+- **Ledger:** accepted low-motion pause: only the bridge to the decision ledger receives a quiet opacity/colour hand-off. The four trust records remain ordinary document reading.
+- **Human Authority:** the recommendation plane de-emphasises as the existing Human Decision record becomes focal. The neutral pending diamond is never pulsed, and Actor/Timestamp/Recommendation alignment remain `Not recorded` / `No decision to compare`.
+- **Final trace and next case:** no trace node travels or resolves. The open Human Decision remains open; final links retain ordinary button feedback only.
+
+### Responsive, reduced-motion and performance policy
+
+Desktop uses at most 6px of vertical record emphasis. Tablet reduces it to 3px. Mobile keeps the same document order and has no sticky plane, lateral sweep, fixed overlay or animation scaffolding. At `prefers-reduced-motion: reduce`, narrative transforms, transitions and staged ownership are disabled; all records are opaque, static and immediately readable, with existing focus, status and navigation behaviour intact.
+
+V8B uses only opacity, transform and bounded semantic colour/background/border transitions: 180ms local state and 360ms named landing narrative timing. It adds no dependency, keyframe, animated dimension, broad `transition: all`, filter/blur, counter, layout measurement loop or persistent `will-change` usage. Motion is interruptible because current ownership is derived from observer entries rather than queued timelines.
+
+### Changed selectors and components
+
+- `app/page.tsx`: `LandingMotion` wrapper and `data-motion-section` / `data-motion-focus` hooks on Hero, readiness, finding, contract, ledger, decision and final regions.
+- `app/landing-motion.tsx`: hydration-safe section ownership controller.
+- `app/globals.css`: V8B-scoped `.lp-motion` state selectors and reduced-motion final-state rule.
+
+### Validation matrix
+
+| Check | Result |
+| --- | --- |
+| Landing DOM and static semantics | Passed: PR #482, F1/E1, C1 OPEN · BLOCKING, recommendation and unresolved Human Decision remain present in the server-rendered document; exactly three `.lp-serif` / Newsreader moments remain. |
+| 1440 dark and light; 1180 dark; 1024 dark/light; 768, 620 dark; 390 dark/light | Passed by responsive CSS inspection and runtime geometry checks: no horizontal page overflow, no additional sticky/fixed product plane and mobile retains logical document order. |
+| Reduced motion at 1440 dark and 390 dark | Source and fallback passed: dedicated preference rule forces readable final opacity/transform state and the controller marks all sections revealed without staged ownership. The available browser runner cannot emulate `prefers-reduced-motion`, so a direct preference-media visual pass remains a V8D validation item. |
+| Ordinary, rapid and reverse scroll | Passed by architecture review: one observer owns a generous band, selects a single closest active section, has no scroll listener or queued animation, and cleans up on unmount/preference change. |
+| Theme, resize, keyboard and mobile menu | Passed: choreography changes no focus, logical order, control semantics or menu code; landing theme and menu controls remain outside the observer ownership surface. |
+| Runtime regressions | Passed: no landing console errors, duplicate-key warning, hydration mismatch or static-flag error observed; observer-unavailable browser environments now retain a fully revealed static document. |
+| Route regressions | `/report?demo=1` and `/workspace` remain untouched by V8B source changes. |
+| Static checks | `git diff --check` and `npx tsc --noEmit --incremental false` passed. `npm run build` reached production compilation but is environment-limited by restricted Google Fonts fetches for the existing Geist, Geist Mono and Newsreader imports; it reported no landing source/type failure. |
+
+### Deferred work
+
+- **V8C:** Workspace selection/mode/inspector and bounded Case File interaction motion only; it must not reopen the landing controller.
+- **V8D:** performance profiling on representative hardware, full visual approval/timing calibration and cross-browser observer stress testing; it must not add a new motion direction or weaken reduced motion.

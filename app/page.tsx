@@ -286,7 +286,7 @@ export default function Home() {
                 <small>{findingEvidence?.source} · {findingEvidence?.provenance} · <code>{findingEvidence?.evidenceId}</code></small>
               </div>
               <dl className="lp-record-links">
-                <div><dt>Related condition</dt><dd>{report.conditionsBeforeMerge[0]}</dd></div>
+                <div><dt>Related requirement</dt><dd><code>C1 · OPEN · BLOCKING</code><span>{report.conditionsBeforeMerge[0]}</span></dd></div>
                 <div><dt>Required action</dt><dd>{finding.action}</dd></div>
               </dl>
               <p className="lp-register-count">
@@ -317,7 +317,7 @@ export default function Home() {
               <p>{expandedClause.rationale}</p>
               <dl>
                 <div><dt>Clears with</dt><dd>{expandedClause.evidenceRequired}</dd></div>
-                <div><dt>Evidence</dt><dd>Stronger evidence required</dd></div>
+                <div><dt>Current evidence</dt><dd><code>E1</code> · DIRECTLY OBSERVED</dd></div>
                 <div><dt>Related records</dt><dd><code>E1, E3, A2</code></dd></div>
                 <div><dt>Owner cue</dt><dd>{expandedClause.ownerCue}</dd></div>
               </dl>

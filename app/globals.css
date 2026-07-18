@@ -2723,3 +2723,103 @@ html[data-theme="light"] .lp-human-record { background:var(--color-surface-raise
     transition:none !important;
   }
 }
+
+/* V8B.1 — cinematic landing calibration. This stays within the existing
+   Case File narrative: one deliberately cropped opening state, then the
+   same records progress through readiness, evidence, requirement and human
+   authority. It does not introduce a second product shell or motion layer. */
+@media (min-width:1101px) {
+  .lp-hero { padding-top:clamp(54px,5.7vw,82px); padding-bottom:clamp(54px,5.8vw,84px); }
+  .lp-hero-grid { grid-template-columns:minmax(330px,39fr) minmax(0,61fr); gap:clamp(38px,4.8vw,72px); }
+  .lp-hero-copy { padding-top:clamp(48px,6.8vw,108px); }
+  .lp-hero-copy h1 { max-width:530px; font-size:clamp(48px,4.2vw,64px); }
+
+  /* The opening crop is a real Case File state, not a miniature route. The
+     outline yields its width here so the selected case and unresolved record
+     can be read at first glance. */
+  .lp-frame--hero { width:100%; margin-right:0; }
+  .lp-frame--hero .lp-case-body { display:block; }
+  .lp-frame--hero .lp-case-outline { display:none; }
+  .lp-frame--hero .lp-case-identity { padding:16px 24px 8px; }
+  .lp-frame--hero .lp-case-title { padding:5px 24px 15px; }
+  .lp-frame--hero .lp-case-title h2 { max-width:680px; font-size:19px; }
+  .lp-frame--hero .lp-case-main .lp-trace-node { padding:10px 12px 9px; }
+  .lp-frame--hero .lp-case-verdict { grid-template-columns:minmax(180px,.78fr) minmax(0,1.22fr); gap:18px; padding:14px 24px 15px; }
+  .lp-frame--hero .lp-hero-records { grid-template-columns:minmax(0,1.28fr) minmax(230px,.72fr); }
+  .lp-frame--hero .lp-hero-finding { padding:17px 24px 18px; }
+  .lp-frame--hero .lp-hero-decision { grid-template-rows:1fr 1fr; }
+  .lp-frame--hero .lp-hero-clause, .lp-frame--hero .lp-hero-pending { padding:14px 18px; }
+
+  /* A shorter intentional seam carries the selected case into the readiness
+     record; the next region no longer reads as a fresh card deck. */
+  .lp-hero::after { height:44px; }
+  .lp-problem { padding-top:clamp(64px,6.8vw,92px); }
+  .lp-problem-copy { padding-top:13px; }
+  .lp-readiness-diagnostic { max-width:680px; }
+
+  .lp-exhibit--finding { padding-top:clamp(82px,8.8vw,118px); }
+  .lp-exhibit--finding .lp-frame { width:calc(100% + min(9vw,140px)); }
+  .lp-finding-record > header { padding-top:28px; }
+  .lp-evidence-record { margin-left:66px; padding-top:19px; padding-bottom:20px; }
+  .lp-record-links { margin-left:66px; grid-template-columns:minmax(0,1.22fr) minmax(0,.78fr); }
+  .lp-record-links dd { display:grid; gap:4px; }
+  .lp-record-links dd code { color:var(--color-warning); font-size:10px; }
+  .lp-register-count { padding-left:66px; }
+
+  .lp-exhibit--contract { padding-top:clamp(98px,10vw,140px); }
+  .lp-clause > header strong { font-size:14px; }
+  .lp-clause dl > div:first-child { background:var(--lp-surface-inset); }
+  .lp-clause dl > div:nth-child(2) { background:var(--color-warning-soft); }
+  .lp-clause dl > div:nth-child(2) dd { color:var(--lp-ink); }
+
+  /* The ledger is a single low-density reading pause, not four peer cards. */
+  .lp-thesis { width:min(100%,960px); padding-top:clamp(112px,12vw,164px); }
+  .lp-trust-records { grid-template-columns:1fr; gap:0; max-width:720px; margin-top:34px; }
+  .lp-trust-records li { display:grid; grid-template-columns:180px minmax(0,1fr); gap:22px; padding:15px 0; }
+  .lp-trust-records li:nth-last-child(-n+2) { border-bottom:0; }
+  .lp-trust-records li:last-child { border-bottom:1px solid var(--lp-border); }
+  .lp-trust-records h3 { margin:0; }
+
+  .lp-decision { width:min(100%,calc(var(--lp-max) + 128px)); padding-top:clamp(92px,10vw,142px); }
+  .lp-decision-arrival { max-width:1120px; }
+  .lp-decision-heading { max-width:610px; margin-left:clamp(0px,8vw,116px); }
+  .lp-human-record { width:calc(100% - clamp(0px,8vw,116px)); }
+  .lp-decision-conclusion { width:calc(100% - clamp(0px,8vw,116px)); }
+
+  .lp-final { width:min(100%,1080px); margin-top:clamp(86px,9vw,124px); }
+}
+
+@media (min-width:769px) and (max-width:1100px) {
+  .lp-frame--hero .lp-case-outline { display:none; }
+  .lp-frame--hero .lp-case-body { display:block; }
+  .lp-frame--hero .lp-case-identity, .lp-frame--hero .lp-case-title { padding-inline:20px; }
+  .lp-frame--hero .lp-case-verdict { padding-inline:20px; }
+  .lp-frame--hero .lp-hero-records { grid-template-columns:minmax(0,1.12fr) minmax(200px,.88fr); }
+  .lp-trust-records { grid-template-columns:1fr; max-width:680px; }
+  .lp-trust-records li { display:grid; grid-template-columns:170px minmax(0,1fr); gap:20px; }
+  .lp-trust-records li:nth-last-child(-n+2) { border-bottom:0; }
+  .lp-trust-records li:last-child { border-bottom:1px solid var(--lp-border); }
+  .lp-trust-records h3 { margin:0; }
+}
+
+@media (max-width:768px) {
+  .lp-frame--hero .lp-case-outline { display:none; }
+  .lp-frame--hero .lp-case-body { display:block; }
+  .lp-hero { padding-bottom:44px; }
+  .lp-problem { padding-top:56px; }
+  .lp-trust-records { grid-template-columns:1fr; }
+}
+
+@media (max-width:620px) {
+  .lp-frame--hero { margin-top:26px; }
+  .lp-frame--hero .lp-case-main .lp-trace-node { padding-inline:15px; }
+  .lp-frame--hero .lp-case-verdict dl > div:last-child { display:grid; }
+  .lp-frame--hero .lp-hero-finding > p,
+  .lp-frame--hero .lp-hero-evidence span,
+  .lp-frame--hero .lp-hero-pending > p { display:none; }
+  .lp-frame--hero .lp-hero-finding { padding-block:14px; }
+  .lp-frame--hero .lp-hero-evidence { margin-top:10px; padding-top:10px; }
+  .lp-hero-decision { grid-template-columns:1fr; }
+  .lp-hero-clause { border-right:0; border-bottom:1px solid var(--lp-border); }
+  .lp-trust-records li { padding-block:14px; }
+}

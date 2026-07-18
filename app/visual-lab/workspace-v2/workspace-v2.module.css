@@ -1,0 +1,1448 @@
+/* R0B.1 — Workspace V2 visual lab · refined pass.
+
+   Every custom property declared here is namespaced --wsv2-* and scoped to
+   .root. Nothing leaks to :root, body, or any production selector.
+
+   PLANE VALUES ARE LAB-LOCAL AND EXPLICIT.
+   The first pass aliased production surface tokens for the four planes. Those
+   tokens sit within ~4 RGB points of one another, so the four-plane hierarchy
+   was imperceptible. This pass declares explicit dark values spread far enough
+   apart to survive a blur test and 50% scale:
+
+     spine      #050608   deepest recessed structure
+     queue      #0c0e13   dark operational plane
+     inspector  #121620   dark contextual plane, distinct from queue
+     canvas     #1a1e26   clearly lifted, dominant
+
+   R0B.1 is dark-only by scope. Light mode is deliberately not handled.
+
+   Typography, radii, spacing and status hues continue to come from the
+   production design system. Mono is reserved for provenance-bearing strings:
+   repository, PR, branch, SHA, file path, evidence source, identifiers and
+   counts.
+
+   Canvas internal grid:
+     row 1  case header      (auto, fixed)
+     row 2  canvas body      (minmax(0,1fr), the only canvas scroll region)
+     row 3  Decision Plate   (auto, a real grid row — never overlaps) */
+
+.root {
+  /* --- Planes --- */
+  --wsv2-spine: #050608;
+  --wsv2-queue: #0c0e13;
+  --wsv2-inspector: #121620;
+  --wsv2-canvas: #1a1e26;
+
+  /* --- Canvas-internal surfaces --- */
+  --wsv2-well: #151921;
+  --wsv2-raised: #222834;
+  --wsv2-focal: #29303d;
+  --wsv2-plate: #262d3a;
+  --wsv2-queue-inset: #06070a;
+
+  /* --- Lines (used sparingly) --- */
+  --wsv2-edge: #000000;
+  --wsv2-hairline: rgb(255 255 255 / 7%);
+  --wsv2-rail: #1e232c;
+
+  /* --- Text --- */
+  --wsv2-text: var(--color-text-primary);
+  --wsv2-text-2: var(--color-text-secondary);
+  --wsv2-text-3: var(--color-text-muted);
+
+  /* --- Status --- */
+  --wsv2-success: var(--color-success);
+  --wsv2-warning: var(--color-warning);
+  --wsv2-danger: var(--color-danger);
+  --wsv2-information: var(--color-information);
+  --wsv2-provenance: var(--color-provenance);
+  --wsv2-accent: var(--color-accent);
+  --wsv2-focus-ring: var(--color-focus-ring);
+
+  /* --- Typography --- */
+  --wsv2-sans: var(--type-family-application);
+  --wsv2-mono: var(--type-family-technical);
+  --wsv2-micro-size: var(--type-role-micro-label-size);
+  --wsv2-micro-line: var(--type-role-micro-label-line);
+  --wsv2-micro-weight: var(--type-role-micro-label-weight);
+  --wsv2-micro-track: var(--type-role-micro-label-tracking);
+  --wsv2-tech-size: var(--type-role-technical-size);
+  --wsv2-tech-line: var(--type-role-technical-line);
+  --wsv2-support-size: var(--type-role-support-size);
+  --wsv2-support-line: var(--type-role-support-line);
+  --wsv2-body-size: var(--type-role-body-size);
+  --wsv2-body-line: var(--type-role-body-line);
+
+  /* --- Shape --- */
+  --wsv2-r-chip: var(--radius-xs);
+  --wsv2-r-control: var(--radius-control);
+  --wsv2-r-card: var(--radius-card);
+  --wsv2-canvas-pad: clamp(22px, 2.2vw, 34px);
+  --wsv2-plane-pad: 12px;
+
+  height: 100dvh;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-columns: 236px 204px minmax(0, 1fr) 308px;
+  overflow: hidden;
+  background: var(--wsv2-spine);
+  color: var(--wsv2-text);
+  font-family: var(--wsv2-sans);
+  font-size: var(--wsv2-body-size);
+  line-height: var(--wsv2-body-line);
+  letter-spacing: -0.005em;
+}
+
+.skipLink {
+  position: absolute;
+  z-index: 40;
+  top: 10px;
+  left: 10px;
+  min-height: 40px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  border-radius: var(--wsv2-r-control);
+  background: var(--wsv2-raised);
+  color: var(--wsv2-text);
+  font-size: var(--wsv2-support-size);
+  text-decoration: none;
+  transform: translateY(-200%);
+}
+
+.skipLink:focus-visible {
+  transform: translateY(0);
+  outline: 2px solid var(--wsv2-focus-ring);
+  outline-offset: 2px;
+}
+
+/* --- Shared plane chrome --------------------------------------------- */
+
+.planeHeader {
+  height: 40px;
+  padding: 0 var(--wsv2-plane-pad);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex: none;
+}
+
+.planeLabel {
+  color: var(--wsv2-text-3);
+  font-size: var(--wsv2-micro-size);
+  line-height: var(--wsv2-micro-line);
+  font-weight: var(--wsv2-micro-weight);
+  letter-spacing: var(--wsv2-micro-track);
+  text-transform: uppercase;
+}
+
+/* --- Plane 1 — queue -------------------------------------------------- */
+
+.queue {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--wsv2-queue);
+  overflow: hidden;
+}
+
+.queueList {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  padding: 0 8px 16px;
+}
+
+.queueGroup {
+  display: block;
+}
+
+.queueGroup + .queueGroup {
+  margin-top: 14px;
+}
+
+.queueGroupHeader {
+  padding: 6px 6px 5px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.queueGroupLabel {
+  color: var(--wsv2-text-3);
+  font-size: var(--wsv2-micro-size);
+  line-height: var(--wsv2-micro-line);
+  font-weight: var(--wsv2-micro-weight);
+  letter-spacing: var(--wsv2-micro-track);
+  text-transform: uppercase;
+}
+
+.queueGroupCount {
+  color: var(--wsv2-text-3);
+  font-family: var(--wsv2-mono);
+  font-size: 10px;
+}
+
+.queueRow {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 0;
+  border-left: 2px solid transparent;
+  border-radius: var(--wsv2-r-control);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  display: grid;
+  gap: 3px;
+  cursor: pointer;
+}
+
+.queueRow:hover {
+  background: rgb(255 255 255 / 3%);
+}
+
+/* Selection is an inset well, not a raised card. */
+.queueRowSelected,
+.queueRowSelected:hover {
+  background: var(--wsv2-queue-inset);
+  border-left-color: var(--wsv2-accent);
+  box-shadow: inset 0 1px 3px rgb(0 0 0 / 55%);
+}
+
+.queueRow:focus-visible {
+  outline: 2px solid var(--wsv2-focus-ring);
+  outline-offset: -2px;
+}
+
+.queueRef {
+  color: var(--wsv2-text-3);
+  font-family: var(--wsv2-mono);
+  font-size: 10px;
+  line-height: 14px;
+}
+
+.queueTitle {
+  min-width: 0;
+  color: var(--wsv2-text-2);
+  font-size: var(--wsv2-support-size);
+  line-height: 17px;
+  font-weight: 500;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.queueRowSelected .queueTitle {
+  color: var(--wsv2-text);
+  font-weight: 600;
+}
+
+.queueState {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding-top: 2px;
+}
+
+.queueRec {
+  font-size: var(--wsv2-micro-size);
+  line-height: var(--wsv2-micro-line);
+  font-weight: var(--wsv2-micro-weight);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.queueRisk {
+  color: var(--wsv2-text-3);
+  font-family: var(--wsv2-mono);
+  font-size: 10px;
+}
+
+/* --- Plane 2 — Evidence Spine ---------------------------------------- */
+
+.spine {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--wsv2-spine);
+  overflow: hidden;
+}
+
+/* One continuous rail carries the chain from node 1 to node 5. */
+.spineChain {
+  position: relative;
+  margin: 0;
+  padding: 6px 12px;
+  list-style: none;
+  flex: none;
+}
+
+.spineChain::before {
+  content: "";
+  position: absolute;
+  left: 28px;
+  top: 32px;
+  bottom: 32px;
+  width: 2px;
+  background: var(--wsv2-rail);
+}
+
+.spineItem {
+  position: relative;
+}
+
+.spineItemLast {
+  margin-top: 2px;
+}
+
+.spineNode {
+  width: 100%;
+  min-height: 52px;
+  padding: 8px;
+  border: 0;
+  border-radius: var(--wsv2-r-control);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.spineNode:hover {
+  background: rgb(255 255 255 / 4%);
+}
+
+.spineNodeCurrent {
+  background: rgb(255 255 255 / 6%);
+}
+
+.spineNode:focus-visible {
+  outline: 2px solid var(--wsv2-focus-ring);
+  outline-offset: -2px;
+}
+
+/* The mark punches through the rail so the chain reads as continuous. */
+.spineMark {
+  position: relative;
+  z-index: 1;
+  width: 18px;
+  height: 18px;
+  flex: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--wsv2-spine);
+  box-shadow: 0 0 0 1px var(--wsv2-rail);
+}
+
+.spineMarkCore {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.spineMarkComplete {
+  box-shadow: 0 0 0 1px var(--wsv2-rail);
+}
+
+.spineMarkComplete .spineMarkCore {
+  background: var(--wsv2-success);
+  opacity: 0.75;
+}
+
+.spineMarkAttention {
+  box-shadow: 0 0 0 1px var(--wsv2-warning);
+}
+
+.spineMarkAttention .spineMarkCore {
+  background: var(--wsv2-warning);
+}
+
+.spineMarkPending {
+  box-shadow: 0 0 0 1px var(--wsv2-rail);
+}
+
+.spineMarkPending .spineMarkCore {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--wsv2-text-3);
+}
+
+.spineNodeCurrent .spineMark {
+  box-shadow:
+    0 0 0 1px var(--wsv2-accent),
+    0 0 0 4px rgb(138 178 221 / 14%);
+}
+
+.spineText {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  gap: 1px;
+}
+
+.spineLabel {
+  min-width: 0;
+  color: var(--wsv2-text-3);
+  font-size: var(--wsv2-support-size);
+  line-height: 16px;
+  font-weight: 550;
+  white-space: nowrap;
+}
+
+.spineNodeCurrent .spineLabel {
+  color: var(--wsv2-text);
+}
+
+.spineCount {
+  color: var(--wsv2-text-3);
+  font-family: var(--wsv2-mono);
+  font-size: 10px;
+  line-height: 14px;
+  opacity: 0.85;
+}
+
+.spineFoot {
+  margin: auto 12px 14px;
+  padding: 11px 11px 9px;
+  border-radius: var(--wsv2-r-card);
+  background: rgb(255 255 255 / 3%);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px 4px;
+}
+
+.spineFact {
+  display: grid;
+  gap: 1px;
+}
+
+.spineFactValue {
+  color: var(--wsv2-text);
+  font-family: var(--wsv2-mono);
+  font-size: 15px;
+  line-height: 18px;
+}
+
+.spineFactLabel {
+  color: var(--wsv2-text-3);
+  font-size: 9px;
+  line-height: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.spineFootNote {
+  grid-column: 1 / -1;
+  padding-top: 7px;
+  border-top: 1px solid var(--wsv2-hairline);
+  color: var(--wsv2-warning);
+  font-size: 10px;
+  line-height: 14px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+/* --- Plane 3 — canvas ------------------------------------------------- */
+
+.canvas {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  background: var(--wsv2-canvas);
+}
+
+/* Row 1 — stable two-column header. The verdict can never wrap inward. */
+
+.caseHeader {
+  padding: 15px var(--wsv2-canvas-pad) 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 24px;
+  align-items: start;
+  box-shadow: inset 0 -1px 0 var(--wsv2-hairline);
+}
+
+.caseIdentity {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.labBadge {
+  color: var(--wsv2-text-3);
+  font-size: var(--wsv2-micro-size);
+  line-height: var(--wsv2-micro-line);
+  font-weight: var(--wsv2-micro-weight);
+  letter-spacing: var(--wsv2-micro-track);
+  text-transform: uppercase;
+}
+
+.caseTitle {
+  margin: 0;
+  max-width: 54ch;
+  font-size: 21px;
+  line-height: 27px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* Metadata separates by gap only. A generated separator belongs to either
+   the preceding or the following value, so in a wrapping flex row it can
+   always end or begin a line. Gap cannot. */
+.caseMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 18px;
+  align-items: center;
+  color: var(--wsv2-text-3);
+  font-family: var(--wsv2-mono);
+  font-size: var(--wsv2-tech-size);
+  line-height: var(--wsv2-tech-line);
+}
+
+.caseMetaItem {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.metaAuthor {
+  font-family: var(--wsv2-sans);
+}
+
+.metaDot {
+  opacity: 0.45;
+}
+
+.caseVerdict {
+  display: grid;
+  gap: 3px;
+  justify-items: end;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.verdictMark {
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.verdictFacts {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--wsv2-text-3);
+  font-family: var(--wsv2-mono);
+  font-size: var(--wsv2-tech-size);
+  white-space: nowrap;
+}
+
+/* Row 2 — canvas body */
+
+.canvasBody {
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scroll-behavior: smooth;
+}
+
+.canvasInner {
+  max-width: 880px;
+  padding: 22px var(--wsv2-canvas-pad) 44px;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.stage {
+  min-width: 0;
+  display: grid;
+  gap: 9px;
+  scroll-margin-top: 12px;
+}
+
+.stageHeading {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+}
+
+.stageIndex {
+  width: 17px;
+  color: var(--wsv2-text-3);
+  font-family: var(--wsv2-mono);
+  font-size: 10px;
+}
+
+.stageTitle {
+  margin: 0;
+  font-size: 15px;
+  line-height: 21px;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+}
+
+.stageMeta {
+  margin-left: auto;
+  color: var(--wsv2-text-3);
+  font-family: var(--wsv2-mono);
+  font-size: var(--wsv2-tech-size);
+}
+
+.emptyState {
+  margin: 0;
+  padding: 13px;
+  border-radius: var(--wsv2-r-card);
+  background: var(--wsv2-well);
+  color: var(--wsv2-text-3);
+  font-size: var(--wsv2-support-size);
+}
+
+/* Change surface — a compact ledger, not cards */
+
+.fileList {
+  display: grid;
+}
+
+.fileRow {
+  min-width: 0;
+  padding: 7px 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: space-between;
+  box-shadow: inset 0 -1px 0 var(--wsv2-hairline);
+}
+
+.filePath {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--wsv2-text-2);
+  font-family: var(--wsv2-mono);
+  font-size: var(--wsv2-tech-size);
+}
+
+.fileStats {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--wsv2-mono);
+  font-size: var(--wsv2-tech-size);
+}
+
+.additions {
+  color: var(--wsv2-success);
+}
+
+.deletions {
+  color: var(--wsv2-danger);
+}
+
+.fileRisk {
+  min-width: 54px;
+  text-align: right;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+/* Records — three distinct treatments, no universal card ---------------- */
+
+.recordList {
+  display: flex;
+  flex-direction: column;
+}
+
+.record {
+  min-width: 0;
+  position: relative;
+}
+
+.recordButton {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  display: grid;
+  gap: 4px;
+  cursor: pointer;
+}
+
+.recordButton:focus-visible {
+  outline: 2px solid var(--wsv2-focus-ring);
+  outline-offset: -2px;
+}
+
+.recordTop {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.recordTitle {
+  min-width: 0;
+}
+
+.recordStatement {
+  color: var(--wsv2-text-3);
+  font-size: var(--wsv2-support-size);
+  line-height: var(--wsv2-support-line);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.recordFocused .recordStatement {
+  color: var(--wsv2-text-2);
+  display: block;
+  -webkit-line-clamp: unset;
+}
+
+.recordFoot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: baseline;
+  color: var(--wsv2-text-3);
+  font-size: var(--wsv2-support-size);
+}
+
+.technical {
+  font-family: var(--wsv2-mono);
+  font-size: var(--wsv2-tech-size);
+  line-height: var(--wsv2-tech-line);
+}
+
+.recordExpansion {
+  padding: 0 14px 13px 16px;
+  display: grid;
+  gap: 9px;
+}
+
+/* Findings — ruled entries with a severity edge. Severity drives weight. */
+
+.recordFinding {
+  border-left: 2px solid var(--wsv2-rail);
+  box-shadow: inset 0 -1px 0 var(--wsv2-hairline);
+}
+
+.recordFinding .recordButton {
+  padding: 11px 14px 12px 14px;
+}
+
+.recordFinding .recordTitle {
+  font-size: 13px;
+  line-height: 19px;
+  font-weight: 500;
+  color: var(--wsv2-text-2);
+}
+
+.sevCritical {
+  border-left-color: var(--wsv2-danger);
+}
+
+.sevCritical .recordTitle,
+.sevHigh .recordTitle {
+  font-size: 15px;
+  line-height: 21px;
+  font-weight: 650;
+  letter-spacing: -0.012em;
+  color: var(--wsv2-text);
+}
+
+.sevHigh {
+  border-left-color: var(--wsv2-danger);
+  border-left-width: 2px;
+}
+
+.sevMedium {
+  border-left-color: var(--wsv2-warning);
+  opacity: 0.98;
+}
+
+.sevLow {
+  border-left-color: var(--wsv2-rail);
+}
+
+.recordSeverity {
+  flex: none;
+  font-size: 10px;
+  line-height: 15px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+}
+
+/* Evidence — recessed wells carrying a strength meter */
+
+.recordEvidence {
+  margin-bottom: 4px;
+  border-radius: var(--wsv2-r-card);
+  background: var(--wsv2-well);
+  border-left: 2px solid transparent;
+}
+
+.recordEvidence .recordButton {
+  padding: 10px 13px 11px;
+}
+
+.recordEvidence .recordTitle {
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 550;
+}
+
+.evStrong {
+  border-left-color: var(--wsv2-rail);
+}
+
+.evStrong .recordTitle {
+  color: var(--wsv2-text);
+}
+
+.evWeak .recordTitle {
+  color: var(--wsv2-text-2);
+  font-weight: 450;
+}
+
+.evMissing {
+  border-left-color: var(--wsv2-danger);
+}
+
+/* Flat surface only — no gradient. Differentiation from ordinary evidence
+   is carried by the dashed warning edge, a restrained inset warning
+   hairline, and the explicit STALE flag in the record footer. The inset
+   shadow does not affect layout, so dimensions are unchanged. */
+.evStale {
+  border-left-color: var(--wsv2-warning);
+  border-left-style: dashed;
+  background: var(--wsv2-well);
+  box-shadow: inset 0 0 0 1px rgb(224 189 114 / 12%);
+}
+
+.evidenceState {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.evidenceStatus {
+  font-size: 10px;
+  line-height: 15px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.evidenceClass {
+  font-family: var(--wsv2-mono);
+  font-size: 10px;
+  color: var(--wsv2-text-3);
+}
+
+.staleFlag {
+  padding: 1px 5px;
+  border-radius: var(--wsv2-r-chip);
+  background: rgb(224 189 114 / 14%);
+  color: var(--wsv2-warning);
+  font-size: 9px;
+  line-height: 14px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Evidence strength meter */
+
+.meter {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 11px;
+}
+
+.meterTick {
+  width: 3px;
+  border-radius: 1px;
+  background: var(--wsv2-rail);
+}
+
+.meterTick:nth-child(1) {
+  height: 4px;
+}
+.meterTick:nth-child(2) {
+  height: 6px;
+}
+.meterTick:nth-child(3) {
+  height: 8px;
+}
+.meterTick:nth-child(4) {
+  height: 11px;
+}
+
+.meterTickOn {
+  background: var(--wsv2-text-2);
+}
+
+.evStrong .meterTickOn {
+  background: var(--wsv2-success);
+}
+
+/* Requirements — raised contract clauses */
+
+.recordRequirement {
+  margin-bottom: 5px;
+  border-radius: var(--wsv2-r-card);
+  background: var(--wsv2-raised);
+  border-left: 3px solid var(--wsv2-rail);
+}
+
+.recordRequirement .recordButton {
+  padding: 11px 14px 12px;
+}
+
+.recordRequirement .recordTitle {
+  font-size: 13px;
+  line-height: 19px;
+  font-weight: 600;
+  color: var(--wsv2-text);
+}
+
+.reqBlocking {
+  border-left-color: var(--wsv2-danger);
+}
+
+.reqAdvisory {
+  border-left-color: var(--wsv2-rail);
+}
+
+.reqAdvisory .recordTitle {
+  font-weight: 500;
+  color: var(--wsv2-text-2);
+}
+
+.reqSatisfied {
+  border-left-color: var(--wsv2-success);
+  background: var(--wsv2-well);
+}
+
+.reqStale {
+  border-left-color: var(--wsv2-warning);
+  border-left-style: dashed;
+  background: var(--wsv2-well);
+}
+
+.reqState {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.reqBlockingFlag {
+  padding: 1px 5px;
+  border-radius: var(--wsv2-r-chip);
+  background: rgb(229 131 122 / 15%);
+  color: var(--wsv2-danger);
+  font-size: 9px;
+  line-height: 14px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.reqStatus {
+  font-size: 10px;
+  line-height: 15px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Proof block — legible only when focused */
+
+.proofBlock {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--wsv2-r-chip);
+  background: rgb(0 0 0 / 26%);
+  color: var(--wsv2-text-2);
+  font-size: var(--wsv2-support-size);
+  line-height: var(--wsv2-support-line);
+  display: grid;
+  gap: 3px;
+}
+
+.proofLabel {
+  color: var(--wsv2-text-3);
+  font-size: 9px;
+  line-height: 13px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* One elevated focal surface at a time */
+
+.recordFocused {
+  border-radius: var(--wsv2-r-card);
+  background: var(--wsv2-focal);
+  box-shadow:
+    0 10px 26px rgb(0 0 0 / 42%),
+    inset 0 0 0 1px rgb(255 255 255 / 6%);
+  z-index: 1;
+}
+
+/* One shared semantic class for every focusable verification artifact:
+   findings, evidence records and requirements. De-emphasis is applied
+   through this class alone, so all three classes recede identically.
+   Stage headings, the Change file ledger, the Spine, the Inspector and the
+   Decision Plate are never targeted. Pointer interaction is untouched —
+   de-emphasised artifacts remain clickable. */
+.focusable {
+  position: relative;
+}
+
+.canvasInnerFocusing .focusable:not(.recordFocused) {
+  opacity: 0.6;
+}
+
+/* Movement — subordinate context, not a stage */
+
+.movement {
+  margin-top: 4px;
+  padding: 11px 13px;
+  border-radius: var(--wsv2-r-card);
+  background: rgb(0 0 0 / 18%);
+  display: grid;
+  gap: 5px;
+}
+
+.movementLabel {
+  color: var(--wsv2-text-3);
+  font-size: 9px;
+  line-height: 13px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.movementFacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  color: var(--wsv2-text-2);
+  font-family: var(--wsv2-mono);
+  font-size: var(--wsv2-tech-size);
+}
+
+.movementNote {
+  margin: 0;
+  color: var(--wsv2-text-3);
+  font-size: var(--wsv2-support-size);
+  line-height: var(--wsv2-support-line);
+}
+
+/* Row 3 — the terminal act ------------------------------------------- */
+
+.plate {
+  position: relative;
+  padding: 15px var(--wsv2-canvas-pad) 14px;
+  background: var(--wsv2-plate);
+  box-shadow: 0 -16px 34px rgb(0 0 0 / 40%);
+  display: grid;
+  gap: 10px;
+}
+
+.plate::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: var(--wsv2-warning);
+  opacity: 0.55;
+}
+
+.plateCurrent::before {
+  opacity: 1;
+}
+
+.plateMain {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.plateState {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.plateLabel {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--wsv2-text-3);
+  font-size: var(--wsv2-micro-size);
+  line-height: var(--wsv2-micro-line);
+  font-weight: var(--wsv2-micro-weight);
+  letter-spacing: var(--wsv2-micro-track);
+  text-transform: uppercase;
+}
+
+.plateStep {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(255 255 255 / 8%);
+  color: var(--wsv2-text-2);
+  font-family: var(--wsv2-mono);
+  font-size: 9px;
+  letter-spacing: 0;
+}
+
+.plateHeadline {
+  font-size: 19px;
+  line-height: 25px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.plateDetail {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: center;
+  color: var(--wsv2-text-3);
+  font-size: var(--wsv2-support-size);
+  line-height: var(--wsv2-support-line);
+}
+
+.plateRec {
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.plateBlocking {
+  color: var(--wsv2-text);
+  font-family: var(--wsv2-mono);
+  font-weight: 500;
+}
+
+.plateAction {
+  flex: none;
+  min-height: 36px;
+  padding: 0 16px;
+  border: 1px solid var(--wsv2-accent);
+  border-radius: var(--wsv2-r-control);
+  background: rgb(138 178 221 / 14%);
+  color: var(--wsv2-accent);
+  font-family: inherit;
+  font-size: var(--wsv2-support-size);
+  font-weight: 650;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.plateAction:hover {
+  background: rgb(138 178 221 / 22%);
+}
+
+.plateAction:focus-visible {
+  outline: 2px solid var(--wsv2-focus-ring);
+  outline-offset: 2px;
+}
+
+.plateConcept {
+  padding: 11px 13px;
+  border-radius: var(--wsv2-r-card);
+  background: rgb(0 0 0 / 26%);
+  display: grid;
+  gap: 5px;
+}
+
+.conceptBadge {
+  color: var(--wsv2-warning);
+  font-size: 9px;
+  line-height: 13px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.conceptBody {
+  margin: 0;
+  max-width: 92ch;
+  color: var(--wsv2-text-3);
+  font-size: var(--wsv2-support-size);
+  line-height: var(--wsv2-support-line);
+}
+
+/* --- Plane 4 — inspector ---------------------------------------------- */
+
+.inspector {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--wsv2-inspector);
+  overflow: hidden;
+}
+
+.inspectorClear {
+  min-height: 20px;
+  padding: 0 7px;
+  border: 1px solid var(--wsv2-rail);
+  border-radius: var(--wsv2-r-chip);
+  background: transparent;
+  color: var(--wsv2-text-3);
+  font-family: var(--wsv2-mono);
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.inspectorClear:hover {
+  color: var(--wsv2-text);
+}
+
+.inspectorClear:focus-visible {
+  outline: 2px solid var(--wsv2-focus-ring);
+  outline-offset: 1px;
+}
+
+.inspectorBody {
+  min-height: 0;
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  padding: 2px var(--wsv2-plane-pad) 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Shared cue tying the inspector to the focused canvas object */
+
+.marker {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.markerBar {
+  width: 2px;
+  height: 13px;
+  border-radius: 1px;
+  background: currentColor;
+  flex: none;
+}
+
+.markerKind {
+  color: var(--wsv2-text-3);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.markerId {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--wsv2-text-3);
+  font-family: var(--wsv2-mono);
+  font-size: 10px;
+  opacity: 0.8;
+}
+
+.inspectorTitle {
+  margin: 0;
+  font-size: 14px;
+  line-height: 19px;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+}
+
+.inspectorLead {
+  margin: 0;
+  color: var(--wsv2-text-2);
+  font-size: var(--wsv2-support-size);
+  line-height: 18px;
+}
+
+.inspectorGroup {
+  display: grid;
+  gap: 4px;
+}
+
+.inspectorGroupLabel {
+  color: var(--wsv2-text-3);
+  font-size: 9px;
+  line-height: 13px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.inspectorText {
+  margin: 0;
+  color: var(--wsv2-text-2);
+  font-size: var(--wsv2-support-size);
+  line-height: 18px;
+}
+
+.inspectorMono {
+  margin: 0;
+  color: var(--wsv2-text-2);
+  font-family: var(--wsv2-mono);
+  font-size: var(--wsv2-tech-size);
+  line-height: 16px;
+  word-break: break-all;
+}
+
+.inspectorEmpty {
+  margin: 0;
+  color: var(--wsv2-text-3);
+  font-size: var(--wsv2-support-size);
+  font-style: italic;
+}
+
+.inspectorPoints {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 5px;
+  color: var(--wsv2-text-2);
+  font-size: var(--wsv2-support-size);
+  line-height: 17px;
+}
+
+.inspectorPoints li {
+  padding-left: 12px;
+  position: relative;
+}
+
+.inspectorPoints li::before {
+  content: "";
+  position: absolute;
+  left: 1px;
+  top: 7px;
+  width: 4px;
+  height: 1px;
+  background: var(--wsv2-text-3);
+}
+
+.inspectorStrength {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Evidence composition — this case's own counts only */
+
+.composition {
+  display: grid;
+  gap: 6px;
+}
+
+.compositionRow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.compositionLabel {
+  flex: 1;
+  min-width: 0;
+  color: var(--wsv2-text-2);
+  font-size: var(--wsv2-support-size);
+  line-height: 17px;
+}
+
+.compositionValue {
+  flex: none;
+  color: var(--wsv2-text);
+  font-family: var(--wsv2-mono);
+  font-size: var(--wsv2-tech-size);
+}
+
+.refList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.ref {
+  padding: 2px 6px;
+  border-radius: var(--wsv2-r-chip);
+  background: rgb(255 255 255 / 5%);
+  color: var(--wsv2-text-3);
+  font-family: var(--wsv2-mono);
+  font-size: 10px;
+  line-height: 15px;
+}
+
+/* --- Tones ------------------------------------------------------------ */
+
+.toneMuted {
+  color: var(--wsv2-text-3);
+}
+
+.toneSuccess {
+  color: var(--wsv2-success);
+}
+
+.toneWarning {
+  color: var(--wsv2-warning);
+}
+
+.toneDanger {
+  color: var(--wsv2-danger);
+}
+
+.toneInformation {
+  color: var(--wsv2-information);
+}
+
+.toneProvenance {
+  color: var(--wsv2-provenance);
+}
+
+/* --- Reduced motion --------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .canvasBody {
+    scroll-behavior: auto;
+  }
+}

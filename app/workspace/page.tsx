@@ -809,7 +809,7 @@ function WorkspaceCanvas({
         ))}
       </div>
       <div className="workspace-canvas-scroll">
-        <div id="workspace-canvas-mode-panel" role="tabpanel" aria-labelledby={`workspace-canvas-mode-${mode}`} className="workspace-canvas-mode-panel">
+        <div key={`${group.key}-${mode}`} id="workspace-canvas-mode-panel" role="tabpanel" aria-labelledby={`workspace-canvas-mode-${mode}`} className="workspace-canvas-mode-panel workspace-motion-replace">
         <header className="workspace-canvas-headline">
           <div>
             <p className="workspace-canvas-kicker">Selected case</p>
@@ -893,7 +893,7 @@ function WorkspaceCanvas({
                 <button type="button" aria-pressed={active} onClick={() => { setSelectedFindingId(findingId); setSelectedEvidenceId(null); }}>
                   <span className="workspace-canvas-record-id">F{index + 1}</span><span><strong>{finding.title}</strong><small>{finding.severity} · {finding.category}{finding.file ? ` · ${finding.file}` : ""}</small></span><span className="workspace-canvas-record-state">{evidence.length ? `${evidence.length} evidence` : "No attached evidence"}</span>
                 </button>
-                {active && <div className="workspace-canvas-focus-detail">
+                {active && <div key={`finding-detail-${findingId}`} className="workspace-canvas-focus-detail workspace-motion-replace">
                   <p>{finding.evidence}</p><p><span>Provenance</span>{finding.provenance ?? "Not recorded"}</p><p><span>Affected surface</span>{finding.file ?? finding.category}</p><p><span>Next action</span>{finding.action}</p>
                   {evidence.length > 0 ? <ol className="workspace-canvas-attached-records">{evidence.map((record) => <li key={record.evidenceId}><button type="button" aria-pressed={selectedEvidenceId === record.evidenceId} onClick={() => setSelectedEvidenceId(record.evidenceId)}><span className="workspace-canvas-record-id">{record.evidenceId}</span><span><strong>{record.title}</strong><p>{record.statement}</p><small>{record.status} · {record.provenance}</small></span></button></li>)}</ol> : <p className="workspace-canvas-proof">No evidence records are attached.</p>}
                   {relatedClause && <p className="workspace-canvas-related">Related requirement: C{canonicalClauses.indexOf(relatedClause) + 1} · {relatedClause.title}</p>}
@@ -913,7 +913,7 @@ function WorkspaceCanvas({
               const active = id === selectedRequirementId;
               const relatedFindings = canonical ? requirement.relatedFindingIds.map((findingId) => report.findings.findIndex((_, findingIndex) => findingId === `finding-${findingIndex}`)).filter((findingIndex) => findingIndex >= 0) : [];
               return <li key={id} className={active ? "workspace-canvas-focus-record workspace-canvas-focus-record--active" : "workspace-canvas-focus-record"}><button type="button" aria-pressed={active} onClick={() => setSelectedRequirementId(id)}><span className="workspace-canvas-record-id">{canonical ? `C${index + 1}` : "Condition"}</span><span><strong>{canonical ? requirement.title : requirement.statement}</strong><small>{canonical ? `${requirement.importance} · ${requirement.status}` : conditionProgressLabel}</small></span><span className="workspace-canvas-record-state">{canonical && requirement.importance === "blocking" ? "Blocking" : "Review condition"}</span></button>
-                {active && <div className="workspace-canvas-focus-detail">{canonical ? <><p>{requirement.statement}</p><p><span>Clearance evidence</span>{requirement.currentSupportingEvidenceIds.length ? requirement.currentSupportingEvidenceIds.join(" · ") : requirement.evidenceRequired || "No clearance evidence recorded."}</p><p><span>Owner</span>{requirement.ownerCue ?? "No owner cue recorded."}</p>{relatedFindings.length > 0 && <p className="workspace-canvas-related">Related findings: {relatedFindings.map((findingIndex) => `F${findingIndex + 1}`).join(" · ")}</p>}</> : <><p><span>Local condition state</span>{conditionProgressLabel}</p><p>No clause-level clearance evidence is recorded for this report condition.</p></>}</div>}</li>;
+                {active && <div key={`requirement-detail-${id}`} className="workspace-canvas-focus-detail workspace-motion-replace">{canonical ? <><p>{requirement.statement}</p><p><span>Clearance evidence</span>{requirement.currentSupportingEvidenceIds.length ? requirement.currentSupportingEvidenceIds.join(" · ") : requirement.evidenceRequired || "No clearance evidence recorded."}</p><p><span>Owner</span>{requirement.ownerCue ?? "No owner cue recorded."}</p>{relatedFindings.length > 0 && <p className="workspace-canvas-related">Related findings: {relatedFindings.map((findingIndex) => `F${findingIndex + 1}`).join(" · ")}</p>}</> : <><p><span>Local condition state</span>{conditionProgressLabel}</p><p>No clause-level clearance evidence is recorded for this report condition.</p></>}</div>}</li>;
             })}</ol>
           </>}
         </section>}
@@ -1030,6 +1030,7 @@ function WorkspaceInspector({
       </div>
 
       <div className="workspace-inspector-scroll" ref={scrollRef}>
+        <div key={`${group.key}-${resolvedFocus.artifactType}-${resolvedFocus.artifactId ?? "case"}`} className="workspace-inspector-projection workspace-motion-replace">
         {resolvedFocus.artifactType === "case" ? <>
         <div className="workspace-inspector-headline">
           <h2>{entry.metadata.title}</h2>
@@ -1188,6 +1189,7 @@ function WorkspaceInspector({
           </div>
         </details>
         </> : <WorkspaceInspectorArtifact entry={entry} group={group} focus={resolvedFocus} conditionProgressLabel={conditionProgressLabel} />}
+        </div>
       </div>
 
       <div className="workspace-inspector-actions">
@@ -1229,9 +1231,15 @@ export default function ReportsWorkspacePage() {
   const [hydrated, setHydrated] = useState(false);
   const [selectedCaseOpen, setSelectedCaseOpen] = useState(false);
   const [selectedCaseView, setSelectedCaseView] = useState<SelectedCaseView>("canvas");
+  const [selectedCaseMotion, setSelectedCaseMotion] = useState<"closed" | "open" | "closing">("closed");
+  const [selectedCaseSurfaceViewport, setSelectedCaseSurfaceViewport] = useState(false);
+  const [motionReady, setMotionReady] = useState(false);
 
   useEffect(() => {
-    const closeForShellNavigation = () => setSelectedCaseOpen(false);
+    const closeForShellNavigation = () => {
+      setSelectedCaseOpen(false);
+      setSelectedCaseMotion("closed");
+    };
     window.addEventListener(SHELL_NAVIGATION_OPEN_EVENT, closeForShellNavigation);
     return () => window.removeEventListener(SHELL_NAVIGATION_OPEN_EVENT, closeForShellNavigation);
   }, []);
@@ -1241,6 +1249,7 @@ export default function ReportsWorkspacePage() {
   const selectedCaseNodeRef = useRef<HTMLElement | null>(null);
   const selectedCaseCloseNodeRef = useRef<HTMLButtonElement | null>(null);
   const selectedGroupKeyRef = useRef<string | null>(null);
+  const selectedCaseCloseTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   selectedGroupKeyRef.current = selectedGroupKey;
 
   const currentWorkspace = workspaceStore ? activeWorkspace(workspaceStore) : null;
@@ -1297,6 +1306,11 @@ export default function ReportsWorkspacePage() {
 
   useEffect(() => () => {
     if (copyResetTimer.current) clearTimeout(copyResetTimer.current);
+    if (selectedCaseCloseTimer.current) clearTimeout(selectedCaseCloseTimer.current);
+  }, []);
+
+  useEffect(() => {
+    setMotionReady(true);
   }, []);
 
   /* Desktop retains the persistent three-plane workbench. Below it, a selected
@@ -1304,11 +1318,22 @@ export default function ReportsWorkspacePage() {
   useEffect(() => {
     const query = window.matchMedia(SELECTED_CASE_SURFACE_QUERY);
     selectedCaseMatchRef.current = query;
-    const onChange = (event: MediaQueryListEvent) => {
-      if (!event.matches) setSelectedCaseOpen(false);
+    const reconcileSelectedCaseViewport = (matches = query.matches) => {
+      setSelectedCaseSurfaceViewport(matches);
+      if (!matches) {
+        setSelectedCaseOpen(false);
+        setSelectedCaseMotion("closed");
+      }
     };
+    reconcileSelectedCaseViewport();
+    const onChange = (event: MediaQueryListEvent) => reconcileSelectedCaseViewport(event.matches);
+    const onResize = () => reconcileSelectedCaseViewport();
     query.addEventListener("change", onChange);
-    return () => query.removeEventListener("change", onChange);
+    window.addEventListener("resize", onResize);
+    return () => {
+      query.removeEventListener("change", onChange);
+      window.removeEventListener("resize", onResize);
+    };
   }, []);
 
   const groups = useMemo(() => groupHistory(history, reviewStates), [history, reviewStates]);
@@ -1387,7 +1412,7 @@ export default function ReportsWorkspacePage() {
 
   /* Keep the selected-case surface from lingering once its report is gone. */
   useEffect(() => {
-    if (selectedCaseOpen && !selectedGroupKey) setSelectedCaseOpen(false);
+    if (selectedCaseOpen && !selectedGroupKey) closeSelectedCase(false);
   }, [selectedCaseOpen, selectedGroupKey]);
 
   /* The responsive selected-case surface owns its modal focus, Escape behavior,
@@ -1402,9 +1427,7 @@ export default function ReportsWorkspacePage() {
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key === "Escape") {
         event.stopPropagation();
-        setSelectedCaseOpen(false);
-        const key = selectedGroupKeyRef.current;
-        if (key) focusWorkspaceCard(key);
+        closeSelectedCase();
         return;
       }
       if (event.key !== "Tab") return;
@@ -1485,16 +1508,27 @@ export default function ReportsWorkspacePage() {
     }
 
     if (openSelectedCase && selectedCaseMatchRef.current?.matches) {
+      if (selectedCaseCloseTimer.current) clearTimeout(selectedCaseCloseTimer.current);
       setSelectedCaseView("canvas");
+      setSelectedCaseMotion("open");
       setSelectedCaseOpen(true);
     }
     if (focusRow) focusWorkspaceCard(group.key);
   }
 
-  function closeSelectedCase() {
+  function closeSelectedCase(restoreFocus = true) {
+    if (!selectedCaseOpen) return;
     setSelectedCaseOpen(false);
-    const key = selectedGroupKeyRef.current;
-    if (key) focusWorkspaceCard(key);
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    setSelectedCaseMotion(reducedMotion ? "closed" : "closing");
+    if (selectedCaseCloseTimer.current) clearTimeout(selectedCaseCloseTimer.current);
+    selectedCaseCloseTimer.current = setTimeout(() => {
+      setSelectedCaseMotion("closed");
+      if (restoreFocus) {
+        const key = selectedGroupKeyRef.current;
+        if (key) focusWorkspaceCard(key);
+      }
+    }, reducedMotion ? 0 : 180);
   }
 
   function handleWorkspaceInboxKeyDown(event: KeyboardEvent<HTMLElement>) {
@@ -1622,6 +1656,7 @@ export default function ReportsWorkspacePage() {
         // Local selection persistence is optional.
       }
       setSelectedCaseOpen(false);
+      setSelectedCaseMotion("closed");
       setError(null);
     } catch {
       setError("This report group could not be deleted.");
@@ -1644,6 +1679,7 @@ export default function ReportsWorkspacePage() {
       }
       window.localStorage.removeItem(selectedStorageKey());
       setSelectedCaseOpen(false);
+      setSelectedCaseMotion("closed");
       setError(null);
     } catch {
       setError("Report history could not be cleared.");
@@ -1665,7 +1701,7 @@ export default function ReportsWorkspacePage() {
 
   return (
     <AppShell context={shellContext} actions={shellActions}>
-      <div className={styles.root} data-tour="risk-inbox">
+      <div className={styles.root} data-tour="risk-inbox" data-motion-ready={motionReady ? "true" : undefined}>
         <header className="workspace-context" aria-hidden={selectedCaseOpen ? true : undefined} inert={selectedCaseOpen ? true : undefined}>
           <div>
             <span className="workspace-context-kicker">Local verification queue</span>
@@ -1747,10 +1783,12 @@ export default function ReportsWorkspacePage() {
 
               <section
                 className="workspace-case-surface"
-                data-open={selectedCaseOpen ? "true" : undefined}
+                data-motion-state={selectedCaseMotion}
                 data-view={selectedCaseView}
                 role={selectedCaseOpen ? "dialog" : undefined}
                 aria-modal={selectedCaseOpen ? true : undefined}
+                aria-hidden={selectedCaseSurfaceViewport && !selectedCaseOpen ? true : undefined}
+                inert={selectedCaseSurfaceViewport && !selectedCaseOpen}
                 aria-labelledby="workspace-selected-case-title"
                 ref={(element) => { selectedCaseNodeRef.current = element; }}
               >
@@ -1764,7 +1802,7 @@ export default function ReportsWorkspacePage() {
                       <button type="button" aria-pressed={selectedCaseView === "canvas"} aria-controls="workspace-selected-case-canvas" onClick={() => setSelectedCaseView("canvas")}>Canvas</button>
                       <button type="button" aria-pressed={selectedCaseView === "inspector"} aria-controls="workspace-selected-case-inspector" onClick={() => setSelectedCaseView("inspector")}>Inspector</button>
                     </div>
-                    <button className="workspace-case-surface-close" type="button" ref={(element) => { selectedCaseCloseNodeRef.current = element; }} onClick={closeSelectedCase} aria-label="Close selected case">
+                    <button className="workspace-case-surface-close" type="button" ref={(element) => { selectedCaseCloseNodeRef.current = element; }} onClick={() => closeSelectedCase()} aria-label="Close selected case">
                       <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8" /></svg>
                     </button>
                   </div>
@@ -1798,7 +1836,7 @@ export default function ReportsWorkspacePage() {
                 type="button"
                 aria-label="Close selected case"
                 tabIndex={-1}
-                onClick={closeSelectedCase}
+                onClick={() => closeSelectedCase()}
               />
             )}
           </section>

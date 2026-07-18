@@ -139,3 +139,7 @@ V8D measures: input responsiveness during rapid repeat, scroll/frame stability o
 ## Deferred decisions
 
 V8A does not choose exact curves, transform distances, an observer threshold, a View Transitions consumer, keyframe use, or any dependency. V8B/V8C may propose values only inside this constitution; V8D records approval or a reasoned exception.
+
+## V8C implementation clarification
+
+For a responsive surface, semantic open/close state (dialog role, inertness, scroll lock and focus trap) is allowed to change immediately while a separate, short-lived visual close phase preserves the already-inert surface for its `spatial` exit. This is lifecycle presentation only: it must not retain interactivity, delay restoration under reduced motion, duplicate selected-case data or create a parallel selection/focus model. Reopening interrupts the close and renders the final open state directly.

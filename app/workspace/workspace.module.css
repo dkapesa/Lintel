@@ -336,6 +336,29 @@
   box-shadow: none;
 }
 
+/* V8C: ownership changes are local to the record that changed. The fixed
+   desktop planes and row geometry remain static. */
+.root[data-motion-ready="true"] :global(.workspace-row) {
+  transition: background-color 120ms cubic-bezier(.2, .65, .3, 1), border-left-color 120ms cubic-bezier(.2, .65, .3, 1);
+}
+
+.root[data-motion-ready="true"] :global(.workspace-canvas-mode),
+.root[data-motion-ready="true"] :global(.workspace-canvas-focus-record > button),
+.root[data-motion-ready="true"] :global(.workspace-canvas-attached-records button) {
+  transition: background-color 180ms cubic-bezier(.2, .65, .3, 1), border-color 180ms cubic-bezier(.2, .65, .3, 1), color 180ms cubic-bezier(.2, .65, .3, 1);
+}
+
+.root[data-motion-ready="true"] :global(.workspace-motion-replace) {
+  transition: opacity 180ms cubic-bezier(.2, .65, .3, 1), transform 180ms cubic-bezier(.2, .65, .3, 1);
+}
+
+@starting-style {
+  .root[data-motion-ready="true"] :global(.workspace-motion-replace) {
+    opacity: .01;
+    transform: translateY(4px);
+  }
+}
+
 .root :global(.workspace-row:focus-visible) {
   z-index: 1;
   outline: 2px solid var(--color-focus-ring);
@@ -1221,6 +1244,7 @@
 }
 
 .root :global(.workspace-canvas-modebar) {
+  flex: 0 0 auto;
   min-width: 0;
   padding: 0 8px;
   display: flex;
@@ -1251,6 +1275,8 @@
 .root :global(.workspace-canvas-focus-record button:focus-visible) { outline: 2px solid var(--color-focus-ring); outline-offset: -2px; }
 
 .root :global(.workspace-canvas-scroll) {
+  flex: 1 1 auto;
+  min-height: 0;
   min-width: 0;
   padding: 14px;
   display: grid;
@@ -1669,15 +1695,33 @@
     z-index: 60;
     min-width: 0;
     min-height: 0;
-    display: none;
+    display: grid;
     grid-template-rows: auto minmax(0, 1fr);
     border: 1px solid var(--color-border-strong);
     background: var(--color-surface-raised);
     box-shadow: var(--shadow-overlay);
     overflow: hidden;
+    visibility: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(8px);
   }
 
-  .root :global(.workspace-case-surface[data-open="true"]) { display: grid; }
+  .root[data-motion-ready="true"] :global(.workspace-case-surface) {
+    transition: opacity 240ms cubic-bezier(.16, .8, .25, 1), transform 240ms cubic-bezier(.16, .8, .25, 1);
+  }
+  .root :global(.workspace-case-surface[data-motion-state="open"]) {
+    visibility: visible;
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+  .root :global(.workspace-case-surface[data-motion-state="closing"]) {
+    visibility: visible;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(8px);
+  }
 
   .root :global(.workspace-case-surface-bar) {
     min-width: 0;
@@ -1764,6 +1808,20 @@
   .root :global(.workspace-queue-surface) { min-height: 440px; }
   .root :global(.workspace-canvas) { display: none; }
   .root :global(.workspace-inspector) { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root :global(.workspace-row),
+  .root :global(.workspace-canvas-mode),
+  .root :global(.workspace-canvas-focus-record > button),
+  .root :global(.workspace-canvas-attached-records button),
+  .root :global(.workspace-motion-replace),
+  .root :global(.workspace-case-surface) {
+    transition: none !important;
+    transform: none !important;
+  }
+
+  .root :global(.workspace-case-surface[data-motion-state="closing"]) { visibility: hidden; }
 }
 
 @media (max-width: 899px) {

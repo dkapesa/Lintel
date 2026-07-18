@@ -2107,6 +2107,19 @@ html[data-theme="light"] .lp-frame--hero { box-shadow:none; }
 .report-case-file .report-verdict-rail { border-color:var(--color-border-strong); }
 .report-case-file .current-human-decision { border-color:var(--color-border-strong); background:var(--color-surface-raised); }
 .report-case-file .decision-studio--rail { background:transparent; }
+
+/* V8C: Case File remains document-led. Only an explicit location, disclosure
+   or responsive decision-sheet ownership change receives local feedback. */
+.report-case-file .case-file-outline-links a { transition:color 180ms cubic-bezier(.2,.65,.3,1), background-color 180ms cubic-bezier(.2,.65,.3,1); }
+.report-case-file .case-file-outline-links a::before { transition:background-color 180ms cubic-bezier(.2,.65,.3,1); }
+.report-case-file .contract-ledger-row > summary { transition:background-color 180ms cubic-bezier(.2,.65,.3,1), border-color 180ms cubic-bezier(.2,.65,.3,1); }
+@media (max-width:1179px) {
+  .report-case-file .report-verdict-rail { transition:opacity 240ms cubic-bezier(.16,.8,.25,1), transform 240ms cubic-bezier(.16,.8,.25,1); }
+  @starting-style { .report-case-file .report-verdict-rail--open { opacity:.01; transform:translateY(8px); } }
+}
+@media (prefers-reduced-motion:reduce) {
+  .report-case-file .case-file-outline-links a, .report-case-file .case-file-outline-links a::before, .report-case-file .contract-ledger-row > summary, .report-case-file .report-verdict-rail { transition:none !important; transform:none !important; }
+}
 .report-case-file .verdict-rail-sheet-header { background:var(--color-surface-raised); }
 .report-case-file .evidence-class-grid article, .report-case-file .evidence-hierarchy-row, .report-case-file .assumption-registry-row, .report-case-file .boundary-context-grid article, .report-case-file .boundary-dimension { border-color:var(--color-border); background:transparent; }
 .report-case-file .evidence-hierarchy-details summary, .report-case-file .boundary-details summary, .report-case-file .evidence-hierarchy-row dd, .report-case-file .assumption-registry-row dd { color:var(--color-text-secondary); }

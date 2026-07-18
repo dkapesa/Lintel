@@ -2642,15 +2642,25 @@ export default function ReportPage() {
     const sections = Array.from(document.querySelectorAll<HTMLElement>("[data-dossier-section]"));
     if (sections.length === 0 || !("IntersectionObserver" in window)) return;
 
-    const observer = new IntersectionObserver((entries) => {
-      const visible = entries
-        .filter((entry) => entry.isIntersecting)
-        .sort((left, right) => right.intersectionRatio - left.intersectionRatio)[0];
-      const section = visible?.target.getAttribute("data-dossier-section") as DossierSectionId | null;
+    const updateActiveSection = () => {
+      // A section can be much taller than the next one. Ranking only the
+      // observer callback's changed entries by area can therefore keep the
+      // preceding section active after an explicit jump. Resolve location
+      // from the same bounded reading line used by the observer instead.
+      const readingLine = Math.max(112, window.innerHeight * 0.48);
+      let current = sections[0];
+      for (const candidate of sections) {
+        if (candidate.getBoundingClientRect().top > readingLine) break;
+        current = candidate;
+      }
+      const section = current.getAttribute("data-dossier-section") as DossierSectionId | null;
       if (section) setActiveDossierSection(section);
-    }, { rootMargin: "-112px 0px -58% 0px", threshold: [0.05, 0.25, 0.6] });
+    };
+
+    const observer = new IntersectionObserver(updateActiveSection, { rootMargin: "-112px 0px -50% 0px", threshold: [0.05, 0.25, 0.6] });
 
     sections.forEach((section) => observer.observe(section));
+    updateActiveSection();
     return () => observer.disconnect();
   }, [displayedReport.report]);
 

@@ -159,6 +159,46 @@ V8C source validation covers the stable desktop three-pane workbench, intermedia
 
 V8D remains responsible for representative-device profiling, cross-browser visual timing calibration, background/return-tab observation and final acceptance sign-off. It must not expand V8C into a new direction or add a dependency.
 
+## V8C.1 implementation record — Product surface coherence calibration
+
+**Status:** Implemented; bounded Case File coherence correction. No commit or push.
+
+### Scope, calibration and fixed surfaces
+
+V8C.1 changes only the Case File desktop grid and outline presentation in `app/globals.css`, the route-owned active-section calculation in `app/report/page.tsx`, plus this record. The completed Workspace workbench remains the quality baseline and receives no composition change. Landing, canonical reports, scoring, recommendations, evidence, requirements, Human Decision, persistence, report generation, route architecture, dependencies and V8 motion direction remain fixed.
+
+The correction uses the requested reference qualities as principles rather than imitation: Cursor's stable working planes and quiet selection; Waypoint's row geometry, technical metadata and attached contextual rail; the dark-product reference's broad calm planes and consistent dimensions; the light-product reference's warm paper, rules and written hierarchy; and the database reference's visibly connected selected-record context. No browser chrome, dashboard grid, coloured category pill, popover or decorative visualisation is introduced.
+
+### Objective defects and correction
+
+- At a 1440px viewport, the persistent application shell leaves the Case File a materially narrower content canvas than the viewport width implies. The previous fixed three-column Case File grid could exceed that canvas, placing the dossier and decision rail beyond the visible working surface.
+- The 148px outline rail gave the section-number, title and count columns insufficient room. Long section names wrapped awkwardly and the row read as competing fragments rather than an orderly navigation record.
+- The outline/document hand-off had no shared structural divider, making the rail and dossier appear adjacent rather than parts of one engineering document.
+
+The desktop rail is now 200px and retains a stable 24px number column, dominant flexible title column and aligned 28px count column. Technical number/count values use tabular numerals. Rows follow their text height, preserve sensible phrase wrapping and never clip labels. An interior hairline and intentional 16px document gutter connect the rail to the dossier without introducing a card. The selected row has a restrained selected plane with a single narrow accent rule; inactive rows remain legible. The existing IntersectionObserver now resolves active location from its bounded reading line rather than callback-area ranking, so a jump to a short final section cannot leave the prior long section written as current.
+
+The desktop grid becomes responsive to the *actual* shell-owned work plane from 1380px through 1527px: only the dossier measure yields, while the outline and decision rail remain stable. At 1528px and above, the approved 760px dossier measure returns. From 1180px through 1379px, the existing compact jump selector and persistent decision rail remain the deliberate two-column transformation; below that, the existing responsive Case File semantics remain untouched.
+
+### Cross-route result, validation and hand-off
+
+Workspace was inspected as the fixed three-plane quality baseline; no change was justified. Review Operations retains its compact ledger and New Review retains its existing staged form; no broad cross-route control rewrite was made. Their shell navigation, selected state, warm light material and dark plane hierarchy already use the shared semantic control/tokens and remain unchanged.
+
+The V8C motion selectors and reduced-motion override remain compatible: the outline change uses the existing named colour/background transition only, introduces no layout animation and leaves jump-to-section browser scrolling, active-section state, decision-sheet ownership and focus semantics intact. The outline remains a named navigation landmark; `aria-current="location"`, focus visibility and the native jump selector remain intact.
+
+| Validation area | Result |
+| --- | --- |
+| Case File desktop geometry | Three connected planes fit the shell-owned work surface at 1440px; dossier is the only elastic measure before the wide 760px cap. |
+| Case File intermediate/mobile ownership | Existing 1280–1180px selector + verdict rail and below-1180px responsive decision controls remain fixed. |
+| Long labels and technical values | Outline uses a dominant title track and tabular, aligned number/count tracks; dossier technical values retain their existing `overflow-wrap:anywhere` protections. |
+| Selected, dark/light materials | Selection is one quiet plane plus one narrow rule; all values derive from semantic dark/light tokens. |
+| Workspace, Operations, New Review | Inspected without source change; existing stable composition, ledger and form remain intentional fixed surfaces. |
+| V8D hand-off | Complete representative-device matrix, direct reduced-motion media emulation, performance/CLS profiling and final interruption stress remain V8D work. |
+
+### Deferred work
+
+- **V8B.1:** landing choreography follow-up only; V8C.1 does not reopen the landing.
+- **V8D:** production-like device profiling, direct reduced-motion visual emulation, expanded populated-history runtime matrix and final motion/performance approval. It must not reinterpret this bounded layout correction as a new visual direction.
+
 ### V8C live Workspace correction — inertness and scroll ownership
 
 **Symptom and confirmed browser evidence.** After the initial V8C implementation, the rendered desktop Workspace looked correct but its live canvas, contextual inspector and controls did not receive interaction. Browser inspection found a single `section.workspace-case-surface[inert]`. At desktop this element is `display: contents`: it has no visible box, but it remains the DOM ancestor of the live canvas and inspector. The visible canvas and inspector were not inside a separate hidden responsive duplicate; their complete ancestor chain therefore inherited `inert`. Both intended scroll bodies already had genuine overflow (`.workspace-canvas-scroll` and `.workspace-inspector-scroll` each had `scrollHeight > clientHeight` and `overflow-y: auto`), proving that a missing scroll owner was not the primary cause. The hidden responsive model remains `aria-hidden`, inert, visually hidden and non-interactive while it is closed at responsive widths.

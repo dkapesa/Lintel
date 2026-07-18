@@ -222,3 +222,13 @@ The hero/readiness seam is shorter and remains a document seam, not a decorative
 V8B.1 adds no dependency, keyframe, scroll handler, rAF loop, layout animation, gradient, glow, glass or imagery. The existing IntersectionObserver owns only bounded visual emphasis; its reduced-motion rule continues to expose the complete final document immediately. Dark is matte technical planes; light is warm technical paper, with equivalent hierarchy. The responsive strategy retains the real product proof in a bounded mobile crop and never makes it sticky or miniature.
 
 Changed files: `app/page.tsx`, `app/globals.css`, `docs/design/V8_EXPERIENCE_STORYBOARD.md` and `docs/design/V8_CINEMATIC_LANDING_CALIBRATION.md`. V8D retains representative-device performance profiling, direct preference-media review, cross-browser interruption checks and final acceptance; it must not reopen the landing direction or add a second motion architecture.
+
+## V8D final tuning and QA record
+
+**Status:** Complete; ready for external approval. No visual direction, route architecture, data contract, dependency or persistence behaviour changed.
+
+V8D retained the existing storyboard exactly. Landing ownership remains one observer-derived active section with no scroll control or replay queue; Workspace retains fixed desktop planes and keyed local replacement; the Case File remains a document with only bounded outline, disclosure and responsive decision-sheet feedback. Reduced motion renders the final readable landing state and immediate Workspace/Case File state replacement.
+
+One reproduced implementation inconsistency was corrected: the responsive Workspace selected-case CSS close is `240ms`, while the lifecycle cleanup had been scheduled for `180ms`. That could remove the exiting visual state before its named Spatial transition completed. The cleanup now uses the shared `240ms` Spatial value, and a responsive-to-desktop hand-off clears any pending close timer before committing the closed state. No other timing, easing, observer or visual correction was justified.
+
+See [V8 Final Experience Audit](./V8_FINAL_EXPERIENCE_AUDIT.md) for the route, interruption, accessibility, performance, theme and responsive evidence.

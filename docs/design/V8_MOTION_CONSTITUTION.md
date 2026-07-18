@@ -143,3 +143,11 @@ V8A does not choose exact curves, transform distances, an observer threshold, a 
 ## V8C implementation clarification
 
 For a responsive surface, semantic open/close state (dialog role, inertness, scroll lock and focus trap) is allowed to change immediately while a separate, short-lived visual close phase preserves the already-inert surface for its `spatial` exit. This is lifecycle presentation only: it must not retain interactivity, delay restoration under reduced motion, duplicate selected-case data or create a parallel selection/focus model. Reopening interrupts the close and renders the final open state directly.
+
+## V8D final motion decision
+
+**Status:** Finalised for external approval, subject to the recorded runtime environment limits in the final audit.
+
+The V8 vocabulary is now fixed: `120ms` Micro for Workspace row ownership; `180ms` State for Workspace projection, controls and Case File local feedback; `240ms` Spatial for the responsive Workspace selected-case surface and Case File decision sheet; and `360ms` Narrative only for the named landing Case File ownership moments. The approved curves remain the existing restrained standard (`cubic-bezier(.2,.65,.3,1)` / landing `.2,.65,.35,1`) and enter/exit (`cubic-bezier(.16,.8,.25,1)` / landing `.16,.76,.3,1`) curves. All values are within the constitutional bands.
+
+The responsive Workspace visual-close lifecycle now lasts the same `240ms` as its named Spatial CSS transition. A viewport hand-off clears any pending close lifecycle before the surface is synchronously closed, so resize and reopen always leave the final requested ownership state. Semantic closure remains immediate: the surface is non-interactive, its background is released, and focus restoration is independent of visual completion. Reduced motion remains an immediate authored state rather than a shortened transition.

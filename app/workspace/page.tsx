@@ -59,6 +59,7 @@ const QUEUES = [
 
 const SELECTED_WORKSPACE_GROUP_STORAGE_KEY = "lintel.workspaceSelectedGroup.v1";
 const SELECTED_CASE_SURFACE_QUERY = "(max-width: 1179px)";
+const SELECTED_CASE_SPATIAL_EXIT_MS = 240;
 
 type WorkspaceQueue = (typeof QUEUES)[number][0];
 type CopyFeedback = { key: string; state: "copied" | "failed" } | null;
@@ -1321,6 +1322,7 @@ export default function ReportsWorkspacePage() {
     const reconcileSelectedCaseViewport = (matches = query.matches) => {
       setSelectedCaseSurfaceViewport(matches);
       if (!matches) {
+        if (selectedCaseCloseTimer.current) clearTimeout(selectedCaseCloseTimer.current);
         setSelectedCaseOpen(false);
         setSelectedCaseMotion("closed");
       }
@@ -1528,7 +1530,7 @@ export default function ReportsWorkspacePage() {
         const key = selectedGroupKeyRef.current;
         if (key) focusWorkspaceCard(key);
       }
-    }, reducedMotion ? 0 : 180);
+    }, reducedMotion ? 0 : SELECTED_CASE_SPATIAL_EXIT_MS);
   }
 
   function handleWorkspaceInboxKeyDown(event: KeyboardEvent<HTMLElement>) {

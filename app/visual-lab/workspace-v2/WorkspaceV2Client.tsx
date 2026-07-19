@@ -1,22 +1,28 @@
 "use client";
 
-/* R0B.1 — Workspace V2 visual lab client boundary.
+/* R0B.2B — Workspace V2 visual lab client boundary.
 
-   This is the only client component in the lab. It owns exactly four pieces
-   of state and nothing else:
+   This is the single route-level UI-state owner for the lab. It owns:
 
      selectedCaseId          which queue case is open
      focusedArtifact         which finding / evidence / requirement is focal
      activeStage             which Evidence Spine stage is current
-     decisionConceptExpanded whether the plate concept panel is open
+     decisionFocused         whether the Decision Context inspector is focal
+     decisions               per-case recorded-decision records (sample)
+     scenarioSelection       which named sample state is loaded per case
+     activeDialog            which decision flow dialog is open
+     polite/assertiveMessage screen-reader announcements
 
-   Everything else on screen is a pure projection of those four values plus
-   the static fixture. There is no global state, no provider, no context, no
-   persistence, and no decision mutation. */
+   Everything on screen is a pure projection of these values plus the static
+   fixtures and the fixture-backed decision model. The recorded Human Decision
+   system is entirely lab-local: sample data and React state only. There is no
+   global state, no provider, no context, no persistence, no localStorage, and
+   no import of any production ledger mutation function (R0B.2B boundary). */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import styles from "./workspace-v2.module.css";
 import {
+  WORKSPACE_V2_CASES,
   WORKSPACE_V2_DEFAULT_CASE_ID,
   WORKSPACE_V2_QUEUE_GROUPS,
   WORKSPACE_V2_STAGES,
@@ -38,6 +44,95 @@ import {
   type RequirementView,
   type StageId,
 } from "./fixtures";
+import {
+  OUTCOME_LABEL,
+  classifySubmission,
+  createDecisionEvent,
+  decisionFooterNote,
+  decisionStageLabel,
+  decisionStageState,
+  outcomeTone,
+  projectDecision,
+  type DecisionActor,
+  type DecisionEventType,
+  type DecisionRecord,
+  type DecisionReference,
+} from "./decision-model";
+import {
+  DECISION_SCENARIOS,
+  sampleFullHistory,
+  scenarioById,
+  seedScenarioFor,
+  type DecisionScenarioId,
+  type ScenarioContext,
+} from "./decision-fixtures";
+import { DecisionLiveRegion, toneClassName } from "./decision-atoms";
+import { DecisionPlate, type DecisionPlateActions } from "./decision-plate";
+import { DecisionContextInspector, DecisionHistorySurface } from "./decision-inspector";
+import {
+  DecisionCreationDialog,
+  DecisionReaffirmDialog,
+  DecisionWithdrawDialog,
+  DecisionRevokeRiskDialog,
+  type DecisionDraft,
+} from "./decision-dialogs";
+
+/* The accountable engineer acting in the lab. Sample identity only — never a
+   real, fabricated organisational identity (§17.2, §24.18). */
+const LOCAL_ACTOR: DecisionActor = {
+  displayLabel: "You (sample reviewer)",
+  source: "local",
+  role: "Accountable engineer",
+};
+
+/* A fixed sample prior head, distinct from any case head, used when a loaded
+   sample state predates the current head. */
+const SAMPLE_PRIOR_HEAD = "7b3e0c9";
+
+function scenarioContextFor(fixture: CaseFixture): ScenarioContext {
+  return {
+    recommendation: fixture.recommendation,
+    headSha: fixture.headSha,
+    priorHeadSha: SAMPLE_PRIOR_HEAD,
+    openBlockingRequirements: openBlockingCount(fixture),
+  };
+}
+
+function seedDecisions(): Record<string, DecisionRecord> {
+  const seed: Record<string, DecisionRecord> = {};
+  for (const fixture of WORKSPACE_V2_CASES) {
+    const scenario = seedScenarioFor(fixture.caseId);
+    seed[fixture.caseId] = scenarioById(scenario).build(scenarioContextFor(fixture));
+  }
+  return seed;
+}
+
+/* Blocking, open requirements projected as clause references the decision can
+   carry or accept as risk. */
+function caseClauseReferences(fixture: CaseFixture): DecisionReference[] {
+  return fixture.requirements
+    .filter((requirement) => requirement.importance === "blocking" && requirement.status === "open")
+    .map((requirement) => ({
+      id: requirement.requirementId,
+      kind: "clause" as const,
+      label: requirement.title,
+      available: true,
+    }));
+}
+
+/* Clearly-sample display timestamp generated after a successful local event.
+   Not part of any identity (§11). */
+function sampleNowLabel(): string {
+  return "Recorded just now · sample";
+}
+
+type ActiveDialog =
+  | null
+  | { kind: "create" | "change" | "supersede" }
+  | { kind: "reaffirm" }
+  | { kind: "withdraw" }
+  | { kind: "revoke" }
+  | { kind: "history" };
 
 /* --- Static label maps ------------------------------------------------ */
 
@@ -126,14 +221,34 @@ function ArtifactMarker({
 /* --- Component -------------------------------------------------------- */
 
 export default function WorkspaceV2Client() {
-  /* ---- The four held values ---- */
+  /* ---- Held UI values (single route-level owner) ---- */
   const [selectedCaseId, setSelectedCaseId] = useState<string>(WORKSPACE_V2_DEFAULT_CASE_ID);
   const [focusedArtifact, setFocusedArtifact] = useState<FocusedArtifact>(null);
   const [activeStage, setActiveStage] = useState<StageId>("change");
-  const [decisionConceptExpanded, setDecisionConceptExpanded] = useState(false);
+  const [decisionFocused, setDecisionFocused] = useState(false);
+
+  /* ---- Local, fixture-backed decision state ----
+     A per-case record plus which named sample state is loaded (or "custom"
+     once a local interaction has edited it). This is the only decision state;
+     it is React-local, never persisted, and never read from a production
+     ledger or localStorage. */
+  const [decisions, setDecisions] = useState<Record<string, DecisionRecord>>(seedDecisions);
+  const [scenarioSelection, setScenarioSelection] = useState<
+    Record<string, DecisionScenarioId | "custom">
+  >(() => {
+    const seed: Record<string, DecisionScenarioId | "custom"> = {};
+    for (const fixture of WORKSPACE_V2_CASES) seed[fixture.caseId] = seedScenarioFor(fixture.caseId);
+    return seed;
+  });
+  const [activeDialog, setActiveDialog] = useState<ActiveDialog>(null);
+  const [politeMessage, setPoliteMessage] = useState("");
+  const [assertiveMessage, setAssertiveMessage] = useState("");
 
   const bodyRef = useRef<HTMLDivElement | null>(null);
   const suppressReconcileUntil = useRef(0);
+  /* The control that opened a dialog or the decision-context inspector, so
+     focus can be restored to it (§19). */
+  const decisionTriggerRef = useRef<HTMLElement | null>(null);
 
   /* ---- Pure projections ---- */
   const activeCase: CaseFixture = useMemo(() => findCase(selectedCaseId), [selectedCaseId]);
@@ -164,12 +279,270 @@ export default function WorkspaceV2Client() {
 
   const composition = useMemo(() => evidenceComposition(activeCase), [activeCase]);
 
+  /* ---- Decision projections ---- */
+  const activeRecord = useMemo<DecisionRecord>(
+    () => decisions[selectedCaseId] ?? scenarioById("no-decision").build(scenarioContextFor(activeCase)),
+    [decisions, selectedCaseId, activeCase],
+  );
+  const activeView = useMemo(() => projectDecision(activeRecord), [activeRecord]);
+  const activeSelection = scenarioSelection[selectedCaseId] ?? "custom";
+
+  /* ---- Announcements (§19) ---- */
+  const announcePolite = useCallback((message: string) => {
+    setPoliteMessage("");
+    /* Reassert so repeated identical messages still announce. */
+    window.requestAnimationFrame(() => setPoliteMessage(message));
+    setAssertiveMessage("");
+  }, []);
+  const announceAssertive = useCallback((message: string) => {
+    setAssertiveMessage("");
+    window.requestAnimationFrame(() => setAssertiveMessage(message));
+  }, []);
+
+  /* ---- Decision context inspector focus ---- */
+  const openDecisionContext = useCallback((trigger: HTMLElement) => {
+    decisionTriggerRef.current = trigger;
+    setFocusedArtifact(null);
+    setDecisionFocused(true);
+  }, []);
+  const closeDecisionContext = useCallback(() => {
+    setDecisionFocused(false);
+    const trigger = decisionTriggerRef.current;
+    if (trigger && document.contains(trigger)) trigger.focus();
+  }, []);
+
+  /* ---- Dialog open/close ---- */
+  const openDialog = useCallback((dialog: ActiveDialog, trigger: HTMLElement) => {
+    decisionTriggerRef.current = trigger;
+    setActiveDialog(dialog);
+  }, []);
+  const closeDialog = useCallback(() => setActiveDialog(null), []);
+
+  /* ---- Scenario loading (lab affordance) ---- */
+  const loadScenario = useCallback(
+    (scenarioId: DecisionScenarioId) => {
+      const record = scenarioById(scenarioId).build(scenarioContextFor(activeCase));
+      setDecisions((current) => ({ ...current, [selectedCaseId]: record }));
+      setScenarioSelection((current) => ({ ...current, [selectedCaseId]: scenarioId }));
+      setActiveDialog(null);
+      setDecisionFocused(false);
+      announcePolite(`Loaded sample state: ${scenarioById(scenarioId).label}.`);
+    },
+    [activeCase, selectedCaseId, announcePolite],
+  );
+
+  const markCustom = useCallback(() => {
+    setScenarioSelection((current) => ({ ...current, [selectedCaseId]: "custom" }));
+  }, [selectedCaseId]);
+
+  /* ---- Local mutators (route-local state only) ---- */
+  const commitRecord = useCallback(
+    (caseId: string, updater: (record: DecisionRecord) => DecisionRecord) => {
+      setDecisions((current) => {
+        const record = current[caseId];
+        if (!record) return current;
+        return { ...current, [caseId]: updater(record) };
+      });
+    },
+    [],
+  );
+
+  const applyDraft = useCallback(
+    (draft: DecisionDraft) => {
+      const record = decisions[selectedCaseId];
+      if (!record) return;
+      const effective = record.effective;
+      const identityInput = {
+        outcome: draft.outcome,
+        headSha: record.currentHeadSha,
+        predecessorId: effective?.eventId,
+        rationale: draft.rationale,
+        referenceIds: draft.references.map((reference) => reference.id),
+        acceptedRiskIds: draft.acceptedRiskReferences.map((reference) => reference.id),
+        actorLabel: LOCAL_ACTOR.displayLabel,
+      };
+      const submission = classifySubmission(identityInput, effective, record.applicability);
+      if (submission === "no-op") {
+        announceAssertive("No change — identical to the recorded decision. Nothing was recorded.");
+        setActiveDialog(null);
+        return;
+      }
+      const eventType: DecisionEventType =
+        draft.outcome === "approve-with-accepted-risk"
+          ? "risk-accepted"
+          : submission === "reaffirm"
+            ? "decision-reaffirmed"
+            : submission === "supersede"
+              ? "decision-superseded"
+              : "decision-recorded";
+      const newEvent = createDecisionEvent({
+        eventType,
+        outcome: draft.outcome,
+        actor: LOCAL_ACTOR,
+        recordedAt: sampleNowLabel(),
+        headSha: record.currentHeadSha,
+        rationale: draft.rationale,
+        references: draft.references,
+        acceptedRiskReferences: draft.acceptedRiskReferences,
+        supersedesEventId: submission === "supersede" ? effective?.eventId : undefined,
+        reaffirmsEventId: submission === "reaffirm" ? effective?.eventId : undefined,
+      });
+      commitRecord(selectedCaseId, (current) => ({
+        ...current,
+        status: "recorded",
+        readError: undefined,
+        applicability: "applicable",
+        effective: newEvent,
+        priorHeadSha: undefined,
+        history: [...current.history, newEvent],
+      }));
+      markCustom();
+      setActiveDialog(null);
+      announcePolite(
+        submission === "supersede"
+          ? "Decision superseded. The prior decision is retained in history."
+          : submission === "reaffirm"
+            ? "Decision reaffirmed against the current head."
+            : "Decision recorded.",
+      );
+    },
+    [decisions, selectedCaseId, commitRecord, markCustom, announcePolite, announceAssertive],
+  );
+
+  const applyReaffirm = useCallback(
+    (rationale: string) => {
+      const record = decisions[selectedCaseId];
+      const effective = record?.effective;
+      if (!record || !effective || !effective.outcome) return;
+      const newEvent = createDecisionEvent({
+        eventType: "decision-reaffirmed",
+        outcome: effective.outcome,
+        actor: LOCAL_ACTOR,
+        recordedAt: sampleNowLabel(),
+        headSha: record.currentHeadSha,
+        rationale,
+        references: effective.references,
+        acceptedRiskReferences: effective.acceptedRiskReferences,
+        reaffirmsEventId: effective.eventId,
+      });
+      commitRecord(selectedCaseId, (current) => ({
+        ...current,
+        applicability: "applicable",
+        effective: newEvent,
+        priorHeadSha: undefined,
+        history: [...current.history, newEvent],
+      }));
+      markCustom();
+      setActiveDialog(null);
+      announcePolite(`Decision reaffirmed against ${record.currentHeadSha ?? "the current head"}.`);
+    },
+    [decisions, selectedCaseId, commitRecord, markCustom, announcePolite],
+  );
+
+  const applyWithdraw = useCallback(
+    (reason: string) => {
+      const record = decisions[selectedCaseId];
+      const effective = record?.effective;
+      if (!record || !effective) return;
+      const newEvent = createDecisionEvent({
+        eventType: "decision-withdrawn",
+        actor: LOCAL_ACTOR,
+        recordedAt: sampleNowLabel(),
+        headSha: record.currentHeadSha,
+        rationale: reason,
+        withdrawsEventId: effective.eventId,
+      });
+      commitRecord(selectedCaseId, (current) => ({
+        ...current,
+        applicability: "withdrawn",
+        effective: newEvent,
+        history: [...current.history, newEvent],
+      }));
+      markCustom();
+      setActiveDialog(null);
+      announcePolite("Decision withdrawn. History is retained.");
+    },
+    [decisions, selectedCaseId, commitRecord, markCustom, announcePolite],
+  );
+
+  const applyRevoke = useCallback(
+    (reason: string) => {
+      const record = decisions[selectedCaseId];
+      const effective = record?.effective;
+      if (!record || !effective) return;
+      const newEvent = createDecisionEvent({
+        eventType: "risk-acceptance-revoked",
+        actor: LOCAL_ACTOR,
+        recordedAt: sampleNowLabel(),
+        headSha: record.currentHeadSha,
+        rationale: reason,
+        acceptedRiskReferences: effective.acceptedRiskReferences,
+        withdrawsEventId: effective.eventId,
+      });
+      commitRecord(selectedCaseId, (current) => ({
+        ...current,
+        effective: newEvent,
+        history: [...current.history, newEvent],
+      }));
+      markCustom();
+      setActiveDialog(null);
+      announcePolite("Risk acceptance revoked. The accepted-risk event is retained in history.");
+    },
+    [decisions, selectedCaseId, commitRecord, markCustom, announcePolite],
+  );
+
+  const retryDecisionRead = useCallback(
+    (trigger: HTMLElement) => {
+      decisionTriggerRef.current = trigger;
+      commitRecord(selectedCaseId, (current) => ({
+        ...current,
+        status: "empty",
+        readError: undefined,
+        applicability: "unavailable",
+        effective: undefined,
+      }));
+      markCustom();
+      announcePolite("Decision record read — no engineer decision recorded.");
+    },
+    [selectedCaseId, commitRecord, markCustom, announcePolite],
+  );
+
+  const openHistory = useCallback((trigger: HTMLElement) => {
+    decisionTriggerRef.current = trigger;
+    setActiveDialog({ kind: "history" });
+  }, []);
+
+  const plateActions = useMemo<DecisionPlateActions>(
+    () => ({
+      onRecord: (trigger) => openDialog({ kind: "create" }, trigger),
+      onChange: (trigger) => openDialog({ kind: "change" }, trigger),
+      onReaffirm: (trigger) => openDialog({ kind: "reaffirm" }, trigger),
+      onSupersede: (trigger) => openDialog({ kind: "supersede" }, trigger),
+      onWithdraw: (trigger) => openDialog({ kind: "withdraw" }, trigger),
+      onRevokeRisk: (trigger) => openDialog({ kind: "revoke" }, trigger),
+      onViewContext: (trigger) => openDecisionContext(trigger),
+      onRetry: (trigger) => retryDecisionRead(trigger),
+    }),
+    [openDialog, openDecisionContext, retryDecisionRead],
+  );
+
+  /* Full sample history for the history surface — the loaded record's own
+     history if it has depth, otherwise a richer sample lineage. */
+  const historyForSurface = useMemo(
+    () =>
+      activeRecord.history.length > 5
+        ? activeRecord.history
+        : sampleFullHistory(scenarioContextFor(activeCase)),
+    [activeRecord, activeCase],
+  );
+
   /* ---- Case selection ---- */
   const selectCase = useCallback((caseId: string) => {
     setSelectedCaseId(caseId);
     setFocusedArtifact(null);
     setActiveStage("change");
-    setDecisionConceptExpanded(false);
+    setDecisionFocused(false);
+    setActiveDialog(null);
     const body = bodyRef.current;
     if (body) {
       suppressReconcileUntil.current = Date.now() + 400;
@@ -238,18 +611,24 @@ export default function WorkspaceV2Client() {
     };
   }, [selectedCaseId]);
 
-  /* ---- Escape clears artifact focus ---- */
+  /* ---- Escape clears artifact focus / decision context ----
+     A dialog, when open, owns Escape (it stops propagation and restores its
+     own focus), so this handler steps aside while a dialog is present. */
   useEffect(() => {
-    if (!focusedArtifact) return;
+    if (!focusedArtifact && !decisionFocused) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.stopPropagation();
+      if (event.key !== "Escape") return;
+      if (activeDialog) return;
+      event.stopPropagation();
+      if (decisionFocused) {
+        closeDecisionContext();
+      } else {
         setFocusedArtifact(null);
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [focusedArtifact]);
+  }, [focusedArtifact, decisionFocused, activeDialog, closeDecisionContext]);
 
   const toggleFocus = useCallback((kind: "finding" | "evidence" | "requirement", id: string) => {
     setFocusedArtifact((current) =>
@@ -306,6 +685,7 @@ export default function WorkspaceV2Client() {
                           {RECOMMENDATION_LABEL[item.recommendation]}
                         </span>
                         <span className={styles.queueRisk}>{item.riskLevel}</span>
+                        <QueueDecisionMarker record={decisions[item.caseId]} />
                       </span>
                     </button>
                   );
@@ -325,7 +705,9 @@ export default function WorkspaceV2Client() {
         <ol className={styles.spineChain}>
           {WORKSPACE_V2_STAGES.map((definition, index) => {
             const current = definition.id === activeStage;
-            const state = stageState(activeCase, definition.id);
+            const state = definition.terminal
+              ? decisionStageState(activeView)
+              : stageState(activeCase, definition.id);
             const count = stageCount(activeCase, definition.id);
             const last = index === WORKSPACE_V2_STAGES.length - 1;
             return (
@@ -353,7 +735,7 @@ export default function WorkspaceV2Client() {
                   <span className={styles.spineText}>
                     <span className={styles.spineLabel}>{definition.label}</span>
                     <span className={styles.spineCount}>
-                      {definition.terminal ? "not recorded" : count}
+                      {definition.terminal ? decisionStageLabel(activeView) : count}
                     </span>
                   </span>
                 </button>
@@ -375,7 +757,35 @@ export default function WorkspaceV2Client() {
             label="stale"
             attention={staleEvidenceCount(activeCase) > 0}
           />
-          <span className={styles.spineFootNote}>Decision not recorded</span>
+          <span className={`${styles.spineFootNote} ${toneClassName(decisionFooterNote(activeView).tone)}`}>
+            {decisionFooterNote(activeView).text}
+          </span>
+
+          {/* Lab affordance — project any of the twelve sample decision states
+              onto the current case for visual and accessibility review. */}
+          <div className={styles.scenarioSelect}>
+            <label className={styles.scenarioSelectLabel} htmlFor="wsv2-scenario">
+              Sample decision state
+            </label>
+            <select
+              id="wsv2-scenario"
+              className={styles.scenarioSelectInput}
+              value={activeSelection}
+              onChange={(event) => {
+                const value = event.target.value;
+                if (value !== "custom") loadScenario(value as DecisionScenarioId);
+              }}
+            >
+              {activeSelection === "custom" ? (
+                <option value="custom">Edited locally (custom)</option>
+              ) : null}
+              {DECISION_SCENARIOS.map((scenario) => (
+                <option key={scenario.id} value={scenario.id}>
+                  {scenario.index}. {scenario.label}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </nav>
 
@@ -522,70 +932,28 @@ export default function WorkspaceV2Client() {
           </div>
         </div>
 
-        {/* Row 3 — terminal act: unsigned Decision Plate */}
-        <footer
-          className={`${styles.plate} ${plateCurrent ? styles.plateCurrent : ""}`}
-          id="wsv2-decision-plate"
-        >
-          <div className={styles.plateMain}>
-            <div className={styles.plateState}>
-              <span className={styles.plateLabel}>
-                <span className={styles.plateStep}>5</span>
-                Human decision
-              </span>
-              <span className={styles.plateHeadline}>No engineer decision recorded</span>
-              <span className={styles.plateDetail}>
-                Lintel recommends{" "}
-                <span
-                  className={`${styles.plateRec} ${recommendationTone(
-                    activeCase.decision.recommendation,
-                  )}`}
-                >
-                  {RECOMMENDATION_LABEL[activeCase.decision.recommendation].toUpperCase()}
-                </span>
-                <span className={styles.metaDot}>·</span>
-                <span className={styles.plateBlocking}>
-                  {activeCase.decision.openBlockingRequirements}
-                </span>{" "}
-                blocking requirement
-                {activeCase.decision.openBlockingRequirements === 1 ? "" : "s"} open
-              </span>
-            </div>
-
-            <button
-              type="button"
-              className={styles.plateAction}
-              aria-expanded={decisionConceptExpanded}
-              onClick={() => setDecisionConceptExpanded((value) => !value)}
-            >
-              {decisionConceptExpanded ? "Hide concept" : "Show concept"}
-            </button>
-          </div>
-
-          {decisionConceptExpanded ? (
-            <div className={styles.plateConcept}>
-              <span className={styles.conceptBadge}>Visual-lab concept — not functional</span>
-              <p className={styles.conceptBody}>
-                A recorded decision would be captured here and attested against the current head.
-                Decision capture, persistence and attestation are out of scope for R0B.1 and are
-                deferred to R0B.2. Nothing in this panel writes state.
-              </p>
-            </div>
-          ) : null}
-        </footer>
+        {/* Row 3 — terminal act: recorded Decision Plate */}
+        <DecisionPlate view={activeView} current={plateCurrent} actions={plateActions} />
       </section>
 
       {/* Plane 4 — inspector */}
       <aside className={styles.inspector} aria-label="Inspector">
         <div className={styles.planeHeader}>
           <span className={styles.planeLabel}>
-            {focusedArtifact ? "Artifact detail" : "Case context"}
+            {decisionFocused
+              ? "Decision context"
+              : focusedArtifact
+                ? "Artifact detail"
+                : "Case context"}
           </span>
-          {focusedArtifact ? (
+          {decisionFocused || focusedArtifact ? (
             <button
               type="button"
               className={styles.inspectorClear}
-              onClick={() => setFocusedArtifact(null)}
+              onClick={() => {
+                if (decisionFocused) closeDecisionContext();
+                else setFocusedArtifact(null);
+              }}
             >
               Esc
             </button>
@@ -593,7 +961,15 @@ export default function WorkspaceV2Client() {
         </div>
 
         <div className={styles.inspectorBody}>
-          {focusedFinding ? (
+          {decisionFocused ? (
+            <DecisionContextInspector
+              record={activeRecord}
+              view={activeView}
+              onViewHistory={openHistory}
+              onWithdraw={(trigger) => openDialog({ kind: "withdraw" }, trigger)}
+              onRevokeRisk={(trigger) => openDialog({ kind: "revoke" }, trigger)}
+            />
+          ) : focusedFinding ? (
             <FindingInspector finding={focusedFinding} />
           ) : focusedEvidence ? (
             <EvidenceInspector record={focusedEvidence} />
@@ -604,7 +980,92 @@ export default function WorkspaceV2Client() {
           )}
         </div>
       </aside>
+
+      {/* Polite announcements for decision changes; assertive for errors (§19). */}
+      <DecisionLiveRegion politeMessage={politeMessage} assertiveMessage={assertiveMessage} />
+
+      {/* Decision flow dialogs — route-local state only, no persistence. */}
+      {activeDialog &&
+      (activeDialog.kind === "create" ||
+        activeDialog.kind === "change" ||
+        activeDialog.kind === "supersede") ? (
+        <DecisionCreationDialog
+          mode={activeDialog.kind === "create" ? "record" : activeDialog.kind}
+          headSha={activeRecord.currentHeadSha}
+          headRecorded={Boolean(activeRecord.currentHeadSha)}
+          recommendation={activeRecord.recommendation}
+          openBlockingRequirements={activeRecord.openBlockingRequirements}
+          carriedReferences={caseClauseReferences(activeCase)}
+          candidateRiskReferences={caseClauseReferences(activeCase)}
+          onSubmit={applyDraft}
+          onCancel={closeDialog}
+          returnFocusRef={decisionTriggerRef}
+        />
+      ) : null}
+
+      {activeDialog?.kind === "reaffirm" && activeRecord.effective?.outcome ? (
+        <DecisionReaffirmDialog
+          outcome={activeRecord.effective.outcome}
+          priorHeadSha={activeView.reaffirmation.priorHeadSha}
+          currentHeadSha={activeView.reaffirmation.currentHeadSha}
+          priorRationale={activeRecord.effective.rationale}
+          survivingReferences={activeRecord.effective.references.filter(
+            (reference) => reference.available && !reference.stale,
+          )}
+          staleReferences={activeRecord.effective.references.filter(
+            (reference) => !reference.available || reference.stale,
+          )}
+          onSubmit={applyReaffirm}
+          onCancel={closeDialog}
+          returnFocusRef={decisionTriggerRef}
+        />
+      ) : null}
+
+      {activeDialog?.kind === "withdraw" ? (
+        <DecisionWithdrawDialog
+          onSubmit={applyWithdraw}
+          onCancel={closeDialog}
+          returnFocusRef={decisionTriggerRef}
+        />
+      ) : null}
+
+      {activeDialog?.kind === "revoke" ? (
+        <DecisionRevokeRiskDialog
+          onSubmit={applyRevoke}
+          onCancel={closeDialog}
+          returnFocusRef={decisionTriggerRef}
+        />
+      ) : null}
+
+      {activeDialog?.kind === "history" ? (
+        <DecisionHistorySurface
+          history={historyForSurface}
+          onClose={closeDialog}
+          returnFocusRef={decisionTriggerRef}
+        />
+      ) : null}
     </div>
+  );
+}
+
+/* Compact queue decision marker — one restrained glyph, shown only when a
+   sample recorded decision exists (§15). Never renders for an absent or
+   unavailable decision. */
+function QueueDecisionMarker({ record }: { record?: DecisionRecord }) {
+  if (!record) return null;
+  const view = projectDecision(record);
+  if (view.status !== "recorded" || !view.outcome) return null;
+  const needsReaffirm = view.reaffirmation.required;
+  return (
+    <span
+      className={`${styles.queueDecisionMark} ${needsReaffirm ? styles.queueDecisionStale : ""}`}
+      title={`Sample decision: ${OUTCOME_LABEL[view.outcome]}${needsReaffirm ? " · needs reaffirmation" : ""}`}
+      aria-label={`Sample decision recorded: ${OUTCOME_LABEL[view.outcome]}${
+        needsReaffirm ? ", needs reaffirmation" : ""
+      }`}
+    >
+      <span className={`${styles.queueDecisionDot} ${toneClassName(outcomeTone(view.outcome))}`} />
+    </span>
   );
 }
 

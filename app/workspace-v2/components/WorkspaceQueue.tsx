@@ -22,13 +22,18 @@ export function WorkspaceQueue({
   groups,
   selectedCaseId,
   onSelectCase,
+  limitations,
 }: {
   groups: QueueGroup[];
   selectedCaseId: string;
   onSelectCase: (caseId: string) => void;
+  /* Restrained, truthful notes about how the queue was projected (e.g. some
+     stored reports could not be read). Optional; absent in fixture mode. */
+  limitations?: string[];
 }) {
   const listRef = useRef<HTMLDivElement | null>(null);
   const totalCases = groups.reduce((sum, group) => sum + group.cases.length, 0);
+  const notes = limitations?.filter((note) => note.trim().length > 0) ?? [];
 
   return (
     <aside className={styles.queue} aria-label="Case queue">
@@ -43,7 +48,14 @@ export function WorkspaceQueue({
         onKeyDown={(event) => rovingKeyDown(event, listRef.current)}
       >
         {groups.map((group) => (
-          <section key={group.id} className={styles.queueGroup} role="listitem">
+          <section
+            key={group.id}
+            className={styles.queueGroup}
+            role="listitem"
+            aria-label={`${group.label}, ${group.cases.length} ${
+              group.cases.length === 1 ? "case" : "cases"
+            }`}
+          >
             <div className={styles.queueGroupHeader}>
               <span className={styles.queueGroupLabel}>{group.label}</span>
               <span className={styles.queueGroupCount}>{group.cases.length}</span>
@@ -59,6 +71,15 @@ export function WorkspaceQueue({
           </section>
         ))}
       </div>
+      {notes.length > 0 ? (
+        <div className={styles.queueLimitations} role="note">
+          {notes.map((note, index) => (
+            <p key={index} className={styles.queueLimitationLine}>
+              {note}
+            </p>
+          ))}
+        </div>
+      ) : null}
     </aside>
   );
 }
@@ -83,6 +104,9 @@ function QueueRow({
     >
       <span className={styles.queueRef}>#{item.pullRequestNumber}</span>
       <span className={styles.queueTitle}>{item.title}</span>
+      {item.provenanceHint ? (
+        <span className={styles.queueProvenanceHint}>{item.provenanceHint}</span>
+      ) : null}
       <span className={styles.queueState}>
         <span className={`${styles.queueRec} ${recommendationTone(item.recommendation)}`}>
           {RECOMMENDATION_LABEL[item.recommendation]}

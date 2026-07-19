@@ -1,10 +1,11 @@
-/* R1B.1 — Production Workspace V2 · real read-only Report adapter.
+/* R1B.1 / R1B.2 — Production Workspace V2 · real read-only Report adapter.
 
    The second `WorkspaceAdapter` implementation. Where the fixture adapter
-   returns fixed sample data, this adapter reads one authoritative, already
-   stored Lintel Report and projects it into the same serialisable
-   `WorkspaceSnapshot` shapes the fixture adapter produces. It performs no
-   writes, adds no storage key, and mutates nothing.
+   returns fixed sample data, this adapter reads the stored Lintel Report
+   history and projects it into the same serialisable `WorkspaceSnapshot`
+   shapes the fixture adapter produces. It performs no writes, adds no storage
+   key, and mutates nothing — the injected `Storage` is wrapped read-only at the
+   adapter boundary so even read helpers that prune on read cannot persist.
 
    AUTHORITATIVE SOURCE (r1b1). The current production Report source is
    browser-only: `/workspace` and `/report` read persisted Reports from the
@@ -19,12 +20,16 @@
    injected as a `Storage` so this module never reaches for `window` itself and
    stays out of presentational components (see `RealWorkspaceBootstrap`).
 
-   SINGLE-REPORT SCOPE (r1b1). One selected Report is projected into a single
-   case. No report-history grouping, no queue scan — that is R1B.2. The four
-   operational groups are preserved structurally; the single case is placed by
-   a documented, provisional recommendation → group mapping (see below).
+   QUEUE SCOPE (r1b2). Every valid report-history entry is projected into one
+   stable case; each case appears exactly once and is placed into exactly one of
+   the four operational groups (Needs attention / Review / Ready / Reviewed) by
+   the pure, documented precedence in `queue-projection.ts` (recorded review
+   state → applicable Human Decision → open blockers → recommendation fallback).
+   An explicit `reportId` selects a specific case; an unknown id is unavailable,
+   never a fallback. Distinct analysis entries stay distinct — no PR-level
+   collapse.
 
-   TRUTHFULNESS. Evidence and requirements are recomputed from the selected
+   TRUTHFULNESS. Evidence and requirements are recomputed from each stored
    Report through the existing canonical projections `buildEvidenceHierarchy`
    and `buildMergeContract`, sharing one evidence hierarchy so that every
    requirement→evidence and decision→evidence reference resolves inside the
@@ -60,10 +65,32 @@ import {
   type ReportHistoryEntry,
 } from "../report-history";
 import {
+  readReviewStates,
+  reviewStateKeyForReport,
+  REVIEW_STATE_STORAGE_KEY,
+  type ReportReviewState,
+} from "../review-state";
+import {
+  conditionKey,
+  readConditionProgress,
+  reportConditions,
+} from "../condition-progress";
+import {
   type WorkspaceAdapter,
   type WorkspaceSnapshotRequest,
 } from "./adapter";
 import { decisionMarkerFor } from "./projections";
+import { readOnlyStorage } from "./read-only-storage";
+import {
+  buildQueueGroups,
+  groupForCase,
+  pickDefaultCaseId,
+  type CaseGroupingInput,
+  type GroupingResult,
+  type OrderableCase,
+  type QueueItem,
+  type ReviewStateSignal,
+} from "./queue-projection";
 import {
   type CaseContextView,
   type CaseDetail,
@@ -104,12 +131,16 @@ function liveProvenance(scenario: WorkspaceProvenance["scenario"]): WorkspacePro
   };
 }
 
-function identityForReport(report: Report): WorkspaceIdentity {
-  return {
-    workspaceId: "local-report",
-    repository: report.pr.repository,
-    label: report.pr.repository,
-  };
+/* One identity for the whole real queue. A single repository names itself;
+   a queue spanning several repositories is labelled generically rather than
+   claiming one repository's name for all of them. */
+function identityForHistory(history: ReportHistoryEntry[]): WorkspaceIdentity {
+  const repositories = new Set(history.map((entry) => entry.report.pr.repository));
+  if (repositories.size === 1 && history[0]) {
+    const repository = history[0].report.pr.repository;
+    return { workspaceId: "local-report", repository, label: repository };
+  }
+  return { workspaceId: "local-report", repository: "—", label: "Local reports" };
 }
 
 const EMPTY_IDENTITY: WorkspaceIdentity = {
@@ -118,34 +149,104 @@ const EMPTY_IDENTITY: WorkspaceIdentity = {
   label: "Local reports",
 };
 
-/* --- Provisional grouping (single-report scope, r1b1) ------------------ */
+/* --- Review-state channel (read-only, r1b2) --------------------------- */
 
-/* R1B.1 does not read persisted review status (that store belongs to a later
-   persistence milestone). Review status and queue group are therefore a
-   provisional, documented projection of the Report's recommendation — enough
-   to place one case truthfully without presenting it as authoritative workflow
-   state. The four operational groups (r1a §16.5) are all declared; only the
-   group holding the case is rendered. */
-const GROUP_DEFINITIONS: { id: QueueGroupId; label: string; recommendations: Recommendation[] }[] = [
-  { id: "attention", label: "Needs attention", recommendations: ["BLOCK", "TESTS_REQUIRED"] },
-  { id: "review", label: "Review", recommendations: ["REVIEW_REQUIRED"] },
-  { id: "ready", label: "Ready", recommendations: ["APPROVE"] },
-  { id: "reviewed", label: "Reviewed", recommendations: [] },
-];
+/* The authoritative recorded review state lives in `lintel.reviewState.v1`
+   (read via `readReviewStates`). R1B.2 reads it read-only and never writes it.
+   The channel distinguishes an unreadable store (present but corrupt/wrong
+   shape) from a genuinely untouched one, so grouping can represent "review
+   state unavailable" separately from "no recorded state" (r1b2 review-state
+   contract). `readReviewStates` itself swallows corruption and returns {}, so
+   this raw preflight is what surfaces the unavailable case. */
+type ReviewStateChannel =
+  | { available: true; states: Record<string, ReportReviewState> }
+  | { available: false };
 
-function provisionalGroupId(recommendation: Recommendation): QueueGroupId {
-  const match = GROUP_DEFINITIONS.find((group) =>
-    group.recommendations.includes(recommendation),
-  );
-  /* Neutral Review group when no confident mapping exists (r1b1). */
-  return match ? match.id : "review";
+function readReviewStateChannel(storage: Storage): ReviewStateChannel {
+  let raw: string | null;
+  try {
+    raw = storage.getItem(REVIEW_STATE_STORAGE_KEY);
+  } catch {
+    return { available: false };
+  }
+  /* Absent key — the store has never been written. Untouched, not unreadable. */
+  if (raw === null) return { available: true, states: {} };
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+      return { available: false };
+    }
+  } catch {
+    /* Present but unparseable — corruption, kept distinct from untouched. */
+    return { available: false };
+  }
+  return { available: true, states: readReviewStates(storage) };
 }
 
-function provisionalReviewStatus(recommendation: Recommendation): ReviewStatus {
-  if (recommendation === "BLOCK") return "Blocked";
-  if (recommendation === "TESTS_REQUIRED") return "Tests requested";
-  if (recommendation === "APPROVE") return "Ready to merge";
-  return "Review required";
+/* Resolve the review-state signal for one report.
+
+   A recorded state carries a non-null `updatedAt`; the recommendation-derived
+   default (updatedAt null, see `defaultReviewState`) is NOT authoritative and
+   never groups a case as if a human had set its status.
+
+   The existing review-state key (`reviewStateKeyForReport` = repository/title/
+   input-label) is NOT unique per history entry: several analysis entries for
+   the same PR/report identity can share it. A recorded status is therefore only
+   authoritative when its key maps to exactly ONE projected entry. When the key
+   is shared by several entries the status cannot be attributed to a specific
+   analysis or head, so it is reported as `ambiguous` — never silently applied
+   to (say) the newest entry, which could let a moved/new head inherit Reviewed
+   or Ready from a different analysis. `keyCounts` is precomputed once over the
+   whole validated history. No schema or key change is made. */
+function reviewSignalFor(
+  channel: ReviewStateChannel,
+  report: Report,
+  keyCounts: Map<string, number>,
+): ReviewStateSignal {
+  if (!channel.available) return { kind: "unavailable" };
+  const key = reviewStateKeyForReport(report);
+  const state = channel.states[key];
+  if (!state || state.updatedAt === null) return { kind: "untouched" };
+  if ((keyCounts.get(key) ?? 0) > 1) return { kind: "ambiguous" };
+  return { kind: "recorded", status: state.status, updatedAt: state.updatedAt };
+}
+
+/* Unresolved (uncleared) merge conditions for THIS report. The condition
+   progress key is derived from the report's own identity + condition text
+   (`conditionProgressReportKey`), so a read here is authoritative to the report
+   and never picks up progress recorded against a different report, head or
+   condition set (r1b2 condition-progress contract). Reads are read-only. */
+function unresolvedConditionCount(storage: Storage, report: Report): number {
+  const conditions = reportConditions(report);
+  if (conditions.length === 0) return 0;
+  const cleared = readConditionProgress(storage, report, conditions);
+  return conditions.filter((condition) => !cleared.has(conditionKey(condition))).length;
+}
+
+/* Displayed review status for a case that has NO authoritative recorded state.
+   Derived from the resolved grouping result (not from recommendation alone) so
+   the Inspector's status label can never contradict the queue group — e.g. an
+   APPROVE report with an open blocker groups under Needs attention and is shown
+   as "Needs work", not "Ready to merge". "Reviewed" is only ever produced from
+   an authoritative recorded state or an applicable Human Decision (the only
+   ways a case reaches the reviewed group without a recorded review state). */
+function displayedReviewStatus(
+  grouping: GroupingResult,
+  recommendation: Recommendation,
+): ReviewStatus {
+  switch (grouping.groupId) {
+    case "reviewed":
+      return "Reviewed";
+    case "ready":
+      return "Ready to merge";
+    case "review":
+      return "Review required";
+    case "attention":
+      if (recommendation === "BLOCK") return "Blocked";
+      if (recommendation === "TESTS_REQUIRED") return "Tests requested";
+      /* Blockers, unresolved conditions or a contradictory APPROVE. */
+      return "Needs work";
+  }
 }
 
 /* --- Field-level mapping ---------------------------------------------- */
@@ -314,9 +415,9 @@ function makeReference(
       modelAssisted: false,
     };
   }
-  /* Assumptions are not surfaced as artifacts in the R1B.1 single-report
-     projection, so an assumption reference cannot be resolved here. This is a
-     truthful "reference could not be resolved", not a fabricated link. */
+  /* Assumptions are not surfaced as artifacts in the per-case projection, so an
+     assumption reference cannot be resolved here. This is a truthful "reference
+     could not be resolved", not a fabricated link. */
   return { id, kind: "assumption", label: id, available: false, stale: false, modelAssisted: false };
 }
 
@@ -436,6 +537,7 @@ export type ReportProjectionInput = {
 export function projectReportToCaseDetail(
   input: ReportProjectionInput,
   decision: DecisionPlateViewModel,
+  reviewStatus: ReviewStatus,
 ): CaseDetail {
   const { report, caseId, createdAt, canonicalRun } = input;
   const headSha = canonicalRun?.headSha;
@@ -470,7 +572,9 @@ export function projectReportToCaseDetail(
     riskLevel: report.verdict.riskLevel,
     riskScore: report.verdict.riskScore,
     confidence: report.verdict.confidence,
-    reviewStatus: provisionalReviewStatus(report.verdict.recommendation),
+    /* Authoritative recorded review status when one exists; otherwise the
+       recommendation-derived provisional label (resolved by the caller). */
+    reviewStatus,
     executiveSummary: report.verdict.summary,
     changedFiles: mapChangedFiles(report),
     findings,
@@ -488,19 +592,52 @@ export function projectReportToCaseDetail(
   };
 }
 
-/* Build the case's Human Decision from storage, then the full `CaseDetail`. */
-function projectEntry(entry: ReportHistoryEntry, storage: Storage): CaseDetail {
+/* One fully-projected real case: its `CaseDetail`, the group it deterministically
+   belongs to, the fields needed to order it within that group, and whether its
+   recorded review state was ambiguous (shared key) so the workspace can surface
+   that limitation. */
+type CaseProjection = {
+  detail: CaseDetail;
+  createdAt: string;
+  groupId: QueueGroupId;
+  order: OrderableCase;
+  reviewStateAmbiguous: boolean;
+};
+
+/* The authoritative moment a case was reviewed/decided, used only to order the
+   Reviewed group: an AUTHORITATIVE recorded review-state `updatedAt` (never an
+   ambiguous/shared one), else an applicable decision's `recordedAt`, else null
+   (unknown, ordered last). */
+function authoritativeDecidedAt(
+  reviewSignal: ReviewStateSignal,
+  decision: DecisionPlateViewModel,
+): string | null {
+  if (reviewSignal.kind === "recorded") return reviewSignal.updatedAt;
+  if (
+    decision.status === "recorded" &&
+    decision.applicability === "applicable" &&
+    !decision.needsReaffirmation
+  ) {
+    return decision.recordedAt;
+  }
+  return null;
+}
+
+/* Project one history entry into a case, reading review state, condition
+   progress and the Human Decision ledger read-only, then deriving the group
+   and ordering signals through the pure `queue-projection` module. */
+function projectCase(
+  entry: ReportHistoryEntry,
+  storage: Storage,
+  reviewChannel: ReviewStateChannel,
+  keyCounts: Map<string, number>,
+): CaseProjection {
   const report = entry.report;
   const canonicalRun = entry.canonicalRun ?? null;
   const caseId = `report-${entry.createdAt}`;
-  const input: ReportProjectionInput = {
-    report,
-    caseId,
-    createdAt: entry.createdAt,
-    canonicalRun,
-  };
+  const input: ReportProjectionInput = { report, caseId, createdAt: entry.createdAt, canonicalRun };
 
-  /* Build artifacts once to resolve decision references, then project. */
+  /* Build artifacts once to resolve decision references and grouping signals. */
   const headSha = canonicalRun?.headSha;
   const evidenceSummary = buildEvidenceHierarchy(report, null, { createdAt: entry.createdAt, headSha });
   const contract = buildMergeContract({
@@ -515,44 +652,130 @@ function projectEntry(entry: ReportHistoryEntry, storage: Storage): CaseDetail {
   const requirements = mapRequirements(contract, knownEvidenceIds);
 
   const decision = readDecisionProjection(storage, report, canonicalRun, contract, requirements, evidence);
-  return projectReportToCaseDetail(input, decision);
+
+  const reviewState = reviewSignalFor(reviewChannel, report, keyCounts);
+  const openBlocking = openBlockingRequirementCount(requirements);
+  const unresolvedConditions = unresolvedConditionCount(storage, report);
+
+  const groupingInput: CaseGroupingInput = {
+    recommendation: report.verdict.recommendation,
+    reviewState,
+    decision,
+    openBlockingRequirements: openBlocking,
+    unresolvedConditions,
+  };
+  const grouping = groupForCase(groupingInput);
+
+  /* Authoritative recorded status when unambiguously bound to this entry;
+     otherwise a grouping-consistent label so the Inspector never contradicts
+     the queue group. */
+  const reviewStatus: ReviewStatus =
+    reviewState.kind === "recorded"
+      ? reviewState.status
+      : displayedReviewStatus(grouping, report.verdict.recommendation);
+
+  const detail = projectReportToCaseDetail(input, decision, reviewStatus);
+
+  const decisionApplicable =
+    decision.status === "recorded" &&
+    decision.applicability === "applicable" &&
+    !decision.needsReaffirmation;
+
+  const order: OrderableCase = {
+    caseId,
+    createdAt: entry.createdAt,
+    riskLevel: report.verdict.riskLevel,
+    isBlocking:
+      report.verdict.recommendation === "BLOCK" ||
+      openBlocking > 0 ||
+      unresolvedConditions > 0,
+    isAccountableReview:
+      report.verdict.recommendation === "REVIEW_REQUIRED" ||
+      (reviewState.kind === "recorded" && reviewState.status === "Review required") ||
+      (decisionApplicable &&
+        decision.status === "recorded" &&
+        decision.outcome === "review-required"),
+    decidedAt: authoritativeDecidedAt(reviewState, decision),
+  };
+
+  return {
+    detail,
+    createdAt: entry.createdAt,
+    groupId: grouping.groupId,
+    order,
+    reviewStateAmbiguous: reviewState.kind === "ambiguous",
+  };
 }
 
 /* --- Snapshot assembly ------------------------------------------------ */
 
-function buildGroups(summary: QueueCaseSummary): QueueGroup[] {
-  return GROUP_DEFINITIONS.map((definition) => ({
-    id: definition.id,
-    label: definition.label,
-    cases: summary.groupId === definition.id ? [summary] : [],
-  })).filter((group) => group.cases.length > 0);
+/* Restrained disambiguation token for cases that share a PR number: the short
+   head SHA when known (distinguishes multiple heads for one PR), else the
+   analysis date from the history entry. Both are proven by stored data; it is
+   never invented activity. Only set on shared-PR cases (see `buildRealCases`). */
+function provenanceHintFor(detail: CaseDetail, createdAt: string): string {
+  const head = detail.github.headSha;
+  if (head && head.trim().length >= 7) return `head ${head.slice(0, 7)}`;
+  return `analysed ${createdAt.slice(0, 10)}`;
 }
 
-function summaryForCase(detail: CaseDetail): QueueCaseSummary {
+function summaryForCase(
+  detail: CaseDetail,
+  groupId: QueueGroupId,
+  title: string,
+  provenanceHint: string | null,
+): QueueCaseSummary {
   return {
     caseId: detail.caseId,
     pullRequestNumber: detail.github.pullRequestNumber,
-    title: detail.github.repository ? detail.github.repository : detail.github.branch,
+    title,
     repository: detail.github.repository,
     recommendation: detail.recommendation,
     riskLevel: detail.riskLevel,
-    groupId: provisionalGroupId(detail.recommendation),
+    groupId,
+    /* Authoritative recorded review status, or the provisional label. The Queue
+       row does not render this field; the Inspector case-context header does. */
     reviewStatus: detail.reviewStatus,
     decisionMarker: decisionMarkerFor(detail.decision),
     currentHeadSha: detail.github.headSha,
+    provenanceHint,
   };
 }
 
-function readySnapshot(report: Report, detail: CaseDetail, title: string): WorkspaceReadySnapshot {
-  const summary: QueueCaseSummary = { ...summaryForCase(detail), title };
-  return {
-    status: "ready",
-    identity: identityForReport(report),
-    provenance: liveProvenance("default"),
-    groups: buildGroups(summary),
-    cases: [detail],
-    defaultCaseId: detail.caseId,
-  };
+/* Logical PR identity for shared-report detection: a PR is identified by its
+   repository AND pull-request number together (`repository#number`), so e.g.
+   `acme/profile-api#1` and `vercel/next.js#1` are different PRs. Number alone
+   would wrongly merge same-numbered PRs across repositories. */
+function prIdentity(detail: CaseDetail): string {
+  return `${detail.github.repository}#${detail.github.pullRequestNumber}`;
+}
+
+/* Project every valid entry, then build queue items. Provenance hints are set
+   only for cases whose PR — the same repository and pull-request number —
+   appears more than once, so distinct reports for the same PR are
+   distinguishable without crowding singleton rows. One case per history entry;
+   repeated analyses are never collapsed. Titles come from each report's own PR
+   title. */
+function buildRealCases(
+  projections: CaseProjection[],
+  history: ReportHistoryEntry[],
+): QueueItem[] {
+  const prCounts = new Map<string, number>();
+  for (const projection of projections) {
+    const pr = prIdentity(projection.detail);
+    prCounts.set(pr, (prCounts.get(pr) ?? 0) + 1);
+  }
+
+  return projections.map((projection, index) => {
+    const pr = prIdentity(projection.detail);
+    const shared = (prCounts.get(pr) ?? 0) > 1;
+    const hint = shared ? provenanceHintFor(projection.detail, projection.createdAt) : null;
+    const title = history[index].report.pr.title;
+    return {
+      summary: summaryForCase(projection.detail, projection.groupId, title, hint),
+      order: projection.order,
+    };
+  });
 }
 
 function emptySnapshot(): WorkspaceEmptySnapshot {
@@ -572,17 +795,17 @@ function unavailableSnapshot(reason: string): WorkspaceUnavailableSnapshot {
   };
 }
 
-/* Select the authoritative entry: an explicit stable id when supplied,
-   otherwise the most recent stored Report (history is newest-first). */
-function selectEntry(
+/* Resolve an explicit stable report id to its history entry. Returns null when
+   an id was supplied but does not match any stored entry — an unknown explicit
+   id is a failed request (→ unavailable), never a silent fallback. Case ids use
+   the `report-<createdAt>` convention; a bare `createdAt` is also accepted. */
+function resolveExplicitEntry(
   history: ReportHistoryEntry[],
   reportId: string | null | undefined,
 ): ReportHistoryEntry | null {
-  if (reportId) {
-    const wanted = reportId.startsWith("report-") ? reportId.slice("report-".length) : reportId;
-    return history.find((entry) => entry.createdAt === wanted) ?? null;
-  }
-  return history[0] ?? null;
+  if (!reportId) return null;
+  const wanted = reportId.startsWith("report-") ? reportId.slice("report-".length) : reportId;
+  return history.find((entry) => entry.createdAt === wanted) ?? null;
 }
 
 /* --- The adapter ------------------------------------------------------ */
@@ -590,10 +813,10 @@ function selectEntry(
 /* Distinguish an absent / genuinely-empty history from corrupt storage without
    duplicating Report validation. `readReportHistory` intentionally swallows
    corruption (returns [] and prunes), so a raw preflight is required to tell
-   "no reports" apart from "unreadable reports". Returns null when the caller
-   should proceed to project the validated history. */
+   "no reports" apart from "unreadable reports". The raw entry count is carried
+   through so partial-history omissions can be surfaced truthfully. */
 type HistoryPreflight =
-  | { kind: "proceed" }
+  | { kind: "proceed"; rawCount: number }
   | { kind: "empty" }
   | { kind: "unavailable"; reason: string };
 
@@ -620,10 +843,50 @@ function preflightHistory(storage: Storage): HistoryPreflight {
   /* A valid, genuinely-empty history. */
   if (parsed.length === 0) return { kind: "empty" };
 
-  return { kind: "proceed" };
+  return { kind: "proceed", rawCount: parsed.length };
 }
 
-export function createRealWorkspaceAdapter(storage: Storage): WorkspaceAdapter {
+/* Compose the restrained, truthful limitations for a ready snapshot: partial
+   history (some stored reports could not be projected or fall outside the
+   retained window) and an unreadable review-state store (grouping fell back).
+   Never claims completeness it cannot prove. */
+function buildLimitations(
+  projectedCount: number,
+  rawCount: number,
+  reviewChannel: ReviewStateChannel,
+  ambiguousCount: number,
+): string[] {
+  const limitations: string[] = [];
+  if (projectedCount < rawCount) {
+    const omitted = rawCount - projectedCount;
+    limitations.push(
+      `${projectedCount} of ${rawCount} stored reports could be projected; ` +
+        `${omitted} could not be read as valid reports or fall outside the retained history window and ` +
+        `${omitted === 1 ? "is" : "are"} omitted from the queue.`,
+    );
+  }
+  if (!reviewChannel.available) {
+    limitations.push(
+      "Recorded review state could not be read; affected cases are grouped from decision, " +
+        "condition and recommendation signals rather than a recorded review status.",
+    );
+  }
+  if (ambiguousCount > 0) {
+    limitations.push(
+      `Recorded review state could not be assigned to a specific analysis entry for ` +
+        `${ambiguousCount} case${ambiguousCount === 1 ? "" : "s"} that share a report identity; ` +
+        `${ambiguousCount === 1 ? "it is" : "they are"} grouped from decision, condition and ` +
+        `recommendation signals instead.`,
+    );
+  }
+  return limitations;
+}
+
+export function createRealWorkspaceAdapter(rawStorage: Storage): WorkspaceAdapter {
+  /* Wrap once at the boundary: the whole adapter — and every production read
+     helper it calls — is now structurally incapable of writing (r1b2 §11). */
+  const storage = readOnlyStorage(rawStorage);
+
   return {
     async loadSnapshot(request: WorkspaceSnapshotRequest): Promise<WorkspaceSnapshot> {
       try {
@@ -639,7 +902,7 @@ export function createRealWorkspaceAdapter(storage: Storage): WorkspaceAdapter {
           );
         }
 
-        /* Preflight proved a non-empty array; project the validated entries. */
+        /* Preflight proved a non-empty array; project ALL validated entries. */
         const history = readReportHistory(storage);
         if (history.length === 0) {
           /* The raw history held entries but none survived validation —
@@ -649,25 +912,75 @@ export function createRealWorkspaceAdapter(storage: Storage): WorkspaceAdapter {
           );
         }
 
-        const entry = selectEntry(history, request.reportId);
-        if (!entry) {
-          /* An explicit report id that does not resolve is a failed request,
-             distinct from an empty store — surfaced as unavailable, not
-             fixture data. */
+        /* An explicit report id must resolve to a stored entry, or the whole
+           request is unavailable (never a fallback selection). */
+        let explicitCaseId: string | null = null;
+        if (request.reportId) {
+          const explicitEntry = resolveExplicitEntry(history, request.reportId);
+          if (!explicitEntry) {
+            return unavailableSnapshot(
+              `No stored report matches the requested id. It may have been cleared or replaced. ${history.length} report${history.length === 1 ? " is" : "s are"} available in this browser.`,
+            );
+          }
+          explicitCaseId = `report-${explicitEntry.createdAt}`;
+        }
+
+        const reviewChannel = readReviewStateChannel(storage);
+
+        /* Count how many valid entries share each review-state key, so a shared
+           (ambiguous) recorded status is never attributed to one specific
+           entry. Computed once over the whole validated history. */
+        const keyCounts = new Map<string, number>();
+        for (const entry of history) {
+          const key = reviewStateKeyForReport(entry.report);
+          keyCounts.set(key, (keyCounts.get(key) ?? 0) + 1);
+        }
+
+        /* One case per valid entry; each appears exactly once. */
+        const projections = history.map((entry) =>
+          projectCase(entry, storage, reviewChannel, keyCounts),
+        );
+        const items = buildRealCases(projections, history);
+        const groups = buildQueueGroups(items);
+
+        /* Deterministic default: explicit valid id, else first case of the
+           first non-empty group in Needs attention → Review → Ready → Reviewed
+           precedence. */
+        const defaultCaseId = pickDefaultCaseId(groups, explicitCaseId);
+        if (!defaultCaseId) {
           return unavailableSnapshot(
-            `No stored report matches the requested id. It may have been cleared or replaced. ${history.length} report${history.length === 1 ? " is" : "s are"} available in this browser.`,
+            "Valid reports were read but none could be placed into a queue group. This is a projection failure, not an empty workspace.",
           );
         }
 
-        const detail = projectEntry(entry, storage);
-        return readySnapshot(entry.report, detail, entry.report.pr.title);
+        const ambiguousCount = projections.filter(
+          (projection) => projection.reviewStateAmbiguous,
+        ).length;
+        const limitations = buildLimitations(
+          history.length,
+          preflight.rawCount,
+          reviewChannel,
+          ambiguousCount,
+        );
+
+        return {
+          status: "ready",
+          identity: identityForHistory(history),
+          provenance: liveProvenance("default"),
+          groups,
+          cases: projections.map((projection) => projection.detail),
+          defaultCaseId,
+          /* Always present (possibly empty); the Queue renders nothing when
+             empty. Truthful about how the queue was projected. */
+          limitations,
+        };
       } catch (error) {
         /* Any parse / projection failure is a projection failure, never an
            empty queue and never a silent fixture fallback. */
         return unavailableSnapshot(
           error instanceof Error
-            ? `The stored report could not be projected: ${error.message}`
-            : "The stored report could not be projected.",
+            ? `The stored reports could not be projected: ${error.message}`
+            : "The stored reports could not be projected.",
         );
       }
     },

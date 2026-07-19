@@ -314,6 +314,11 @@ export type QueueCaseSummary = {
   decisionMarker: DecisionMarker;
   /* Explicit unknown rather than an empty string. */
   currentHeadSha: string | null;
+  /* Restrained disambiguation token, set (R1B.2) only when a PR has more than
+     one case in the queue — the short head SHA when known, otherwise the
+     analysis date. Absent (null) for singleton PRs so the row stays compact and
+     the Queue never becomes an activity feed (r1b2 queue restraint). */
+  provenanceHint?: string | null;
 };
 
 export type QueueGroup = {
@@ -401,6 +406,11 @@ export type WorkspaceReadySnapshot = {
   groups: QueueGroup[];
   cases: CaseDetail[];
   defaultCaseId: string;
+  /* Restrained, truthful limitations about how the queue was projected — e.g.
+     that some stored reports could not be read and are omitted (R1B.2 partial
+     history). Empty / absent means every stored, in-window report is shown. The
+     queue never silently claims completeness. */
+  limitations?: string[];
 };
 
 export type WorkspaceEmptySnapshot = {

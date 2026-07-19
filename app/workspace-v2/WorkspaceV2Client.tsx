@@ -206,6 +206,7 @@ function ReadyWorkspace({ snapshot }: { snapshot: WorkspaceReadySnapshot }) {
         groups={snapshot.groups}
         selectedCaseId={activeCase.caseId}
         onSelectCase={selectCase}
+        limitations={snapshot.limitations}
       />
 
       <EvidenceSpine detail={activeCase} activeStage={activeStage} onGoToStage={goToStage} />

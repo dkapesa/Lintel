@@ -237,6 +237,34 @@
   padding-top: 2px;
 }
 
+/* R1B.2 — restrained same-PR disambiguation token (short head SHA or analysis
+   date). Muted and monospaced so it never competes with the title. */
+.queueProvenanceHint {
+  color: var(--wsv2-text-3);
+  font-family: var(--wsv2-mono);
+  font-size: 10px;
+  line-height: 14px;
+}
+
+/* R1B.2 — truthful projection limitations, kept quiet at the foot of the
+   queue. Not an alert, not decorative; a plain note. */
+.queueLimitations {
+  margin-top: auto;
+  padding: 8px 12px 14px;
+  border-top: 1px solid rgb(255 255 255 / 6%);
+}
+
+.queueLimitationLine {
+  margin: 0;
+  color: var(--wsv2-text-3);
+  font-size: var(--wsv2-micro-size);
+  line-height: 15px;
+}
+
+.queueLimitationLine + .queueLimitationLine {
+  margin-top: 6px;
+}
+
 .queueRec {
   font-size: var(--wsv2-micro-size);
   line-height: var(--wsv2-micro-line);

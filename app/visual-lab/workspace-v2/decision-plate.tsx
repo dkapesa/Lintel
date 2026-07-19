@@ -19,7 +19,6 @@ import {
   DecisionActorProvenance,
   DecisionApplicabilityChip,
   DecisionDivergenceChip,
-  DecisionFingerprintChip,
   DecisionOutcomeToken,
   DecisionRationaleSummary,
   DecisionReferenceCounts,
@@ -116,7 +115,15 @@ function ErrorHeadline({ view }: { view: DecisionPlateViewModel }) {
   );
 }
 
-/* --- States B/C/F/H — resting recorded plate -------------------------- */
+/* --- States B/C/F/H — resting recorded plate --------------------------
+
+   R0B.2C density pass: the resting plate keeps outcome (dominant), actor,
+   time, applicable head, applicability, divergence, compact reference count
+   and the rationale summary. Full fingerprint treatment and per-kind
+   reference detail live in Decision Context (§8.2) rather than at rest.
+   The former "needs reaffirmation" marker chip is gone: the warning-toned
+   applicability chip plus the Reaffirm primary action carry that state
+   without repeating the sentence on the same surface. */
 
 function RecordedHeadline({ view }: { view: DecisionPlateViewModel }) {
   const outcome = view.outcome;
@@ -128,30 +135,35 @@ function RecordedHeadline({ view }: { view: DecisionPlateViewModel }) {
       {terminalLabel ? (
         <span className={`${styles.plateTerminalLabel} ${styles.toneWarning}`}>{terminalLabel}</span>
       ) : null}
-      {view.reaffirmation.required ? (
-        <span className={styles.plateNeedsReaffirm}>needs reaffirmation</span>
-      ) : null}
       <DecisionActorProvenance actor={view.actor} recordedAt={view.recordedAt} />
       {view.applicableHeadSha ? (
         <span className={styles.plateHead}>{view.applicableHeadSha}</span>
       ) : (
         <span className={styles.plateHeadUnknown}>Head not recorded</span>
       )}
-      {view.fingerprint ? <DecisionFingerprintChip fingerprint={view.fingerprint} /> : null}
       {view.isSample ? <SampleBadge /> : null}
     </div>
   );
 }
 
 function RecordedSecondRow({ view }: { view: DecisionPlateViewModel }) {
+  /* When the headline already reads "Decision withdrawn", an applicability
+     chip repeating "Withdrawn" adds nothing; a quiet retention note keeps
+     the truthful detail without the duplication. */
+  const withdrawnHeadline =
+    view.applicability === "withdrawn" && !view.outcome;
   return (
     <div className={styles.plateRecordedBottom}>
-      <DecisionApplicabilityChip
-        applicability={view.applicability}
-        priorHeadSha={view.reaffirmation.priorHeadSha}
-        currentHeadSha={view.reaffirmation.currentHeadSha}
-        headRecorded={view.headRecorded}
-      />
+      {withdrawnHeadline ? (
+        <span className={styles.plateQuietNote}>History retained</span>
+      ) : (
+        <DecisionApplicabilityChip
+          applicability={view.applicability}
+          priorHeadSha={view.reaffirmation.priorHeadSha}
+          currentHeadSha={view.reaffirmation.currentHeadSha}
+          headRecorded={view.headRecorded}
+        />
+      )}
       {view.divergence ? <DecisionDivergenceChip divergence={view.divergence} /> : null}
       <DecisionReferenceCounts
         references={view.references}

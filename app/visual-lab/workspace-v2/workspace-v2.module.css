@@ -1337,6 +1337,14 @@
   font-style: italic;
 }
 
+/* Quiet provenance line — present but subordinate (R0B.2C §6). */
+.inspectorQuiet {
+  margin: 0;
+  color: var(--wsv2-text-3);
+  font-size: 11px;
+  line-height: 15px;
+}
+
 .inspectorPoints {
   margin: 0;
   padding: 0;
@@ -1500,10 +1508,13 @@
   white-space: nowrap;
 }
 
+/* R0B.2C: the plate token is the dominant decision signal and the one
+   element that must survive 50% scale — weight and size are raised here
+   alone rather than inflating the whole plate. */
 .outcomeTokenPlate {
-  padding: 3px 11px;
-  font-size: 15px;
-  line-height: 21px;
+  padding: 3px 12px;
+  font-size: 16px;
+  line-height: 22px;
 }
 
 .outcomeTokenInline {
@@ -1740,16 +1751,14 @@
   letter-spacing: -0.01em;
 }
 
-.plateNeedsReaffirm {
-  padding: 1px 7px;
-  border-radius: var(--wsv2-r-chip);
-  background: rgb(224 189 114 / 14%);
-  color: var(--wsv2-warning);
-  font-size: 10px;
-  line-height: 15px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+/* Quiet plate note — truthful secondary detail that must not compete with
+   the outcome token (e.g. "History retained" under a withdrawn headline). */
+.plateQuietNote {
+  color: var(--wsv2-text-3);
+  font-size: var(--wsv2-support-size);
+  line-height: 16px;
+  font-style: italic;
+  white-space: nowrap;
 }
 
 .plateHead {
@@ -1907,12 +1916,14 @@
   gap: 8px;
 }
 
+/* R0B.2C: quiet at rest — destructive intent is confirmed in the dialog,
+   so the inspector affordance must not dominate ordinary decision context. */
 .inspectorActionDestructive {
   min-height: 30px;
   padding: 0 12px;
-  border: 1px solid color-mix(in srgb, var(--wsv2-danger) 45%, transparent);
+  border: 1px solid color-mix(in srgb, var(--wsv2-danger) 35%, transparent);
   border-radius: var(--wsv2-r-control);
-  background: color-mix(in srgb, var(--wsv2-danger) 10%, transparent);
+  background: transparent;
   color: var(--wsv2-danger);
   font-family: inherit;
   font-size: var(--wsv2-support-size);
@@ -1921,7 +1932,7 @@
 }
 
 .inspectorActionDestructive:hover {
-  background: color-mix(in srgb, var(--wsv2-danger) 18%, transparent);
+  background: color-mix(in srgb, var(--wsv2-danger) 12%, transparent);
 }
 
 .inspectorActionDestructive:focus-visible {
@@ -2062,20 +2073,23 @@
   background: rgb(0 0 0 / 62%);
 }
 
+/* R0B.2C: the panel is a column whose BODY is the scroll region. The head
+   and footer never scroll away, so footer actions stay reachable inside a
+   900px viewport however long the outcome list, history or rationale gets. */
 .dialogPanel {
   position: relative;
   z-index: 1;
   width: min(560px, 100%);
   max-height: calc(100dvh - 48px);
-  overflow-y: auto;
-  scrollbar-width: thin;
-  padding: 18px 20px 16px;
+  padding: 18px 20px 14px;
   border: 1px solid var(--wsv2-rail);
   border-radius: var(--wsv2-r-card);
   background: var(--wsv2-raised);
   box-shadow: 0 24px 60px rgb(0 0 0 / 55%);
-  display: grid;
-  gap: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
 }
 
 .dialogDestructive {
@@ -2087,6 +2101,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex: none;
 }
 
 .dialogTitle {
@@ -2102,19 +2117,26 @@
   color: var(--wsv2-text-2);
   font-size: var(--wsv2-support-size);
   line-height: 18px;
+  flex: none;
 }
 
 .dialogBody {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
   display: grid;
-  gap: 14px;
+  gap: 12px;
+  padding-right: 2px;
 }
 
 .dialogFooter {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
-  padding-top: 4px;
+  padding-top: 10px;
   border-top: 1px solid var(--wsv2-hairline);
+  flex: none;
 }
 
 .dialogPrimary {
@@ -2188,6 +2210,10 @@
   background: rgb(255 255 255 / 4%);
   color: var(--wsv2-text-3);
   cursor: not-allowed;
+}
+
+.dialogNotice {
+  flex: none;
 }
 
 .dialogError {
@@ -2274,7 +2300,7 @@
 
 .outcomeOptions {
   display: grid;
-  gap: 6px;
+  gap: 5px;
 }
 
 .outcomeOption {
@@ -2282,7 +2308,7 @@
   grid-template-columns: auto minmax(0, 1fr);
   gap: 10px;
   align-items: start;
-  padding: 9px 11px;
+  padding: 7px 10px;
   border: 1px solid var(--wsv2-rail);
   border-radius: var(--wsv2-r-control);
   background: var(--wsv2-well);

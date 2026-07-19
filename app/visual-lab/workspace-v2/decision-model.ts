@@ -542,6 +542,9 @@ export function decisionStageLabel(view: DecisionPlateViewModel): string {
   if (view.applicability === "withdrawn") return "withdrawn";
   if (view.reaffirmation.required) return "needs reaffirmation";
   if (view.outcome) return OUTCOME_LABEL[view.outcome].toLowerCase();
+  /* Recorded terminal event without a standing outcome — a revocation is
+     not the same truth as "not recorded" (R0B.2C edge-state QA). */
+  if (view.effectiveEventType === "risk-acceptance-revoked") return "risk revoked";
   return "not recorded";
 }
 
@@ -552,6 +555,9 @@ export function decisionStageState(view: DecisionPlateViewModel): SpineStageStat
   if (view.status === "empty") return "attention";
   if (view.applicability === "withdrawn") return "attention";
   if (view.reaffirmation.required) return "attention";
+  /* A revoked risk acceptance leaves no standing outcome — the case needs a
+     fresh decision, which is attention, not mere pending. */
+  if (!view.outcome && view.effectiveEventType === "risk-acceptance-revoked") return "attention";
   if (view.outcome === "approve" || view.outcome === "approve-with-accepted-risk") {
     return "complete";
   }
@@ -569,8 +575,13 @@ export function decisionFooterNote(view: DecisionPlateViewModel): {
   if (view.reaffirmation.required) {
     return { text: "Decision needs reaffirmation", tone: "warning" };
   }
+  /* Stage 5's sublabel already names the outcome; repeating it in the same
+     plane's footer duplicated the sentence (R0B.2C §2). */
   if (view.outcome) {
-    return { text: `Decision recorded — ${OUTCOME_LABEL[view.outcome]}`, tone: "muted" };
+    return { text: "Decision recorded", tone: "muted" };
+  }
+  if (view.effectiveEventType === "risk-acceptance-revoked") {
+    return { text: "Risk acceptance revoked", tone: "warning" };
   }
   return { text: "Decision not recorded", tone: "warning" };
 }

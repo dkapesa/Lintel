@@ -103,9 +103,11 @@ export function DecisionApplicabilityChip({
     tone = "danger";
     detail = "Decision record could not be read";
   }
+  /* The labels are self-describing ("Applies to current head", "Predates
+     current head", …), so no "Applicability" kind prefix is repeated on the
+     resting surface (R0B.2C dedup). The precise SHA detail stays in title. */
   return (
     <span className={`${styles.decisionChip} ${toneClassName(tone)}`} title={detail}>
-      <span className={styles.decisionChipKind}>Applicability</span>
       {APPLICABILITY_LABEL[applicability]}
     </span>
   );
@@ -167,20 +169,37 @@ export function DecisionReferenceCounts({
   references: DecisionReference[];
   acceptedRiskReferences: DecisionReference[];
 }) {
+  /* R0B.2C density pass: at rest the plate carries one compact reference
+     total (per-kind breakdown in the title and, fully, in Decision Context).
+     Accepted-risk references stay a separate, visible count — they are
+     semantically loaded and must not fold into an undifferentiated total. */
   const counts = referenceCountByKind(references);
-  const parts: string[] = [];
-  if (counts.clause > 0) parts.push(`${counts.clause} clause`);
-  if (counts.assumption > 0) parts.push(`${counts.assumption} assumption`);
-  if (counts.evidence > 0) parts.push(`${counts.evidence} evidence`);
-  if (acceptedRiskReferences.length > 0) parts.push(`${acceptedRiskReferences.length} accepted risk`);
+  const breakdown: string[] = [];
+  if (counts.clause > 0) breakdown.push(`${counts.clause} clause`);
+  if (counts.assumption > 0) breakdown.push(`${counts.assumption} assumption`);
+  if (counts.evidence > 0) breakdown.push(`${counts.evidence} evidence`);
+  const parts: { label: string; title?: string }[] = [];
+  if (references.length > 0) {
+    parts.push({
+      label: `${references.length} reference${references.length === 1 ? "" : "s"}`,
+      title: breakdown.join(" · "),
+    });
+  }
+  if (acceptedRiskReferences.length > 0) {
+    parts.push({
+      label: `${acceptedRiskReferences.length} accepted risk${
+        acceptedRiskReferences.length === 1 ? "" : "s"
+      }`,
+    });
+  }
   if (parts.length === 0) {
     return <span className={styles.decisionRefCount}>No references</span>;
   }
   return (
     <span className={styles.decisionRefCount}>
       {parts.map((part) => (
-        <span key={part} className={styles.decisionRefCountItem}>
-          {part}
+        <span key={part.label} className={styles.decisionRefCountItem} title={part.title}>
+          {part.label}
         </span>
       ))}
     </span>
@@ -269,6 +288,7 @@ export function DecisionDialog({
   labelId,
   descriptionId,
   children,
+  notice,
   footer,
   returnFocusRef,
 }: {
@@ -279,6 +299,9 @@ export function DecisionDialog({
   labelId?: string;
   descriptionId?: string;
   children: ReactNode;
+  /* Non-scrolling slot between body and footer — validation errors land
+     here so they are always visible when confirm is pressed (R0B.2C §7). */
+  notice?: ReactNode;
   footer: ReactNode;
   returnFocusRef?: React.RefObject<HTMLElement | null>;
 }) {
@@ -293,6 +316,16 @@ export function DecisionDialog({
     if (!panel) return;
     const focusables = panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
     const target = focusables[0];
+    /* When the first focusable is an unchecked radio, initial focus belongs
+       on the group's checked option — matching native Tab-into-group
+       behaviour — so arrow keys start from the actual selection (§19). */
+    if (target instanceof HTMLInputElement && target.type === "radio" && !target.checked) {
+      const checked = panel.querySelector<HTMLElement>('input[type="radio"]:checked');
+      if (checked) {
+        checked.focus();
+        return;
+      }
+    }
     if (target) target.focus();
     else panel.focus();
   }, []);
@@ -301,10 +334,18 @@ export function DecisionDialog({
     focusFirst();
     const returnTarget = returnFocusRef?.current ?? null;
     return () => {
-      /* Focus restoration to the triggering control (§19). */
+      /* Focus restoration to the triggering control (§19). If the trigger
+         no longer exists — e.g. "Record decision" was replaced by the
+         recorded plate shape, or the Inspector's destructive action was
+         removed by the withdrawal it confirmed — fall back to the first
+         control on the Decision Plate rather than dropping focus to body. */
       if (returnTarget && document.contains(returnTarget)) {
         returnTarget.focus();
+        return;
       }
+      const plate = document.getElementById("wsv2-decision-plate");
+      const fallback = plate?.querySelector<HTMLElement>("button");
+      fallback?.focus();
     };
   }, [focusFirst, returnFocusRef]);
 
@@ -365,6 +406,7 @@ export function DecisionDialog({
           </div>
         ) : null}
         <div className={styles.dialogBody}>{children}</div>
+        {notice ? <div className={styles.dialogNotice}>{notice}</div> : null}
         <div className={styles.dialogFooter}>{footer}</div>
       </div>
     </div>

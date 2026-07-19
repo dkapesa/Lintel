@@ -234,6 +234,7 @@ export function DecisionCreationDialog({
       }
       onCancel={onCancel}
       returnFocusRef={returnFocusRef}
+      notice={error ? <ErrorNote id={errorId} message={error} /> : null}
       footer={
         <>
           <button type="button" className={styles.dialogSecondary} onClick={onCancel}>
@@ -372,8 +373,6 @@ export function DecisionCreationDialog({
           <p className={styles.fieldHint}>No blocking requirements open.</p>
         )}
       </div>
-
-      <ErrorNote id={errorId} message={error} />
     </DecisionDialog>
   );
 }
@@ -421,6 +420,7 @@ export function DecisionReaffirmDialog({
       description={`Reaffirming ${OUTCOME_LABEL[outcome]} against the current head. The new event links to the prior decision.`}
       onCancel={onCancel}
       returnFocusRef={returnFocusRef}
+      notice={error ? <ErrorNote id={errorId} message={error} /> : null}
       footer={
         <>
           <button type="button" className={styles.dialogSecondary} onClick={onCancel}>
@@ -469,8 +469,6 @@ export function DecisionReaffirmDialog({
         label="Rationale"
         hint="Required. Prior rationale is reused and editable."
       />
-
-      <ErrorNote id={errorId} message={error} />
     </DecisionDialog>
   );
 }
@@ -505,6 +503,7 @@ export function DecisionWithdrawDialog({
       description="Withdrawing removes this decision as the effective decision. History is retained; this cannot un-record the original."
       onCancel={onCancel}
       returnFocusRef={returnFocusRef}
+      notice={error ? <ErrorNote id={`${baseId}-error`} message={error} /> : null}
       footer={
         <>
           <button type="button" className={styles.dialogSecondary} onClick={onCancel}>
@@ -530,7 +529,6 @@ export function DecisionWithdrawDialog({
         label="Reason for withdrawal"
         hint="Required. Explain why this decision is being withdrawn."
       />
-      <ErrorNote id={`${baseId}-error`} message={error} />
     </DecisionDialog>
   );
 }
@@ -565,6 +563,7 @@ export function DecisionRevokeRiskDialog({
       description="The accepted-risk event is retained in history. The risk acceptance is no longer effective."
       onCancel={onCancel}
       returnFocusRef={returnFocusRef}
+      notice={error ? <ErrorNote id={`${baseId}-error`} message={error} /> : null}
       footer={
         <>
           <button type="button" className={styles.dialogSecondary} onClick={onCancel}>
@@ -590,7 +589,6 @@ export function DecisionRevokeRiskDialog({
         label="Reason for revocation"
         hint="Required. Explain why the risk acceptance is being revoked."
       />
-      <ErrorNote id={`${baseId}-error`} message={error} />
     </DecisionDialog>
   );
 }

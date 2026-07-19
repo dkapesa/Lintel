@@ -12,11 +12,10 @@
 import type { ReactNode } from "react";
 import styles from "./workspace-v2.module.css";
 import {
+  DecisionActorProvenance,
   DecisionApplicabilityChip,
   DecisionDivergenceChip,
   DecisionDialog,
-  DecisionFingerprintChip,
-  DecisionOutcomeToken,
   DecisionReferenceList,
   SampleBadge,
   fingerprintPrefix,
@@ -95,13 +94,21 @@ export function DecisionContextInspector({
 
       {view.status === "recorded" && effective ? (
         <>
-          <h2 className={styles.inspectorTitle}>
+          {/* R0B.2C decision-first hierarchy: what was decided (tone-carrying
+              title), by whom and when, whether it still applies, why — then
+              the head binding, the referenced basis, quiet provenance, and
+              last the destructive actions. The former duplicate inline
+              outcome token and the standalone "Actor & source" dossier group
+              are folded into this head. */}
+          <h2
+            className={`${styles.inspectorTitle} ${
+              effective.outcome ? toneClassName(outcomeTone(effective.outcome)) : ""
+            }`}
+          >
             {effective.outcome ? OUTCOME_LABEL[effective.outcome] : EVENT_TITLE[effective.eventType]}
           </h2>
           <div className={styles.inspectorDecisionHead}>
-            {effective.outcome ? (
-              <DecisionOutcomeToken outcome={effective.outcome} size="inline" />
-            ) : null}
+            <DecisionActorProvenance actor={effective.actor} recordedAt={effective.recordedAt} />
             {view.isSample ? <SampleBadge /> : null}
           </div>
 
@@ -119,16 +126,12 @@ export function DecisionContextInspector({
                 <span className={styles.divergenceOmitted}>Divergence omitted — no Report</span>
               )}
             </div>
-          </InspectorGroup>
-
-          <InspectorGroup label="Actor & source">
-            <p className={styles.inspectorText}>
-              {effective.actor.displayLabel}
-              {effective.actor.role ? ` · ${effective.actor.role}` : ""}
-            </p>
-            <p className={styles.inspectorText}>
-              {effective.actor.source} · {effective.recordedAt}
-            </p>
+            {view.reaffirmation.required ? (
+              <p className={`${styles.inspectorText} ${styles.toneWarning}`}>
+                Recorded at {view.reaffirmation.priorHeadSha ?? "unknown"}; head is now{" "}
+                {view.reaffirmation.currentHeadSha ?? "unknown"}. Reaffirmation required.
+              </p>
+            ) : null}
           </InspectorGroup>
 
           <InspectorGroup label="Rationale">
@@ -142,18 +145,6 @@ export function DecisionContextInspector({
           <InspectorGroup label="Applicable head">
             <p className={styles.inspectorMono}>
               {effective.headSha ?? "Head not recorded"}
-            </p>
-            {view.reaffirmation.required ? (
-              <p className={`${styles.inspectorText} ${styles.toneWarning}`}>
-                Head is now {view.reaffirmation.currentHeadSha ?? "unknown"} — reaffirmation required.
-              </p>
-            ) : null}
-          </InspectorGroup>
-
-          <InspectorGroup label="Fingerprint">
-            <p className={styles.inspectorMono}>{effective.fingerprint}</p>
-            <p className={styles.inspectorText}>
-              fp:{fingerprintPrefix(effective.fingerprint)} — attested, not cryptographically signed.
             </p>
           </InspectorGroup>
 
@@ -169,6 +160,16 @@ export function DecisionContextInspector({
               />
             </InspectorGroup>
           ) : null}
+
+          <InspectorGroup label="Provenance">
+            <p className={styles.inspectorMono}>fp:{effective.fingerprint}</p>
+            <p className={styles.inspectorQuiet}>
+              Content fingerprint — attested, not cryptographically signed.
+            </p>
+            {effective.actor.role ? (
+              <p className={styles.inspectorQuiet}>{effective.actor.role}</p>
+            ) : null}
+          </InspectorGroup>
 
           {view.applicability !== "withdrawn" && effective.outcome ? (
             <InspectorGroup label="Actions">

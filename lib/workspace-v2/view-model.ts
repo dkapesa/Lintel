@@ -124,9 +124,13 @@ export type ArtifactRef = {
 
 export type ChangedFileView = {
   path: string;
-  additions: number;
-  deletions: number;
-  risk: RiskLevel;
+  /* Line counts and per-file risk are optional on the canonical Report and
+     absent on many real reports. Absence is modelled as null and rendered as
+     unknown — never invented as a zero count or a fabricated risk band
+     (r1a §7 "missing counts render as unknown, not 0"). */
+  additions: number | null;
+  deletions: number | null;
+  risk: RiskLevel | null;
 };
 
 export type FindingView = {
@@ -290,7 +294,7 @@ export type DecisionRecordedView = {
    (r0b2 §15). Absent / unavailable decisions never render a marker. */
 export type DecisionMarker =
   | { kind: "none" }
-  | { kind: "recorded"; outcome: DecisionOutcome; needsReaffirmation: boolean };
+  | { kind: "recorded"; outcome: DecisionOutcome; needsReaffirmation: boolean; isSample: boolean };
 
 /* --- Queue ------------------------------------------------------------ */
 

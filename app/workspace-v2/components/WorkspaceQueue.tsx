@@ -98,7 +98,9 @@ function QueueRow({
    Never renders for an absent or unavailable decision (r0b2 §15, RISK-B). */
 function QueueDecisionMarker({ marker }: { marker: DecisionMarker }) {
   if (marker.kind !== "recorded") return null;
-  const label = `Sample decision recorded: ${OUTCOME_LABEL[marker.outcome]}${
+  /* Real recorded decisions must not carry the fixture-era "Sample" prefix. */
+  const prefix = marker.isSample ? "Sample decision recorded" : "Decision recorded";
+  const label = `${prefix}: ${OUTCOME_LABEL[marker.outcome]}${
     marker.needsReaffirmation ? ", needs reaffirmation" : ""
   }`;
   return (

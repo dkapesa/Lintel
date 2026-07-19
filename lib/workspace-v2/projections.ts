@@ -122,6 +122,9 @@ export function decisionMarkerFor(decision: DecisionPlateViewModel): DecisionMar
     kind: "recorded",
     outcome: decision.outcome,
     needsReaffirmation: decision.needsReaffirmation,
+    /* Carried so the queue marker can label a real recorded decision without
+       the fixture-era "Sample" prefix (r1b1 provenance truthfulness). */
+    isSample: decision.isSample,
   };
 }
 

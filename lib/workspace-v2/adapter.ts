@@ -21,6 +21,12 @@ export type WorkspaceSnapshotRequest = {
      request (repository / workspace scope, viewer identity) without narrowing
      this contract. Unknown values are normalised by `parseScenario`. */
   scenario: WorkspaceScenario;
+  /* R1B.1 — an optional stable report identifier. The fixture adapter ignores
+     it. The real adapter (single-report scope) uses it to select a specific
+     stored Report by its stable id; when absent it selects the most recent
+     stored Report. An unknown / unmatched id resolves to a truthful empty
+     state, never to fixture content. */
+  reportId?: string | null;
 };
 
 export interface WorkspaceAdapter {
@@ -42,4 +48,25 @@ export function parseScenario(value: string | null | undefined): WorkspaceScenar
     return value as WorkspaceScenario;
   }
   return "default";
+}
+
+/* --- Source selection (R1B.1) ----------------------------------------- */
+
+/* Which adapter feeds the route. `fixture` is the deterministic sample source
+   from R1B.0; `real` is the read-only production Report adapter added in
+   R1B.1. The default is deliberately `fixture` — the safe, side-effect-free
+   source — so the real data path is opt-in via `?source=real` during this
+   migration phase (r1a §16.6, parallel-route posture). */
+export type WorkspaceSource = "fixture" | "real";
+
+const SOURCES: readonly WorkspaceSource[] = ["fixture", "real"];
+
+/* Normalise an untrusted `source` value. Any value other than an explicit,
+   recognised `real` resolves to `fixture`; an invalid value never triggers a
+   real-data read and never yields a fabricated state. */
+export function parseSource(value: string | null | undefined): WorkspaceSource {
+  if (value && (SOURCES as readonly string[]).includes(value)) {
+    return value as WorkspaceSource;
+  }
+  return "fixture";
 }

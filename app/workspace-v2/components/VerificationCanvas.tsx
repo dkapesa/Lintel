@@ -103,9 +103,18 @@ export function VerificationCanvas({
                 <div key={file.path} className={styles.fileRow}>
                   <span className={styles.filePath}>{file.path}</span>
                   <span className={styles.fileStats}>
-                    <span className={styles.additions}>+{file.additions}</span>
-                    <span className={styles.deletions}>−{file.deletions}</span>
-                    <span className={`${styles.fileRisk} ${riskTone(file.risk)}`}>{file.risk}</span>
+                    {/* Absent line counts render as unknown, never as 0. */}
+                    <span className={styles.additions}>
+                      {file.additions === null ? "+—" : `+${file.additions}`}
+                    </span>
+                    <span className={styles.deletions}>
+                      {file.deletions === null ? "−—" : `−${file.deletions}`}
+                    </span>
+                    {file.risk === null ? (
+                      <span className={styles.fileRisk}>risk n/a</span>
+                    ) : (
+                      <span className={`${styles.fileRisk} ${riskTone(file.risk)}`}>{file.risk}</span>
+                    )}
                   </span>
                 </div>
               ))}

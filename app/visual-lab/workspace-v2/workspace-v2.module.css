@@ -1439,6 +1439,961 @@
   color: var(--wsv2-provenance);
 }
 
+/* ===================================================================== */
+/* R0B.2B — Recorded Human Decision system                               */
+/* Namespaced, dark-only, no gradient / glow / glass. Semantic colour is  */
+/* limited to the outcome token and the applicability / divergence chips. */
+/* Final palette calibration is deferred to R1C (§16, §24.18).            */
+/* ===================================================================== */
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* --- Sample badge ----------------------------------------------------- */
+
+.sampleBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 6px;
+  border-radius: var(--wsv2-r-chip);
+  border: 1px solid var(--wsv2-rail);
+  background: rgb(255 255 255 / 4%);
+  color: var(--wsv2-text-3);
+  font-size: 9px;
+  line-height: 14px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.sampleDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--wsv2-provenance);
+  flex: none;
+}
+
+/* --- Outcome token — the dominant decision token ---------------------- */
+
+.outcomeToken {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border-radius: var(--wsv2-r-chip);
+  border: 1px solid color-mix(in srgb, currentColor 34%, transparent);
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  font-weight: 700;
+  letter-spacing: 0.005em;
+  white-space: nowrap;
+}
+
+.outcomeTokenPlate {
+  padding: 3px 11px;
+  font-size: 15px;
+  line-height: 21px;
+}
+
+.outcomeTokenInline {
+  padding: 2px 8px;
+  font-size: 12px;
+  line-height: 17px;
+}
+
+.outcomeTokenDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+/* --- Decision chips (applicability, divergence) ----------------------- */
+
+.decisionChip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: var(--wsv2-r-chip);
+  border: 1px solid color-mix(in srgb, currentColor 30%, transparent);
+  background: color-mix(in srgb, currentColor 9%, transparent);
+  font-size: 11px;
+  line-height: 16px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.decisionChipKind {
+  color: var(--wsv2-text-3);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.divergenceOmitted {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--wsv2-r-chip);
+  border: 1px dashed var(--wsv2-rail);
+  color: var(--wsv2-text-3);
+  font-size: 11px;
+  line-height: 16px;
+  font-style: italic;
+}
+
+/* --- Fingerprint chip — attested, never signed ------------------------ */
+
+.fingerprintChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: var(--wsv2-r-chip);
+  border: 1px solid var(--wsv2-rail);
+  background: rgb(0 0 0 / 22%);
+  color: var(--wsv2-text-3);
+  font-family: var(--wsv2-mono);
+  font-size: 10px;
+  line-height: 15px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+/* --- Actor / provenance ----------------------------------------------- */
+
+.decisionProvenance {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.decisionActor {
+  color: var(--wsv2-text-2);
+  font-size: var(--wsv2-support-size);
+  font-weight: 550;
+  white-space: nowrap;
+}
+
+.decisionSource {
+  padding: 0 5px;
+  border-radius: var(--wsv2-r-chip);
+  background: rgb(255 255 255 / 6%);
+  color: var(--wsv2-text-3);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.decisionTime {
+  color: var(--wsv2-text-3);
+  font-family: var(--wsv2-mono);
+  font-size: var(--wsv2-tech-size);
+  white-space: nowrap;
+}
+
+/* --- Reference counts / list ------------------------------------------ */
+
+.decisionRefCount {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px 6px;
+  align-items: baseline;
+}
+
+.decisionRefCountItem {
+  padding: 1px 6px;
+  border-radius: var(--wsv2-r-chip);
+  background: rgb(255 255 255 / 5%);
+  color: var(--wsv2-text-3);
+  font-family: var(--wsv2-mono);
+  font-size: 10px;
+  line-height: 15px;
+  white-space: nowrap;
+}
+
+.referenceList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 5px;
+}
+
+.referenceRow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.referenceKind {
+  color: var(--wsv2-text-3);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.referenceLabel {
+  min-width: 0;
+  color: var(--wsv2-text-2);
+  font-size: var(--wsv2-support-size);
+  line-height: 17px;
+}
+
+.referenceGone .referenceLabel {
+  color: var(--wsv2-text-3);
+  font-style: italic;
+  text-decoration: line-through;
+  text-decoration-color: var(--wsv2-rail);
+}
+
+.referenceFlags {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.referenceStale {
+  padding: 0 5px;
+  border-radius: var(--wsv2-r-chip);
+  background: rgb(224 189 114 / 14%);
+  color: var(--wsv2-warning);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.referenceModel {
+  padding: 0 5px;
+  border-radius: var(--wsv2-r-chip);
+  background: color-mix(in srgb, var(--wsv2-provenance) 16%, transparent);
+  color: var(--wsv2-provenance);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* --- Rationale summary ------------------------------------------------ */
+
+.decisionRationale {
+  color: var(--wsv2-text-3);
+  font-size: var(--wsv2-support-size);
+  line-height: var(--wsv2-support-line);
+}
+
+.decisionRationaleEmpty {
+  color: var(--wsv2-text-3);
+  font-size: var(--wsv2-support-size);
+  font-style: italic;
+}
+
+/* --- Plate recorded / error shapes ------------------------------------ */
+
+.plateRecorded::before {
+  background: var(--wsv2-accent);
+}
+
+.plateError::before {
+  background: var(--wsv2-danger);
+  opacity: 1;
+}
+
+.plateRecordedTop {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  align-items: center;
+  min-width: 0;
+}
+
+.plateRecordedBottom {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  align-items: center;
+  min-width: 0;
+  padding-top: 2px;
+}
+
+.plateTerminalLabel {
+  font-size: 15px;
+  line-height: 21px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.plateNeedsReaffirm {
+  padding: 1px 7px;
+  border-radius: var(--wsv2-r-chip);
+  background: rgb(224 189 114 / 14%);
+  color: var(--wsv2-warning);
+  font-size: 10px;
+  line-height: 15px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.plateHead {
+  color: var(--wsv2-text-3);
+  font-family: var(--wsv2-mono);
+  font-size: var(--wsv2-tech-size);
+  white-space: nowrap;
+}
+
+.plateHeadUnknown {
+  color: var(--wsv2-warning);
+  font-size: var(--wsv2-tech-size);
+  font-style: italic;
+}
+
+.plateErrorFlag {
+  padding: 1px 6px;
+  border-radius: var(--wsv2-r-chip);
+  background: rgb(229 131 122 / 15%);
+  color: var(--wsv2-danger);
+  font-size: 9px;
+  line-height: 14px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.plateRationaleSummary {
+  min-width: 0;
+  flex: 1 1 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sessionOnlyNote {
+  margin: 0;
+  color: var(--wsv2-warning);
+  font-size: var(--wsv2-support-size);
+  line-height: 16px;
+  font-weight: 600;
+}
+
+/* --- Plate actions ---------------------------------------------------- */
+
+.plateActionGroup {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.plateActionSecondary {
+  flex: none;
+  min-height: 36px;
+  padding: 0 13px;
+  border: 1px solid var(--wsv2-rail);
+  border-radius: var(--wsv2-r-control);
+  background: transparent;
+  color: var(--wsv2-text-2);
+  font-family: inherit;
+  font-size: var(--wsv2-support-size);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.plateActionSecondary:hover {
+  background: rgb(255 255 255 / 5%);
+  color: var(--wsv2-text);
+}
+
+.plateActionSecondary:focus-visible {
+  outline: 2px solid var(--wsv2-focus-ring);
+  outline-offset: 2px;
+}
+
+/* --- Scenario selector (lab affordance) ------------------------------- */
+
+.scenarioSelect {
+  grid-column: 1 / -1;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--wsv2-hairline);
+  display: grid;
+  gap: 4px;
+}
+
+.scenarioSelectLabel {
+  color: var(--wsv2-text-3);
+  font-size: 9px;
+  line-height: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.scenarioSelectInput {
+  width: 100%;
+  min-height: 28px;
+  padding: 3px 6px;
+  border: 1px solid var(--wsv2-rail);
+  border-radius: var(--wsv2-r-control);
+  background: var(--wsv2-queue-inset);
+  color: var(--wsv2-text-2);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.scenarioSelectInput:focus-visible {
+  outline: 2px solid var(--wsv2-focus-ring);
+  outline-offset: 1px;
+}
+
+/* --- Queue decision marker -------------------------------------------- */
+
+.queueDecisionMark {
+  display: inline-flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+.queueDecisionDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.queueDecisionStale .queueDecisionDot {
+  background: transparent;
+  box-shadow: inset 0 0 0 2px currentColor;
+}
+
+/* --- Chip rows / inspector decision head ------------------------------ */
+
+.inspectorDecisionHead {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.inspectorActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.inspectorActionDestructive {
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--wsv2-danger) 45%, transparent);
+  border-radius: var(--wsv2-r-control);
+  background: color-mix(in srgb, var(--wsv2-danger) 10%, transparent);
+  color: var(--wsv2-danger);
+  font-family: inherit;
+  font-size: var(--wsv2-support-size);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.inspectorActionDestructive:hover {
+  background: color-mix(in srgb, var(--wsv2-danger) 18%, transparent);
+}
+
+.inspectorActionDestructive:focus-visible {
+  outline: 2px solid var(--wsv2-focus-ring);
+  outline-offset: 2px;
+}
+
+/* --- History list ----------------------------------------------------- */
+
+.historyList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 9px;
+}
+
+.historyListFull {
+  gap: 12px;
+}
+
+.historyRow {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr);
+  gap: 8px;
+}
+
+.historyMark {
+  display: flex;
+  justify-content: center;
+  padding-top: 4px;
+}
+
+.historyMarkDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+.historyContent {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.historyTop {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  align-items: baseline;
+}
+
+.historyTitle {
+  font-size: var(--wsv2-support-size);
+  line-height: 17px;
+  font-weight: 650;
+}
+
+.historyOutcome {
+  color: var(--wsv2-text-3);
+  font-size: 11px;
+}
+
+.historyMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: baseline;
+  color: var(--wsv2-text-3);
+  font-size: 11px;
+  line-height: 15px;
+}
+
+.historyHead {
+  font-family: var(--wsv2-mono);
+  font-size: 10px;
+}
+
+.historyLineage {
+  color: var(--wsv2-text-3);
+  font-size: 11px;
+  font-style: italic;
+}
+
+.historyRationale {
+  color: var(--wsv2-text-2);
+  font-size: var(--wsv2-support-size);
+  line-height: 17px;
+}
+
+.historyFingerprint {
+  color: var(--wsv2-text-3);
+  font-family: var(--wsv2-mono);
+  font-size: 10px;
+}
+
+.historyMoreButton {
+  margin-top: 8px;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--wsv2-rail);
+  border-radius: var(--wsv2-r-control);
+  background: transparent;
+  color: var(--wsv2-text-2);
+  font-family: inherit;
+  font-size: var(--wsv2-support-size);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.historyMoreButton:hover {
+  background: rgb(255 255 255 / 5%);
+  color: var(--wsv2-text);
+}
+
+.historyMoreButton:focus-visible {
+  outline: 2px solid var(--wsv2-focus-ring);
+  outline-offset: 2px;
+}
+
+/* --- Dialog shell ----------------------------------------------------- */
+
+.dialogOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.dialogScrim {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 62%);
+}
+
+.dialogPanel {
+  position: relative;
+  z-index: 1;
+  width: min(560px, 100%);
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+  padding: 18px 20px 16px;
+  border: 1px solid var(--wsv2-rail);
+  border-radius: var(--wsv2-r-card);
+  background: var(--wsv2-raised);
+  box-shadow: 0 24px 60px rgb(0 0 0 / 55%);
+  display: grid;
+  gap: 14px;
+}
+
+.dialogDestructive {
+  border-color: color-mix(in srgb, var(--wsv2-danger) 40%, var(--wsv2-rail));
+}
+
+.dialogHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dialogTitle {
+  margin: 0;
+  font-size: 17px;
+  line-height: 23px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+
+.dialogDescription {
+  margin: 0;
+  color: var(--wsv2-text-2);
+  font-size: var(--wsv2-support-size);
+  line-height: 18px;
+}
+
+.dialogBody {
+  display: grid;
+  gap: 14px;
+}
+
+.dialogFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 4px;
+  border-top: 1px solid var(--wsv2-hairline);
+}
+
+.dialogPrimary {
+  min-height: 40px;
+  padding: 0 18px;
+  border: 1px solid var(--wsv2-accent);
+  border-radius: var(--wsv2-r-control);
+  background: rgb(138 178 221 / 16%);
+  color: var(--wsv2-accent);
+  font-family: inherit;
+  font-size: var(--wsv2-support-size);
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.dialogPrimary:hover {
+  background: rgb(138 178 221 / 24%);
+}
+
+.dialogPrimary[aria-disabled="true"] {
+  border-color: var(--wsv2-rail);
+  background: rgb(255 255 255 / 4%);
+  color: var(--wsv2-text-3);
+  cursor: not-allowed;
+}
+
+.dialogPrimary:focus-visible,
+.dialogSecondary:focus-visible,
+.dialogDestructiveButton:focus-visible {
+  outline: 2px solid var(--wsv2-focus-ring);
+  outline-offset: 2px;
+}
+
+.dialogSecondary {
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid var(--wsv2-rail);
+  border-radius: var(--wsv2-r-control);
+  background: transparent;
+  color: var(--wsv2-text-2);
+  font-family: inherit;
+  font-size: var(--wsv2-support-size);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dialogSecondary:hover {
+  background: rgb(255 255 255 / 5%);
+  color: var(--wsv2-text);
+}
+
+.dialogDestructiveButton {
+  min-height: 40px;
+  padding: 0 18px;
+  border: 1px solid color-mix(in srgb, var(--wsv2-danger) 55%, transparent);
+  border-radius: var(--wsv2-r-control);
+  background: color-mix(in srgb, var(--wsv2-danger) 14%, transparent);
+  color: var(--wsv2-danger);
+  font-family: inherit;
+  font-size: var(--wsv2-support-size);
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.dialogDestructiveButton:hover {
+  background: color-mix(in srgb, var(--wsv2-danger) 22%, transparent);
+}
+
+.dialogDestructiveButton[aria-disabled="true"] {
+  border-color: var(--wsv2-rail);
+  background: rgb(255 255 255 / 4%);
+  color: var(--wsv2-text-3);
+  cursor: not-allowed;
+}
+
+.dialogError {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: var(--wsv2-r-chip);
+  border: 1px solid color-mix(in srgb, var(--wsv2-danger) 40%, transparent);
+  background: color-mix(in srgb, var(--wsv2-danger) 10%, transparent);
+  color: var(--wsv2-danger);
+  font-size: var(--wsv2-support-size);
+  line-height: 17px;
+  font-weight: 600;
+}
+
+/* --- Dialog fields ---------------------------------------------------- */
+
+.fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.fieldLegend {
+  padding: 0;
+  color: var(--wsv2-text-3);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.fieldLabel {
+  color: var(--wsv2-text-3);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.fieldHint {
+  margin: 0;
+  color: var(--wsv2-text-3);
+  font-size: var(--wsv2-support-size);
+  line-height: 16px;
+}
+
+.inlineMono {
+  font-family: var(--wsv2-mono);
+  font-size: var(--wsv2-tech-size);
+  color: var(--wsv2-text-2);
+}
+
+.textarea {
+  width: 100%;
+  min-height: 68px;
+  padding: 9px 11px;
+  border: 1px solid var(--wsv2-rail);
+  border-radius: var(--wsv2-r-control);
+  background: var(--wsv2-queue-inset);
+  color: var(--wsv2-text);
+  font-family: inherit;
+  font-size: var(--wsv2-support-size);
+  line-height: 18px;
+  resize: vertical;
+}
+
+.textarea:focus-visible {
+  outline: 2px solid var(--wsv2-focus-ring);
+  outline-offset: 1px;
+}
+
+.fieldInvalid {
+  border-color: color-mix(in srgb, var(--wsv2-danger) 60%, var(--wsv2-rail));
+}
+
+/* --- Outcome options -------------------------------------------------- */
+
+.outcomeOptions {
+  display: grid;
+  gap: 6px;
+}
+
+.outcomeOption {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 9px 11px;
+  border: 1px solid var(--wsv2-rail);
+  border-radius: var(--wsv2-r-control);
+  background: var(--wsv2-well);
+  cursor: pointer;
+}
+
+.outcomeOption:hover {
+  background: rgb(255 255 255 / 4%);
+}
+
+.outcomeOptionSelected {
+  border-color: var(--wsv2-accent);
+  background: rgb(138 178 221 / 10%);
+}
+
+.outcomeRadio {
+  margin: 2px 0 0;
+  width: 15px;
+  height: 15px;
+  accent-color: var(--wsv2-accent);
+  cursor: pointer;
+}
+
+.outcomeRadio:focus-visible {
+  outline: 2px solid var(--wsv2-focus-ring);
+  outline-offset: 2px;
+}
+
+.outcomeOptionBody {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.outcomeOptionLabel {
+  color: var(--wsv2-text);
+  font-size: var(--wsv2-support-size);
+  line-height: 17px;
+  font-weight: 600;
+}
+
+.outcomeOptionMeaning {
+  color: var(--wsv2-text-3);
+  font-size: 11px;
+  line-height: 15px;
+}
+
+/* --- Risk options / acknowledgements ---------------------------------- */
+
+.riskOptions {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 5px;
+}
+
+.riskOption {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 9px;
+  align-items: start;
+  padding: 7px 10px;
+  border: 1px solid var(--wsv2-rail);
+  border-radius: var(--wsv2-r-control);
+  background: var(--wsv2-well);
+  cursor: pointer;
+}
+
+.riskOptionBody {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  color: var(--wsv2-text-2);
+  font-size: var(--wsv2-support-size);
+  line-height: 16px;
+}
+
+.riskOptionKind {
+  color: var(--wsv2-text-3);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.ackRow {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 9px;
+  align-items: start;
+  margin-top: 6px;
+  color: var(--wsv2-text-2);
+  font-size: var(--wsv2-support-size);
+  line-height: 17px;
+  cursor: pointer;
+}
+
+.checkbox {
+  margin: 1px 0 0;
+  width: 15px;
+  height: 15px;
+  accent-color: var(--wsv2-accent);
+  cursor: pointer;
+}
+
+.checkbox:focus-visible {
+  outline: 2px solid var(--wsv2-focus-ring);
+  outline-offset: 2px;
+}
+
 /* --- Reduced motion --------------------------------------------------- */
 
 @media (prefers-reduced-motion: reduce) {

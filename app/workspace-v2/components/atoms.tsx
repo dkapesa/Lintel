@@ -72,6 +72,26 @@ export function ProvenanceBadge({ label }: { label: string }) {
   );
 }
 
+/* Shown only under the practical minimum width via CSS (≤ 1023px), where the
+   dense four-plane workstation cannot be presented truthfully. It replaces the
+   grid with a restrained explanation rather than a clipped interface, and is
+   inert (display:none) at every supported width. Shared by the ready
+   workstation and the loading / empty / unavailable shell states so no
+   supported width ever renders an empty root. */
+export function WorkstationMinWidthNotice() {
+  return (
+    <div className={styles.minWidthNotice} role="note">
+      <div className={styles.minWidthInner}>
+        <h2 className={styles.minWidthHeadline}>Wider viewport required</h2>
+        <p className={styles.minWidthDetail}>
+          The verification workstation is calibrated for a desktop width of 1024 pixels or more.
+          Widen this window to return to the queue, evidence spine, canvas and inspector.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export function DecisionOutcomeToken({ outcome }: { outcome: DecisionOutcome }) {
   const tone = outcomeTone(outcome);
   return (

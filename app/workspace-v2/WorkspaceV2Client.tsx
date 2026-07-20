@@ -26,7 +26,7 @@ import { EvidenceSpine } from "./components/EvidenceSpine";
 import { VerificationCanvas } from "./components/VerificationCanvas";
 import { WorkspaceInspector } from "./components/WorkspaceInspector";
 import { WorkspaceShellState } from "./components/WorkspaceShellState";
-import { resolveInspector } from "../../lib/workspace-v2/projections";
+import { resolveInspector, stageForArtifactKind } from "../../lib/workspace-v2/projections";
 import {
   WORKSPACE_V2_STAGES,
   type ArtifactKind,
@@ -118,6 +118,31 @@ function ReadyWorkspace({ snapshot }: { snapshot: WorkspaceReadySnapshot }) {
     }
     setFocusedArtifact(null);
   }, [decisionFocused]);
+
+  /* ---- Related-artifact navigation (from the Inspector) ----
+     One owner drives every plane: set the target ArtifactRef, move the Spine to
+     the target's stage, scroll the canvas to the artifact, then move DOM focus
+     to it. The Inspector re-derives causally from `focusedArtifact`; there is no
+     competing selection state inside it. Focus stays on exactly one artifact. */
+  const activateArtifact = useCallback((ref: ArtifactRef) => {
+    setDecisionFocused(false);
+    setFocusedArtifact(ref);
+    setActiveStage(stageForArtifactKind(ref.kind));
+
+    const body = bodyRef.current;
+    if (!body) return;
+    suppressReconcileUntil.current = Date.now() + 800;
+    window.requestAnimationFrame(() => {
+      const target = body.querySelector<HTMLElement>(
+        `[data-artifact="${ref.kind}:${ref.id}"]`,
+      );
+      if (!target) return;
+      body.scrollTo({ top: Math.max(0, target.offsetTop - 24), behavior: "smooth" });
+      const focusable =
+        target.querySelector<HTMLElement>("button, a[href], [tabindex]") ?? target;
+      focusable.focus({ preventScroll: true });
+    });
+  }, []);
 
   /* ---- Decision Context focus (from the plate) ---- */
   const openDecisionContext = useCallback((trigger: HTMLElement) => {
@@ -227,6 +252,7 @@ function ReadyWorkspace({ snapshot }: { snapshot: WorkspaceReadySnapshot }) {
         projection={inspectorProjection}
         canClear={decisionFocused || focusedArtifact !== null}
         onClear={clearFocus}
+        onActivate={activateArtifact}
       />
     </div>
   );

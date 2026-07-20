@@ -697,6 +697,22 @@
   flex-direction: column;
 }
 
+/* Changed files are first-class focusable artifacts (R1B.3). The row keeps the
+   compact file-list rhythm but becomes a focusable record with a focus ring and
+   a de-emphasised sibling state driven by the shared focusing container. */
+.recordChange {
+  box-shadow: inset 0 -1px 0 var(--wsv2-hairline);
+}
+
+.recordChange .recordButton {
+  padding: 7px 8px;
+}
+
+.recordChange .recordTop {
+  gap: 12px;
+  align-items: center;
+}
+
 .record {
   min-width: 0;
   position: relative;
@@ -1664,6 +1680,66 @@
   font-family: var(--wsv2-mono);
   font-size: 10px;
   line-height: 15px;
+}
+
+/* Related-artifact navigation (R1B.3). Each linked artifact is a native button
+   that activates the target through the single route-level state owner. Truthful
+   labels, visible focus, logical tab order — no nested selection state. */
+.relatedList {
+  display: grid;
+  gap: 4px;
+}
+
+.relatedButton {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 7px 9px;
+  border: 1px solid var(--wsv2-hairline);
+  border-radius: var(--wsv2-r-chip);
+  background: rgb(255 255 255 / 3%);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.relatedButton:hover {
+  background: rgb(255 255 255 / 6%);
+}
+
+.relatedButton:focus-visible {
+  outline: 2px solid var(--wsv2-focus-ring);
+  outline-offset: -2px;
+}
+
+.relatedKind {
+  flex: none;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--wsv2-text-3);
+}
+
+.relatedLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--wsv2-text-2);
+  font-size: var(--wsv2-support-size);
+  line-height: 17px;
+}
+
+.relatedDetail {
+  flex: none;
+  color: var(--wsv2-text-3);
+  font-family: var(--wsv2-mono);
+  font-size: 10px;
 }
 
 .referenceList {

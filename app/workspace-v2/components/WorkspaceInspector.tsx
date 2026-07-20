@@ -17,18 +17,28 @@ import {
   SampleBadge,
   StrengthMeter,
 } from "./atoms";
-import { evidenceStatusTone, requirementStatusTone, severityTone } from "./presentation";
+import { evidenceStatusTone, requirementStatusTone, riskTone, severityTone } from "./presentation";
 import { evidenceRank } from "../../../lib/workspace-v2/projections";
 import {
   APPLICABILITY_LABEL,
+  type ArtifactRef,
   type CaseContextView,
+  type ChangedFileView,
   type DecisionPlateViewModel,
   type EvidenceComposition,
   type EvidenceView,
   type FindingView,
   type InspectorProjection,
+  type RelationshipState,
   type RequirementView,
 } from "../../../lib/workspace-v2/view-model";
+
+const ARTIFACT_KIND_LABEL: Record<ArtifactRef["kind"], string> = {
+  change: "Change",
+  finding: "Observation",
+  evidence: "Evidence",
+  requirement: "Requirement",
+};
 
 /* The header label reflects which projection mode is active. */
 function inspectorLabel(mode: InspectorProjection["mode"]): string {
@@ -41,10 +51,12 @@ export function WorkspaceInspector({
   projection,
   canClear,
   onClear,
+  onActivate,
 }: {
   projection: InspectorProjection;
   canClear: boolean;
   onClear: () => void;
+  onActivate: (ref: ArtifactRef) => void;
 }) {
   return (
     <aside className={styles.inspector} aria-label="Inspector">
@@ -58,10 +70,17 @@ export function WorkspaceInspector({
       </div>
 
       <div className={styles.inspectorBody}>
-        {projection.mode === "finding" ? <FindingInspector finding={projection.finding} /> : null}
-        {projection.mode === "evidence" ? <EvidenceInspector record={projection.evidence} /> : null}
+        {projection.mode === "change" ? (
+          <ChangeInspector changedFile={projection.changedFile} onActivate={onActivate} />
+        ) : null}
+        {projection.mode === "finding" ? (
+          <FindingInspector finding={projection.finding} onActivate={onActivate} />
+        ) : null}
+        {projection.mode === "evidence" ? (
+          <EvidenceInspector record={projection.evidence} onActivate={onActivate} />
+        ) : null}
         {projection.mode === "requirement" ? (
-          <RequirementInspector requirement={projection.requirement} />
+          <RequirementInspector requirement={projection.requirement} onActivate={onActivate} />
         ) : null}
         {projection.mode === "decision-context" ? (
           <DecisionContextInspector decision={projection.decision} caseTitle={projection.caseTitle} />
@@ -89,22 +108,124 @@ function InspectorGroup({ label, children }: { label: string; children: React.Re
   );
 }
 
-function RefList({ ids, emptyLabel }: { ids: string[]; emptyLabel: string }) {
-  if (ids.length === 0) {
-    return <p className={styles.inspectorEmpty}>{emptyLabel}</p>;
-  }
+/* Truthful rendering of one relationship edge. Every state prints explanatory
+   copy — an empty section is never shown blank (R1B.3 Inspector causality):
+     linked      → activatable buttons to each related artifact, plus any
+                   partially-unresolved stored references;
+     none        → the neutral "no relationship recorded" copy;
+     unavailable → the exact reason the edge is not derivable;
+     unresolved  → the "could not be resolved" copy and the dangling ids. */
+function RelationshipSection({
+  label,
+  state,
+  onActivate,
+  emptyLabel,
+  unresolvedLabel,
+}: {
+  label: string;
+  state: RelationshipState;
+  onActivate: (ref: ArtifactRef) => void;
+  emptyLabel: string;
+  unresolvedLabel: string;
+}) {
   return (
-    <div className={styles.refList}>
-      {ids.map((id) => (
-        <span key={id} className={styles.ref}>
-          {id}
-        </span>
-      ))}
-    </div>
+    <InspectorGroup label={label}>
+      {state.status === "unavailable" ? (
+        <p className={styles.inspectorEmpty}>{state.reason}</p>
+      ) : state.status === "none" ? (
+        <p className={styles.inspectorEmpty}>{emptyLabel}</p>
+      ) : state.status === "unresolved" ? (
+        <>
+          <p className={styles.inspectorEmpty}>{unresolvedLabel}</p>
+          <div className={styles.refList}>
+            {state.unresolved.map((id) => (
+              <span key={id} className={styles.ref}>
+                {id}
+              </span>
+            ))}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className={styles.relatedList}>
+            {state.related.map((artifact) => (
+              <button
+                key={`${artifact.kind}:${artifact.id}`}
+                type="button"
+                className={styles.relatedButton}
+                onClick={() => onActivate({ kind: artifact.kind, id: artifact.id })}
+              >
+                <span className={styles.relatedKind}>{ARTIFACT_KIND_LABEL[artifact.kind]}</span>
+                <span className={styles.relatedLabel}>{artifact.label}</span>
+                {artifact.detail ? (
+                  <span className={styles.relatedDetail}>{artifact.detail}</span>
+                ) : null}
+              </button>
+            ))}
+          </div>
+          {state.unresolved.length > 0 ? (
+            <p className={styles.inspectorEmpty}>
+              {unresolvedLabel}: {state.unresolved.join(", ")}
+            </p>
+          ) : null}
+        </>
+      )}
+    </InspectorGroup>
   );
 }
 
-function FindingInspector({ finding }: { finding: FindingView }) {
+function ChangeInspector({
+  changedFile,
+  onActivate,
+}: {
+  changedFile: ChangedFileView;
+  onActivate: (ref: ArtifactRef) => void;
+}) {
+  return (
+    <>
+      <ArtifactMarker kind="Change" id={changedFile.artifactId} accent={styles.toneMuted} />
+      <h2 className={styles.inspectorTitle}>{changedFile.path}</h2>
+
+      <InspectorGroup label="File change">
+        <p className={styles.inspectorText}>
+          {changedFile.additions === null ? "+—" : `+${changedFile.additions}`}
+          {" · "}
+          {changedFile.deletions === null ? "−—" : `−${changedFile.deletions}`}
+          {" · "}
+          {changedFile.risk === null ? (
+            "risk not recorded"
+          ) : (
+            <span className={riskTone(changedFile.risk)}>{changedFile.risk} risk</span>
+          )}
+        </p>
+      </InspectorGroup>
+
+      <RelationshipSection
+        label="Observations affecting this change"
+        state={changedFile.observations}
+        onActivate={onActivate}
+        emptyLabel="No observation references this change"
+        unresolvedLabel="Observation reference could not be resolved"
+      />
+
+      <RelationshipSection
+        label="Direct evidence"
+        state={changedFile.evidence}
+        onActivate={onActivate}
+        emptyLabel="No evidence directly identifies this change. Evidence remains reachable through the observations above."
+        unresolvedLabel="Evidence reference could not be resolved"
+      />
+    </>
+  );
+}
+
+function FindingInspector({
+  finding,
+  onActivate,
+}: {
+  finding: FindingView;
+  onActivate: (ref: ArtifactRef) => void;
+}) {
   return (
     <>
       <ArtifactMarker kind="Finding" id={finding.findingId} accent={severityTone(finding.severity)} />
@@ -122,23 +243,42 @@ function FindingInspector({ finding }: { finding: FindingView }) {
         </p>
       </InspectorGroup>
 
-      {/* Evidence supports the observation; requirements are what it opens.
-          They are different relationships and never share one heading. */}
-      <InspectorGroup label="Supporting evidence">
-        <RefList ids={finding.supportingEvidenceIds} emptyLabel="No supporting evidence recorded" />
-      </InspectorGroup>
+      {/* Change → Observation, then the two distinct outward edges: evidence
+          supports the observation; requirements are what it opens. */}
+      <RelationshipSection
+        label="Affected change"
+        state={finding.affectedChange}
+        onActivate={onActivate}
+        emptyLabel="No affected change recorded"
+        unresolvedLabel="Affected change could not be resolved"
+      />
 
-      <InspectorGroup label="Related requirements">
-        <RefList
-          ids={finding.relatedRequirementIds}
-          emptyLabel="No requirement opened by this observation"
-        />
-      </InspectorGroup>
+      <RelationshipSection
+        label="Supporting evidence"
+        state={finding.supportingEvidence}
+        onActivate={onActivate}
+        emptyLabel="No explicit supporting evidence recorded"
+        unresolvedLabel="Evidence reference could not be resolved"
+      />
+
+      <RelationshipSection
+        label="Related requirements"
+        state={finding.relatedRequirements}
+        onActivate={onActivate}
+        emptyLabel="No explicit requirement relationship recorded"
+        unresolvedLabel="Requirement reference could not be resolved"
+      />
     </>
   );
 }
 
-function EvidenceInspector({ record }: { record: EvidenceView }) {
+function EvidenceInspector({
+  record,
+  onActivate,
+}: {
+  record: EvidenceView;
+  onActivate: (ref: ArtifactRef) => void;
+}) {
   return (
     <>
       <ArtifactMarker kind="Evidence" id={record.evidenceId} accent={evidenceStatusTone(record.status)} />
@@ -163,14 +303,40 @@ function EvidenceInspector({ record }: { record: EvidenceView }) {
         </p>
       </InspectorGroup>
 
-      <InspectorGroup label="Supports observations">
-        <RefList ids={record.supportsFindingIds} emptyLabel="Not linked to an observation" />
-      </InspectorGroup>
+      <RelationshipSection
+        label="Supports observations"
+        state={record.supportsFindings}
+        onActivate={onActivate}
+        emptyLabel="No explicit observation relationship recorded"
+        unresolvedLabel="Observation reference could not be resolved"
+      />
+
+      <RelationshipSection
+        label="Supports requirements"
+        state={record.supportsRequirements}
+        onActivate={onActivate}
+        emptyLabel="No explicit requirement relationship recorded"
+        unresolvedLabel="Requirement reference could not be resolved"
+      />
+
+      <RelationshipSection
+        label="Changed file"
+        state={record.relatedChanges}
+        onActivate={onActivate}
+        emptyLabel="No changed file directly identified by this evidence"
+        unresolvedLabel="Changed file reference could not be resolved"
+      />
     </>
   );
 }
 
-function RequirementInspector({ requirement }: { requirement: RequirementView }) {
+function RequirementInspector({
+  requirement,
+  onActivate,
+}: {
+  requirement: RequirementView;
+  onActivate: (ref: ArtifactRef) => void;
+}) {
   return (
     <>
       <ArtifactMarker
@@ -192,9 +358,21 @@ function RequirementInspector({ requirement }: { requirement: RequirementView })
         </p>
       </InspectorGroup>
 
-      <InspectorGroup label="Satisfied by">
-        <RefList ids={requirement.supportingEvidenceIds} emptyLabel="No evidence recorded yet" />
-      </InspectorGroup>
+      <RelationshipSection
+        label="Current supporting evidence"
+        state={requirement.supportingEvidence}
+        onActivate={onActivate}
+        emptyLabel="No current supporting evidence recorded"
+        unresolvedLabel="Supporting evidence reference could not be resolved"
+      />
+
+      <RelationshipSection
+        label="Related observations"
+        state={requirement.relatedFindings}
+        onActivate={onActivate}
+        emptyLabel="No explicit observation relationship recorded"
+        unresolvedLabel="Observation reference could not be resolved"
+      />
     </>
   );
 }

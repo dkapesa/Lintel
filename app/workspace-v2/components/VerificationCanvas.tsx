@@ -26,11 +26,20 @@ import {
   type ArtifactKind,
   type ArtifactRef,
   type CaseDetail,
+  type ChangedFileView,
   type DecisionPlateViewModel,
   type EvidenceView,
   type FindingView,
+  type RelationshipState,
   type RequirementView,
 } from "../../../lib/workspace-v2/view-model";
+
+/* Compact, truthful count for a relationship state shown on a focused Change
+   record. Only `linked` carries a positive count; every other state is zero
+   linked artifacts (the Inspector explains why). */
+function linkedCount(state: RelationshipState): number {
+  return state.status === "linked" ? state.related.length : 0;
+}
 
 export function VerificationCanvas({
   detail,
@@ -98,27 +107,20 @@ export function VerificationCanvas({
           {/* Stage 1 — Change */}
           <section className={styles.stage} id="wsv2-stage-change">
             <StageHeading index="1" title="Change" meta={`${detail.changedFiles.length} files`} />
-            <div className={styles.fileList}>
-              {detail.changedFiles.map((file) => (
-                <div key={file.path} className={styles.fileRow}>
-                  <span className={styles.filePath}>{file.path}</span>
-                  <span className={styles.fileStats}>
-                    {/* Absent line counts render as unknown, never as 0. */}
-                    <span className={styles.additions}>
-                      {file.additions === null ? "+—" : `+${file.additions}`}
-                    </span>
-                    <span className={styles.deletions}>
-                      {file.deletions === null ? "−—" : `−${file.deletions}`}
-                    </span>
-                    {file.risk === null ? (
-                      <span className={styles.fileRisk}>risk n/a</span>
-                    ) : (
-                      <span className={`${styles.fileRisk} ${riskTone(file.risk)}`}>{file.risk}</span>
-                    )}
-                  </span>
-                </div>
-              ))}
-            </div>
+            {detail.changedFiles.length === 0 ? (
+              <p className={styles.emptyState}>No changed files recorded on this head.</p>
+            ) : (
+              <div className={styles.fileList}>
+                {detail.changedFiles.map((file) => (
+                  <ChangedFileRecord
+                    key={file.artifactId}
+                    file={file}
+                    focused={isFocused("change", file.artifactId)}
+                    onFocus={() => onToggleFocus("change", file.artifactId)}
+                  />
+                ))}
+              </div>
+            )}
           </section>
 
           {/* Stage 2 — Observation */}
@@ -238,6 +240,66 @@ function StageHeading({ index, title, meta }: { index: string; title: string; me
   );
 }
 
+function ChangedFileRecord({
+  file,
+  focused,
+  onFocus,
+}: {
+  file: ChangedFileView;
+  focused: boolean;
+  onFocus: () => void;
+}) {
+  const observations = linkedCount(file.observations);
+  const evidence = linkedCount(file.evidence);
+  return (
+    <article
+      data-artifact={`change:${file.artifactId}`}
+      className={`${styles.record} ${styles.focusable} ${styles.recordChange} ${
+        focused ? styles.recordFocused : ""
+      }`}
+    >
+      <button type="button" className={styles.recordButton} onClick={onFocus} aria-pressed={focused}>
+        <span className={styles.recordTop}>
+          <span className={styles.filePath}>{file.path}</span>
+          <span className={styles.fileStats}>
+            {/* Absent line counts render as unknown, never as 0. */}
+            <span className={styles.additions}>
+              {file.additions === null ? "+—" : `+${file.additions}`}
+            </span>
+            <span className={styles.deletions}>
+              {file.deletions === null ? "−—" : `−${file.deletions}`}
+            </span>
+            {file.risk === null ? (
+              <span className={styles.fileRisk}>risk n/a</span>
+            ) : (
+              <span className={`${styles.fileRisk} ${riskTone(file.risk)}`}>{file.risk}</span>
+            )}
+          </span>
+        </span>
+        {focused ? (
+          <span className={styles.recordFoot}>
+            <span>
+              {observations === 0
+                ? "No observation references this change"
+                : `${observations} observation${observations === 1 ? "" : "s"}`}
+            </span>
+            <span className={styles.metaDot}>·</span>
+            <span>
+              {evidence === 0 ? "no direct evidence" : `${evidence} direct evidence`}
+            </span>
+          </span>
+        ) : null}
+      </button>
+
+      {focused ? (
+        <div className={styles.recordExpansion}>
+          <ArtifactMarker kind="Change" id={file.artifactId} accent={styles.toneMuted} />
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
 function FindingRecord({
   finding,
   focused,
@@ -249,6 +311,7 @@ function FindingRecord({
 }) {
   return (
     <article
+      data-artifact={`finding:${finding.findingId}`}
       className={`${styles.record} ${styles.focusable} ${styles.recordFinding} ${severityRankClass(
         finding.severity,
       )} ${focused ? styles.recordFocused : ""}`}
@@ -308,6 +371,7 @@ function EvidenceRecord({
   const strong = isStrongEvidence(record.evidenceClass);
   return (
     <article
+      data-artifact={`evidence:${record.evidenceId}`}
       className={`${styles.record} ${styles.focusable} ${styles.recordEvidence} ${
         strong ? styles.evStrong : styles.evWeak
       } ${record.stale ? styles.evStale : ""} ${
@@ -359,6 +423,7 @@ function RequirementRecord({
   const blocking = requirement.importance === "blocking";
   return (
     <article
+      data-artifact={`requirement:${requirement.requirementId}`}
       className={`${styles.record} ${styles.focusable} ${styles.recordRequirement} ${
         blocking ? styles.reqBlocking : styles.reqAdvisory
       } ${requirement.status === "satisfied" ? styles.reqSatisfied : ""} ${

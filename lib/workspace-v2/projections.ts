@@ -187,6 +187,10 @@ export function resolveArtifactRef(
   ref: ArtifactRef | null,
 ): InspectorProjection | null {
   if (!ref) return null;
+  if (ref.kind === "change") {
+    const changedFile = detail.changedFiles.find((item) => item.artifactId === ref.id);
+    return changedFile ? { mode: "change", changedFile } : null;
+  }
   if (ref.kind === "finding") {
     const finding = detail.findings.find((item) => item.findingId === ref.id);
     return finding ? { mode: "finding", finding } : null;
@@ -197,6 +201,16 @@ export function resolveArtifactRef(
   }
   const requirement = detail.requirements.find((item) => item.requirementId === ref.id);
   return requirement ? { mode: "requirement", requirement } : null;
+}
+
+/* Map an artifact kind to the Evidence Spine stage that contains it, so
+   activating a related artifact from the Inspector can move the Spine to the
+   correct stage from the single route-level state owner. */
+export function stageForArtifactKind(kind: ArtifactRef["kind"]): StageId {
+  if (kind === "change") return "change";
+  if (kind === "finding") return "observation";
+  if (kind === "evidence") return "evidence";
+  return "requirement";
 }
 
 /* Single source of the Inspector projection. Priority: an open Decision

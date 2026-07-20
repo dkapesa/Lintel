@@ -20,18 +20,153 @@ import {
   type WorkspaceSnapshotRequest,
 } from "./adapter";
 import { decisionMarkerFor } from "./projections";
+import { assembleCaseArtifacts } from "./relationships";
 import {
   type CaseDetail,
   type DecisionActor,
   type DecisionPlateViewModel,
+  type EvidenceClass,
+  type EvidenceStatus,
+  type FindingCategory,
+  type FindingProvenance,
+  type FindingSeverity,
   type QueueCaseSummary,
   type QueueGroup,
   type QueueGroupId,
   type Recommendation,
+  type RequirementImportance,
+  type RequirementStatus,
+  type RiskLevel,
   type WorkspaceProvenance,
   type WorkspaceScenario,
   type WorkspaceSnapshot,
 } from "./view-model";
+
+/* --- Fixture case shape (pre-relationship seeds) ---------------------- */
+
+/* The sample cases are authored in a source-neutral shape carrying the same
+   canonical reference arrays a real Report would yield, then finalised through
+   the shared relationship assembler (`finalizeFixtureCase`) so the fixture and
+   real paths produce byte-compatible `CaseDetail` relationship graphs. Sample
+   data may assert finding↔requirement links directly (hand-authored truth);
+   the real adapter cannot, and reports that honestly. */
+type FixtureChangedFile = {
+  path: string;
+  additions?: number;
+  deletions?: number;
+  risk?: RiskLevel;
+};
+
+type FixtureFinding = {
+  findingId: string;
+  severity: FindingSeverity;
+  title: string;
+  statement: string;
+  action: string;
+  file?: string;
+  provenance: FindingProvenance;
+  category: FindingCategory;
+  supportingEvidenceIds: string[];
+  relatedRequirementIds: string[];
+};
+
+type FixtureEvidence = {
+  evidenceId: string;
+  title: string;
+  statement: string;
+  evidenceClass: EvidenceClass;
+  status: EvidenceStatus;
+  provenance: string;
+  source: string;
+  observedAt: string;
+  stale: boolean;
+  supportsFindingIds: string[];
+};
+
+type FixtureRequirement = {
+  requirementId: string;
+  title: string;
+  statement: string;
+  importance: RequirementImportance;
+  status: RequirementStatus;
+  evidenceRequired: string;
+  supportingEvidenceIds: string[];
+  stale: boolean;
+};
+
+type FixtureCaseDetail = Omit<
+  CaseDetail,
+  "changedFiles" | "findings" | "evidence" | "requirements"
+> & {
+  changedFiles: FixtureChangedFile[];
+  findings: FixtureFinding[];
+  evidence: FixtureEvidence[];
+  requirements: FixtureRequirement[];
+};
+
+/* Finalise one sample case into a real `CaseDetail` by projecting its authored
+   reference arrays through the shared relationship assembler. Finding↔evidence
+   comes from each evidence record's `supportsFindingIds`; requirement↔evidence
+   from each requirement's `supportingEvidenceIds`; finding↔requirement from
+   each finding's `relatedRequirementIds` (derivable for hand-authored samples);
+   change↔evidence has no fixture source and is therefore absent. */
+function finalizeFixtureCase(fixture: FixtureCaseDetail): CaseDetail {
+  const findingRequirementIds = new Map<string, string[]>();
+  for (const finding of fixture.findings) {
+    findingRequirementIds.set(finding.findingId, finding.relatedRequirementIds);
+  }
+
+  const artifacts = assembleCaseArtifacts({
+    changedFiles: fixture.changedFiles.map((file) => ({
+      path: file.path,
+      additions: typeof file.additions === "number" ? file.additions : null,
+      deletions: typeof file.deletions === "number" ? file.deletions : null,
+      risk: file.risk ?? null,
+    })),
+    findings: fixture.findings.map((finding) => ({
+      findingId: finding.findingId,
+      severity: finding.severity,
+      title: finding.title,
+      statement: finding.statement,
+      action: finding.action,
+      location: typeof finding.file === "string" ? finding.file : null,
+      provenance: finding.provenance,
+      category: finding.category,
+    })),
+    evidence: fixture.evidence.map((record) => ({
+      evidenceId: record.evidenceId,
+      title: record.title,
+      statement: record.statement,
+      evidenceClass: record.evidenceClass,
+      status: record.status,
+      provenance: record.provenance,
+      source: record.source,
+      observedAt: record.observedAt,
+      stale: record.stale,
+      relatedFindingIds: record.supportsFindingIds,
+      changePath: null,
+    })),
+    requirements: fixture.requirements.map((requirement) => ({
+      requirementId: requirement.requirementId,
+      title: requirement.title,
+      statement: requirement.statement,
+      importance: requirement.importance,
+      status: requirement.status,
+      evidenceRequired: requirement.evidenceRequired,
+      stale: requirement.stale,
+      supportingEvidenceIds: requirement.supportingEvidenceIds,
+    })),
+    requirementLinkage: { derivable: true, findingRequirementIds },
+  });
+
+  return {
+    ...fixture,
+    changedFiles: artifacts.changedFiles,
+    findings: artifacts.findings,
+    evidence: artifacts.evidence,
+    requirements: artifacts.requirements,
+  };
+}
 
 const WORKSPACE_ID = "sample-workspace";
 const REPOSITORY = "example/b2b-redemption-api";
@@ -46,7 +181,7 @@ const SAMPLE_REVIEWER: DecisionActor = {
 
 /* --- Case 482 — TESTS_REQUIRED · canonical primary case --------------- */
 
-const case482: CaseDetail = {
+const case482: FixtureCaseDetail = {
   caseId: "case-482",
   github: {
     repository: REPOSITORY,
@@ -272,7 +407,7 @@ const case482: CaseDetail = {
 
 /* --- Case 476 — REVIEW_REQUIRED · recorded, predates head ------------- */
 
-const case476: CaseDetail = {
+const case476: FixtureCaseDetail = {
   caseId: "case-476",
   github: {
     repository: REPOSITORY,
@@ -402,7 +537,7 @@ const case476: CaseDetail = {
 
 /* --- Case 471 — APPROVE · recorded, applicable ------------------------ */
 
-const case471: CaseDetail = {
+const case471: FixtureCaseDetail = {
   caseId: "case-471",
   github: {
     repository: REPOSITORY,
@@ -512,7 +647,7 @@ const case471: CaseDetail = {
 
 /* --- Case 489 — BLOCK · recorded, applicable -------------------------- */
 
-const case489: CaseDetail = {
+const case489: FixtureCaseDetail = {
   caseId: "case-489",
   github: {
     repository: REPOSITORY,
@@ -633,7 +768,7 @@ const case489: CaseDetail = {
 
 /* Deterministic case order (canonical primary case surfaces first via the
    default selection below; queue order follows operational severity). */
-const CASES: CaseDetail[] = [case489, case482, case476, case471];
+const CASES: CaseDetail[] = [case489, case482, case476, case471].map(finalizeFixtureCase);
 
 const DEFAULT_CASE_ID = case482.caseId;
 

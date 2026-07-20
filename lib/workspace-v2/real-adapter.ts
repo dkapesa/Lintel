@@ -80,6 +80,13 @@ import {
   type WorkspaceSnapshotRequest,
 } from "./adapter";
 import { decisionMarkerFor } from "./projections";
+import {
+  assembleCaseArtifacts,
+  type ChangedFileSeed,
+  type EvidenceSeed,
+  type FindingSeed,
+  type RequirementSeed,
+} from "./relationships";
 import { readOnlyStorage } from "./read-only-storage";
 import {
   buildQueueGroups,
@@ -249,31 +256,85 @@ function displayedReviewStatus(
   }
 }
 
-/* --- Field-level mapping ---------------------------------------------- */
+/* --- Canonical case-projection context (built once per case) ---------- */
 
-function mapChangedFiles(report: Report): ChangedFileView[] {
-  return report.changedFiles.map((file) => ({
+/* Stable finding id, indexing the FULL `report.findings` array. This is the id
+   convention `buildEvidenceHierarchy` assigns to each finding's own evidence
+   record (`finding-${index}`), which is exactly what makes the finding↔evidence
+   edge a truthful inversion of a canonical output rather than a guess. */
+function findingIdForIndex(index: number): string {
+  return `finding-${index}`;
+}
+
+/* The exact, documented reason Observation ↔ Requirement is NOT asserted for
+   real reports. Merge-contract clause finding references (`finding-${k}`) are
+   indexed over a severity-filtered, capped subset (HIGH/CRITICAL findings,
+   first six — see `buildMergeContract`), a DIFFERENT id namespace than the
+   canonical full-array `finding-${index}` the evidence hierarchy uses. The two
+   cannot be reconciled without replicating an internal projection predicate, so
+   no edge is asserted rather than a fabricated one (r1a §16.10, RISK-A). */
+const REQUIREMENT_LINKAGE_UNAVAILABLE =
+  "Requirement linkage is not derivable from this report version.";
+
+/* One canonical projection context per Report history entry. The evidence
+   hierarchy and merge contract — the two expensive canonical builds — are
+   computed exactly once here and reused for artifacts, grouping and the Human
+   Decision projection, replacing the previous per-case double build (R1B.3
+   performance). Pure and deterministic given the entry. */
+export type CaseProjectionContext = {
+  report: Report;
+  caseId: string;
+  createdAt: string;
+  canonicalRun: CanonicalReviewRunManifest | null;
+  headSha: string | undefined;
+  evidenceSummary: EvidenceHierarchySummary;
+  contract: MergeContract;
+  changedFiles: ChangedFileView[];
+  findings: FindingView[];
+  evidence: EvidenceView[];
+  requirements: RequirementView[];
+};
+
+function buildCaseProjectionContext(
+  report: Report,
+  caseId: string,
+  createdAt: string,
+  canonicalRun: CanonicalReviewRunManifest | null,
+): CaseProjectionContext {
+  const headSha = canonicalRun?.headSha;
+
+  /* The single canonical builds for the whole case. */
+  const evidenceSummary = buildEvidenceHierarchy(report, null, { createdAt, headSha });
+  const contract = buildMergeContract({
+    report,
+    evidenceHierarchy: evidenceSummary,
+    headSha,
+    createdAt,
+  });
+
+  const changedFileSeeds: ChangedFileSeed[] = report.changedFiles.map((file) => ({
     path: file.path,
     /* Absent line counts and risk stay null — never invented as 0 (r1a §7). */
     additions: typeof file.additions === "number" ? file.additions : null,
     deletions: typeof file.deletions === "number" ? file.deletions : null,
     risk: file.risk ?? null,
   }));
-}
 
-/* Stable finding id. This matches the id convention `buildEvidenceHierarchy`
-   already assigns to a finding's own evidence records (`finding-${index}`,
-   indexing the full `report.findings` array), which is what makes the
-   finding↔evidence edge below a truthful projection rather than a guess. */
-function findingIdForIndex(index: number): string {
-  return `finding-${index}`;
-}
+  const findingSeeds: FindingSeed[] = report.findings.map((finding, index) => ({
+    findingId: findingIdForIndex(index),
+    severity: finding.severity,
+    title: finding.title,
+    /* `Report.findings[].evidence` is the explanatory statement text. */
+    statement: finding.evidence,
+    action: finding.action,
+    /* Raw recorded location, preserved verbatim; the assembler parses a bare
+       path from it only when a numeric line suffix is unambiguous. */
+    location: typeof finding.file === "string" ? finding.file : null,
+    provenance: finding.provenance ?? "Rule detected",
+    category: finding.category,
+  }));
 
-function mapEvidence(
-  summary: EvidenceHierarchySummary,
-  knownFindingIds: ReadonlySet<string>,
-): EvidenceView[] {
-  return summary.records.map((record) => ({
+  const evidenceSeeds: EvidenceSeed[] = evidenceSummary.records.map((record) => ({
     evidenceId: record.evidenceId,
     title: record.title,
     statement: record.statement,
@@ -285,68 +346,55 @@ function mapEvidence(
     source: record.source,
     observedAt: record.observedAt,
     stale: record.stale,
-    /* Only edges to findings that actually exist in this case are kept. */
-    supportsFindingIds: record.relatedFindingIds.filter((id) => knownFindingIds.has(id)),
+    /* Raw canonical evidence→finding references; the assembler resolves each and
+       surfaces any that fall outside this case rather than pre-filtering. */
+    relatedFindingIds: record.relatedFindingIds,
+    /* Change ↔ Evidence is asserted ONLY from the canonical "Changed files"
+       evidence records, which carry the exact changed path in
+       `supportingReference`. No other record is treated as a change edge, and
+       no edge is inferred from shared wording. */
+    changePath:
+      record.source === "Changed files" && typeof record.supportingReference === "string"
+        ? record.supportingReference
+        : null,
   }));
-}
 
-function mapFindings(
-  report: Report,
-  evidence: EvidenceView[],
-): FindingView[] {
-  /* Invert the canonical evidence→finding edges into finding→evidence. This is
-     a deterministic projection of an existing canonical output, not a
-     similarity or position heuristic. */
-  const evidenceByFinding = new Map<string, string[]>();
-  for (const record of evidence) {
-    for (const findingId of record.supportsFindingIds) {
-      const list = evidenceByFinding.get(findingId) ?? [];
-      list.push(record.evidenceId);
-      evidenceByFinding.set(findingId, list);
-    }
-  }
-
-  return report.findings.map((finding, index) => {
-    const findingId = findingIdForIndex(index);
-    return {
-      findingId,
-      severity: finding.severity,
-      title: finding.title,
-      /* `Report.findings[].evidence` is the explanatory statement text. */
-      statement: finding.evidence,
-      action: finding.action,
-      file: finding.file ?? "Location not recorded",
-      provenance: finding.provenance ?? "Rule detected",
-      category: finding.category,
-      supportingEvidenceIds: evidenceByFinding.get(findingId) ?? [],
-      /* finding→requirement edges are intentionally empty. The merge-contract
-         clause id convention (`finding-${index}` over the HIGH/CRITICAL-only
-         filtered subset) is not reconcilable with the full-array finding index
-         above without semantic guessing, so no edge is asserted (r1a §16.10,
-         RISK-A). Rendered as explicitly empty. */
-      relatedRequirementIds: [],
-    };
-  });
-}
-
-function mapRequirements(
-  contract: MergeContract,
-  knownEvidenceIds: ReadonlySet<string>,
-): RequirementView[] {
-  return contract.clauses.map((clause) => ({
+  const requirementSeeds: RequirementSeed[] = contract.clauses.map((clause) => ({
     requirementId: clause.clauseId,
     title: clause.title,
     statement: clause.statement,
     importance: clause.importance,
     status: clause.status,
     evidenceRequired: clause.evidenceRequired,
-    /* Currently-supporting evidence produced by the same projection; filtered
-       to ids present in this snapshot so every reference resolves. */
-    supportingEvidenceIds: clause.currentSupportingEvidenceIds.filter((id) =>
-      knownEvidenceIds.has(id),
-    ),
     stale: clause.stale,
+    /* Raw canonical current supporting evidence; resolved by the assembler so
+       an unresolved stored reference is surfaced, not silently dropped. */
+    supportingEvidenceIds: clause.currentSupportingEvidenceIds,
   }));
+
+  const artifacts = assembleCaseArtifacts({
+    changedFiles: changedFileSeeds,
+    findings: findingSeeds,
+    evidence: evidenceSeeds,
+    requirements: requirementSeeds,
+    /* Observation ↔ Requirement is not deterministically reconcilable for real
+       reports (see `REQUIREMENT_LINKAGE_UNAVAILABLE`). */
+    requirementLinkage: { derivable: false, reason: REQUIREMENT_LINKAGE_UNAVAILABLE },
+  });
+
+  return {
+    report,
+    caseId,
+    createdAt,
+    canonicalRun,
+    headSha,
+    evidenceSummary,
+    contract,
+    changedFiles: artifacts.changedFiles,
+    findings: artifacts.findings,
+    evidence: artifacts.evidence,
+    requirements: artifacts.requirements,
+  };
 }
 
 function mapContext(report: Report): CaseContextView {
@@ -521,40 +569,17 @@ function readDecisionProjection(
 
 /* --- Case projection -------------------------------------------------- */
 
-export type ReportProjectionInput = {
-  report: Report;
-  /* Stable case id (the history entry's stable `createdAt`). */
-  caseId: string;
-  /* The report's canonical analysis time (ISO) — threaded so the canonical
-     projections are deterministic instead of stamping `Date.now()`. */
-  createdAt: string;
-  canonicalRun: CanonicalReviewRunManifest | null;
-};
-
-/* Pure projection of one Report into a `CaseDetail`, given an already-resolved
-   Human Decision view model. Storage-free and deterministic, so it is unit
-   testable in isolation. */
-export function projectReportToCaseDetail(
-  input: ReportProjectionInput,
+/* Pure assembly of a fully-projected `CaseDetail` from an already-built
+   canonical context and an already-resolved Human Decision view model. No
+   canonical rebuild happens here — the context owns the single evidence
+   hierarchy, merge contract and linked artifacts for the case, so this is a
+   deterministic, storage-free composition. */
+export function projectContextToCaseDetail(
+  context: CaseProjectionContext,
   decision: DecisionPlateViewModel,
   reviewStatus: ReviewStatus,
 ): CaseDetail {
-  const { report, caseId, createdAt, canonicalRun } = input;
-  const headSha = canonicalRun?.headSha;
-
-  const evidenceSummary = buildEvidenceHierarchy(report, null, { createdAt, headSha });
-  const contract = buildMergeContract({
-    report,
-    evidenceHierarchy: evidenceSummary,
-    headSha,
-    createdAt,
-  });
-
-  const knownFindingIds = new Set(report.findings.map((_, index) => findingIdForIndex(index)));
-  const evidence = mapEvidence(evidenceSummary, knownFindingIds);
-  const knownEvidenceIds = new Set(evidence.map((item) => item.evidenceId));
-  const findings = mapFindings(report, evidence);
-  const requirements = mapRequirements(contract, knownEvidenceIds);
+  const { report, caseId, headSha } = context;
 
   return {
     caseId,
@@ -576,10 +601,10 @@ export function projectReportToCaseDetail(
        recommendation-derived provisional label (resolved by the caller). */
     reviewStatus,
     executiveSummary: report.verdict.summary,
-    changedFiles: mapChangedFiles(report),
-    findings,
-    evidence,
-    requirements,
+    changedFiles: context.changedFiles,
+    findings: context.findings,
+    evidence: context.evidence,
+    requirements: context.requirements,
     /* Readiness movement needs a previous analysis run to compare against;
        R1B.1 reads a single stored head. Truthfully unavailable, not zeroed. */
     readiness: {
@@ -635,26 +660,23 @@ function projectCase(
   const report = entry.report;
   const canonicalRun = entry.canonicalRun ?? null;
   const caseId = `report-${entry.createdAt}`;
-  const input: ReportProjectionInput = { report, caseId, createdAt: entry.createdAt, canonicalRun };
 
-  /* Build artifacts once to resolve decision references and grouping signals. */
-  const headSha = canonicalRun?.headSha;
-  const evidenceSummary = buildEvidenceHierarchy(report, null, { createdAt: entry.createdAt, headSha });
-  const contract = buildMergeContract({
+  /* The single canonical build for the whole case: evidence hierarchy, merge
+     contract and the fully-linked artifact graph, reused for decision
+     resolution, grouping and the final `CaseDetail`. */
+  const context = buildCaseProjectionContext(report, caseId, entry.createdAt, canonicalRun);
+
+  const decision = readDecisionProjection(
+    storage,
     report,
-    evidenceHierarchy: evidenceSummary,
-    headSha,
-    createdAt: entry.createdAt,
-  });
-  const knownFindingIds = new Set(report.findings.map((_, index) => findingIdForIndex(index)));
-  const evidence = mapEvidence(evidenceSummary, knownFindingIds);
-  const knownEvidenceIds = new Set(evidence.map((item) => item.evidenceId));
-  const requirements = mapRequirements(contract, knownEvidenceIds);
-
-  const decision = readDecisionProjection(storage, report, canonicalRun, contract, requirements, evidence);
+    canonicalRun,
+    context.contract,
+    context.requirements,
+    context.evidence,
+  );
 
   const reviewState = reviewSignalFor(reviewChannel, report, keyCounts);
-  const openBlocking = openBlockingRequirementCount(requirements);
+  const openBlocking = openBlockingRequirementCount(context.requirements);
   const unresolvedConditions = unresolvedConditionCount(storage, report);
 
   const groupingInput: CaseGroupingInput = {
@@ -674,7 +696,7 @@ function projectCase(
       ? reviewState.status
       : displayedReviewStatus(grouping, report.verdict.recommendation);
 
-  const detail = projectReportToCaseDetail(input, decision, reviewStatus);
+  const detail = projectContextToCaseDetail(context, decision, reviewStatus);
 
   const decisionApplicable =
     decision.status === "recorded" &&

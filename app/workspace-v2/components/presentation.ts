@@ -103,26 +103,40 @@ export function divergenceTone(divergence: DecisionDivergence): ToneKey {
   }
 }
 
-const ROVING_KEYS = ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Home", "End"];
+/* Both the Queue and the Evidence Spine are single-axis vertical widgets, so
+   only the vertical arrows rove. Left/Right are intentionally ignored so the
+   horizontal arrows stay free for the browser (caret, horizontal scroll) and
+   never compete with the vertical sequence. */
+const VERTICAL_ROVING_KEYS = ["ArrowDown", "ArrowUp", "Home", "End"];
 
 /* Roving-focus navigation across the `[data-roving="true"]` controls inside a
-   container. Focus moves; activation stays on Enter/Space (native button).
-   The container keeps exactly one control tabbable (tabIndex 0) so the widget
-   is a single tab stop. */
+   container. Focus moves; activation stays on Enter/Space (native button), so
+   arrowing never activates a case or a stage. The container keeps exactly one
+   control tabbable (tabIndex 0) so the whole widget is a single tab stop.
+
+   Group boundaries: the items are collected in DOM order across every group in
+   the container, so Arrow Up/Down traverse one continuous logical sequence and
+   DO cross group boundaries. This is deliberate and consistent for both the
+   Queue and the Spine.
+
+   Ends: arrows clamp at the first and last item (no wrap-around), which is the
+   predictable behaviour for a linear list; Home/End jump to the absolute
+   first/last selectable control. */
 export function rovingKeyDown(event: KeyboardEvent<HTMLElement>, container: HTMLElement | null): void {
-  if (!container || !ROVING_KEYS.includes(event.key)) return;
+  if (!container || !VERTICAL_ROVING_KEYS.includes(event.key)) return;
   const items = Array.from(
     container.querySelectorAll<HTMLElement>('[data-roving="true"]'),
-  );
+  ).filter((element) => element.getAttribute("aria-disabled") !== "true");
   if (items.length === 0) return;
 
   const currentIndex = items.findIndex((element) => element === document.activeElement);
   let nextIndex = currentIndex;
 
-  if (event.key === "ArrowDown" || event.key === "ArrowRight") {
-    nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % items.length;
-  } else if (event.key === "ArrowUp" || event.key === "ArrowLeft") {
-    nextIndex = currentIndex <= 0 ? items.length - 1 : currentIndex - 1;
+  if (event.key === "ArrowDown") {
+    /* Clamp at the last item; from "no roving item focused" enter at the top. */
+    nextIndex = currentIndex < 0 ? 0 : Math.min(currentIndex + 1, items.length - 1);
+  } else if (event.key === "ArrowUp") {
+    nextIndex = currentIndex < 0 ? items.length - 1 : Math.max(currentIndex - 1, 0);
   } else if (event.key === "Home") {
     nextIndex = 0;
   } else if (event.key === "End") {

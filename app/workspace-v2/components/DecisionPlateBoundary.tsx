@@ -52,7 +52,11 @@ export function DecisionPlateBoundary({
     .join(" ");
 
   return (
-    <footer className={plateClass} id="wsv2-decision-plate">
+    /* A plain container, not a <footer>: at this position a <footer> would be
+       exposed as a stray `contentinfo` landmark (its nearest sectioning
+       ancestor is <body>). The terminal Decision Plate is content within the
+       Verification Canvas <main>, not a page-level landmark. */
+    <div className={plateClass} id="wsv2-decision-plate">
       <div className={styles.plateMain}>
         <div className={styles.plateState}>
           <span className={styles.plateLabel}>
@@ -69,7 +73,7 @@ export function DecisionPlateBoundary({
       </div>
 
       {decision.status === "recorded" ? <RecordedSecondRow view={decision} /> : null}
-    </footer>
+    </div>
   );
 }
 

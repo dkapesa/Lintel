@@ -63,8 +63,14 @@ export function WorkspaceInspector({
       <div className={styles.planeHeader}>
         <span className={styles.planeLabel}>{inspectorLabel(projection.mode)}</span>
         {canClear ? (
-          <button type="button" className={styles.inspectorClear} onClick={onClear}>
-            Esc
+          <button
+            type="button"
+            className={styles.inspectorClear}
+            onClick={onClear}
+            aria-label="Clear focus (Escape)"
+            title="Clear focus (Escape)"
+          >
+            <span aria-hidden="true">Esc</span>
           </button>
         ) : null}
       </div>

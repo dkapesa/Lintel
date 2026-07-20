@@ -9,7 +9,7 @@
    are scaffolding shell states, not production data loading. */
 
 import styles from "../workspace-v2.module.css";
-import { ProvenanceBadge } from "./atoms";
+import { ProvenanceBadge, WorkstationMinWidthNotice } from "./atoms";
 import {
   type WorkspaceEmptySnapshot,
   type WorkspaceLoadingSnapshot,
@@ -46,7 +46,7 @@ export function WorkspaceShellState({ snapshot }: { snapshot: ShellSnapshot }) {
         </div>
       </nav>
 
-      <section className={styles.shellCanvas} aria-label="Verification canvas">
+      <main className={styles.shellCanvas} aria-label="Verification canvas">
         <header className={styles.caseHeader}>
           <div className={styles.caseIdentity}>
             <div className={styles.caseEyebrow}>
@@ -64,7 +64,7 @@ export function WorkspaceShellState({ snapshot }: { snapshot: ShellSnapshot }) {
         >
           <ShellMessage snapshot={snapshot} />
         </div>
-      </section>
+      </main>
 
       <aside
         className={`${styles.shellPlanePlaceholder} ${styles.shellInspector}`}
@@ -74,6 +74,8 @@ export function WorkspaceShellState({ snapshot }: { snapshot: ShellSnapshot }) {
           <span className={styles.planeLabel}>Case context</span>
         </div>
       </aside>
+
+      <WorkstationMinWidthNotice />
     </div>
   );
 }

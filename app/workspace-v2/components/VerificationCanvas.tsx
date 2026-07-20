@@ -67,7 +67,10 @@ export function VerificationCanvas({
     focus !== null && focus.kind === kind && focus.id === id;
 
   return (
-    <section className={styles.canvas} aria-label="Verification canvas">
+    /* The Verification Canvas is the route's single primary landmark. The route
+       is full-bleed with no ancestor <main>, so this is the one <main> element;
+       the Queue and Inspector are complementary and the Spine is navigation. */
+    <main className={styles.canvas} aria-label="Verification canvas">
       {/* Row 1 — case header */}
       <header className={styles.caseHeader}>
         <div className={styles.caseIdentity}>
@@ -198,7 +201,7 @@ export function VerificationCanvas({
         current={plateCurrent}
         onViewContext={onViewDecisionContext}
       />
-    </section>
+    </main>
   );
 }
 

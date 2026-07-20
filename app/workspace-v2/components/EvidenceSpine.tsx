@@ -55,9 +55,10 @@ export function EvidenceSpine({
           const current = definition.id === activeStage;
           const state: StageState = canvasStageState(detail, definition.id);
           const last = index === WORKSPACE_V2_STAGES.length - 1;
+          const count = stageCount(detail, definition.id);
           const sublabel = definition.terminal
             ? decisionStageLabel(detail.decision)
-            : String(stageCount(detail, definition.id));
+            : String(count);
           return (
             <li
               key={definition.id}
@@ -68,10 +69,16 @@ export function EvidenceSpine({
                 data-roving="true"
                 tabIndex={current ? 0 : -1}
                 aria-current={current ? "step" : undefined}
+                aria-label={spineNodeLabel(definition.id, definition.label, count, sublabel, state)}
                 className={`${styles.spineNode} ${current ? styles.spineNodeCurrent : ""}`}
                 onClick={() => onGoToStage(definition.id)}
               >
-                <span className={`${styles.spineMark} ${spineMarkClass(state)}`}>
+                {/* Mark is decorative; its state is spoken via the button's
+                    aria-label so the distinction is never colour-only. */}
+                <span
+                  className={`${styles.spineMark} ${spineMarkClass(state)}`}
+                  aria-hidden="true"
+                >
                   <span className={styles.spineMarkCore} />
                 </span>
                 <span className={styles.spineText}>
@@ -100,6 +107,41 @@ function spineMarkClass(state: StageState): string {
   if (state === "attention") return styles.spineMarkAttention;
   if (state === "complete") return styles.spineMarkComplete;
   return styles.spineMarkPending;
+}
+
+/* Ordered, spoken description of a Spine stage: name, its truthful count (with a
+   stage-appropriate noun), and a state word so the mark's meaning is never
+   conveyed by colour alone. The terminal decision stage already carries a
+   textual sublabel (e.g. "needs reaffirmation"), so it is used verbatim. */
+const STAGE_NOUN: Record<StageId, [string, string]> = {
+  change: ["changed file", "changed files"],
+  observation: ["observation", "observations"],
+  evidence: ["evidence record", "evidence records"],
+  requirement: ["requirement", "requirements"],
+  decision: ["decision", "decisions"],
+};
+
+function stageStateWord(state: StageState): string {
+  if (state === "attention") return "needs attention";
+  if (state === "complete") return "complete";
+  if (state === "current") return "current";
+  return "pending";
+}
+
+function spineNodeLabel(
+  stage: StageId,
+  label: string,
+  count: number,
+  sublabel: string,
+  state: StageState,
+): string {
+  if (stage === "decision") {
+    /* sublabel is the truthful decision word (not recorded / withdrawn / …). */
+    return `${label} stage. ${sublabel}.`;
+  }
+  const [singular, plural] = STAGE_NOUN[stage];
+  const noun = count === 1 ? singular : plural;
+  return `${label} stage. ${count} ${noun}. ${stageStateWord(state)}.`;
 }
 
 function SpineFact({

@@ -1044,10 +1044,21 @@
 
 .focusable {
   position: relative;
+  /* Keep a focused / scrolled-to record clear of the canvas body's top edge so
+     it is never tucked under the fixed case header row above the scroll region. */
+  scroll-margin-top: 16px;
+  scroll-margin-bottom: 16px;
 }
 
 .canvasInnerFocusing .focusable:not(.recordFocused) {
   opacity: 0.6;
+}
+
+/* De-emphasis must never make a sibling unreachable: a de-emphasised record
+   that receives keyboard focus is restored to full contrast so its text and
+   focus ring stay legible. */
+.canvasInnerFocusing .focusable:not(.recordFocused):focus-within {
+  opacity: 1;
 }
 
 .movement {
@@ -1933,10 +1944,114 @@
   white-space: nowrap;
 }
 
+/* --- Minimum-width notice -------------------------------------------- */
+
+/* Inert at every supported width. Revealed only by the ≤1023px query below,
+   where it is the sole content, so no supported viewport ever renders it. */
+.minWidthNotice {
+  display: none;
+}
+
+.minWidthInner {
+  max-width: 42ch;
+  display: grid;
+  gap: 8px;
+  padding: var(--wsv2-canvas-pad);
+  text-align: left;
+}
+
+.minWidthHeadline {
+  margin: 0;
+  font-size: 17px;
+  line-height: 23px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.minWidthDetail {
+  margin: 0;
+  color: var(--wsv2-text-3);
+  font-size: var(--wsv2-support-size);
+  line-height: var(--wsv2-support-line);
+}
+
+/* --- Narrow-width behaviour ------------------------------------------
+
+   The approved 1440×900 composition is untouched: no rule here applies at or
+   above 1280px, so the four fixed side-column widths, canvas padding and
+   Decision Plate layout are byte-for-byte identical at 1440×900.
+
+   The strategy is deliberately the least-complex one the architecture
+   supports: the four-plane grid is preserved at every supported width and the
+   three side planes are trimmed in two restrained steps so the Verification
+   Canvas stays the primary (widest) column and the page never overflows
+   horizontally. No off-canvas drawers, panels, gestures or animated sheets are
+   introduced, so there is no responsive panel state to manage and keyboard
+   order is unchanged. Below the practical 1024px floor a truthful notice
+   replaces the grid rather than presenting a clipped interface. */
+
+/* Tier A — 1024px ≤ width ≤ 1279px: trim side planes; allow the Decision Plate
+   to wrap so its actions are never clipped. */
+@media (max-width: 1279px) {
+  .root {
+    --wsv2-canvas-pad: clamp(18px, 2vw, 28px);
+    grid-template-columns: 216px 192px minmax(0, 1fr) 284px;
+  }
+
+  .plateMain {
+    flex-wrap: wrap;
+  }
+
+  .plateActionGroup {
+    flex-wrap: wrap;
+  }
+}
+
+/* Tier B — 1024px ≤ width ≤ 1099px: trim further while keeping the canvas the
+   widest column and all four planes reachable. */
+@media (max-width: 1099px) {
+  .root {
+    --wsv2-canvas-pad: clamp(16px, 1.8vw, 24px);
+    grid-template-columns: 188px 168px minmax(0, 1fr) 248px;
+  }
+}
+
+/* Below the supported floor — under 1024px the dense workstation cannot be
+   presented truthfully. Remove the planes from the layout and the a11y /
+   keyboard tree entirely and show the restrained notice as the only content,
+   so covered content can never be operated by keyboard behind an overlay. */
+@media (max-width: 1023px) {
+  .queue,
+  .spine,
+  .canvas,
+  .inspector,
+  .shellPlanePlaceholder,
+  .shellCanvas {
+    display: none;
+  }
+
+  .minWidthNotice {
+    display: flex;
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    align-items: center;
+    justify-content: flex-start;
+    background: var(--wsv2-canvas);
+  }
+}
+
 /* --- Reduced motion --------------------------------------------------- */
 
 @media (prefers-reduced-motion: reduce) {
+  /* Belt-and-braces: CSS smooth scrolling is disabled and programmatic scrolls
+     in the client already fall back to "auto" under this preference, so no
+     essential state change depends on animation. */
   .canvasBody {
     scroll-behavior: auto;
+  }
+
+  .skipLink {
+    transition: none;
   }
 }

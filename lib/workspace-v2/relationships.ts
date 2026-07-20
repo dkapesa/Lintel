@@ -23,6 +23,7 @@
 
 import type {
   ChangedFileView,
+  ConditionProgressCapability,
   EvidenceClass,
   EvidenceStatus,
   EvidenceView,
@@ -90,6 +91,10 @@ export type RequirementSeed = {
   /* Raw canonical requirement→evidence references (current supporting evidence),
      exactly as recorded (may include ids that do not resolve in this case). */
   supportingEvidenceIds: string[];
+  /* R1B.5 — the persistence capability for this requirement, resolved by the
+     adapter (which alone sees Reports and the canonical condition identity).
+     The assembler carries it through unchanged; it never derives it. */
+  conditionProgress: ConditionProgressCapability;
 };
 
 /* Whether finding ↔ requirement is deterministically derivable for this case.
@@ -415,6 +420,8 @@ export function assembleCaseArtifacts(seeds: CaseArtifactSeeds): CaseArtifacts {
       requirementSupportingEvidence.get(requirement.requirementId) ?? { status: "none" },
     relatedFindings: requirementRelatedFindings.get(requirement.requirementId) ?? { status: "none" },
     stale: requirement.stale,
+    /* Carried verbatim from the seed; the assembler asserts no persistence. */
+    conditionProgress: requirement.conditionProgress,
   }));
 
   return {

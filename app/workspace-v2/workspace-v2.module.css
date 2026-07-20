@@ -1800,6 +1800,79 @@
   line-height: 16px;
 }
 
+/* --- Persistence controls (R1B.5) ------------------------------------- */
+
+/* Restrained review-status / condition controls. Native controls, visible
+   focus, and wrapping so they stay reachable and unclipped at 1024×768. No
+   decorative motion, spinners, gradients or celebratory feedback — a saved,
+   pending or failed state is carried by text (see .mutationStatus), never by
+   colour or animation alone. */
+.mutationRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.mutationSelect {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 26px;
+  padding: 2px 6px;
+  border: 1px solid var(--wsv2-hairline);
+  border-radius: var(--wsv2-r-chip);
+  background: rgb(255 255 255 / 4%);
+  color: var(--wsv2-text-2);
+  font: inherit;
+  font-size: var(--wsv2-support-size);
+}
+
+.mutationSelect:focus-visible {
+  outline: 2px solid var(--wsv2-focus-ring);
+  outline-offset: 1px;
+}
+
+.mutationSelect:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.mutationButton {
+  flex: none;
+  min-height: 26px;
+  padding: 3px 12px;
+  border: 1px solid var(--wsv2-rail);
+  border-radius: var(--wsv2-r-chip);
+  background: rgb(255 255 255 / 5%);
+  color: var(--wsv2-text);
+  font: inherit;
+  font-size: var(--wsv2-support-size);
+  cursor: pointer;
+}
+
+.mutationButton:hover {
+  background: rgb(255 255 255 / 9%);
+}
+
+.mutationButton:focus-visible {
+  outline: 2px solid var(--wsv2-focus-ring);
+  outline-offset: 1px;
+}
+
+/* aria-disabled (not native disabled) keeps the button focusable so focus is
+   never dropped to <body> while a write is pending; activation is ignored in
+   the handler. */
+.mutationButton[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.mutationStatus {
+  margin: 0;
+  font-size: var(--wsv2-support-size);
+  line-height: 16px;
+}
+
 /* --- Tones ------------------------------------------------------------ */
 
 .toneMuted {

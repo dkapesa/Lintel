@@ -7,6 +7,7 @@
    single `InspectorProjection` and passes it in. Unknown / absent data renders
    honestly rather than as an empty string. */
 
+import { useState } from "react";
 import styles from "../workspace-v2.module.css";
 import {
   ArtifactMarker,
@@ -19,11 +20,13 @@ import {
 } from "./atoms";
 import { evidenceStatusTone, requirementStatusTone, riskTone, severityTone } from "./presentation";
 import { evidenceRank } from "../../../lib/workspace-v2/projections";
+import type { MutationResult } from "../../../lib/workspace-v2/persistence";
 import {
   APPLICABILITY_LABEL,
   type ArtifactRef,
   type CaseContextView,
   type ChangedFileView,
+  type ConditionProgressCapability,
   type DecisionPlateViewModel,
   type EvidenceComposition,
   type EvidenceView,
@@ -31,7 +34,32 @@ import {
   type InspectorProjection,
   type RelationshipState,
   type RequirementView,
+  type ReviewStateMutationCapability,
+  type ReviewStatus,
 } from "../../../lib/workspace-v2/view-model";
+
+/* The only condition capability shape the controls act on. */
+type AvailableCondition = Extract<ConditionProgressCapability, { kind: "available" }>;
+
+/* The interactive persistence bundle passed from the route owner. Present only
+   in real mode; when null the Inspector renders read-only copy from capabilities
+   alone. `busy` is true whenever ANY command is in flight, so every control is
+   disabled to prevent a concurrent or duplicate write; `pending`/
+   `pendingConditionKey` mark the exact in-flight command for its own control. */
+export type InspectorMutations = {
+  review: {
+    pending: boolean;
+    busy: boolean;
+    result: MutationResult | null;
+    onApply: (status: ReviewStatus) => void;
+  };
+  condition: {
+    pendingConditionKey: string | null;
+    busy: boolean;
+    result: { conditionKey: string; result: MutationResult } | null;
+    onToggle: (capability: AvailableCondition, intent: "clear" | "reopen") => void;
+  };
+};
 
 const ARTIFACT_KIND_LABEL: Record<ArtifactRef["kind"], string> = {
   change: "Change",
@@ -52,11 +80,17 @@ export function WorkspaceInspector({
   canClear,
   onClear,
   onActivate,
+  reviewStateMutation,
+  mutations,
 }: {
   projection: InspectorProjection;
   canClear: boolean;
   onClear: () => void;
   onActivate: (ref: ArtifactRef) => void;
+  /* Case-level review-status capability (from the active case). */
+  reviewStateMutation: ReviewStateMutationCapability;
+  /* Interactive persistence handlers, or null in read-only / fixture mode. */
+  mutations: InspectorMutations | null;
 }) {
   return (
     <aside className={styles.inspector} aria-label="Inspector">
@@ -86,7 +120,11 @@ export function WorkspaceInspector({
           <EvidenceInspector record={projection.evidence} onActivate={onActivate} />
         ) : null}
         {projection.mode === "requirement" ? (
-          <RequirementInspector requirement={projection.requirement} onActivate={onActivate} />
+          <RequirementInspector
+            requirement={projection.requirement}
+            onActivate={onActivate}
+            conditionMutations={mutations?.condition ?? null}
+          />
         ) : null}
         {projection.mode === "decision-context" ? (
           <DecisionContextInspector decision={projection.decision} caseTitle={projection.caseTitle} />
@@ -98,6 +136,8 @@ export function WorkspaceInspector({
             composition={projection.composition}
             headSha={projection.headSha}
             updatedAt={projection.updatedAt}
+            reviewStateMutation={reviewStateMutation}
+            reviewMutations={mutations?.review ?? null}
           />
         ) : null}
       </div>
@@ -339,9 +379,11 @@ function EvidenceInspector({
 function RequirementInspector({
   requirement,
   onActivate,
+  conditionMutations,
 }: {
   requirement: RequirementView;
   onActivate: (ref: ArtifactRef) => void;
+  conditionMutations: InspectorMutations["condition"] | null;
 }) {
   return (
     <>
@@ -364,6 +406,11 @@ function RequirementInspector({
         </p>
       </InspectorGroup>
 
+      <ConditionProgressControl
+        capability={requirement.conditionProgress}
+        mutations={conditionMutations}
+      />
+
       <RelationshipSection
         label="Current supporting evidence"
         state={requirement.supportingEvidence}
@@ -380,6 +427,220 @@ function RequirementInspector({
         unresolvedLabel="Observation reference could not be resolved"
       />
     </>
+  );
+}
+
+/* --- Persistence controls (R1B.5) ------------------------------------- */
+
+/* Restrained inline mutation status. Text — never colour alone — carries the
+   outcome; the tone class is supplementary. This is NOT a live region: the route
+   owner announces the same message once via its polite region, so putting a live
+   role here too would double-speak and announce on every render. */
+function MutationStatus({ result }: { result: MutationResult }) {
+  const tone =
+    result.outcome === "persisted"
+      ? styles.toneSuccess
+      : result.outcome === "unchanged"
+        ? styles.toneMuted
+        : result.outcome === "unavailable"
+          ? styles.toneWarning
+          : styles.toneDanger;
+  return <p className={`${styles.mutationStatus} ${tone}`}>{result.message}</p>;
+}
+
+/* Clear / reopen an exact persisted merge condition. Only rendered as an active
+   control when the requirement maps to a canonical condition (`available`);
+   otherwise it explains, truthfully, why progress cannot be persisted here. */
+function ConditionProgressControl({
+  capability,
+  mutations,
+}: {
+  capability: ConditionProgressCapability;
+  mutations: InspectorMutations["condition"] | null;
+}) {
+  if (capability.kind === "read-only-sample") {
+    return (
+      <InspectorGroup label="Condition progress">
+        <p className={styles.inspectorEmpty}>
+          Sample condition. Progress is demonstrative here and is never written to this browser.
+        </p>
+      </InspectorGroup>
+    );
+  }
+
+  if (capability.kind === "read-only") {
+    return (
+      <InspectorGroup label="Condition progress">
+        <p className={styles.inspectorEmpty}>{capability.reason}</p>
+      </InspectorGroup>
+    );
+  }
+
+  /* Available identity but no interactive handler (e.g. the mutation service
+     could not be created in this browser): explain rather than show a bare
+     disabled control. */
+  if (mutations === null) {
+    return (
+      <InspectorGroup label="Condition progress">
+        <p className={styles.inspectorText}>
+          Recorded as <strong>{capability.cleared ? "cleared" : "open"}</strong>.
+        </p>
+        <p className={styles.inspectorEmpty}>
+          Changes cannot be saved in this browser right now, so condition progress is read-only.
+        </p>
+      </InspectorGroup>
+    );
+  }
+
+  const pending = mutations.pendingConditionKey === capability.conditionKey;
+  const disabled = mutations.busy;
+  const intent: "clear" | "reopen" = capability.cleared ? "reopen" : "clear";
+  const label = capability.cleared ? "Reopen condition" : "Mark cleared";
+  const result =
+    mutations.result && mutations.result.conditionKey === capability.conditionKey
+      ? mutations.result.result
+      : null;
+
+  return (
+    <InspectorGroup label="Condition progress">
+      <p className={styles.inspectorText}>
+        {capability.cleared ? (
+          <>
+            Recorded as <strong>cleared</strong>. This tracks progress only — it does not verify the
+            evidence, resolve the finding, record a Human Decision, or make the merge safe.
+          </>
+        ) : (
+          <>
+            Recorded as <strong>open</strong>. Clearing records progress only; it is not evidence
+            verification or a decision.
+          </>
+        )}
+      </p>
+      <button
+        type="button"
+        className={styles.mutationButton}
+        data-mutation-control={`condition:${capability.conditionKey}`}
+        aria-disabled={disabled}
+        onClick={() => {
+          if (disabled) return;
+          mutations.onToggle(capability, intent);
+        }}
+      >
+        {pending ? "Saving…" : label}
+      </button>
+      {result ? <MutationStatus result={result} /> : null}
+    </InspectorGroup>
+  );
+}
+
+/* Review-status control. Rendered only on the resting Case Context surface. Uses
+   native controls (a <select> plus an explicit Apply button); moving through the
+   select with arrow keys changes only local UI state and never persists. */
+function ReviewStatusControl({
+  capability,
+  mutations,
+}: {
+  capability: ReviewStateMutationCapability;
+  mutations: InspectorMutations["review"] | null;
+}) {
+  if (capability.kind === "read-only-sample") {
+    return (
+      <InspectorGroup label="Review status">
+        <p className={styles.inspectorEmpty}>
+          Sample review status. It is demonstrative here and is never written to this browser.
+        </p>
+      </InspectorGroup>
+    );
+  }
+
+  if (capability.kind === "unavailable" || capability.kind === "storage-unavailable") {
+    return (
+      <InspectorGroup label="Review status">
+        <p className={styles.inspectorEmpty}>{capability.reason}</p>
+      </InspectorGroup>
+    );
+  }
+
+  /* Available identity but no interactive handler: explain rather than show a
+     bare disabled control. */
+  if (mutations === null) {
+    return (
+      <InspectorGroup label="Review status">
+        <p className={styles.inspectorText}>
+          {capability.recorded ? "Recorded status" : "Provisional status"}:{" "}
+          <strong>{capability.currentStatus}</strong>
+        </p>
+        <p className={styles.inspectorEmpty}>
+          Changes cannot be saved in this browser right now, so the status is read-only.
+        </p>
+      </InspectorGroup>
+    );
+  }
+
+  /* Keyed by caseId so the local select resets to the new case's status when the
+     selected case changes, but persists across an in-place reprojection. */
+  return <ReviewStatusForm key={capability.caseId} capability={capability} mutations={mutations} />;
+}
+
+function ReviewStatusForm({
+  capability,
+  mutations,
+}: {
+  capability: Extract<ReviewStateMutationCapability, { kind: "available" }>;
+  mutations: InspectorMutations["review"];
+}) {
+  const [selected, setSelected] = useState<ReviewStatus>(capability.currentStatus);
+  const pending = mutations.pending;
+  const disabled = mutations.busy;
+  const result = mutations.result;
+
+  return (
+    <InspectorGroup label="Review status">
+      <p className={styles.inspectorText}>
+        {capability.recorded ? (
+          <>
+            Recorded status: <strong>{capability.currentStatus}</strong>
+          </>
+        ) : (
+          <>
+            No recorded review status yet. Showing the provisional status derived from the
+            recommendation: <strong>{capability.currentStatus}</strong>. Applying records it for
+            this case; it is not a Human Decision.
+          </>
+        )}
+      </p>
+      <div className={styles.mutationRow}>
+        <label className={styles.visuallyHidden} htmlFor="wsv2-review-status-select">
+          Review status
+        </label>
+        <select
+          id="wsv2-review-status-select"
+          className={styles.mutationSelect}
+          value={selected}
+          disabled={disabled}
+          onChange={(event) => setSelected(event.target.value as ReviewStatus)}
+        >
+          {capability.options.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          className={styles.mutationButton}
+          data-mutation-control="review"
+          aria-disabled={disabled}
+          onClick={() => {
+            if (disabled) return;
+            mutations.onApply(selected);
+          }}
+        >
+          {pending ? "Saving…" : "Apply"}
+        </button>
+      </div>
+      {result ? <MutationStatus result={result} /> : null}
+    </InspectorGroup>
   );
 }
 
@@ -494,17 +755,23 @@ function CaseContextInspector({
   composition,
   headSha,
   updatedAt,
+  reviewStateMutation,
+  reviewMutations,
 }: {
   title: string;
   context: CaseContextView;
   composition: EvidenceComposition;
   headSha: string | null;
   updatedAt: string;
+  reviewStateMutation: ReviewStateMutationCapability;
+  reviewMutations: InspectorMutations["review"] | null;
 }) {
   return (
     <>
       <h2 className={styles.inspectorTitle}>{title}</h2>
       <p className={styles.inspectorLead}>{context.summary}</p>
+
+      <ReviewStatusControl capability={reviewStateMutation} mutations={reviewMutations} />
 
       <InspectorGroup label="Reviewer focus">
         <ul className={styles.inspectorPoints}>

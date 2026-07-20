@@ -151,6 +151,59 @@ export type RelationshipState =
   | { status: "unavailable"; reason: string }
   | { status: "unresolved"; unresolved: string[] };
 
+/* --- Mutation capabilities (R1B.5) ------------------------------------ */
+
+/* Whether a Report's review status can be persisted from Workspace V2, and if
+   not, exactly why. These are computed by the adapter (the only layer that sees
+   Reports and storage) and travel as plain, serialisable data so presentation
+   components never touch storage, keys or Report objects. Four cases are kept
+   distinct so the interface never claims a write is possible when it is not:
+
+     available          — the review-state key maps to exactly ONE projected
+                          case, so a status can be assigned without ambiguity.
+                          `currentStatus` is the status shown; `recorded` is true
+                          only when that status came from an authoritative
+                          recorded review state (not a recommendation-derived
+                          provisional label). `options` is the exact production
+                          status vocabulary.
+     unavailable        — the key is shared by more than one stored analysis, so
+                          a recorded status cannot be attributed to a single case.
+                          This is a deliberate truthfulness boundary, not an error.
+     storage-unavailable — the recorded review-state store is present but could
+                          not be read, so a write cannot be made safely.
+     read-only-sample    — fixture/sample data, which is never persisted. */
+export type ReviewStateMutationCapability =
+  | {
+      kind: "available";
+      caseId: string;
+      currentStatus: ReviewStatus;
+      recorded: boolean;
+      options: ReviewStatus[];
+    }
+  | { kind: "unavailable"; reason: string }
+  | { kind: "storage-unavailable"; reason: string }
+  | { kind: "read-only-sample" };
+
+/* Whether an exact persisted merge condition sits behind a displayed
+   requirement, and whether it is currently cleared. Only requirements that map
+   to a canonical `reportConditions(report)` entry — proven through the merge
+   contract's `condition-<index>` reference, never text or position — are
+   writable. Everything else is read-only with a precise reason:
+
+     available        — this requirement carries the exact persisted condition
+                        identity (`conditionKey`), so its progress can be
+                        cleared/reopened. `cleared` is the current persisted
+                        state.
+     read-only        — the requirement is a real merge-contract clause but is
+                        NOT a canonical persisted merge condition (a test gap,
+                        finding, assumption, operational-readiness clause, …), so
+                        no condition progress can be recorded for it.
+     read-only-sample — fixture/sample data, which is never persisted. */
+export type ConditionProgressCapability =
+  | { kind: "available"; caseId: string; conditionKey: string; cleared: boolean }
+  | { kind: "read-only"; reason: string }
+  | { kind: "read-only-sample" };
+
 /* --- Artifact view models --------------------------------------------- */
 
 export type ChangedFileView = {
@@ -225,6 +278,10 @@ export type RequirementView = {
      otherwise `unavailable` with a reason. */
   relatedFindings: RelationshipState;
   stale: boolean;
+  /* R1B.5 — whether an exact persisted merge condition sits behind this
+     requirement and can have its progress cleared/reopened. Read-only for
+     non-condition requirements and for sample data. */
+  conditionProgress: ConditionProgressCapability;
 };
 
 export type ReadinessView = {
@@ -403,6 +460,10 @@ export type CaseDetail = {
   riskScore: number;
   confidence: Confidence;
   reviewStatus: ReviewStatus;
+  /* R1B.5 — whether this case's review status can be persisted, and if not,
+     exactly why. Case-level because the review-state key identifies the case,
+     not any single artifact. */
+  reviewStateMutation: ReviewStateMutationCapability;
   executiveSummary: string;
   changedFiles: ChangedFileView[];
   findings: FindingView[];

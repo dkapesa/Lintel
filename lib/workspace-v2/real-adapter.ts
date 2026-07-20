@@ -47,6 +47,7 @@ import {
 import {
   buildMergeContract,
   type MergeContract,
+  type MergeContractClause,
 } from "../merge-contract";
 import {
   humanDecisionLedgerKeyForReport,
@@ -68,6 +69,7 @@ import {
   readReviewStates,
   reviewStateKeyForReport,
   REVIEW_STATE_STORAGE_KEY,
+  REVIEW_STATUSES,
   type ReportReviewState,
 } from "../review-state";
 import {
@@ -102,6 +104,7 @@ import {
   type CaseContextView,
   type CaseDetail,
   type ChangedFileView,
+  type ConditionProgressCapability,
   type DecisionApplicability,
   type DecisionDivergence,
   type DecisionPlateViewModel,
@@ -113,6 +116,7 @@ import {
   type QueueGroupId,
   type Recommendation,
   type RequirementView,
+  type ReviewStateMutationCapability,
   type ReviewStatus,
   type WorkspaceEmptySnapshot,
   type WorkspaceIdentity,
@@ -218,16 +222,104 @@ function reviewSignalFor(
   return { kind: "recorded", status: state.status, updatedAt: state.updatedAt };
 }
 
-/* Unresolved (uncleared) merge conditions for THIS report. The condition
-   progress key is derived from the report's own identity + condition text
+/* Read-only condition-progress snapshot for THIS report: the canonical
+   condition set and the currently-cleared condition keys. The condition-progress
+   key is derived from the report's own identity + condition text
    (`conditionProgressReportKey`), so a read here is authoritative to the report
    and never picks up progress recorded against a different report, head or
    condition set (r1b2 condition-progress contract). Reads are read-only. */
-function unresolvedConditionCount(storage: Storage, report: Report): number {
+type ConditionProgressSnapshot = { conditions: string[]; clearedKeys: Set<string> };
+
+function readConditionSnapshot(storage: Storage, report: Report): ConditionProgressSnapshot {
   const conditions = reportConditions(report);
-  if (conditions.length === 0) return 0;
-  const cleared = readConditionProgress(storage, report, conditions);
-  return conditions.filter((condition) => !cleared.has(conditionKey(condition))).length;
+  if (conditions.length === 0) return { conditions, clearedKeys: new Set<string>() };
+  return { conditions, clearedKeys: readConditionProgress(storage, report, conditions) };
+}
+
+function unresolvedConditionCount(snapshot: ConditionProgressSnapshot): number {
+  return snapshot.conditions.filter((condition) => !snapshot.clearedKeys.has(conditionKey(condition)))
+    .length;
+}
+
+/* --- Condition-progress write capability (R1B.5) ---------------------- */
+
+/* The exact reason a merge-contract requirement is NOT a writable persisted
+   condition. Only clauses sourced from the readiness report's "Conditions
+   before merge" list correspond to `reportConditions(report)`; every other
+   clause (test gap, blocking finding, open assumption, operational readiness,
+   changed-file scope, Change-Passport validation, verifier boundary) is a real
+   requirement with no persisted condition identity to record progress against. */
+const CONDITION_READ_ONLY_REASON =
+  "Progress can be persisted only for the merge conditions listed in the readiness report. " +
+  "This requirement is derived from a different signal, so it is read-only here.";
+
+/* Resolve the persistence capability for one merge-contract clause. A clause is
+   writable ONLY when it is a canonical merge condition, proven through the
+   authoritative `condition-<index>` reference the merge contract embeds in the
+   clause's requirement — which ties it to `decisionConditions(...)[index]`, i.e.
+   `reportConditions(report)[index]`. The exact persisted `conditionKey` is then
+   carried through the projection. Requirement array position, statement text and
+   severity/category are never used to establish the mapping (r1b5). */
+function conditionCapabilityForClause(
+  clause: MergeContractClause,
+  caseId: string,
+  snapshot: ConditionProgressSnapshot,
+): ConditionProgressCapability {
+  if (clause.source !== "Conditions before merge") {
+    return { kind: "read-only", reason: CONDITION_READ_ONLY_REASON };
+  }
+  const reference = clause.requirements
+    .flatMap((requirement) => requirement.referencedIds)
+    .find((id) => /^condition-\d+$/.test(id));
+  if (!reference) {
+    return { kind: "read-only", reason: CONDITION_READ_ONLY_REASON };
+  }
+  const index = Number.parseInt(reference.slice("condition-".length), 10);
+  if (!Number.isInteger(index) || index < 0 || index >= snapshot.conditions.length) {
+    /* A condition clause whose canonical index cannot be resolved in the current
+       condition set is left read-only rather than mapped by guesswork. */
+    return { kind: "read-only", reason: CONDITION_READ_ONLY_REASON };
+  }
+  const key = conditionKey(snapshot.conditions[index]);
+  return { kind: "available", caseId, conditionKey: key, cleared: snapshot.clearedKeys.has(key) };
+}
+
+/* --- Review-state write capability (R1B.5) ---------------------------- */
+
+/* Resolve the review-status persistence capability for one case from its
+   review-state signal. A recorded or untouched (single-key) case is writable;
+   a shared/ambiguous key is a deliberate truthfulness boundary (unavailable),
+   and an unreadable store is storage-unavailable. `currentStatus` is the status
+   the Inspector shows; `recorded` distinguishes an authoritative recorded status
+   from a recommendation-derived provisional label so the control never presents
+   a fallback as though it were persisted. */
+function reviewMutationCapabilityFor(
+  signal: ReviewStateSignal,
+  caseId: string,
+  currentStatus: ReviewStatus,
+): ReviewStateMutationCapability {
+  if (signal.kind === "unavailable") {
+    return {
+      kind: "storage-unavailable",
+      reason:
+        "Recorded review state could not be read in this browser, so the status cannot be changed safely here.",
+    };
+  }
+  if (signal.kind === "ambiguous") {
+    return {
+      kind: "unavailable",
+      reason:
+        "This report identity is shared by more than one stored analysis, so a recorded review " +
+        "status cannot be assigned to a single case without ambiguity.",
+    };
+  }
+  return {
+    kind: "available",
+    caseId,
+    currentStatus,
+    recorded: signal.kind === "recorded",
+    options: [...REVIEW_STATUSES],
+  };
 }
 
 /* Displayed review status for a case that has NO authoritative recorded state.
@@ -300,6 +392,7 @@ function buildCaseProjectionContext(
   caseId: string,
   createdAt: string,
   canonicalRun: CanonicalReviewRunManifest | null,
+  conditionSnapshot: ConditionProgressSnapshot,
 ): CaseProjectionContext {
   const headSha = canonicalRun?.headSha;
 
@@ -370,6 +463,9 @@ function buildCaseProjectionContext(
     /* Raw canonical current supporting evidence; resolved by the assembler so
        an unresolved stored reference is surfaced, not silently dropped. */
     supportingEvidenceIds: clause.currentSupportingEvidenceIds,
+    /* R1B.5 — exact condition-progress capability, derived from the clause's
+       canonical `condition-<index>` reference (never position or text). */
+    conditionProgress: conditionCapabilityForClause(clause, caseId, conditionSnapshot),
   }));
 
   const artifacts = assembleCaseArtifacts({
@@ -578,6 +674,7 @@ export function projectContextToCaseDetail(
   context: CaseProjectionContext,
   decision: DecisionPlateViewModel,
   reviewStatus: ReviewStatus,
+  reviewStateMutation: ReviewStateMutationCapability,
 ): CaseDetail {
   const { report, caseId, headSha } = context;
 
@@ -600,6 +697,8 @@ export function projectContextToCaseDetail(
     /* Authoritative recorded review status when one exists; otherwise the
        recommendation-derived provisional label (resolved by the caller). */
     reviewStatus,
+    /* R1B.5 — whether that status can be persisted, and if not, exactly why. */
+    reviewStateMutation,
     executiveSummary: report.verdict.summary,
     changedFiles: context.changedFiles,
     findings: context.findings,
@@ -661,10 +760,21 @@ function projectCase(
   const canonicalRun = entry.canonicalRun ?? null;
   const caseId = `report-${entry.createdAt}`;
 
+  /* One read-only condition-progress snapshot for the whole case, reused for the
+     writable per-requirement capability, the unresolved-condition count used in
+     grouping, and the blocking-order signal — a single read, no double scan. */
+  const conditionSnapshot = readConditionSnapshot(storage, report);
+
   /* The single canonical build for the whole case: evidence hierarchy, merge
      contract and the fully-linked artifact graph, reused for decision
      resolution, grouping and the final `CaseDetail`. */
-  const context = buildCaseProjectionContext(report, caseId, entry.createdAt, canonicalRun);
+  const context = buildCaseProjectionContext(
+    report,
+    caseId,
+    entry.createdAt,
+    canonicalRun,
+    conditionSnapshot,
+  );
 
   const decision = readDecisionProjection(
     storage,
@@ -677,7 +787,7 @@ function projectCase(
 
   const reviewState = reviewSignalFor(reviewChannel, report, keyCounts);
   const openBlocking = openBlockingRequirementCount(context.requirements);
-  const unresolvedConditions = unresolvedConditionCount(storage, report);
+  const unresolvedConditions = unresolvedConditionCount(conditionSnapshot);
 
   const groupingInput: CaseGroupingInput = {
     recommendation: report.verdict.recommendation,
@@ -696,7 +806,9 @@ function projectCase(
       ? reviewState.status
       : displayedReviewStatus(grouping, report.verdict.recommendation);
 
-  const detail = projectContextToCaseDetail(context, decision, reviewStatus);
+  const reviewStateMutation = reviewMutationCapabilityFor(reviewState, caseId, reviewStatus);
+
+  const detail = projectContextToCaseDetail(context, decision, reviewStatus, reviewStateMutation);
 
   const decisionApplicable =
     decision.status === "recorded" &&

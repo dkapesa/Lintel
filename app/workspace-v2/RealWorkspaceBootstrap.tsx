@@ -13,16 +13,34 @@
 
    Presentational components never see `localStorage` — they only ever receive a
    snapshot. A failed real load resolves to a truthful empty / unavailable
-   snapshot from the adapter and never to fixture content. */
+   snapshot from the adapter and never to fixture content.
 
-import { useEffect, useState } from "react";
+   R1B.5 — this bootstrap is also the single place the writable `localStorage` is
+   handed to the narrow `WorkspacePersistence` mutation service, and the only
+   owner of the authoritative reprojection (`reload`). After a verified write the
+   client asks this bootstrap to reload; it re-runs the SAME read-only adapter
+   with the SAME `reportId`, so the authoritative adapter remains the one source
+   of ready snapshot projection. A reload that throws leaves the last snapshot in
+   place (the client surfaces a truthful "saved but not refreshed") rather than
+   replacing real data with a fabricated or fixture state. */
+
+import { useCallback, useEffect, useMemo, useState } from "react";
 import WorkspaceV2Client from "./WorkspaceV2Client";
 import { createRealWorkspaceAdapter } from "../../lib/workspace-v2/real-adapter";
+import {
+  createWorkspacePersistence,
+  type WorkspacePersistence,
+} from "../../lib/workspace-v2/persistence";
 import {
   type WorkspaceIdentity,
   type WorkspaceProvenance,
   type WorkspaceSnapshot,
 } from "../../lib/workspace-v2/view-model";
+
+/* Outcome of an authoritative reprojection. `ok` is false only when the reload
+   itself threw (storage access failure); in that case the previous snapshot is
+   deliberately kept so the interface stays recoverable and truthful. */
+export type ReloadOutcome = { ok: boolean };
 
 const BOOTSTRAP_IDENTITY: WorkspaceIdentity = {
   workspaceId: "local-report",
@@ -72,5 +90,31 @@ export default function RealWorkspaceBootstrap({ reportId }: { reportId: string 
     };
   }, [reportId]);
 
-  return <WorkspaceV2Client snapshot={snapshot} />;
+  /* The one mutation service for real mode, built once with the writable
+     storage. Undefined only in the exceptional case where `localStorage` is
+     entirely unavailable; the client then renders read-only, not a fake control. */
+  const persistence = useMemo<WorkspacePersistence | null>(() => {
+    try {
+      return createWorkspacePersistence(window.localStorage);
+    } catch {
+      return null;
+    }
+  }, []);
+
+  /* Authoritative reprojection through the SAME read-only adapter and reportId.
+     On success the fresh snapshot replaces the current one (the client preserves
+     selection/focus across the prop change). On a hard failure the current
+     snapshot is kept and `ok: false` lets the client tell the truth. */
+  const reload = useCallback(async (): Promise<ReloadOutcome> => {
+    try {
+      const adapter = createRealWorkspaceAdapter(window.localStorage);
+      const next = await adapter.loadSnapshot({ scenario: "default", reportId });
+      setSnapshot(next);
+      return { ok: true };
+    } catch {
+      return { ok: false };
+    }
+  }, [reportId]);
+
+  return <WorkspaceV2Client snapshot={snapshot} persistence={persistence} reload={reload} />;
 }

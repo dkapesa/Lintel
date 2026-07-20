@@ -15,34 +15,64 @@
    receive projections and callbacks; none of them holds a competing copy of
    the selected case or focused artifact.
 
-   Fixture-fed only. No global state, no context, no persistence, no
-   localStorage / sessionStorage, no API calls, no ledger reads or writes, and
-   no import from app/visual-lab/workspace-v2/**. */
+   Persistence (R1B.5). The client is the authoritative owner of the mutation
+   flow, but never touches storage itself: in real mode the bootstrap injects a
+   narrow `WorkspacePersistence` service and a `reload` reprojection. The client
+   validates the command target against the selected case, marks that exact
+   action pending, runs the write, and only after a verified persist asks the
+   bootstrap to reproject through the read-only adapter — it never optimistically
+   edits queue groups, review status, condition status or counts. In fixture mode
+   both are absent, so no control is interactive and nothing is written. No global
+   state, no context, no direct localStorage, no ledger writes, and no import from
+   app/visual-lab/workspace-v2/**. */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import styles from "./workspace-v2.module.css";
 import { WorkspaceQueue } from "./components/WorkspaceQueue";
 import { EvidenceSpine } from "./components/EvidenceSpine";
 import { VerificationCanvas } from "./components/VerificationCanvas";
-import { WorkspaceInspector } from "./components/WorkspaceInspector";
+import { WorkspaceInspector, type InspectorMutations } from "./components/WorkspaceInspector";
 import { WorkspaceShellState } from "./components/WorkspaceShellState";
 import { WorkstationMinWidthNotice } from "./components/atoms";
-import { resolveInspector, stageForArtifactKind } from "../../lib/workspace-v2/projections";
+import {
+  resolveArtifactRef,
+  resolveInspector,
+  stageForArtifactKind,
+} from "../../lib/workspace-v2/projections";
+import type {
+  MutationResult,
+  WorkspacePersistence,
+} from "../../lib/workspace-v2/persistence";
+import type { ReloadOutcome } from "./RealWorkspaceBootstrap";
 import {
   WORKSPACE_V2_STAGES,
   type ArtifactKind,
   type ArtifactRef,
   type CaseDetail,
+  type ConditionProgressCapability,
+  type ReviewStatus,
   type StageId,
   type WorkspaceReadySnapshot,
   type WorkspaceSnapshot,
 } from "../../lib/workspace-v2/view-model";
 
-export default function WorkspaceV2Client({ snapshot }: { snapshot: WorkspaceSnapshot }) {
+/* An `available` condition capability — the only shape the client acts on. */
+type AvailableCondition = Extract<ConditionProgressCapability, { kind: "available" }>;
+
+export default function WorkspaceV2Client({
+  snapshot,
+  persistence,
+  reload,
+}: {
+  snapshot: WorkspaceSnapshot;
+  /* Present only in real mode. Absent → the workstation is read-only. */
+  persistence?: WorkspacePersistence | null;
+  reload?: () => Promise<ReloadOutcome>;
+}) {
   if (snapshot.status !== "ready") {
     return <WorkspaceShellState snapshot={snapshot} />;
   }
-  return <ReadyWorkspace snapshot={snapshot} />;
+  return <ReadyWorkspace snapshot={snapshot} persistence={persistence ?? null} reload={reload ?? null} />;
 }
 
 /* Reduced-motion-aware scroll behaviour. Programmatic smooth scrolling is
@@ -65,12 +95,33 @@ function scrollBehavior(): ScrollBehavior {
    effect deterministically (no arbitrary delay). */
 type FocusRequest = { ref: ArtifactRef; token: number };
 
-function ReadyWorkspace({ snapshot }: { snapshot: WorkspaceReadySnapshot }) {
+function ReadyWorkspace({
+  snapshot,
+  persistence,
+  reload,
+}: {
+  snapshot: WorkspaceReadySnapshot;
+  persistence: WorkspacePersistence | null;
+  reload: (() => Promise<ReloadOutcome>) | null;
+}) {
   /* ---- Held UI values (single route-level owner) ---- */
   const [selectedCaseId, setSelectedCaseId] = useState<string>(snapshot.defaultCaseId);
   const [focusedArtifact, setFocusedArtifact] = useState<ArtifactRef | null>(null);
   const [activeStage, setActiveStage] = useState<StageId>("change");
   const [decisionFocused, setDecisionFocused] = useState(false);
+
+  /* ---- Persistence flow state (R1B.5) ----
+     `pendingMutation` is the exact in-flight command identity; while set, every
+     mutation control is disabled so a rapid second click / Space cannot start a
+     duplicate write or a second timestamp. Read navigation is never disabled.
+     The two result holders drive the restrained inline status + a polite
+     announcement; they are the ONLY places a mutation outcome is shown. */
+  const [pendingMutation, setPendingMutation] = useState<string | null>(null);
+  const [reviewResult, setReviewResult] = useState<MutationResult | null>(null);
+  const [conditionResult, setConditionResult] = useState<
+    { conditionKey: string; result: MutationResult } | null
+  >(null);
+  const interactive = persistence !== null && reload !== null;
   /* Pending post-render focus move for related-artifact navigation. Ordinary
      record clicks never set this (focus is already on the clicked control), so
      de-emphasis / focus is only forcibly moved when the Inspector drives it. */
@@ -135,6 +186,10 @@ function ReadyWorkspace({ snapshot }: { snapshot: WorkspaceReadySnapshot }) {
       setDecisionFocused(false);
       setActiveStage("change");
       setFocusRequest(null);
+      /* A mutation result belongs to the case it was applied to; clear it so a
+         previous case's status message never bleeds onto a different case. */
+      setReviewResult(null);
+      setConditionResult(null);
       decisionTriggerRef.current = null;
       const body = bodyRef.current;
       if (body) {
@@ -216,6 +271,116 @@ function ReadyWorkspace({ snapshot }: { snapshot: WorkspaceReadySnapshot }) {
     setFocusedArtifact(null);
     setDecisionFocused(true);
   }, []);
+
+  /* ---- Persistence commands (R1B.5) ----
+     Both commands follow the same disciplined sequence: validate the command
+     still targets the selected case, mark that exact action pending, run the
+     narrow (already read-after-write-verified) persistence command, and only on
+     a verified persist ask the bootstrap to reproject through the read-only
+     adapter. Nothing on screen is optimistically edited — queue groups, review
+     status, condition status and counts change only via that reprojection. If
+     the reprojection itself fails after a verified write, the interface stays
+     truthful: the change was saved but the workspace could not refresh. */
+
+  /* After a reprojection replaces the control's subtree, focus can land on
+     <body>. Restore it to the initiating control when that happened; otherwise
+     leave focus exactly where the browser kept it (ordinary success). */
+  const restoreMutationFocus = useCallback((controlId: string) => {
+    window.requestAnimationFrame(() => {
+      if (document.activeElement && document.activeElement !== document.body) return;
+      const control = document.querySelector<HTMLElement>(
+        `[data-mutation-control="${controlId}"]`,
+      );
+      control?.focus();
+    });
+  }, []);
+
+  const applyReviewStatus = useCallback(
+    async (nextStatus: ReviewStatus) => {
+      if (!persistence || !reload) return;
+      /* One write at a time: ignore activation while any command is pending. */
+      if (pendingMutation) return;
+      const capability = caseById.get(selectedCaseId)?.reviewStateMutation;
+      if (!capability || capability.kind !== "available") return;
+      /* Reject a stale command whose target is no longer the selected case. */
+      if (capability.caseId !== selectedCaseId) return;
+
+      setPendingMutation(`review:${capability.caseId}`);
+      setReviewResult(null);
+      const result = persistence.applyReviewStatus({
+        kind: "review-status",
+        caseId: capability.caseId,
+        status: nextStatus,
+      });
+
+      if (result.outcome === "persisted") {
+        const outcome = await reload();
+        if (outcome.ok) {
+          setReviewResult(result);
+          announce(result.message);
+        } else {
+          const message =
+            "Review status was saved, but the workspace could not be refreshed. The status is " +
+            "stored; reopen the workspace to see it applied.";
+          setReviewResult({ outcome: "persisted", message });
+          announce(message);
+        }
+      } else {
+        /* unchanged / unavailable / failed / verification-mismatch: the previous
+           authoritative state is retained and the requested value is NOT shown as
+           saved. */
+        setReviewResult(result);
+        announce(result.message);
+      }
+
+      setPendingMutation(null);
+      restoreMutationFocus("review");
+    },
+    [persistence, reload, pendingMutation, caseById, selectedCaseId, announce, restoreMutationFocus],
+  );
+
+  const toggleCondition = useCallback(
+    async (capability: AvailableCondition, intent: "clear" | "reopen") => {
+      if (!persistence || !reload) return;
+      if (pendingMutation) return;
+      /* Reject a stale command whose target is no longer the selected case. */
+      if (capability.caseId !== selectedCaseId) return;
+
+      const controlId = `condition:${capability.conditionKey}`;
+      setPendingMutation(`condition:${capability.caseId}:${capability.conditionKey}`);
+      setConditionResult(null);
+      const result = persistence.applyConditionProgress({
+        kind: "condition-progress",
+        caseId: capability.caseId,
+        conditionKey: capability.conditionKey,
+        intent,
+      });
+
+      if (result.outcome === "persisted") {
+        const outcome = await reload();
+        if (outcome.ok) {
+          setConditionResult({ conditionKey: capability.conditionKey, result });
+          announce(result.message);
+        } else {
+          const message =
+            "Condition progress was saved, but the workspace could not be refreshed. The change is " +
+            "stored; reopen the workspace to see it applied.";
+          setConditionResult({
+            conditionKey: capability.conditionKey,
+            result: { outcome: "persisted", message },
+          });
+          announce(message);
+        }
+      } else {
+        setConditionResult({ conditionKey: capability.conditionKey, result });
+        announce(result.message);
+      }
+
+      setPendingMutation(null);
+      restoreMutationFocus(controlId);
+    },
+    [persistence, reload, pendingMutation, selectedCaseId, announce, restoreMutationFocus],
+  );
 
   /* ---- Spine navigation: scroll the canvas body / mark the plate ---- */
   const goToStage = useCallback((stage: StageId) => {
@@ -320,6 +485,50 @@ function ReadyWorkspace({ snapshot }: { snapshot: WorkspaceReadySnapshot }) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [focusedArtifact, decisionFocused, clearFocus]);
 
+  /* ---- Post-reprojection focus reconciliation ----
+     After an authoritative reprojection the selected case may have moved group
+     but is still selected. A focused artifact whose identity survived stays
+     focused; one whose target disappeared is cleared truthfully so the Inspector
+     never describes an artifact that no longer exists. Selection itself is never
+     cleared here — a moved case remains selected. */
+  useEffect(() => {
+    if (focusedArtifact && !resolveArtifactRef(activeCase, focusedArtifact)) {
+      setFocusedArtifact(null);
+    }
+  }, [activeCase, focusedArtifact]);
+
+  /* The interactive mutation bundle handed to the Inspector. Present only in real
+     mode; in fixture mode it is null and the Inspector renders read-only copy
+     from the (sample) capabilities alone. */
+  const mutations: InspectorMutations | null = useMemo(() => {
+    if (!interactive) return null;
+    return {
+      review: {
+        pending: pendingMutation === `review:${activeCase.caseId}`,
+        busy: pendingMutation !== null,
+        result: reviewResult,
+        onApply: applyReviewStatus,
+      },
+      condition: {
+        pendingConditionKey:
+          pendingMutation && pendingMutation.startsWith(`condition:${activeCase.caseId}:`)
+            ? pendingMutation.slice(`condition:${activeCase.caseId}:`.length)
+            : null,
+        busy: pendingMutation !== null,
+        result: conditionResult,
+        onToggle: toggleCondition,
+      },
+    };
+  }, [
+    interactive,
+    pendingMutation,
+    activeCase.caseId,
+    reviewResult,
+    conditionResult,
+    applyReviewStatus,
+    toggleCondition,
+  ]);
+
   /* ---- Render ---- */
   return (
     <div className={styles.root}>
@@ -353,6 +562,8 @@ function ReadyWorkspace({ snapshot }: { snapshot: WorkspaceReadySnapshot }) {
         canClear={decisionFocused || focusedArtifact !== null}
         onClear={clearFocus}
         onActivate={activateArtifact}
+        reviewStateMutation={activeCase.reviewStateMutation}
+        mutations={mutations}
       />
 
       {/* Restrained polite live region for navigation the eye may miss (case

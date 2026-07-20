@@ -23,6 +23,7 @@ import { decisionMarkerFor } from "./projections";
 import { assembleCaseArtifacts } from "./relationships";
 import {
   type CaseDetail,
+  type ConditionProgressCapability,
   type DecisionActor,
   type DecisionPlateViewModel,
   type EvidenceClass,
@@ -36,6 +37,7 @@ import {
   type Recommendation,
   type RequirementImportance,
   type RequirementStatus,
+  type ReviewStateMutationCapability,
   type RiskLevel,
   type WorkspaceProvenance,
   type WorkspaceScenario,
@@ -94,9 +96,15 @@ type FixtureRequirement = {
   stale: boolean;
 };
 
+/* Sample data is demonstrative and never persisted (r1b5 fixture boundary), so
+   every mutation capability on a fixture case is fixed to `read-only-sample`.
+   The Inspector renders concise explanatory copy instead of a live control. */
+const SAMPLE_REVIEW_MUTATION: ReviewStateMutationCapability = { kind: "read-only-sample" };
+const SAMPLE_CONDITION_PROGRESS: ConditionProgressCapability = { kind: "read-only-sample" };
+
 type FixtureCaseDetail = Omit<
   CaseDetail,
-  "changedFiles" | "findings" | "evidence" | "requirements"
+  "changedFiles" | "findings" | "evidence" | "requirements" | "reviewStateMutation"
 > & {
   changedFiles: FixtureChangedFile[];
   findings: FixtureFinding[];
@@ -155,6 +163,8 @@ function finalizeFixtureCase(fixture: FixtureCaseDetail): CaseDetail {
       evidenceRequired: requirement.evidenceRequired,
       stale: requirement.stale,
       supportingEvidenceIds: requirement.supportingEvidenceIds,
+      /* Sample requirements are never persisted. */
+      conditionProgress: SAMPLE_CONDITION_PROGRESS,
     })),
     requirementLinkage: { derivable: true, findingRequirementIds },
   });
@@ -165,6 +175,8 @@ function finalizeFixtureCase(fixture: FixtureCaseDetail): CaseDetail {
     findings: artifacts.findings,
     evidence: artifacts.evidence,
     requirements: artifacts.requirements,
+    /* Sample review status is never persisted. */
+    reviewStateMutation: SAMPLE_REVIEW_MUTATION,
   };
 }
 

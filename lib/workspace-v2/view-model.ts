@@ -111,18 +111,52 @@ export const WORKSPACE_V2_STAGES: StageDefinition[] = [
   { id: "decision", label: "Human decision", domId: "wsv2-decision-plate", terminal: true },
 ];
 
-/* --- Focus model ------------------------------------------------------ */
+/* --- Focus & relationship model (R1B.3) ------------------------------- */
 
-export type ArtifactKind = "finding" | "evidence" | "requirement";
+/* Every focusable artifact in the verification graph. R1B.3 promotes changed
+   files to first-class focusable artifacts alongside findings, evidence and
+   requirements, so an engineer can traverse Change → Observation → Evidence →
+   Requirement without leaving the Canvas. */
+export type ArtifactKind = "change" | "finding" | "evidence" | "requirement";
 
 export type ArtifactRef = {
   kind: ArtifactKind;
   id: string;
 };
 
+/* A resolved, in-case related artifact the Inspector can focus. `label` and
+   `detail` are precomputed in the adapter layer so components stay purely
+   presentational and never re-scan the case to render a relationship. */
+export type RelatedArtifact = {
+  kind: ArtifactKind;
+  id: string;
+  label: string;
+  detail: string | null;
+};
+
+/* Relationship state is explicit about WHY a link is or is not present, so the
+   UI never conflates three different truths behind one empty array (R1B.3
+   relationship model):
+     linked      — one or more references resolved to in-case artifacts;
+                   `unresolved` additionally lists any stored ids that did not
+                   resolve, so a partially-resolved edge stays honest.
+     none        — the source recorded no relationship of this kind.
+     unavailable — the relationship is not derivable from this report version;
+                   carries the exact reason. Never a silent empty array.
+     unresolved  — the source recorded references but none resolve in this case
+                   (dangling stored references), surfaced rather than discarded. */
+export type RelationshipState =
+  | { status: "linked"; related: RelatedArtifact[]; unresolved: string[] }
+  | { status: "none" }
+  | { status: "unavailable"; reason: string }
+  | { status: "unresolved"; unresolved: string[] };
+
 /* --- Artifact view models --------------------------------------------- */
 
 export type ChangedFileView = {
+  /* Stable case-local identity so a changed file is a focusable artifact.
+     Cross-domain links resolve by exact path, never by this positional id. */
+  artifactId: string;
   path: string;
   /* Line counts and per-file risk are optional on the canonical Report and
      absent on many real reports. Absence is modelled as null and rendered as
@@ -131,6 +165,12 @@ export type ChangedFileView = {
   additions: number | null;
   deletions: number | null;
   risk: RiskLevel | null;
+  /* Observations (findings) whose recorded location resolves to this file. */
+  observations: RelationshipState;
+  /* Evidence that canonically identifies this changed file / source path. When
+     `none`, the Change → Observation → Evidence traversal still holds; absence
+     of a direct edge is not a denial of the chain. */
+  evidence: RelationshipState;
 };
 
 export type FindingView = {
@@ -139,12 +179,19 @@ export type FindingView = {
   title: string;
   statement: string;
   action: string;
+  /* Display location text, preserved exactly (may be "Location not recorded"). */
   file: string;
   provenance: FindingProvenance;
   category: FindingCategory;
-  /* Derived edges. Empty is a truthful "no known link" — never fabricated. */
-  supportingEvidenceIds: string[];
-  relatedRequirementIds: string[];
+  /* Change → Observation: the changed file this finding affects, resolved only
+     from an exact recorded location. */
+  affectedChange: RelationshipState;
+  /* Observation ↔ Evidence: supporting evidence, inverted from the canonical
+     evidence→finding relationship. */
+  supportingEvidence: RelationshipState;
+  /* Observation ↔ Requirement: `linked`/`none` only when the source makes the
+     correspondence deterministic; otherwise `unavailable` with a reason. */
+  relatedRequirements: RelationshipState;
 };
 
 export type EvidenceView = {
@@ -157,7 +204,12 @@ export type EvidenceView = {
   source: string;
   observedAt: string;
   stale: boolean;
-  supportsFindingIds: string[];
+  /* Observation ↔ Evidence: findings this evidence supports (canonical). */
+  supportsFindings: RelationshipState;
+  /* Evidence ↔ Requirement: requirements this evidence currently supports. */
+  supportsRequirements: RelationshipState;
+  /* Change ↔ Evidence: changed files this evidence canonically identifies. */
+  relatedChanges: RelationshipState;
 };
 
 export type RequirementView = {
@@ -167,7 +219,11 @@ export type RequirementView = {
   importance: RequirementImportance;
   status: RequirementStatus;
   evidenceRequired: string;
-  supportingEvidenceIds: string[];
+  /* Evidence ↔ Requirement: current supporting evidence (canonical). */
+  supportingEvidence: RelationshipState;
+  /* Observation ↔ Requirement: `linked`/`none` only when deterministic;
+     otherwise `unavailable` with a reason. */
+  relatedFindings: RelationshipState;
   stale: boolean;
 };
 
@@ -368,6 +424,7 @@ export type InspectorProjection =
       headSha: string | null;
       updatedAt: string;
     }
+  | { mode: "change"; changedFile: ChangedFileView }
   | { mode: "finding"; finding: FindingView }
   | { mode: "evidence"; evidence: EvidenceView }
   | { mode: "requirement"; requirement: RequirementView }

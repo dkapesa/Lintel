@@ -83,6 +83,11 @@ import {
 } from "./adapter";
 import { decisionMarkerFor } from "./projections";
 import {
+  deriveWithdrawnDisplayEntry,
+  ledgerIntegrityForKey,
+  projectDecisionLineage,
+} from "./decision-mutations";
+import {
   assembleCaseArtifacts,
   type ChangedFileSeed,
   type EvidenceSeed,
@@ -107,7 +112,9 @@ import {
   type ConditionProgressCapability,
   type DecisionApplicability,
   type DecisionDivergence,
+  type DecisionMutationCapability,
   type DecisionPlateViewModel,
+  type DecisionRecordedView,
   type DecisionReference,
   type EvidenceView,
   type FindingView,
@@ -579,86 +586,177 @@ function openBlockingRequirementCount(requirements: RequirementView[]): number {
   return requirements.filter((item) => item.importance === "blocking" && item.status === "open").length;
 }
 
-/* Read the authoritative Human Decision ledger and project it read-only.
-   Distinguishes absent (empty, State A) from unavailable (read/projection
-   failure, State I). Review-state-derived historical decisions are deliberately
-   NOT synthesised (reviewState passed as null) so only genuinely recorded
-   ledger entries surface; that historical synthesis belongs to a later
-   persistence milestone. No mutation, no dialog, no write. */
+/* Read the authoritative Human Decision ledger and project it read-only,
+   returning both the Plate/Inspector view model and the R1B.6 mutation
+   capability the client needs to open decision dialogs.
+
+   Distinguishes absent (empty, State A) from unavailable (read / projection
+   failure or malformed store, State I), and derives the withdrawn live state
+   (State H) that the production projection collapses to "no effective entry".
+   Review-state-derived historical decisions are deliberately NOT synthesised
+   (reviewState passed as null) so only genuinely recorded ledger entries
+   surface. No mutation, no dialog, no write here. */
 function readDecisionProjection(
   storage: Storage,
+  caseId: string,
   report: Report,
   canonicalRun: CanonicalReviewRunManifest | null,
   mergeContract: MergeContract,
   requirements: RequirementView[],
   evidence: EvidenceView[],
-): DecisionPlateViewModel {
+): { decision: DecisionPlateViewModel; mutation: DecisionMutationCapability } {
   const openBlocking = openBlockingRequirementCount(requirements);
+  const key = humanDecisionLedgerKeyForReport(report);
+  const currentHeadSha = canonicalRun?.headSha;
+
+  /* Malformed store is distinct from absent (r0b2 §24.13–24.14): refuse to
+     render it as "no decision recorded" and refuse mutation over it. */
+  const integrity = ledgerIntegrityForKey(storage, key);
+  if (!integrity.ok) {
+    return {
+      decision: { status: "unavailable", readError: integrity.reason, isSample: false },
+      mutation: { kind: "unavailable", reason: integrity.reason },
+    };
+  }
+
   try {
-    const key = humanDecisionLedgerKeyForReport(report);
     const context: HumanDecisionLedgerContext = {
       report,
       canonicalRun,
       mergeContract,
-      currentHeadSha: canonicalRun?.headSha,
+      currentHeadSha,
     };
     const ledger = readHumanDecisionLedger(storage, key, context, null);
-    const projection = projectHumanDecisionLedger(ledger, context.currentHeadSha);
-    const entry: HumanDecisionLedgerEntry | undefined = projection.latestEffectiveEntry;
-
-    if (!entry || !entry.outcome) {
-      /* State A — read succeeded, no engineer decision recorded. */
-      return {
-        status: "empty",
-        recommendation: report.verdict.recommendation,
-        openBlockingRequirements: openBlocking,
-        isSample: false,
-      };
-    }
-
+    const projection = projectHumanDecisionLedger(ledger, currentHeadSha);
+    const history = projectDecisionLineage(ledger, currentHeadSha);
     const requirementsById = new Map(requirements.map((item) => [item.requirementId, item]));
     const evidenceById = new Map(evidence.map((item) => [item.evidenceId, item]));
-    const applicability = mapApplicability(projection.applicability);
-    const predates = applicability === "predates-current-head";
 
-    const references: DecisionReference[] = [
+    const buildReferences = (entry: HumanDecisionLedgerEntry): DecisionReference[] => [
       ...entry.referencedClauseIds.map((id) => makeReference(id, "clause", requirementsById, evidenceById)),
       ...entry.referencedEvidenceIds.map((id) => makeReference(id, "evidence", requirementsById, evidenceById)),
       ...entry.referencedAssumptionIds.map((id) => makeReference(id, "assumption", requirementsById, evidenceById)),
     ];
-    const acceptedRiskReferences = entry.acceptedRiskReferences.map((id) =>
-      inferReference(id, requirementsById, evidenceById),
-    );
 
+    const entry: HumanDecisionLedgerEntry | undefined = projection.latestEffectiveEntry;
+
+    if (entry && entry.outcome) {
+      /* States B / C / F — an effective recorded decision. */
+      const applicability = mapApplicability(projection.applicability);
+      const predates = applicability === "predates-current-head";
+      const recorded: DecisionRecordedView = {
+        status: "recorded",
+        outcome: entry.outcome,
+        actor: {
+          displayLabel: entry.actor.displayLabel,
+          source: entry.actor.source,
+          role: entry.actor.role ?? null,
+        },
+        recordedAt: entry.recordedAt,
+        applicability,
+        applicableHeadSha: entry.applicableHeadSha ?? null,
+        currentHeadSha: currentHeadSha ?? null,
+        priorHeadSha: predates ? entry.applicableHeadSha ?? null : null,
+        divergence: mapDivergence(recommendationDivergenceForReport(report, entry)),
+        rationale: entry.reason ?? null,
+        references: buildReferences(entry),
+        acceptedRiskReferences: entry.acceptedRiskReferences.map((id) =>
+          inferReference(id, requirementsById, evidenceById),
+        ),
+        needsReaffirmation: projection.reaffirmationRequired,
+        isSample: false,
+        fingerprint: entry.fingerprint,
+        effectiveEntryId: entry.entryId,
+        effectiveEventType: entry.eventType,
+        history,
+      };
+      return {
+        decision: recorded,
+        mutation: {
+          kind: "available",
+          caseId,
+          effectiveEntryId: entry.entryId,
+          effectiveOutcome: entry.outcome,
+          currentHeadSha: currentHeadSha ?? null,
+          headRecorded: Boolean(currentHeadSha),
+          openBlockingRequirements: openBlocking,
+        },
+      };
+    }
+
+    /* No effective entry: either withdrawn (State H) or genuinely absent (A). */
+    const withdrawnEntry = deriveWithdrawnDisplayEntry(ledger);
+    if (withdrawnEntry && withdrawnEntry.outcome) {
+      const recorded: DecisionRecordedView = {
+        status: "recorded",
+        outcome: withdrawnEntry.outcome,
+        actor: {
+          displayLabel: withdrawnEntry.actor.displayLabel,
+          source: withdrawnEntry.actor.source,
+          role: withdrawnEntry.actor.role ?? null,
+        },
+        recordedAt: withdrawnEntry.recordedAt,
+        applicability: "withdrawn",
+        applicableHeadSha: withdrawnEntry.applicableHeadSha ?? null,
+        currentHeadSha: currentHeadSha ?? null,
+        priorHeadSha: null,
+        /* Divergence is omitted for a withdrawn live state (r0b2 §7). */
+        divergence: null,
+        rationale: withdrawnEntry.reason ?? null,
+        references: buildReferences(withdrawnEntry),
+        acceptedRiskReferences: withdrawnEntry.acceptedRiskReferences.map((id) =>
+          inferReference(id, requirementsById, evidenceById),
+        ),
+        needsReaffirmation: false,
+        isSample: false,
+        fingerprint: withdrawnEntry.fingerprint,
+        effectiveEntryId: withdrawnEntry.entryId,
+        effectiveEventType: "decision-withdrawn",
+        history,
+        withdrawn: true,
+      };
+      return {
+        decision: recorded,
+        mutation: {
+          kind: "available",
+          caseId,
+          /* A record-new command has no predecessor after withdrawal. */
+          effectiveEntryId: null,
+          effectiveOutcome: null,
+          currentHeadSha: currentHeadSha ?? null,
+          headRecorded: Boolean(currentHeadSha),
+          openBlockingRequirements: openBlocking,
+        },
+      };
+    }
+
+    /* State A — read succeeded, no engineer decision recorded. */
     return {
-      status: "recorded",
-      outcome: entry.outcome,
-      actor: {
-        displayLabel: entry.actor.displayLabel,
-        source: entry.actor.source,
-        role: entry.actor.role ?? null,
+      decision: {
+        status: "empty",
+        recommendation: report.verdict.recommendation,
+        openBlockingRequirements: openBlocking,
+        isSample: false,
       },
-      recordedAt: entry.recordedAt,
-      applicability,
-      applicableHeadSha: entry.applicableHeadSha ?? null,
-      currentHeadSha: context.currentHeadSha ?? null,
-      priorHeadSha: predates ? entry.applicableHeadSha ?? null : null,
-      divergence: mapDivergence(recommendationDivergenceForReport(report, entry)),
-      rationale: entry.reason ?? null,
-      references,
-      acceptedRiskReferences,
-      needsReaffirmation: projection.reaffirmationRequired,
-      isSample: false,
+      mutation: {
+        kind: "available",
+        caseId,
+        effectiveEntryId: null,
+        effectiveOutcome: null,
+        currentHeadSha: currentHeadSha ?? null,
+        headRecorded: Boolean(currentHeadSha),
+        openBlockingRequirements: openBlocking,
+      },
     };
   } catch (error) {
     /* State I — read / projection failure. Distinct from absent. */
+    const readError =
+      error instanceof Error
+        ? `Human Decision ledger could not be read: ${error.message}`
+        : "Human Decision ledger could not be read.";
     return {
-      status: "unavailable",
-      readError:
-        error instanceof Error
-          ? `Human Decision ledger could not be read: ${error.message}`
-          : "Human Decision ledger could not be read.",
-      isSample: false,
+      decision: { status: "unavailable", readError, isSample: false },
+      mutation: { kind: "unavailable", reason: readError },
     };
   }
 }
@@ -673,6 +771,7 @@ function readDecisionProjection(
 export function projectContextToCaseDetail(
   context: CaseProjectionContext,
   decision: DecisionPlateViewModel,
+  decisionMutation: DecisionMutationCapability,
   reviewStatus: ReviewStatus,
   reviewStateMutation: ReviewStateMutationCapability,
 ): CaseDetail {
@@ -712,6 +811,8 @@ export function projectContextToCaseDetail(
         "Readiness movement requires a previous analysis run to compare against; this projection reads a single stored Report head with no recorded prior run.",
     },
     decision,
+    /* R1B.6 — whether a Human Decision can be recorded/changed for this case. */
+    decisionMutation,
     context: mapContext(report),
   };
 }
@@ -776,8 +877,9 @@ function projectCase(
     conditionSnapshot,
   );
 
-  const decision = readDecisionProjection(
+  const { decision, mutation: decisionMutation } = readDecisionProjection(
     storage,
+    caseId,
     report,
     canonicalRun,
     context.contract,
@@ -808,7 +910,13 @@ function projectCase(
 
   const reviewStateMutation = reviewMutationCapabilityFor(reviewState, caseId, reviewStatus);
 
-  const detail = projectContextToCaseDetail(context, decision, reviewStatus, reviewStateMutation);
+  const detail = projectContextToCaseDetail(
+    context,
+    decision,
+    decisionMutation,
+    reviewStatus,
+    reviewStateMutation,
+  );
 
   const decisionApplicable =
     decision.status === "recorded" &&

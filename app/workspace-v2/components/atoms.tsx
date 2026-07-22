@@ -210,3 +210,15 @@ export function DecisionRationaleSummary({ rationale }: { rationale: string | nu
   }
   return <span className={styles.decisionRationale}>{rationale}</span>;
 }
+
+/* Content fingerprint — attested, never signed. No lock / "verified"
+   iconography (r0b2 §17.11). */
+export function DecisionFingerprintChip({ fingerprint }: { fingerprint: string }) {
+  const prefix = fingerprint.slice(0, 8);
+  const help = "Content fingerprint — attested, not cryptographically signed.";
+  return (
+    <span className={styles.fingerprintChip} title={help} aria-label={`Fingerprint ${prefix}. ${help}`}>
+      fp:{prefix}
+    </span>
+  );
+}

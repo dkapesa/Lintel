@@ -7,27 +7,35 @@
    single `InspectorProjection` and passes it in. Unknown / absent data renders
    honestly rather than as an empty string. */
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import styles from "../workspace-v2.module.css";
 import {
   ArtifactMarker,
   DecisionActorProvenance,
   DecisionApplicabilityChip,
   DecisionDivergenceChip,
+  DecisionFingerprintChip,
   DecisionOutcomeToken,
   SampleBadge,
   StrengthMeter,
 } from "./atoms";
+import { DecisionDialog } from "./decision-dialogs";
 import { evidenceStatusTone, requirementStatusTone, riskTone, severityTone } from "./presentation";
 import { evidenceRank } from "../../../lib/workspace-v2/projections";
 import type { MutationResult } from "../../../lib/workspace-v2/persistence";
+import type { DecisionMutationResult } from "../../../lib/workspace-v2/decision-mutations";
 import {
   APPLICABILITY_LABEL,
+  DECISION_EVENT_TITLE,
+  OUTCOME_LABEL,
   type ArtifactRef,
   type CaseContextView,
   type ChangedFileView,
   type ConditionProgressCapability,
+  type DecisionLedgerEventView,
+  type DecisionMutationCapability,
   type DecisionPlateViewModel,
+  type DecisionRecordedView,
   type EvidenceComposition,
   type EvidenceView,
   type FindingView,
@@ -40,6 +48,20 @@ import {
 
 /* The only condition capability shape the controls act on. */
 type AvailableCondition = Extract<ConditionProgressCapability, { kind: "available" }>;
+
+/* Decision Context actions the route owner wires. `record` is a new decision
+   (state A / withdrawn H); `change` supersedes; `reaffirm` binds the current
+   head; `withdraw` is destructive. Absent (null) in read-only / fixture mode. */
+export type DecisionInspectorMutations = {
+  pending: boolean;
+  busy: boolean;
+  result: DecisionMutationResult | null;
+  capability: DecisionMutationCapability;
+  onAction: (
+    action: "record" | "change" | "reaffirm" | "withdraw",
+    trigger: HTMLElement,
+  ) => void;
+};
 
 /* The interactive persistence bundle passed from the route owner. Present only
    in real mode; when null the Inspector renders read-only copy from capabilities
@@ -59,6 +81,8 @@ export type InspectorMutations = {
     result: { conditionKey: string; result: MutationResult } | null;
     onToggle: (capability: AvailableCondition, intent: "clear" | "reopen") => void;
   };
+  /* R1B.6 — the Human Decision mutation bundle. */
+  decision: DecisionInspectorMutations;
 };
 
 const ARTIFACT_KIND_LABEL: Record<ArtifactRef["kind"], string> = {
@@ -127,7 +151,11 @@ export function WorkspaceInspector({
           />
         ) : null}
         {projection.mode === "decision-context" ? (
-          <DecisionContextInspector decision={projection.decision} caseTitle={projection.caseTitle} />
+          <DecisionContextInspector
+            decision={projection.decision}
+            caseTitle={projection.caseTitle}
+            mutations={mutations?.decision ?? null}
+          />
         ) : null}
         {projection.mode === "case-context" ? (
           <CaseContextInspector
@@ -644,29 +672,116 @@ function ReviewStatusForm({
   );
 }
 
-/* Decision Context. Read-only projection for R1B.0: latest decision summary,
-   applicability, divergence (only when supplied), rationale and references.
-   Terminology fixed to recorded / reaffirmed / withdrawn — never "signed". */
+/* Restrained inline status for a decision mutation. Text — never colour alone —
+   carries the outcome. Not a live region: the route owner announces the same
+   message once via its polite/assertive regions. */
+function DecisionMutationStatus({ result }: { result: DecisionMutationResult }) {
+  const tone =
+    result.outcome === "persisted"
+      ? styles.toneSuccess
+      : result.outcome === "unchanged"
+        ? styles.toneMuted
+        : result.outcome === "stale-command" || result.outcome === "unavailable"
+          ? styles.toneWarning
+          : styles.toneDanger;
+  return <p className={`${styles.mutationStatus} ${tone}`}>{result.message}</p>;
+}
+
+/* One lineage event. Historical roles are labelled accurately and never
+   presented as the current effective decision (r0b2 §14, §17.10). */
+function DecisionHistoryRow({ event }: { event: DecisionLedgerEventView }) {
+  const roleLabel =
+    event.role === "effective"
+      ? "Effective"
+      : event.role === "superseded"
+        ? "Superseded"
+        : event.role === "withdrawn"
+          ? "Withdrawn"
+          : event.role === "reaffirmed"
+            ? "Reaffirmed"
+            : "Historical";
+  return (
+    <li className={styles.historyRow}>
+      <div className={styles.historyRowHead}>
+        <span className={styles.historyTitle}>{DECISION_EVENT_TITLE[event.eventType]}</span>
+        <span className={`${styles.historyRole} ${event.role === "effective" ? styles.toneSuccess : styles.toneMuted}`}>
+          {roleLabel}
+        </span>
+      </div>
+      <div className={styles.historyMeta}>
+        {event.outcome ? <span>{OUTCOME_LABEL[event.outcome]}</span> : null}
+        <span>{event.actor.displayLabel}</span>
+        <span>{event.recordedAt}</span>
+        {event.applicableHeadSha ? (
+          <span className={styles.inspectorMono}>{event.applicableHeadSha}</span>
+        ) : null}
+        <DecisionFingerprintChip fingerprint={event.fingerprint} />
+      </div>
+      {event.rationale ? <p className={styles.historyRationale}>{event.rationale}</p> : null}
+    </li>
+  );
+}
+
+/* Full-history surface (§14, §24.8): the whole lineage in an accessible dialog. */
+function DecisionHistoryDialog({
+  history,
+  onClose,
+  returnFocusRef,
+}: {
+  history: DecisionLedgerEventView[];
+  onClose: () => void;
+  returnFocusRef: React.RefObject<HTMLElement | null>;
+}) {
+  return (
+    <DecisionDialog
+      title="Decision history"
+      description="The full recorded lineage for this case, newest first. Superseded and withdrawn events are labelled and never shown as the current decision."
+      blockClose={false}
+      onCancel={onClose}
+      returnFocusRef={returnFocusRef}
+      footer={
+        <button type="button" className={styles.dialogSecondary} onClick={onClose}>
+          Close
+        </button>
+      }
+    >
+      <ul className={styles.historyList}>
+        {history.map((event) => (
+          <DecisionHistoryRow key={event.entryId} event={event} />
+        ))}
+      </ul>
+    </DecisionDialog>
+  );
+}
+
+/* Decision Context (r0b2 §14): current effective outcome, actor/source, recorded
+   time, applicability, heads, rationale, references, accepted-risk references,
+   divergence (only when supported), reaffirmation status, the latest five ledger
+   events and access to the full history — plus the wired decision actions.
+   Terminology fixed to recorded / reaffirmed / superseded / withdrawn. */
 function DecisionContextInspector({
   decision,
   caseTitle,
+  mutations,
 }: {
   decision: DecisionPlateViewModel;
   caseTitle: string;
+  mutations: DecisionInspectorMutations | null;
 }) {
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const historyTriggerRef = useRef<HTMLElement | null>(null);
+
   if (decision.status === "empty") {
     return (
       <>
         <h2 className={styles.inspectorTitle}>No engineer decision recorded</h2>
         <p className={styles.inspectorLead}>
-          The decision record for “{caseTitle}” was read successfully and is empty. Lintel
-          recommends {decision.recommendation} with {decision.openBlockingRequirements} blocking
-          requirement{decision.openBlockingRequirements === 1 ? "" : "s"} open.
+          The decision record for “{caseTitle}” was read successfully and is empty. Lintel recommends{" "}
+          {decision.recommendation} with {decision.openBlockingRequirements} blocking requirement
+          {decision.openBlockingRequirements === 1 ? "" : "s"} open. Lintel recommends; an accountable
+          engineer decides.
         </p>
-        <p className={styles.pendingNote}>
-          Recording a decision is not wired in this scaffold. The record flow arrives with R1B.1
-          production integration.
-        </p>
+        <DecisionActionBar decision={decision} mutations={mutations} />
       </>
     );
   }
@@ -676,21 +791,42 @@ function DecisionContextInspector({
       <>
         <h2 className={`${styles.inspectorTitle} ${styles.toneDanger}`}>Decision state unavailable</h2>
         <p className={styles.inspectorLead}>{decision.readError}</p>
-        <p className={styles.pendingNote}>
-          This is a read / projection failure, distinct from an empty record. Retry is not wired in
-          this scaffold.
+        <p className={styles.inspectorEmpty}>
+          This is a read / projection failure or a malformed record, distinct from an empty record. No
+          decision can be recorded until the record can be read safely.
         </p>
+        {mutations ? <DecisionMutationStatusOptional result={mutations.result} /> : null}
       </>
     );
   }
+
+  const history = decision.history ?? [];
+  const latestFive = history.slice(0, 5);
 
   return (
     <>
       <div className={styles.inspectorDecisionHead}>
         <DecisionOutcomeToken outcome={decision.outcome} />
+        {decision.fingerprint ? <DecisionFingerprintChip fingerprint={decision.fingerprint} /> : null}
         {decision.isSample ? <SampleBadge /> : null}
       </div>
       <DecisionActorProvenance actor={decision.actor} recordedAt={decision.recordedAt} />
+
+      {/* Recommendation and Human Decision are always separate statements. */}
+      <InspectorGroup label="Recommendation vs decision">
+        <p className={styles.inspectorText}>
+          Engineer decided <strong>{OUTCOME_LABEL[decision.outcome]}</strong>.
+        </p>
+        {decision.divergence ? (
+          <div className={styles.inspectorDecisionHead}>
+            <DecisionDivergenceChip divergence={decision.divergence} />
+          </div>
+        ) : (
+          <p className={styles.inspectorEmpty}>
+            No recommendation comparison is available for this case.
+          </p>
+        )}
+      </InspectorGroup>
 
       <InspectorGroup label="Applicability">
         <div className={styles.inspectorDecisionHead}>
@@ -700,9 +836,20 @@ function DecisionContextInspector({
             currentHeadSha={decision.currentHeadSha}
             headRecorded={decision.applicableHeadSha !== null}
           />
-          {decision.divergence ? <DecisionDivergenceChip divergence={decision.divergence} /> : null}
         </div>
         <p className={styles.inspectorText}>{APPLICABILITY_LABEL[decision.applicability]}</p>
+        {decision.needsReaffirmation ? (
+          <p className={styles.toneWarning}>
+            Recorded at {decision.priorHeadSha ?? "an earlier head"}; head is now{" "}
+            {decision.currentHeadSha ?? "unknown"}. Reaffirmation is required before this counts as a
+            current decision.
+          </p>
+        ) : null}
+        {decision.withdrawn ? (
+          <p className={styles.toneWarning}>
+            This decision was withdrawn and is no longer effective. History is retained.
+          </p>
+        ) : null}
       </InspectorGroup>
 
       <InspectorGroup label="Rationale">
@@ -727,11 +874,38 @@ function DecisionContextInspector({
                 <span className={styles.referenceLabel}>
                   {reference.available ? reference.label : "Reference no longer available"}
                 </span>
+                <span className={styles.referenceFlags}>
+                  {reference.stale ? <span className={styles.referenceStale}>stale</span> : null}
+                  {reference.modelAssisted ? (
+                    <span className={styles.referenceModel}>model assisted</span>
+                  ) : null}
+                </span>
               </li>
             ))}
           </ul>
         )}
       </InspectorGroup>
+
+      {decision.acceptedRiskReferences.length > 0 ? (
+        <InspectorGroup label="Accepted risks">
+          <p className={styles.inspectorEmpty}>
+            The engineer accepted the following risks Lintel flagged:
+          </p>
+          <ul className={styles.referenceList}>
+            {decision.acceptedRiskReferences.map((reference) => (
+              <li
+                key={reference.id}
+                className={`${styles.referenceRow} ${reference.available ? "" : styles.referenceGone}`}
+              >
+                <span className={styles.referenceKind}>{reference.kind}</span>
+                <span className={styles.referenceLabel}>
+                  {reference.available ? reference.label : "Reference no longer available"}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </InspectorGroup>
+      ) : null}
 
       <InspectorGroup label="Commit binding">
         {decision.applicableHeadSha ? (
@@ -741,11 +915,119 @@ function DecisionContextInspector({
         )}
       </InspectorGroup>
 
-      <p className={styles.pendingNote}>
-        Change, reaffirm and withdraw are not wired in this scaffold. Full history and the recorded
-        decision flow arrive with R1B.1.
-      </p>
+      {history.length > 0 ? (
+        <InspectorGroup label={`History · ${history.length} event${history.length === 1 ? "" : "s"}`}>
+          <ul className={styles.historyList}>
+            {latestFive.map((event) => (
+              <DecisionHistoryRow key={event.entryId} event={event} />
+            ))}
+          </ul>
+          {history.length > latestFive.length ? (
+            <button
+              type="button"
+              className={styles.mutationButton}
+              onClick={(event) => {
+                historyTriggerRef.current = event.currentTarget;
+                setHistoryOpen(true);
+              }}
+            >
+              View full history ({history.length} events)
+            </button>
+          ) : null}
+        </InspectorGroup>
+      ) : null}
+
+      <DecisionActionBar decision={decision} mutations={mutations} />
+
+      {historyOpen ? (
+        <DecisionHistoryDialog
+          history={history}
+          onClose={() => setHistoryOpen(false)}
+          returnFocusRef={historyTriggerRef}
+        />
+      ) : null}
     </>
+  );
+}
+
+function DecisionMutationStatusOptional({ result }: { result: DecisionMutationResult | null }) {
+  if (!result) return null;
+  return <DecisionMutationStatus result={result} />;
+}
+
+/* The wired decision actions for the current state. Read-only / sample cases
+   render an explanatory note instead of live controls. */
+function DecisionActionBar({
+  decision,
+  mutations,
+}: {
+  decision: DecisionPlateViewModel;
+  mutations: DecisionInspectorMutations | null;
+}) {
+  if (mutations === null) {
+    return (
+      <p className={styles.pendingNote}>
+        This is sample data. Recording, changing, reaffirming and withdrawing are demonstrative here
+        and are never written to this browser.
+      </p>
+    );
+  }
+
+  if (mutations.capability.kind === "unavailable") {
+    return (
+      <InspectorGroup label="Decision actions">
+        <p className={styles.inspectorEmpty}>{mutations.capability.reason}</p>
+        <DecisionMutationStatusOptional result={mutations.result} />
+      </InspectorGroup>
+    );
+  }
+  if (mutations.capability.kind === "sample") {
+    return (
+      <p className={styles.pendingNote}>
+        Sample decision. Actions are demonstrative and never written to this browser.
+      </p>
+    );
+  }
+
+  const disabled = mutations.busy;
+  const buttons: { action: "record" | "change" | "reaffirm" | "withdraw"; label: string; destructive?: boolean }[] =
+    [];
+  if (decision.status === "empty") {
+    buttons.push({ action: "record", label: "Record decision" });
+  } else if (decision.status === "recorded") {
+    if (decision.applicability === "withdrawn") {
+      buttons.push({ action: "record", label: "Record new decision" });
+    } else if (decision.needsReaffirmation) {
+      buttons.push({ action: "reaffirm", label: "Reaffirm decision" });
+      buttons.push({ action: "change", label: "Supersede decision" });
+      buttons.push({ action: "withdraw", label: "Withdraw", destructive: true });
+    } else {
+      buttons.push({ action: "change", label: "Change decision" });
+      buttons.push({ action: "withdraw", label: "Withdraw", destructive: true });
+    }
+  }
+
+  return (
+    <InspectorGroup label="Decision actions">
+      <div className={styles.decisionActionRow}>
+        {buttons.map((button) => (
+          <button
+            key={button.action + button.label}
+            type="button"
+            className={button.destructive ? styles.decisionDestructiveButton : styles.mutationButton}
+            data-mutation-control="decision"
+            aria-disabled={disabled}
+            onClick={(event) => {
+              if (disabled) return;
+              mutations.onAction(button.action, event.currentTarget);
+            }}
+          >
+            {mutations.pending ? "Working…" : button.label}
+          </button>
+        ))}
+      </div>
+      <DecisionMutationStatusOptional result={mutations.result} />
+    </InspectorGroup>
   );
 }
 

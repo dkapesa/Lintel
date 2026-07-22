@@ -25,6 +25,7 @@ import {
   type CaseDetail,
   type ConditionProgressCapability,
   type DecisionActor,
+  type DecisionMutationCapability,
   type DecisionPlateViewModel,
   type EvidenceClass,
   type EvidenceStatus,
@@ -101,10 +102,19 @@ type FixtureRequirement = {
    The Inspector renders concise explanatory copy instead of a live control. */
 const SAMPLE_REVIEW_MUTATION: ReviewStateMutationCapability = { kind: "read-only-sample" };
 const SAMPLE_CONDITION_PROGRESS: ConditionProgressCapability = { kind: "read-only-sample" };
+/* R1B.6 — fixture decisions are demonstrative and never persisted; the mutation
+   capability is fixed to `sample` so the Plate/Inspector render read-only copy
+   and never a control that pretends to write. */
+const SAMPLE_DECISION_MUTATION: DecisionMutationCapability = { kind: "sample" };
 
 type FixtureCaseDetail = Omit<
   CaseDetail,
-  "changedFiles" | "findings" | "evidence" | "requirements" | "reviewStateMutation"
+  | "changedFiles"
+  | "findings"
+  | "evidence"
+  | "requirements"
+  | "reviewStateMutation"
+  | "decisionMutation"
 > & {
   changedFiles: FixtureChangedFile[];
   findings: FixtureFinding[];
@@ -177,6 +187,8 @@ function finalizeFixtureCase(fixture: FixtureCaseDetail): CaseDetail {
     requirements: artifacts.requirements,
     /* Sample review status is never persisted. */
     reviewStateMutation: SAMPLE_REVIEW_MUTATION,
+    /* Sample decisions are never persisted. */
+    decisionMutation: SAMPLE_DECISION_MUTATION,
   };
 }
 

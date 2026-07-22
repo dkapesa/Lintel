@@ -32,6 +32,10 @@ import {
   type WorkspacePersistence,
 } from "../../lib/workspace-v2/persistence";
 import {
+  createWorkspaceDecisionService,
+  type WorkspaceDecisionService,
+} from "../../lib/workspace-v2/decision-mutations";
+import {
   type WorkspaceIdentity,
   type WorkspaceProvenance,
   type WorkspaceSnapshot,
@@ -101,6 +105,18 @@ export default function RealWorkspaceBootstrap({ reportId }: { reportId: string 
     }
   }, []);
 
+  /* R1B.6 — the one Human Decision mutation service for real mode, built once
+     with the writable storage. Null only when `localStorage` is entirely
+     unavailable; the client then renders decisions read-only, not a fake
+     control. */
+  const decisionService = useMemo<WorkspaceDecisionService | null>(() => {
+    try {
+      return createWorkspaceDecisionService(window.localStorage);
+    } catch {
+      return null;
+    }
+  }, []);
+
   /* Authoritative reprojection through the SAME read-only adapter and reportId.
      On success the fresh snapshot replaces the current one (the client preserves
      selection/focus across the prop change). On a hard failure the current
@@ -116,5 +132,12 @@ export default function RealWorkspaceBootstrap({ reportId }: { reportId: string 
     }
   }, [reportId]);
 
-  return <WorkspaceV2Client snapshot={snapshot} persistence={persistence} reload={reload} />;
+  return (
+    <WorkspaceV2Client
+      snapshot={snapshot}
+      persistence={persistence}
+      decisionService={decisionService}
+      reload={reload}
+    />
+  );
 }

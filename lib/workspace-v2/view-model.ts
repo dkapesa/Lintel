@@ -384,7 +384,39 @@ export type DecisionUnavailableView = {
   isSample: boolean;
 };
 
-/* States B / C (and, when supplied, H) — a resting recorded decision. */
+/* R1B.6 — the seven production ledger event types, transcribed value-identical
+   from `lib/human-decision-ledger.ts` §2.4. Used only for read-only lineage
+   labelling in Decision Context; never a persisted schema of this module. */
+export type DecisionEventType =
+  | "decision-recorded"
+  | "decision-reaffirmed"
+  | "decision-superseded"
+  | "decision-withdrawn"
+  | "risk-accepted"
+  | "risk-acceptance-revoked"
+  | "note-recorded";
+
+/* R1B.6 — one projected ledger event for the Decision Context lineage view.
+   Read-only. A `role` other than "effective" is a historical entry and must
+   never be presented as the current effective decision (r0b2 §14, §17.10). */
+export type DecisionLedgerEventView = {
+  entryId: string;
+  eventType: DecisionEventType;
+  outcome: DecisionOutcome | null;
+  actor: DecisionActor;
+  recordedAt: string;
+  applicableHeadSha: string | null;
+  rationale: string | null;
+  fingerprint: string;
+  role: "effective" | "superseded" | "withdrawn" | "reaffirmed" | "historical";
+  supersedesEntryId: string | null;
+  reaffirmsEntryId: string | null;
+  withdrawsEntryId: string | null;
+};
+
+/* States B / C / F (and, derived from lineage, H) — a resting recorded
+   decision. The `history`/`fingerprint`/`effective*` fields are populated by the
+   real adapter for the Decision Context lineage; sample projections omit them. */
 export type DecisionRecordedView = {
   status: "recorded";
   outcome: DecisionOutcome;
@@ -401,7 +433,35 @@ export type DecisionRecordedView = {
   acceptedRiskReferences: DecisionReference[];
   needsReaffirmation: boolean;
   isSample: boolean;
+  /* R1B.6 lineage (real adapter only). */
+  fingerprint?: string;
+  effectiveEntryId?: string;
+  effectiveEventType?: DecisionEventType;
+  /* Full lineage newest-first, up to the ledger's 80-entry cap. */
+  history?: DecisionLedgerEventView[];
+  /* True only for the derived withdrawn state (H): the displayed entry is the
+     decision that was withdrawn, shown with applicability `withdrawn`. */
+  withdrawn?: boolean;
 };
+
+/* R1B.6 — whether this case's Human Decision ledger can be mutated, and the
+   identifiers a command/dialog needs. `available` carries the exact effective
+   entry the dialog opens against (null in state A), the current head binding and
+   the open-blocking count. `sample` is fixture data (never written).
+   `unavailable` names why a safe write cannot be established (malformed /
+   unreadable ledger, ambiguous identity, or storage unavailable). */
+export type DecisionMutationCapability =
+  | {
+      kind: "available";
+      caseId: string;
+      effectiveEntryId: string | null;
+      effectiveOutcome: DecisionOutcome | null;
+      currentHeadSha: string | null;
+      headRecorded: boolean;
+      openBlockingRequirements: number;
+    }
+  | { kind: "sample" }
+  | { kind: "unavailable"; reason: string };
 
 /* Compact queue marker — shown only when a decision is genuinely recorded
    (r0b2 §15). Absent / unavailable decisions never render a marker. */
@@ -471,6 +531,10 @@ export type CaseDetail = {
   requirements: RequirementView[];
   readiness: ReadinessProjection;
   decision: DecisionPlateViewModel;
+  /* R1B.6 — whether this case's Human Decision can be recorded/changed and the
+     identifiers a decision command needs. Case-level: the ledger key identifies
+     the case, not any single artifact. */
+  decisionMutation: DecisionMutationCapability;
   context: CaseContextView;
 };
 
@@ -588,4 +652,40 @@ export const DIVERGENCE_MEANING: Record<DecisionDivergence, string> = {
   "human-more-conservative": "Engineer chose a stricter outcome than Lintel.",
   "human-accepted-additional-risk": "Engineer accepted referenced risks Lintel flagged.",
   "materially-different": "Human outcome differs materially from the recommendation.",
+};
+
+/* Fixed lineage terminology (r0b2 §14): recorded / reaffirmed / superseded /
+   withdrawn — never "signed", "approved by Lintel", or "confirmed". */
+export const DECISION_EVENT_TITLE: Record<DecisionEventType, string> = {
+  "decision-recorded": "Decision recorded",
+  "decision-reaffirmed": "Decision reaffirmed",
+  "decision-superseded": "Decision superseded",
+  "decision-withdrawn": "Decision withdrawn",
+  "risk-accepted": "Risk accepted",
+  "risk-acceptance-revoked": "Risk acceptance revoked",
+  "note-recorded": "Note recorded",
+};
+
+/* The seven first-class outcomes in canonical order (r0b2 §5) and their
+   normative meanings (§24.4), surfaced as selectable option help so the seven
+   never read as interchangeable. */
+export const DECISION_OUTCOMES: DecisionOutcome[] = [
+  "approve",
+  "approve-with-accepted-risk",
+  "tests-required",
+  "review-required",
+  "request-changes",
+  "blocked",
+  "defer",
+];
+
+export const OUTCOME_MEANING: Record<DecisionOutcome, string> = {
+  approve: "Engineer approves merge.",
+  "approve-with-accepted-risk":
+    "Approve, and the engineer — not Lintel — explicitly accepts named residual risks.",
+  "tests-required": "Test evidence is missing.",
+  "review-required": "Further specialist or accountable-human review is required.",
+  "request-changes": "Implementation changes are required.",
+  blocked: "Stop: a critical unresolved issue prevents progress.",
+  defer: "The engineer cannot responsibly decide yet — this is not approval.",
 };

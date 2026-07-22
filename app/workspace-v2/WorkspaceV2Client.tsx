@@ -167,6 +167,16 @@ function ReadyWorkspace({
   const [activeStage, setActiveStage] = useState<StageId>("change");
   const [decisionFocused, setDecisionFocused] = useState(false);
 
+  /* R1D.2 — Queue collapse (focus mode). Lifted to the route owner because it
+     changes the first grid track width (a Canvas-affecting layout fact), not just
+     Queue-internal presentation. It never touches the selected case, storage,
+     routing or any domain state: collapsing simply narrows the Queue plane to a
+     compact orientation rail and returns that horizontal space to the Canvas.
+     Small local React state; expanded is the default at every viewport and it
+     resets on refresh. Group-collapse and Queue-local focus/scroll intent stay
+     owned inside the Queue, which does not affect any other plane. */
+  const [queueCollapsed, setQueueCollapsed] = useState(false);
+
   /* ---- Persistence flow state (R1B.5) ----
      `pendingMutation` is the exact in-flight command identity; while set, every
      mutation control is disabled so a rapid second click / Space cannot start a
@@ -875,7 +885,7 @@ function ReadyWorkspace({
 
   /* ---- Render ---- */
   return (
-    <div className={styles.root}>
+    <div className={styles.root} data-queue-collapsed={queueCollapsed ? "true" : undefined}>
       <a className={styles.skipLink} href="#wsv2-canvas-body">
         Skip to verification canvas
       </a>
@@ -884,6 +894,8 @@ function ReadyWorkspace({
         groups={snapshot.groups}
         selectedCaseId={activeCase.caseId}
         onSelectCase={selectCase}
+        collapsed={queueCollapsed}
+        onSetCollapsed={setQueueCollapsed}
         limitations={snapshot.limitations}
       />
 

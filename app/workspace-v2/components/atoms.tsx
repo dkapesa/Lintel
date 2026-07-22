@@ -63,10 +63,25 @@ export function SampleBadge({ label = "Sample" }: { label?: string }) {
   );
 }
 
-export function ProvenanceBadge({ label }: { label: string }) {
+/* The at-rest origin strip. A sample/fixture origin carries the provenance hue
+   and a filled dot so it is unmistakable; a real (local / GitHub) report reads
+   neutral with a hollow dot, so fixture content can never pass as real data and
+   a real report never wears the sample hue (R1C §22/§23). */
+export function ProvenanceBadge({
+  label,
+  isSample = true,
+}: {
+  label: string;
+  isSample?: boolean;
+}) {
   return (
-    <span className={styles.provenanceBadge}>
-      <span className={styles.sampleDot} aria-hidden="true" />
+    <span
+      className={`${styles.provenanceBadge} ${isSample ? styles.provenanceBadgeSample : styles.provenanceBadgeReal}`}
+    >
+      <span
+        className={`${styles.sampleDot} ${isSample ? "" : styles.provenanceDotReal}`}
+        aria-hidden="true"
+      />
       {label}
     </span>
   );
@@ -94,8 +109,14 @@ export function WorkstationMinWidthNotice() {
 
 export function DecisionOutcomeToken({ outcome }: { outcome: DecisionOutcome }) {
   const tone = outcomeTone(outcome);
+  /* Accepted risk is an approval that carries risk; it takes a structural
+     "flagged" treatment (dashed border, hollow dot) so it never reads as a clean
+     approval, even without colour (R1C §8). */
+  const risk = outcome === "approve-with-accepted-risk";
   return (
-    <span className={`${styles.outcomeToken} ${toneClass(tone)}`}>
+    <span
+      className={`${styles.outcomeToken} ${toneClass(tone)} ${risk ? styles.outcomeTokenRisk : ""}`}
+    >
       <span className={`${styles.outcomeTokenDot} ${toneClass(tone)}`} aria-hidden="true" />
       {OUTCOME_LABEL[outcome]}
     </span>
@@ -123,6 +144,14 @@ export function DecisionApplicabilityChip({
   } else if (applicability === "predates-current-head") {
     tone = "warning";
     detail = `Recorded at ${priorHeadSha ?? "unknown"}; head is now ${currentHeadSha ?? "unknown"}`;
+  } else if (applicability === "unbound") {
+    /* A real recorded decision with no commit binding — restrained caution, never
+       the positive current-head treatment. */
+    tone = "warning";
+    detail = "Recorded without a commit binding; not proven for the current head";
+  } else if (applicability === "current-head-unavailable") {
+    tone = "warning";
+    detail = "Current head unavailable; current-head applicability cannot be established";
   } else if (applicability === "withdrawn") {
     tone = "warning";
     detail = "Withdrawn; history retained";

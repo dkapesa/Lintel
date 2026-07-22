@@ -43,6 +43,48 @@
   --wsv2-accent: var(--color-accent);
   --wsv2-focus-ring: var(--color-focus-ring);
 
+  /* R1C — Interaction states. Selected, keyboard-focused, active and
+     pressed/toggled are deliberately kept distinct: selection is a persistent
+     inset well with an accent edge; focus is the high-contrast ring; active is
+     a light raise; pressed is a dark inset. No two share a treatment. */
+  --wsv2-selected: var(--wsv2-queue-inset);
+  --wsv2-selected-edge: var(--wsv2-accent);
+  --wsv2-active: rgb(255 255 255 / 6%);
+  --wsv2-pressed: rgb(0 0 0 / 30%);
+
+  /* R1C — Evidence & requirement semantics. Colour is reinforcement only:
+     every state below is also carried by a label, a border STYLE (solid vs
+     dashed vs dotted) or structure, so the vocabulary survives without hue.
+     Directly observed evidence reads neutral/trusted; model-assisted (inferred)
+     evidence carries the provenance hue and a dotted edge so it can never be
+     mistaken for a direct observation. */
+  --wsv2-observed: var(--wsv2-text-2);
+  --wsv2-inferred: var(--color-provenance);
+  --wsv2-missing: var(--color-danger);
+  --wsv2-stale: var(--color-warning);
+  --wsv2-blocking: var(--color-danger);
+  --wsv2-satisfied: var(--color-success);
+
+  /* R1C — Decision semantics. Clean approval and approval-carrying-accepted-risk
+     never share a treatment; the human act (authority) reads separately from the
+     model's recommendation. */
+  --wsv2-approval: var(--color-success);
+  --wsv2-accepted-risk: var(--color-warning);
+  --wsv2-authority: var(--color-accent);
+  --wsv2-recommendation: var(--wsv2-text-3);
+
+  /* R1C — Availability & provenance. Unavailable (a real capability is absent)
+     reads muted-with-structure; empty (nothing to show) stays plain text and is
+     never dressed as an error. Sample/fixture origin carries the provenance hue;
+     a real/local report reads neutral. */
+  --wsv2-unavailable: var(--color-text-muted);
+  --wsv2-partial: var(--color-warning);
+  --wsv2-sample: var(--color-provenance);
+  --wsv2-real: var(--wsv2-text-3);
+
+  /* R1C — Raised/interrupting surface alias for dialogs. */
+  --wsv2-dialog: var(--wsv2-raised);
+
   --wsv2-sans: var(--type-family-application);
   --wsv2-mono: var(--type-family-technical);
   --wsv2-micro-size: var(--type-role-micro-label-size);
@@ -196,14 +238,28 @@
 
 .queueRowSelected,
 .queueRowSelected:hover {
-  background: var(--wsv2-queue-inset);
-  border-left-color: var(--wsv2-accent);
+  background: var(--wsv2-selected);
+  border-left-color: var(--wsv2-selected-edge);
   box-shadow: inset 0 1px 3px rgb(0 0 0 / 55%);
 }
 
 .queueRow:focus-visible {
   outline: 2px solid var(--wsv2-focus-ring);
   outline-offset: -2px;
+}
+
+/* R1C — Pressed feedback. A momentary dark inset on activation, distinct from
+   the focus ring, the selection well and the active-plane raise. Applied to the
+   primary navigational controls; never animated. */
+.queueRow:active,
+.spineNode:active,
+.recordButton:active,
+.relatedButton:active,
+.plateAction:active,
+.plateActionPrimary:active,
+.plateActionSecondary:active,
+.mutationButton:active {
+  background: var(--wsv2-pressed);
 }
 
 .queueRef {
@@ -354,7 +410,7 @@
 }
 
 .spineNodeCurrent {
-  background: rgb(255 255 255 / 6%);
+  background: var(--wsv2-active);
 }
 
 .spineNode:focus-visible {
@@ -865,15 +921,20 @@
   font-weight: 450;
 }
 
+/* Missing evidence — a hard gap in the proof. Solid blocking edge plus the
+   uppercase status label; never confused with stale (dashed) or empty. */
 .evMissing {
-  border-left-color: var(--wsv2-danger);
+  border-left-color: var(--wsv2-missing);
+  border-left-width: 3px;
 }
 
+/* Stale evidence — real but observed against an older head. Dashed edge is the
+   structural tell so the state survives without hue. */
 .evStale {
-  border-left-color: var(--wsv2-warning);
+  border-left-color: var(--wsv2-stale);
   border-left-style: dashed;
   background: var(--wsv2-well);
-  box-shadow: inset 0 0 0 1px rgb(224 189 114 / 12%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--wsv2-stale) 12%, transparent);
 }
 
 .evidenceState {
@@ -907,6 +968,37 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+/* R1C — Provenance tag. Model-assisted (inferred) artifacts carry this bordered
+   pill so they are structurally, not just chromatically, distinct from directly
+   observed ones. Observed artifacts carry no tag — the unmarked default reads as
+   directly trusted. The hatched dot repeats the "inferred, not observed" signal
+   for readers who cannot resolve the provenance hue. */
+.provTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 5px;
+  border-radius: var(--wsv2-r-chip);
+  border: 1px dashed color-mix(in srgb, var(--wsv2-inferred) 45%, transparent);
+  background: color-mix(in srgb, var(--wsv2-inferred) 9%, transparent);
+  color: var(--wsv2-inferred);
+  font-size: 9px;
+  line-height: 14px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.provTagDot {
+  width: 5px;
+  height: 5px;
+  flex: none;
+  border-radius: 50%;
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--wsv2-inferred);
 }
 
 .meter {
@@ -962,7 +1054,7 @@
 }
 
 .reqBlocking {
-  border-left-color: var(--wsv2-danger);
+  border-left-color: var(--wsv2-blocking);
 }
 
 .reqAdvisory {
@@ -975,12 +1067,12 @@
 }
 
 .reqSatisfied {
-  border-left-color: var(--wsv2-success);
+  border-left-color: var(--wsv2-satisfied);
   background: var(--wsv2-well);
 }
 
 .reqStale {
-  border-left-color: var(--wsv2-warning);
+  border-left-color: var(--wsv2-stale);
   border-left-style: dashed;
   background: var(--wsv2-well);
 }
@@ -1096,12 +1188,16 @@
   line-height: var(--wsv2-support-line);
 }
 
+/* Unavailable — a real capability is absent (not merely empty). The dashed left
+   edge is the shared "unavailable" tell (see .plateActionPending, .pendingNote)
+   so it never reads as an empty state, which stays plain and borderless. */
 .movementUnavailable {
   margin-top: 4px;
-  padding: 11px 13px;
+  padding: 11px 13px 11px 12px;
   border-radius: var(--wsv2-r-card);
+  border-left: 2px dashed color-mix(in srgb, var(--wsv2-unavailable) 55%, transparent);
   background: rgb(0 0 0 / 18%);
-  color: var(--wsv2-text-3);
+  color: var(--wsv2-unavailable);
   font-size: var(--wsv2-support-size);
   line-height: var(--wsv2-support-line);
   font-style: italic;
@@ -1131,12 +1227,14 @@
   opacity: 1;
 }
 
+/* A recorded decision is the accountable human act; its rule reads in the
+   authority hue, distinct from the amber "awaiting decision" default. */
 .plateRecorded::before {
-  background: var(--wsv2-accent);
+  background: var(--wsv2-authority);
 }
 
 .plateError::before {
-  background: var(--wsv2-danger);
+  background: var(--wsv2-missing);
   opacity: 1;
 }
 
@@ -1398,6 +1496,19 @@
   border-radius: 50%;
   background: currentColor;
   flex: none;
+}
+
+/* R1C — Accepted risk is an approval that CARRIES risk and must never read as a
+   clean approval. Beyond hue and the "with accepted risk" label it takes a
+   dashed border and a hollow ring dot — a structural "flagged" tell that holds
+   up without colour. */
+.outcomeTokenRisk {
+  border-style: dashed;
+}
+
+.outcomeTokenRisk .outcomeTokenDot {
+  background: transparent;
+  box-shadow: inset 0 0 0 2px currentColor;
 }
 
 .decisionChip {
@@ -1873,7 +1984,17 @@
 }
 
 .referenceStale {
-  color: var(--wsv2-warning);
+  color: var(--wsv2-stale);
+  border-color: color-mix(in srgb, var(--wsv2-stale) 40%, transparent);
+  border-style: dashed;
+}
+
+/* Model-assisted reference — the Inspector echo of the Canvas provenance tag, so
+   an inferred edge reads consistently in both planes and never as observed. */
+.referenceModel {
+  color: var(--wsv2-inferred);
+  border-color: color-mix(in srgb, var(--wsv2-inferred) 40%, transparent);
+  border-style: dashed;
 }
 
 .inlineMono {
@@ -2499,7 +2620,9 @@
   overflow: hidden;
 }
 
-/* Provenance strip — makes sample data unmistakable at rest. */
+/* Provenance strip — makes sample data unmistakable at rest. A fixture origin
+   carries the provenance hue and a filled dot; a real (local / GitHub) report
+   reads neutral with a hollow dot so it never wears the sample hue. */
 .provenanceBadge {
   display: inline-flex;
   align-items: center;
@@ -2515,6 +2638,19 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: nowrap;
+}
+
+.provenanceBadgeSample {
+  border-color: color-mix(in srgb, var(--wsv2-sample) 34%, var(--wsv2-rail));
+}
+
+.provenanceBadgeReal {
+  color: var(--wsv2-real);
+}
+
+.provenanceDotReal {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--wsv2-text-3);
 }
 
 .visuallyHidden {

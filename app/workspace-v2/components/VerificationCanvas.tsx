@@ -49,6 +49,7 @@ export function VerificationCanvas({
   detail,
   caseTitle,
   provenanceLabel,
+  provenanceIsSample,
   focus,
   onToggleFocus,
   bodyRef,
@@ -61,6 +62,7 @@ export function VerificationCanvas({
   detail: CaseDetail;
   caseTitle: string;
   provenanceLabel: string;
+  provenanceIsSample: boolean;
   focus: ArtifactRef | null;
   onToggleFocus: (kind: ArtifactKind, id: string) => void;
   bodyRef: RefObject<HTMLDivElement | null>;
@@ -83,8 +85,8 @@ export function VerificationCanvas({
       <header className={styles.caseHeader}>
         <div className={styles.caseIdentity}>
           <div className={styles.caseEyebrow}>
-            <span className={styles.caseEyebrowLabel}>Workspace V2</span>
-            <ProvenanceBadge label={provenanceLabel} />
+            <span className={styles.caseEyebrowLabel}>Workspace</span>
+            <ProvenanceBadge label={provenanceLabel} isSample={provenanceIsSample} />
           </div>
           <h1 className={styles.caseTitle}>{caseTitle}</h1>
           <div className={styles.caseMeta}>
@@ -345,7 +347,10 @@ function FindingRecord({
             {finding.provenance === "Model assisted" ? (
               <>
                 <span className={styles.metaDot}>·</span>
-                <span className={styles.toneProvenance}>model assisted</span>
+                <span className={styles.provTag}>
+                  <span className={styles.provTagDot} aria-hidden="true" />
+                  model assisted
+                </span>
               </>
             ) : null}
           </span>
@@ -364,7 +369,14 @@ function FindingRecord({
             <span className={styles.metaDot}>·</span>
             <span>{finding.category}</span>
             <span className={styles.metaDot}>·</span>
-            <span>{finding.provenance}</span>
+            {finding.provenance === "Model assisted" ? (
+              <span className={styles.provTag}>
+                <span className={styles.provTagDot} aria-hidden="true" />
+                {finding.provenance}
+              </span>
+            ) : (
+              <span>{finding.provenance}</span>
+            )}
           </div>
         </div>
       ) : null}
@@ -414,7 +426,14 @@ function EvidenceRecord({
         <div className={styles.recordExpansion}>
           <ArtifactMarker kind="Evidence" id={record.evidenceId} accent={evidenceStatusTone(record.status)} />
           <div className={styles.recordFoot}>
-            <span>{record.provenance}</span>
+            {record.provenance === "Model assisted" ? (
+              <span className={styles.provTag}>
+                <span className={styles.provTagDot} aria-hidden="true" />
+                {record.provenance}
+              </span>
+            ) : (
+              <span>{record.provenance}</span>
+            )}
             <span className={styles.metaDot}>·</span>
             <span>observed {record.observedAt}</span>
           </div>

@@ -333,6 +333,12 @@ export type DecisionOutcome =
 export type DecisionApplicability =
   | "applicable"
   | "predates-current-head"
+  /* Recorded via the explicit unbound-head acknowledgement: a real decision with
+     no commit binding. Never asserted as applicable to a current head. */
+  | "unbound"
+  /* The current report head cannot be established, so current-head applicability
+     cannot be proven either way. Not inferred from two null values. */
+  | "current-head-unavailable"
   | "withdrawn"
   | "unavailable";
 
@@ -636,6 +642,8 @@ export const OUTCOME_LABEL: Record<DecisionOutcome, string> = {
 export const APPLICABILITY_LABEL: Record<DecisionApplicability, string> = {
   applicable: "Applies to current head",
   "predates-current-head": "Predates current head",
+  unbound: "Not bound to a commit",
+  "current-head-unavailable": "Current head unavailable",
   withdrawn: "Withdrawn",
   unavailable: "Unavailable",
 };

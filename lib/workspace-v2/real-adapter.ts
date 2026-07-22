@@ -533,6 +533,28 @@ function mapApplicability(value: HumanDecisionApplicability): DecisionApplicabil
   return "unavailable";
 }
 
+/* R1C — the Workspace only asserts "applies to current head" when EXACT head
+   applicability is provable. A ledger projection may report "applicable" for a
+   decision recorded through the explicit unbound-head acknowledgement; that is a
+   real recorded decision but must never claim current-head authority. This does
+   not touch the ledger — it corrects the Workspace view-model's presentation of
+   applicability so the Plate, the Decision Context and Queue grouping agree. */
+function resolveHeadApplicability(
+  raw: DecisionApplicability,
+  applicableHeadSha: string | null,
+  currentHeadSha: string | null,
+): DecisionApplicability {
+  /* Predates / withdrawn / unavailable keep their ledger meaning (Cases B, E). */
+  if (raw !== "applicable") return raw;
+  /* D — the current report head cannot be established; do not infer either way. */
+  if (!currentHeadSha) return "current-head-unavailable";
+  /* C — recorded but not bound to any commit (unbound-head acknowledgement). */
+  if (!applicableHeadSha) return "unbound";
+  /* A — proven exact-head equality; otherwise never silently assert applicable
+     (defensive: the ledger normally reports predates for a bound mismatch). */
+  return applicableHeadSha === currentHeadSha ? "applicable" : "predates-current-head";
+}
+
 function mapDivergence(value: RecommendationDivergence): DecisionDivergence | null {
   if (value === "unavailable") return null;
   return value;
@@ -642,7 +664,11 @@ function readDecisionProjection(
 
     if (entry && entry.outcome) {
       /* States B / C / F — an effective recorded decision. */
-      const applicability = mapApplicability(projection.applicability);
+      const applicability = resolveHeadApplicability(
+        mapApplicability(projection.applicability),
+        entry.applicableHeadSha ?? null,
+        currentHeadSha ?? null,
+      );
       const predates = applicability === "predates-current-head";
       const recorded: DecisionRecordedView = {
         status: "recorded",

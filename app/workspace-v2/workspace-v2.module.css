@@ -16,32 +16,85 @@
      row 3  Decision Plate   (auto, a real grid row — never overlaps) */
 
 .root {
-  --wsv2-spine: #050608;
-  --wsv2-queue: #0c0e13;
-  --wsv2-inspector: #121620;
-  --wsv2-canvas: #1a1e26;
+  /* R1D.1 — Workspace-local neutral primitives. The resting surface hierarchy,
+     the text ramp and the structural borders are owned here as literal
+     warm-neutral graphite values, deliberately independent of the global
+     --color-* semantic variables, so a later whole-product (G) restyle of those
+     globals can never silently shift the Workspace's resting surfaces.
+     Warm-neutral = low chroma, a shade warmer than blue-grey; never brown,
+     sepia, beige, olive or terminal green. Hierarchy is carried by luminance,
+     not hue: the Canvas is the lightest plane and stays dominant, and the side
+     planes step down toward the near-black application base. */
+  /* R1D.1 micro-calibration — the ramp is pulled ~5–10% off its warm/brown
+     bias toward neutral graphite by narrowing each channel's red/green-over-blue
+     gap, while a restrained warm undertone (R ≥ G ≥ B) is deliberately kept so
+     the surfaces never read blue-grey or cold. The plate steps down one level
+     to sit closer to the Canvas. */
+  --wsv2-n-base: #0a0a0a; /* behind the grid */
+  --wsv2-n-spine: #0d0d0c;
+  --wsv2-n-queue: #100f0e;
+  --wsv2-n-inspector: #131211;
+  --wsv2-n-canvas: #171614; /* dominant, lightest plane */
+  --wsv2-n-well: #1a1917; /* recessed region inside the canvas */
+  --wsv2-n-raised: #1d1c1a; /* raised / contextual artifact surface */
+  --wsv2-n-focal: #22201b; /* actively focused artifact */
+  --wsv2-n-plate: #1b1a17; /* decision-plate graphite, one step toward canvas */
+  --wsv2-n-dialog: #201f1c; /* interrupting overlay surface */
+  --wsv2-n-inset: #070706; /* selection well */
 
-  --wsv2-well: #151921;
-  --wsv2-raised: #222834;
-  --wsv2-focal: #29303d;
-  --wsv2-plate: #262d3a;
-  --wsv2-queue-inset: #06070a;
+  --wsv2-n-text: #f1f0ec; /* warm off-white */
+  --wsv2-n-text-2: #c4c1b9; /* secondary, lifted for sustained reading */
+  --wsv2-n-text-3: #969188; /* muted metadata, lifted a touch, still quiet */
+
+  /* Warm-white alpha, neutralised a step so borders and faint raises stay
+     graphite over the surfaces rather than reading brown. */
+  --wsv2-n-line-1: rgb(242 240 234 / 8%); /* structural border */
+  --wsv2-n-line-2: rgb(242 240 234 / 15%); /* strong structural rule */
+  --wsv2-n-rail: #2a2825; /* solid low-contrast warm border */
+  --wsv2-n-raise-1: rgb(242 240 234 / 3%);
+  --wsv2-n-raise-2: rgb(242 240 234 / 6%);
+  --wsv2-n-raise-3: rgb(242 240 234 / 9%);
+
+  /* R1D.1 — Workspace-local semantic hues. Ported from the approved dark values
+     and owned locally so the semantic vocabulary is also insulated from a later
+     global restyle. Saturation is unchanged — the quieter neutral environment
+     makes these read more clearly without being pushed brighter. */
+  --wsv2-c-success: #6fcf9e;
+  --wsv2-c-warning: #e0bd72;
+  --wsv2-c-danger: #e5837a;
+  --wsv2-c-information: #8fb6e3;
+  --wsv2-c-provenance: #c9a3e0;
+  --wsv2-c-accent: #8ab2dd; /* functional interaction accent only */
+  --wsv2-c-focus: #6b9fd4;
+
+  /* Surface aliases — downstream rules reference these names unchanged, so the
+     whole reconciliation is a repointing of the primitive layer. */
+  --wsv2-spine: var(--wsv2-n-spine);
+  --wsv2-queue: var(--wsv2-n-queue);
+  --wsv2-inspector: var(--wsv2-n-inspector);
+  --wsv2-canvas: var(--wsv2-n-canvas);
+
+  --wsv2-well: var(--wsv2-n-well);
+  --wsv2-raised: var(--wsv2-n-raised);
+  --wsv2-focal: var(--wsv2-n-focal);
+  --wsv2-plate: var(--wsv2-n-plate);
+  --wsv2-queue-inset: var(--wsv2-n-inset);
 
   --wsv2-edge: #000000;
-  --wsv2-hairline: rgb(255 255 255 / 7%);
-  --wsv2-rail: #1e232c;
+  --wsv2-hairline: var(--wsv2-n-line-1);
+  --wsv2-rail: var(--wsv2-n-rail);
 
-  --wsv2-text: var(--color-text-primary);
-  --wsv2-text-2: var(--color-text-secondary);
-  --wsv2-text-3: var(--color-text-muted);
+  --wsv2-text: var(--wsv2-n-text);
+  --wsv2-text-2: var(--wsv2-n-text-2);
+  --wsv2-text-3: var(--wsv2-n-text-3);
 
-  --wsv2-success: var(--color-success);
-  --wsv2-warning: var(--color-warning);
-  --wsv2-danger: var(--color-danger);
-  --wsv2-information: var(--color-information);
-  --wsv2-provenance: var(--color-provenance);
-  --wsv2-accent: var(--color-accent);
-  --wsv2-focus-ring: var(--color-focus-ring);
+  --wsv2-success: var(--wsv2-c-success);
+  --wsv2-warning: var(--wsv2-c-warning);
+  --wsv2-danger: var(--wsv2-c-danger);
+  --wsv2-information: var(--wsv2-c-information);
+  --wsv2-provenance: var(--wsv2-c-provenance);
+  --wsv2-accent: var(--wsv2-c-accent);
+  --wsv2-focus-ring: var(--wsv2-c-focus);
 
   /* R1D — Motion. A restrained, functional transition system: only the state
      changes that aid orientation animate (hover, pressed, selection, active
@@ -62,7 +115,7 @@
      a light raise; pressed is a dark inset. No two share a treatment. */
   --wsv2-selected: var(--wsv2-queue-inset);
   --wsv2-selected-edge: var(--wsv2-accent);
-  --wsv2-active: rgb(255 255 255 / 6%);
+  --wsv2-active: var(--wsv2-n-raise-2);
   --wsv2-pressed: rgb(0 0 0 / 30%);
 
   /* R1C — Evidence & requirement semantics. Colour is reinforcement only:
@@ -72,31 +125,32 @@
      evidence carries the provenance hue and a dotted edge so it can never be
      mistaken for a direct observation. */
   --wsv2-observed: var(--wsv2-text-2);
-  --wsv2-inferred: var(--color-provenance);
-  --wsv2-missing: var(--color-danger);
-  --wsv2-stale: var(--color-warning);
-  --wsv2-blocking: var(--color-danger);
-  --wsv2-satisfied: var(--color-success);
+  --wsv2-inferred: var(--wsv2-c-provenance);
+  --wsv2-missing: var(--wsv2-c-danger);
+  --wsv2-stale: var(--wsv2-c-warning);
+  --wsv2-blocking: var(--wsv2-c-danger);
+  --wsv2-satisfied: var(--wsv2-c-success);
 
   /* R1C — Decision semantics. Clean approval and approval-carrying-accepted-risk
      never share a treatment; the human act (authority) reads separately from the
      model's recommendation. */
-  --wsv2-approval: var(--color-success);
-  --wsv2-accepted-risk: var(--color-warning);
-  --wsv2-authority: var(--color-accent);
+  --wsv2-approval: var(--wsv2-c-success);
+  --wsv2-accepted-risk: var(--wsv2-c-warning);
+  --wsv2-authority: var(--wsv2-c-accent);
   --wsv2-recommendation: var(--wsv2-text-3);
 
   /* R1C — Availability & provenance. Unavailable (a real capability is absent)
      reads muted-with-structure; empty (nothing to show) stays plain text and is
      never dressed as an error. Sample/fixture origin carries the provenance hue;
      a real/local report reads neutral. */
-  --wsv2-unavailable: var(--color-text-muted);
-  --wsv2-partial: var(--color-warning);
-  --wsv2-sample: var(--color-provenance);
+  --wsv2-unavailable: var(--wsv2-n-text-3);
+  --wsv2-partial: var(--wsv2-c-warning);
+  --wsv2-sample: var(--wsv2-c-provenance);
   --wsv2-real: var(--wsv2-text-3);
 
-  /* R1C — Raised/interrupting surface alias for dialogs. */
-  --wsv2-dialog: var(--wsv2-raised);
+  /* R1C — Raised/interrupting surface alias for dialogs. R1D.1 gives the overlay
+     its own graphite step above the raised artifact surface. */
+  --wsv2-dialog: var(--wsv2-n-dialog);
 
   --wsv2-sans: var(--type-family-application);
   --wsv2-mono: var(--type-family-technical);
@@ -122,7 +176,7 @@
   display: grid;
   grid-template-columns: 236px 204px minmax(0, 1fr) 308px;
   overflow: hidden;
-  background: var(--wsv2-spine);
+  background: var(--wsv2-n-base);
   color: var(--wsv2-text);
   font-family: var(--wsv2-sans);
   font-size: var(--wsv2-body-size);
@@ -238,7 +292,9 @@
   padding: 9px 10px;
   border: 0;
   border-left: 2px solid transparent;
-  border-radius: var(--wsv2-r-control);
+  /* R1D.1 micro-calibration — flatter list geometry so a filled row reads as a
+     desktop selection, not a floating card. */
+  border-radius: 4px;
   background: transparent;
   color: inherit;
   font: inherit;
@@ -254,14 +310,17 @@
 }
 
 .queueRow:hover {
-  background: rgb(255 255 255 / 3%);
+  background: rgb(242 240 234 / 3%);
 }
 
+/* R1D.1 micro-calibration — a quiet, lightly-raised desktop list selection. The
+   accent left edge is the primary selection tell; the deep well and heavy inset
+   shadow are gone so the row no longer reads as a card. Selection stays distinct
+   from the keyboard focus ring below. */
 .queueRowSelected,
 .queueRowSelected:hover {
-  background: var(--wsv2-selected);
+  background: var(--wsv2-n-raise-2);
   border-left-color: var(--wsv2-selected-edge);
-  box-shadow: inset 0 1px 3px rgb(0 0 0 / 55%);
 }
 
 .queueRow:focus-visible {
@@ -328,7 +387,7 @@
 .queueLimitations {
   margin-top: auto;
   padding: 8px 12px 14px;
-  border-top: 1px solid rgb(255 255 255 / 6%);
+  border-top: 1px solid rgb(242 240 234 / 6%);
 }
 
 .queueLimitationLine {
@@ -415,7 +474,10 @@
   min-height: 52px;
   padding: 8px;
   border: 0;
-  border-radius: var(--wsv2-r-control);
+  /* R1D.1 micro-calibration — flatter geometry so the active stage reads as a
+     restrained active navigation row rather than a floating card; the accent
+     mark, rail and brighter label carry the active state. */
+  border-radius: 4px;
   background: transparent;
   color: inherit;
   font: inherit;
@@ -430,7 +492,7 @@
 }
 
 .spineNode:hover {
-  background: rgb(255 255 255 / 4%);
+  background: rgb(242 240 234 / 4%);
 }
 
 .spineNodeCurrent {
@@ -491,7 +553,7 @@
 .spineNodeCurrent .spineMark {
   box-shadow:
     0 0 0 1px var(--wsv2-accent),
-    0 0 0 4px rgb(138 178 221 / 14%);
+    0 0 0 4px color-mix(in srgb, var(--wsv2-accent) 14%, transparent);
 }
 
 .spineText {
@@ -522,11 +584,12 @@
   opacity: 0.85;
 }
 
+/* R1D.1 — the Spine's fact summary reads as a ruled footer of the navigation
+   rail, not a floating card: a single top hairline, no fill, no radius. */
 .spineFoot {
   margin: auto 12px 14px;
-  padding: 11px 11px 9px;
-  border-radius: var(--wsv2-r-card);
-  background: rgb(255 255 255 / 3%);
+  padding: 12px 2px 2px;
+  border-top: 1px solid var(--wsv2-hairline);
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px 4px;
@@ -831,8 +894,10 @@
   min-width: 0;
 }
 
+/* R1D.1 micro-calibration — evidence and observation descriptions are important
+   reading content, so their resting colour is the secondary step, not muted. */
 .recordStatement {
-  color: var(--wsv2-text-3);
+  color: var(--wsv2-text-2);
   font-size: var(--wsv2-support-size);
   line-height: var(--wsv2-support-line);
   display: -webkit-box;
@@ -919,15 +984,21 @@
   letter-spacing: 0.07em;
 }
 
+/* R1D.1 — Evidence is a ledger, not a stack of cards. Ordinary records rest as
+   lean rows: no fill, no radius, a thin hairline separator and a semantic left
+   edge that only strengthens for missing/stale. Presence is carried at the row
+   edge (status + meter), not by a filled green rectangle. Focus still elevates
+   the record via .recordFocused, which is defined later and wins. */
 .recordEvidence {
-  margin-bottom: 4px;
-  border-radius: var(--wsv2-r-card);
-  background: var(--wsv2-well);
+  margin-bottom: 0;
+  border-radius: 0;
+  background: transparent;
   border-left: 2px solid transparent;
+  box-shadow: inset 0 -1px 0 var(--wsv2-hairline);
 }
 
 .recordEvidence .recordButton {
-  padding: 10px 13px 11px;
+  padding: 9px 12px 10px;
 }
 
 .recordEvidence .recordTitle {
@@ -1063,11 +1134,17 @@
   background: var(--wsv2-success);
 }
 
+/* R1D.1 — Requirements read as contract clauses, not cards: flat rows carrying a
+   stronger (3px) semantic left edge than evidence and a hairline separator. The
+   clause weight comes from the primary-colour title and the blocking flag, not a
+   filled panel. Satisfied never becomes a celebratory green card; blocking keeps
+   the danger edge as its stronger structure. */
 .recordRequirement {
-  margin-bottom: 5px;
-  border-radius: var(--wsv2-r-card);
-  background: var(--wsv2-raised);
+  margin-bottom: 0;
+  border-radius: 0;
+  background: transparent;
   border-left: 3px solid var(--wsv2-rail);
+  box-shadow: inset 0 -1px 0 var(--wsv2-hairline);
 }
 
 .recordRequirement .recordButton {
@@ -1096,13 +1173,11 @@
 
 .reqSatisfied {
   border-left-color: var(--wsv2-satisfied);
-  background: var(--wsv2-well);
 }
 
 .reqStale {
   border-left-color: var(--wsv2-stale);
   border-left-style: dashed;
-  background: var(--wsv2-well);
 }
 
 .reqState {
@@ -1153,12 +1228,15 @@
   text-transform: uppercase;
 }
 
+/* R1D.1 — A focused artifact still rises above the ledger, but through a
+   restrained lift and a warm inset hairline rather than a theatrical drop
+   shadow. It is the one record that earns a genuine raised surface. */
 .recordFocused {
   border-radius: var(--wsv2-r-card);
   background: var(--wsv2-focal);
   box-shadow:
-    0 10px 26px rgb(0 0 0 / 42%),
-    inset 0 0 0 1px rgb(255 255 255 / 6%);
+    0 4px 14px rgb(0 0 0 / 34%),
+    inset 0 0 0 1px var(--wsv2-n-line-1);
   z-index: 1;
 }
 
@@ -1236,11 +1314,15 @@
 
 /* Row 3 — the terminal act (Decision Plate) --------------------------- */
 
+/* R1D.1 — The Decision Plate is a neutral graphite terminal region of the
+   canvas, not a floating card. Authority comes from its terminal position, the
+   semantic top rule (::before) and typography; the upward shadow is reduced to
+   a quiet separation from the scroll region above it. */
 .plate {
   position: relative;
   padding: 15px var(--wsv2-canvas-pad) 14px;
   background: var(--wsv2-plate);
-  box-shadow: 0 -16px 34px rgb(0 0 0 / 40%);
+  box-shadow: 0 -8px 18px rgb(0 0 0 / 22%);
   display: grid;
   gap: 10px;
 }
@@ -1301,7 +1383,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: rgb(255 255 255 / 8%);
+  background: rgb(242 240 234 / 8%);
   color: var(--wsv2-text-2);
   font-family: var(--wsv2-mono);
   font-size: 9px;
@@ -1399,7 +1481,7 @@
   padding: 0 16px;
   border: 1px solid var(--wsv2-accent);
   border-radius: var(--wsv2-r-control);
-  background: rgb(138 178 221 / 14%);
+  background: color-mix(in srgb, var(--wsv2-accent) 14%, transparent);
   color: var(--wsv2-accent);
   font-family: inherit;
   font-size: var(--wsv2-support-size);
@@ -1412,7 +1494,7 @@
 }
 
 .plateAction:hover {
-  background: rgb(138 178 221 / 22%);
+  background: color-mix(in srgb, var(--wsv2-accent) 22%, transparent);
 }
 
 .plateAction:focus-visible {
@@ -1439,7 +1521,7 @@
 }
 
 .plateActionSecondary:hover {
-  background: rgb(255 255 255 / 5%);
+  background: rgb(242 240 234 / 5%);
   color: var(--wsv2-text);
 }
 
@@ -1460,7 +1542,7 @@
   gap: 8px;
   border: 1px dashed var(--wsv2-rail);
   border-radius: var(--wsv2-r-control);
-  background: rgb(255 255 255 / 3%);
+  background: rgb(242 240 234 / 3%);
   color: var(--wsv2-text-3);
   font-family: inherit;
   font-size: var(--wsv2-support-size);
@@ -1477,7 +1559,7 @@
 .pendingTag {
   padding: 0 5px;
   border-radius: var(--wsv2-r-chip);
-  background: rgb(255 255 255 / 6%);
+  background: rgb(242 240 234 / 6%);
   color: var(--wsv2-text-3);
   font-size: 9px;
   font-weight: 700;
@@ -1494,7 +1576,7 @@
   padding: 1px 6px;
   border-radius: var(--wsv2-r-chip);
   border: 1px solid var(--wsv2-rail);
-  background: rgb(255 255 255 / 4%);
+  background: rgb(242 240 234 / 4%);
   color: var(--wsv2-text-3);
   font-size: 9px;
   line-height: 14px;
@@ -1587,7 +1669,7 @@
 .decisionSource {
   padding: 0 5px;
   border-radius: var(--wsv2-r-chip);
-  background: rgb(255 255 255 / 6%);
+  background: rgb(242 240 234 / 6%);
   color: var(--wsv2-text-3);
   font-size: 9px;
   font-weight: 700;
@@ -1612,7 +1694,7 @@
 .decisionRefCountItem {
   padding: 1px 6px;
   border-radius: var(--wsv2-r-chip);
-  background: rgb(255 255 255 / 5%);
+  background: rgb(242 240 234 / 5%);
   color: var(--wsv2-text-3);
   font-family: var(--wsv2-mono);
   font-size: 10px;
@@ -1838,7 +1920,7 @@
 .ref {
   padding: 2px 6px;
   border-radius: var(--wsv2-r-chip);
-  background: rgb(255 255 255 / 5%);
+  background: rgb(242 240 234 / 5%);
   color: var(--wsv2-text-3);
   font-family: var(--wsv2-mono);
   font-size: 10px;
@@ -1848,9 +1930,14 @@
 /* Related-artifact navigation (R1B.3). Each linked artifact is a native button
    that activates the target through the single route-level state owner. Truthful
    labels, visible focus, logical tab order — no nested selection state. */
+/* R1D.1 micro-calibration — related-artifact controls read as compact technical
+   relationship rows, not mini-cards: no box border or radius, a quiet hairline
+   separator between rows, tighter rhythm and a restrained hover. The interactive
+   boundary is preserved through the full-width hit target, the hover/pressed
+   response and the strong focus ring. */
 .relatedList {
   display: grid;
-  gap: 4px;
+  gap: 0;
 }
 
 .relatedButton {
@@ -1859,10 +1946,11 @@
   display: flex;
   align-items: baseline;
   gap: 8px;
-  padding: 7px 9px;
-  border: 1px solid var(--wsv2-hairline);
-  border-radius: var(--wsv2-r-chip);
-  background: rgb(255 255 255 / 3%);
+  padding: 7px 4px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: inset 0 -1px 0 var(--wsv2-hairline);
+  background: transparent;
   color: inherit;
   font: inherit;
   text-align: left;
@@ -1871,7 +1959,7 @@
 }
 
 .relatedButton:hover {
-  background: rgb(255 255 255 / 6%);
+  background: var(--wsv2-n-raise-1);
 }
 
 .relatedButton:focus-visible {
@@ -1995,7 +2083,7 @@
   padding: 1px 6px;
   border-radius: var(--wsv2-r-chip);
   border: 1px solid var(--wsv2-hairline);
-  background: rgb(255 255 255 / 3%);
+  background: rgb(242 240 234 / 3%);
   color: var(--wsv2-text-3);
   font-family: var(--wsv2-mono);
   font-size: 10px;
@@ -2060,7 +2148,7 @@
   padding: 8px 10px;
   border-radius: var(--wsv2-r-chip);
   border: 1px solid var(--wsv2-hairline);
-  background: rgb(255 255 255 / 2%);
+  background: rgb(242 240 234 / 2%);
   display: flex;
   flex-direction: column;
   gap: 5px;
@@ -2181,8 +2269,8 @@
   flex-direction: column;
   border: 1px solid var(--wsv2-rail);
   border-radius: var(--wsv2-r-card);
-  background: var(--wsv2-raised);
-  box-shadow: 0 18px 48px rgb(0 0 0 / 45%);
+  background: var(--wsv2-dialog);
+  box-shadow: 0 16px 40px rgb(0 0 0 / 42%);
 }
 
 .dialogDestructive {
@@ -2291,7 +2379,7 @@
 }
 
 .dialogSecondary:hover {
-  background: rgb(255 255 255 / 5%);
+  background: rgb(242 240 234 / 5%);
   color: var(--wsv2-text);
 }
 
@@ -2370,7 +2458,7 @@
   padding: 8px 10px;
   border: 1px solid var(--wsv2-rail);
   border-radius: var(--wsv2-r-control);
-  background: rgb(255 255 255 / 4%);
+  background: rgb(242 240 234 / 4%);
   color: var(--wsv2-text);
   font: inherit;
   font-size: var(--wsv2-body-size);
@@ -2400,7 +2488,7 @@
   padding: 8px 10px;
   border: 1px solid var(--wsv2-hairline);
   border-radius: var(--wsv2-r-control);
-  background: rgb(255 255 255 / 2%);
+  background: rgb(242 240 234 / 2%);
   cursor: pointer;
   transition:
     background-color var(--wsv2-t-fast) var(--wsv2-ease),
@@ -2408,7 +2496,7 @@
 }
 
 .outcomeOption:hover {
-  background: rgb(255 255 255 / 5%);
+  background: rgb(242 240 234 / 5%);
 }
 
 .outcomeOptionSelected {
@@ -2463,7 +2551,7 @@
   padding: 6px 8px;
   border: 1px solid var(--wsv2-hairline);
   border-radius: var(--wsv2-r-chip);
-  background: rgb(255 255 255 / 2%);
+  background: rgb(242 240 234 / 2%);
   cursor: pointer;
   font-size: var(--wsv2-support-size);
   color: var(--wsv2-text-2);
@@ -2526,7 +2614,7 @@
   padding: 2px 6px;
   border: 1px solid var(--wsv2-hairline);
   border-radius: var(--wsv2-r-chip);
-  background: rgb(255 255 255 / 4%);
+  background: rgb(242 240 234 / 4%);
   color: var(--wsv2-text-2);
   font: inherit;
   font-size: var(--wsv2-support-size);
@@ -2548,7 +2636,7 @@
   padding: 3px 12px;
   border: 1px solid var(--wsv2-rail);
   border-radius: var(--wsv2-r-chip);
-  background: rgb(255 255 255 / 5%);
+  background: rgb(242 240 234 / 5%);
   color: var(--wsv2-text);
   font: inherit;
   font-size: var(--wsv2-support-size);
@@ -2557,7 +2645,7 @@
 }
 
 .mutationButton:hover {
-  background: rgb(255 255 255 / 9%);
+  background: rgb(242 240 234 / 9%);
 }
 
 .mutationButton:focus-visible {
@@ -2702,7 +2790,7 @@
   padding: 1px 6px;
   border-radius: var(--wsv2-r-chip);
   border: 1px solid var(--wsv2-rail);
-  background: rgb(255 255 255 / 4%);
+  background: rgb(242 240 234 / 4%);
   color: var(--wsv2-text-3);
   font-size: 9px;
   line-height: 14px;

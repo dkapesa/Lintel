@@ -171,10 +171,17 @@
   --wsv2-canvas-pad: clamp(22px, 2.2vw, 34px);
   --wsv2-plane-pad: 12px;
 
+  /* R1D.2 — the queue column width is a single named track so collapse (focus
+     mode) and the two responsive steps each set exactly one value. The other
+     three tracks are unchanged, so the approved 1440×900 composition resolves
+     byte-for-byte (var → 236px). */
+  --wsv2-queue-col: 236px;
+  --wsv2-queue-rail: 72px; /* compact orientation rail, calibrated in 64–80px */
+
   height: 100dvh;
   min-height: 100dvh;
   display: grid;
-  grid-template-columns: 236px 204px minmax(0, 1fr) 308px;
+  grid-template-columns: var(--wsv2-queue-col) 204px minmax(0, 1fr) 308px;
   overflow: hidden;
   background: var(--wsv2-n-base);
   color: var(--wsv2-text);
@@ -182,6 +189,17 @@
   font-size: var(--wsv2-body-size);
   line-height: var(--wsv2-body-line);
   letter-spacing: -0.005em;
+}
+
+/* R1D.2 — Focus mode. Collapsing the Queue narrows only its own track to the
+   compact rail; the Canvas (the flexible track) absorbs the reclaimed width. The
+   attribute selector's higher specificity means this one declaration also wins
+   over the two responsive `--wsv2-queue-col` steps, so the rail width is stable
+   at every supported viewport. This is an immediate layout truth: grid-template-
+   columns is never transitioned, so there is no width/grid animation (R1D.2 §12).
+   The Spine, Canvas and Inspector tracks are untouched. */
+.root[data-queue-collapsed="true"] {
+  --wsv2-queue-col: var(--wsv2-queue-rail);
 }
 
 .skipLink {
@@ -247,11 +265,16 @@
 .queueList {
   min-height: 0;
   flex: 1;
+  /* R1D.2 — the grouped case list is the Queue's primary (and only) scroll
+     container; the header and footer sit outside it, and the Canvas, Spine and
+     Inspector never move when it scrolls. */
   overflow-y: auto;
   scrollbar-width: thin;
   /* Reserve the scrollbar gutter so a Queue that gains or loses a scrollbar
      during regrouping never shifts row width sideways. */
   scrollbar-gutter: stable;
+  /* Keep an overscroll at either end from chaining out to another plane. */
+  overscroll-behavior: contain;
   padding: 0 8px 16px;
 }
 
@@ -263,15 +286,55 @@
   margin-top: 14px;
 }
 
+/* R1D.2 — group heading is a real button (collapse toggle) and a sticky
+   orientation cue that rides the top of the scroll container during long-list
+   scrolling. It uses the approved neutral graphite treatment, carries an opaque
+   queue-surface background so rows scroll cleanly beneath it, and never overlaps
+   the plane header (it lives inside the scroll region, below it). */
 .queueGroupHeader {
-  padding: 6px 6px 5px;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  width: 100%;
+  padding: 7px 6px 6px;
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 8px;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: var(--wsv2-queue);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.queueGroupHeader:hover .queueGroupLabel,
+.queueGroupHeader:hover .queueGroupCount {
+  color: var(--wsv2-text-2);
+}
+
+.queueGroupHeader:focus-visible {
+  outline: 2px solid var(--wsv2-focus-ring);
+  outline-offset: -2px;
+  border-radius: 4px;
+}
+
+/* Disclosure glyph: points down when the group is expanded, and rotates to point
+   at the (now hidden) rows when collapsed. Rotation is an instant state truth,
+   never transitioned, so it introduces no motion. */
+.queueGroupChevron {
+  flex: none;
+  display: inline-flex;
+  color: var(--wsv2-text-3);
+}
+
+.queueGroupHeader[aria-expanded="false"] .queueGroupChevron {
+  transform: rotate(-90deg);
 }
 
 .queueGroupLabel {
+  flex: 1;
+  min-width: 0;
   color: var(--wsv2-text-3);
   font-size: var(--wsv2-micro-size);
   line-height: var(--wsv2-micro-line);
@@ -281,9 +344,24 @@
 }
 
 .queueGroupCount {
+  flex: none;
   color: var(--wsv2-text-3);
   font-family: var(--wsv2-mono);
   font-size: 10px;
+}
+
+/* Selected-group cue: a small accent dot on a COLLAPSED group heading whose
+   hidden rows contain the current case, so selection is never invisible. */
+.queueGroupSelectedCue {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--wsv2-selected-edge);
+}
+
+.queueGroupRows {
+  display: block;
 }
 
 .queueRow {
@@ -382,10 +460,41 @@
   line-height: 14px;
 }
 
+/* R1D.2 — the Queue footer is a stable region that sits below the scroll list
+   (never inside it). It carries the one accessibly-labelled truthful total and,
+   when present, the projection limitations. It introduces no new metric — the
+   count is the same total shown, aria-hidden, in the header. */
+.queueFooter {
+  flex: none;
+  border-top: 1px solid rgb(242 240 234 / 6%);
+}
+
+.queueFooterSummary {
+  margin: 0;
+  padding: 8px 12px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.queueFooterCount {
+  color: var(--wsv2-text-3);
+  font-family: var(--wsv2-mono);
+  font-size: 10px;
+}
+
+.queueFooterLabel {
+  color: var(--wsv2-text-3);
+  font-size: var(--wsv2-micro-size);
+  line-height: var(--wsv2-micro-line);
+  font-weight: var(--wsv2-micro-weight);
+  letter-spacing: var(--wsv2-micro-track);
+  text-transform: uppercase;
+}
+
 /* R1B.2 — truthful projection limitations, kept quiet at the foot of the
    queue. Not an alert, not decorative; a plain note. */
 .queueLimitations {
-  margin-top: auto;
   padding: 8px 12px 14px;
   border-top: 1px solid rgb(242 240 234 / 6%);
 }
@@ -399,6 +508,199 @@
 
 .queueLimitationLine + .queueLimitationLine {
   margin-top: 6px;
+}
+
+/* --- R1D.2 — Queue collapse toggle (expanded header) ----------------- */
+
+/* A compact desktop control clustered with the count on the right of the plane
+   header. It is never an unlabeled chevron: the glyph is aria-hidden and the
+   button carries an explicit accessible name plus aria-expanded reflecting the
+   visible Queue state. */
+.queueHeaderControls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.queueCollapseToggle {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--wsv2-hairline);
+  border-radius: var(--wsv2-r-control);
+  background: transparent;
+  color: var(--wsv2-text-3);
+  cursor: pointer;
+  transition: background-color var(--wsv2-t-fast) var(--wsv2-ease), color var(--wsv2-t-fast)
+      var(--wsv2-ease);
+}
+
+.queueCollapseToggle:hover {
+  background: var(--wsv2-n-raise-2);
+  color: var(--wsv2-text-2);
+}
+
+.queueCollapseToggle:active {
+  background: var(--wsv2-pressed);
+}
+
+.queueCollapseToggle:focus-visible {
+  outline: 2px solid var(--wsv2-focus-ring);
+  outline-offset: 2px;
+}
+
+/* --- R1D.2 — Collapsed orientation rail ------------------------------ */
+
+/* The collapsed Queue is a compact rail, not an ambiguous icon strip: it keeps
+   an expand control, the total count, all four operational groups with their
+   counts and full accessible names, a selected-group cue, and (when present) a
+   compact limitations marker. Text is upright and readable — never rotated,
+   never a crushed PR title, never a single-letter mystery control. */
+.queueCollapsed {
+  align-items: stretch;
+}
+
+.queueRail {
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 8px 14px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.queueRailToggle {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--wsv2-hairline);
+  border-radius: var(--wsv2-r-control);
+  background: transparent;
+  color: var(--wsv2-text-3);
+  cursor: pointer;
+  transition: background-color var(--wsv2-t-fast) var(--wsv2-ease), color var(--wsv2-t-fast)
+      var(--wsv2-ease);
+}
+
+.queueRailToggle:hover {
+  background: var(--wsv2-n-raise-2);
+  color: var(--wsv2-text-2);
+}
+
+.queueRailToggle:active {
+  background: var(--wsv2-pressed);
+}
+
+.queueRailToggle:focus-visible {
+  outline: 2px solid var(--wsv2-focus-ring);
+  outline-offset: 2px;
+}
+
+.queueRailCount {
+  flex: none;
+  color: var(--wsv2-text-2);
+  font-family: var(--wsv2-mono);
+  font-size: var(--wsv2-support-size);
+  line-height: 1;
+}
+
+.queueRailGroups {
+  flex: none;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+/* Each compact group control: the short label sits above its count, both
+   upright and legible. The full operational-group name is exposed through the
+   button's accessible name and native tooltip. */
+.queueRailGroup {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 7px 2px;
+  border: 0;
+  border-left: 2px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--wsv2-text-3);
+  cursor: pointer;
+  transition: background-color var(--wsv2-t-fast) var(--wsv2-ease), color var(--wsv2-t-fast)
+      var(--wsv2-ease);
+}
+
+.queueRailGroup:hover:not(:disabled) {
+  background: rgb(242 240 234 / 3%);
+  color: var(--wsv2-text-2);
+}
+
+.queueRailGroup:active:not(:disabled) {
+  background: var(--wsv2-pressed);
+}
+
+.queueRailGroup:focus-visible {
+  outline: 2px solid var(--wsv2-focus-ring);
+  outline-offset: -2px;
+}
+
+/* An empty operational group is shown for orientation but is not a navigation
+   target: it reads quietly and is not interactive. */
+.queueRailGroup:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+
+/* Selected-group cue in the rail — the accent left edge marks the group that
+   owns the current case, mirroring the expanded row's selection tell. */
+.queueRailGroupSelected {
+  background: var(--wsv2-n-raise-2);
+  border-left-color: var(--wsv2-selected-edge);
+  color: var(--wsv2-text-2);
+}
+
+.queueRailGroupShort {
+  font-size: 9px;
+  font-weight: var(--wsv2-micro-weight);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.queueRailGroupCount {
+  font-family: var(--wsv2-mono);
+  font-size: 11px;
+  line-height: 1;
+}
+
+/* Compact, truthful limitations marker: a quiet note glyph, never an alert. Its
+   full text is the accessible name and native tooltip. */
+.queueRailNote {
+  flex: none;
+  margin-top: auto;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--wsv2-hairline);
+  border-radius: 50%;
+  color: var(--wsv2-text-3);
+  font-family: var(--wsv2-mono);
+  font-size: 11px;
 }
 
 .queueRec {
@@ -2877,7 +3179,8 @@
 @media (max-width: 1279px) {
   .root {
     --wsv2-canvas-pad: clamp(18px, 2vw, 28px);
-    grid-template-columns: 216px 192px minmax(0, 1fr) 284px;
+    --wsv2-queue-col: 216px;
+    grid-template-columns: var(--wsv2-queue-col) 192px minmax(0, 1fr) 284px;
   }
 
   .plateMain {
@@ -2894,7 +3197,8 @@
 @media (max-width: 1099px) {
   .root {
     --wsv2-canvas-pad: clamp(16px, 1.8vw, 24px);
-    grid-template-columns: 188px 168px minmax(0, 1fr) 248px;
+    --wsv2-queue-col: 188px;
+    grid-template-columns: var(--wsv2-queue-col) 168px minmax(0, 1fr) 248px;
   }
 }
 

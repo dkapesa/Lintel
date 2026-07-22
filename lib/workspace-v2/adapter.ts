@@ -63,10 +63,41 @@ const SOURCES: readonly WorkspaceSource[] = ["fixture", "real"];
 
 /* Normalise an untrusted `source` value. Any value other than an explicit,
    recognised `real` resolves to `fixture`; an invalid value never triggers a
-   real-data read and never yields a fabricated state. */
+   real-data read and never yields a fabricated state.
+
+   Retained for the QA/compatibility route's historical `fixture`-defaulting
+   contract. The canonical cut-over (R1B.7) uses `resolveWorkspaceSource`, which
+   lets each route own its default without changing this function's meaning. */
 export function parseSource(value: string | null | undefined): WorkspaceSource {
   if (value && (SOURCES as readonly string[]).includes(value)) {
     return value as WorkspaceSource;
   }
   return "fixture";
+}
+
+/* R1B.7 — route-owned source resolution for the shared Workspace entry.
+
+   The cut-over gives one implementation two entry points with different safe
+   defaults: canonical `/workspace` defaults to `real` stored history, while the
+   QA/compatibility `/workspace-v2` route keeps the `fixture` demonstration
+   default. This helper resolves an untrusted `source` value against a route's
+   declared default so neither route hard-codes the other's convention:
+
+     • an explicit, recognised `real` or `fixture` is always honoured verbatim;
+     • an absent value resolves to the route's `defaultSource`;
+     • any other (unsupported) value resolves to the route's `defaultSource` —
+       the smallest truthful handling. On canonical `/workspace` that default is
+       `real`, so an unsupported `source` never silently shows fixture data; it
+       falls to the truthful real path (loading → ready / empty / unavailable).
+
+   This function never fabricates a state and never forces a real read on a
+   route whose default is `fixture`. */
+export function resolveWorkspaceSource(
+  value: string | null | undefined,
+  defaultSource: WorkspaceSource,
+): WorkspaceSource {
+  if (value === "real" || value === "fixture") {
+    return value;
+  }
+  return defaultSource;
 }

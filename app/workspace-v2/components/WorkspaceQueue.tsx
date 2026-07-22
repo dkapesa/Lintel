@@ -48,7 +48,7 @@ export function WorkspaceQueue({
   const tabbableCaseId = selectionVisible ? selectedCaseId : firstCaseId;
 
   return (
-    <aside className={styles.queue} aria-label="Case queue">
+    <aside className={styles.queue} aria-label="Case queue" data-tour="risk-inbox">
       <div className={styles.planeHeader}>
         <span className={styles.planeLabel}>Queue</span>
         <span className={styles.planeHeaderCount} aria-hidden="true">

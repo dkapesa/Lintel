@@ -77,6 +77,8 @@ import {
 } from "../../lib/human-decision-ledger";
 import { shortSha, type ReadinessDelta, type ReviewDiff, type ReviewDiffItem, type ReviewDiffStatus } from "../../lib/readiness-delta";
 import { GENERATED_REPORT_STORAGE_KEY } from "../../lib/report-generator";
+import { readReportHistory } from "../../lib/report-history";
+import { readOnlyStorage } from "../../lib/workspace-v2/read-only-storage";
 import { conditionsToMarkdown, findingProvenanceLabel, reportMarkdownFilename, reportToMarkdown, type ReportSourceLabel } from "../../lib/report-markdown";
 import type { FindingSeverity, Recommendation, Report, ReviewArea, RiskLevel } from "../../lib/mock-report";
 import { report as demoReport } from "../../lib/mock-report";
@@ -2497,6 +2499,49 @@ export default function ReportPage() {
   const [activeDossierSection, setActiveDossierSection] = useState<DossierSectionId>("what-changed");
   const [decisionSheetOpen, setDecisionSheetOpen] = useState(false);
 
+  /* R1B.7 parity — truthful, strictly read-only return-to-Workspace selection.
+     A stable reportId is emitted ONLY when the current report can be proven to
+     be a durable Report-history entry, matched through the exact, schema-stable
+     canonical-run identity (`canonicalRun.runId`). Deriving a navigation link
+     must never mutate storage, so the production read helper is wrapped in the
+     existing `readOnlyStorage` guard: `readReportHistory` self-heals malformed
+     history by rewriting the key, and the guard turns that (and any other
+     setItem/removeItem/clear) into a silent no-op. Session-generated, demo,
+     malformed, unreadable, unavailable, unmatched or AMBIGUOUS (more than one
+     match) reports keep a plain /workspace destination — no fabricated id, no
+     history write, no Queue case, and no title/repository/PR-number/timestamp/
+     position/fuzzy matching. */
+  const [workspaceReturnReportId, setWorkspaceReturnReportId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const runId = canonicalRun?.runId;
+    if (!runId) {
+      setWorkspaceReturnReportId(null);
+      return;
+    }
+    try {
+      /* Read-only guard: reads are delegated to real storage; every write the
+         history helper may attempt on read is prevented. */
+      const durableMatches = readReportHistory(readOnlyStorage(window.localStorage)).filter(
+        (entry) => entry.canonicalRun?.runId === runId,
+      );
+      /* Preserve selection only on an unambiguous unique match. Zero matches or
+         more than one (ambiguous identity) fall back to plain /workspace. */
+      setWorkspaceReturnReportId(durableMatches.length === 1 ? durableMatches[0].createdAt : null);
+    } catch {
+      /* An unreadable / unavailable history is not a durable match; fall back to
+         plain /workspace rather than guessing a selection. */
+      setWorkspaceReturnReportId(null);
+    }
+  }, [canonicalRun]);
+
+  /* The one return-to-Workspace destination for the current report: a deep link
+     preserving exact selection when durable, otherwise the plain canonical
+     route. The reportId is the history entry's own stable id and is URL-encoded. */
+  const workspaceReturnHref = workspaceReturnReportId
+    ? `/workspace?reportId=${encodeURIComponent(workspaceReturnReportId)}`
+    : "/workspace";
+
   useEffect(() => {
     const closeForShellNavigation = () => closeDecisionSheet({ restoreFocus: false });
     window.addEventListener(SHELL_NAVIGATION_OPEN_EVENT, closeForShellNavigation);
@@ -3749,7 +3794,7 @@ export default function ReportPage() {
               {quickActionMessage && <span className={`quick-actions-status quick-actions-status--${quickActionMessage.state}`} role="status">{quickActionMessage.text}</span>}
             </div>
             <div className="case-file-action-list">
-              <button type="button" onClick={() => window.location.assign("/workspace")}>Risk inbox</button>
+              <button type="button" onClick={() => window.location.assign(workspaceReturnHref)}>Risk inbox</button>
               <button type="button" onClick={() => guidedTour?.startTour()}>Start guided tour</button>
               <button type="button" onClick={() => quickSetReviewStatus("Ready to merge")}>Mark ready</button>
               <button type="button" onClick={() => quickSetReviewStatus("Tests requested")}>Request tests</button>
@@ -4140,7 +4185,7 @@ export default function ReportPage() {
                 {reviewState.note.trim().length > 0 && <label className="case-file-note-option"><input type="checkbox" checked={includeLocalNoteInMergeSummary} onChange={(event) => setIncludeLocalNoteInMergeSummary(event.target.checked)} /><span>Include the local reviewer note in the PR-ready summary</span></label>}
                 <details className="handoff-preview"><summary>GitHub-ready Markdown preview</summary><pre>{mergeSummaryMarkdown}</pre></details>
                 <details className="handoff-preview"><summary>Slack-ready handoff preview</summary><pre>{slackHandoffText}</pre></details>
-                <nav className="case-file-related-links" aria-label="Related report actions"><a href="/workspace">Back to Risk inbox</a><a href="/new">Check another pull request</a><a href="/review-policies">Review policies</a><a href="/docs/security-model.md">Security model</a></nav>
+                <nav className="case-file-related-links" aria-label="Related report actions"><a href={workspaceReturnHref}>Back to Risk inbox</a><a href="/new">Check another pull request</a><a href="/review-policies">Review policies</a><a href="/docs/security-model.md">Security model</a></nav>
               </details>
             </section>
           </article>

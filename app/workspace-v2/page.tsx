@@ -1,36 +1,24 @@
 import type { Metadata } from "next";
-import WorkspaceV2Client from "./WorkspaceV2Client";
-import RealWorkspaceBootstrap from "./RealWorkspaceBootstrap";
-import { parseScenario, parseSource } from "../../lib/workspace-v2/adapter";
-import { createFixtureWorkspaceAdapter } from "../../lib/workspace-v2/fixture-adapter";
+import { renderWorkspaceRoute, type WorkspaceRouteSearchParams } from "./WorkspaceRouteEntry";
 
-/* R1B.0/R1B.1 — Production Workspace V2 · server route entry.
+/* R1B.7 — QA / compatibility Workspace route.
 
-   A server component so metadata (including robots noindex) is emitted
-   statically. It resolves the source and scaffold scenario from the query
-   string and dispatches to the matching adapter path. No interactivity,
-   persistence or data mutation lives here.
+   After the cut-over the canonical production Workspace is `/workspace`. This
+   route is retained deliberately for QA and compatibility: it renders the SAME
+   production Workspace implementation via the shared `renderWorkspaceRoute`
+   entry (no duplicated client, adapter, persistence, decision or projection
+   code), and only differs by keeping the historical demonstration default —
+   `source` absent resolves to `fixture` here, whereas on canonical `/workspace`
+   it resolves to real stored history.
 
-   Source selection (R1B.1):
-     • default / ?source=fixture — the deterministic sample source. Loaded on
-       the server via the fixture adapter and passed straight into the client
-       boundary, exactly as in R1B.0.
-     • ?source=real[&reportId=<stable-id>] — the read-only real Report adapter.
-       The production Report source is browser-only, so the real snapshot is
-       built in a narrow client bootstrap (`RealWorkspaceBootstrap`) that reads
-       `localStorage` and runs the adapter; the server cannot read it.
-
-   An invalid `source` falls back safely to the fixture path; it never triggers
-   a real read. A failed real load renders a truthful empty / unavailable state
-   inside the bootstrap and never falls back to fixture content.
-
-   Kept as a parallel route: /workspace and /report are untouched, this route
-   is deliberately not registered in navigation, and the whole surface is
-   reversible by deleting app/workspace-v2/** and lib/workspace-v2/**. */
+   `?source=real[&reportId=<stable-id>]` still exercises the real path here for
+   compatibility checks. The route stays out of primary navigation and out of
+   the search index. It is not a second, competing Workspace: it mounts one
+   Workspace tree through the one shared entry, exactly like `/workspace`. */
 
 export const metadata: Metadata = {
-  title: "Workspace V2 — Lintel",
-  description: "Production Workspace V2 scaffold (R1B.0, fixture-fed).",
+  title: "Workspace V2 (QA) — Lintel",
+  description: "QA/compatibility view of the production Workspace (fixture default).",
   robots: {
     index: false,
     follow: false,
@@ -38,27 +26,11 @@ export const metadata: Metadata = {
   },
 };
 
-function firstParam(value: string | string[] | undefined): string | undefined {
-  return Array.isArray(value) ? value[0] : value;
-}
-
 export default async function WorkspaceV2Page({
   searchParams,
 }: {
-  searchParams: Promise<{ scenario?: string | string[]; source?: string | string[]; reportId?: string | string[] }>;
+  searchParams: Promise<WorkspaceRouteSearchParams>;
 }) {
   const params = await searchParams;
-  const source = parseSource(firstParam(params.source));
-
-  if (source === "real") {
-    /* Real data lives in the browser; hand off to the client bootstrap. */
-    const reportId = firstParam(params.reportId) ?? null;
-    return <RealWorkspaceBootstrap reportId={reportId} />;
-  }
-
-  const scenario = parseScenario(firstParam(params.scenario));
-  const adapter = createFixtureWorkspaceAdapter();
-  const snapshot = await adapter.loadSnapshot({ scenario });
-
-  return <WorkspaceV2Client snapshot={snapshot} />;
+  return renderWorkspaceRoute(params, "fixture");
 }

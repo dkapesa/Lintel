@@ -117,7 +117,7 @@ export function WorkspaceInspector({
   mutations: InspectorMutations | null;
 }) {
   return (
-    <aside className={styles.inspector} aria-label="Inspector">
+    <aside className={styles.inspector} aria-label="Inspector" data-tour="selected-pr">
       <div className={styles.planeHeader}>
         <span className={styles.planeLabel}>{inspectorLabel(projection.mode)}</span>
         {canClear ? (

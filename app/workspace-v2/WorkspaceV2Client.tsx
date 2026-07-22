@@ -888,6 +888,7 @@ function ReadyWorkspace({
         detail={activeCase}
         caseTitle={activeTitle}
         provenanceLabel={snapshot.provenance.label}
+        provenanceIsSample={snapshot.provenance.isSample}
         focus={focusedArtifact}
         onToggleFocus={toggleFocus}
         bodyRef={bodyRef}

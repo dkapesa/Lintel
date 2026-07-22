@@ -50,8 +50,8 @@ export function WorkspaceShellState({ snapshot }: { snapshot: ShellSnapshot }) {
         <header className={styles.caseHeader}>
           <div className={styles.caseIdentity}>
             <div className={styles.caseEyebrow}>
-              <span className={styles.caseEyebrowLabel}>Workspace V2</span>
-              <ProvenanceBadge label={snapshot.provenance.label} />
+              <span className={styles.caseEyebrowLabel}>Workspace</span>
+              <ProvenanceBadge label={snapshot.provenance.label} isSample={snapshot.provenance.isSample} />
             </div>
             <h1 className={styles.caseTitle}>{snapshot.identity.label}</h1>
           </div>

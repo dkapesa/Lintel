@@ -1,24 +1,26 @@
 "use client";
 
-/* R1B.0 — Production Workspace V2 · Decision Plate boundary.
+/* R1B.6 — Production Workspace V2 · Decision Plate boundary.
 
    The terminal Canvas row and the production presentation boundary for the
-   recorded Human Decision. It renders fixture-backed decision projections in
-   three shapes — empty (A), unavailable (I) and resting recorded (B/C) — per
-   the r0b2 contract.
+   recorded Human Decision. It renders the approved resting shapes — empty (A),
+   unavailable (I) and resting recorded (B/C/F/H) — per the r0b2 contract, and
+   in real mode wires the primary action to the route owner's decision flow
+   (record / change / reaffirm / retry). The Plate communicates the effective
+   current state only; full lineage lives in Decision Context (§8, §14).
 
-   R1B.0 scope: no ledger writes, no persistence, no import of any decision
-   mutation code. The only wired action is "View decision context / reasoning",
-   which is pure UI state. Every mutating action (record / change / reaffirm /
-   retry) is presented as genuinely unavailable and labelled pending production
-   integration — never as a control that silently does nothing, and never as a
-   fake successful write. */
+   The Plate never calls storage and never holds decision state. When the case's
+   decision cannot be mutated (fixture sample, or a malformed / unreadable
+   ledger), the primary action is rendered as genuinely unavailable with an
+   explicit, non-colour-only reason — never a control that silently does nothing
+   and never a fake successful write. No `window.confirm`. */
 
 import styles from "../workspace-v2.module.css";
 import {
   DecisionActorProvenance,
   DecisionApplicabilityChip,
   DecisionDivergenceChip,
+  DecisionFingerprintChip,
   DecisionOutcomeToken,
   DecisionRationaleSummary,
   DecisionReferenceCounts,
@@ -27,19 +29,36 @@ import {
 import { recommendationTone } from "./presentation";
 import {
   RECOMMENDATION_LABEL,
+  type DecisionMutationCapability,
   type DecisionPlateViewModel,
   type DecisionRecordedView,
   type DecisionEmptyView,
   type DecisionUnavailableView,
 } from "../../../lib/workspace-v2/view-model";
 
+/* The plate's primary actions. `withdraw` is not a plate action — it lives in
+   Decision Context (§14). */
+export type PlateAction = "record" | "change" | "reaffirm" | "retry";
+
+/* Interactive decision handlers from the route owner. Absent (null) in fixture
+   mode, when the mutation capability is a sample, or when the ledger is
+   unavailable — the plate then renders the action as unavailable. */
+export type PlateDecisionHandlers = {
+  pending: boolean;
+  onAction: (action: PlateAction, trigger: HTMLElement) => void;
+};
+
 export function DecisionPlateBoundary({
   decision,
+  mutation,
   current,
+  handlers,
   onViewContext,
 }: {
   decision: DecisionPlateViewModel;
+  mutation: DecisionMutationCapability;
   current: boolean;
+  handlers: PlateDecisionHandlers | null;
   onViewContext: (trigger: HTMLElement) => void;
 }) {
   const plateClass = [
@@ -53,9 +72,8 @@ export function DecisionPlateBoundary({
 
   return (
     /* A plain container, not a <footer>: at this position a <footer> would be
-       exposed as a stray `contentinfo` landmark (its nearest sectioning
-       ancestor is <body>). The terminal Decision Plate is content within the
-       Verification Canvas <main>, not a page-level landmark. */
+       exposed as a stray `contentinfo` landmark. The terminal Decision Plate is
+       content within the Verification Canvas <main>, not a page-level landmark. */
     <div className={plateClass} id="wsv2-decision-plate">
       <div className={styles.plateMain}>
         <div className={styles.plateState}>
@@ -69,7 +87,12 @@ export function DecisionPlateBoundary({
           {decision.status === "recorded" ? <RecordedHeadline view={decision} /> : null}
         </div>
 
-        <PlateActions decision={decision} onViewContext={onViewContext} />
+        <PlateActions
+          decision={decision}
+          mutation={mutation}
+          handlers={handlers}
+          onViewContext={onViewContext}
+        />
       </div>
 
       {decision.status === "recorded" ? <RecordedSecondRow view={decision} /> : null}
@@ -118,6 +141,7 @@ function RecordedHeadline({ view }: { view: DecisionRecordedView }) {
       ) : (
         <span className={styles.plateHeadUnknown}>Head not recorded</span>
       )}
+      {view.fingerprint ? <DecisionFingerprintChip fingerprint={view.fingerprint} /> : null}
       {view.isSample ? <SampleBadge /> : null}
     </div>
   );
@@ -144,17 +168,33 @@ function RecordedSecondRow({ view }: { view: DecisionRecordedView }) {
   );
 }
 
-/* Actions. "View …" is wired (pure UI state). The mutating primary action is
-   rendered as genuinely unavailable — R1B.1 wires it to the real ledger. */
+/* The effective primary action for the current decision state. */
+function primaryActionFor(decision: DecisionPlateViewModel): { action: PlateAction; label: string } {
+  if (decision.status === "unavailable") return { action: "retry", label: "Retry" };
+  if (decision.status === "empty") return { action: "record", label: "Record decision" };
+  if (decision.applicability === "withdrawn") return { action: "record", label: "Record new decision" };
+  if (decision.needsReaffirmation) return { action: "reaffirm", label: "Reaffirm" };
+  return { action: "change", label: "Change decision" };
+}
+
 function PlateActions({
   decision,
+  mutation,
+  handlers,
   onViewContext,
 }: {
   decision: DecisionPlateViewModel;
+  mutation: DecisionMutationCapability;
+  handlers: PlateDecisionHandlers | null;
   onViewContext: (trigger: HTMLElement) => void;
 }) {
   const viewLabel = decision.status === "empty" ? "View reasoning" : "View decision context";
-  const pendingLabel = pendingActionLabel(decision);
+  const { action, label } = primaryActionFor(decision);
+  /* The action is live only when there are interactive handlers AND the ledger
+     is actually mutable (available). Retry (state I) is always offered when
+     handlers exist, since it re-reads rather than writes. */
+  const canAct =
+    handlers !== null && (action === "retry" || mutation.kind === "available");
 
   return (
     <div className={styles.plateActionGroup}>
@@ -165,23 +205,45 @@ function PlateActions({
       >
         {viewLabel}
       </button>
-      <PendingAction label={pendingLabel} />
+      {canAct && handlers ? (
+        <button
+          type="button"
+          className={styles.plateActionPrimary}
+          data-mutation-control="decision"
+          aria-disabled={handlers.pending}
+          onClick={(event) => {
+            if (handlers.pending) return;
+            handlers.onAction(action, event.currentTarget);
+          }}
+        >
+          {handlers.pending ? "Working…" : label}
+        </button>
+      ) : (
+        <UnavailableAction label={label} mutation={mutation} interactive={handlers !== null} />
+      )}
     </div>
   );
 }
 
-function pendingActionLabel(decision: DecisionPlateViewModel): string {
-  if (decision.status === "unavailable") return "Retry";
-  if (decision.status === "empty") return "Record decision";
-  if (decision.applicability === "withdrawn") return "Record new decision";
-  if (decision.needsReaffirmation) return "Reaffirm";
-  return "Change decision";
-}
-
-/* A disabled control with an explicit, non-colour-only reason. Distinct from a
-   functional button that does nothing. */
-function PendingAction({ label }: { label: string }) {
-  const reason = `${label} is not wired in this scaffold — pending production integration (R1B.1).`;
+/* A disabled control with an explicit, non-colour-only reason (§19). Distinct
+   from a functional button that does nothing. */
+function UnavailableAction({
+  label,
+  mutation,
+  interactive,
+}: {
+  label: string;
+  mutation: DecisionMutationCapability;
+  interactive: boolean;
+}) {
+  const reason =
+    mutation.kind === "sample"
+      ? `${label} is demonstrative on sample data and never writes to this browser.`
+      : mutation.kind === "unavailable"
+        ? `${label} is unavailable: ${mutation.reason}`
+        : !interactive
+          ? `${label} cannot be saved in this browser right now.`
+          : `${label} is unavailable.`;
   return (
     <button
       type="button"
@@ -192,7 +254,7 @@ function PendingAction({ label }: { label: string }) {
     >
       {label}
       <span className={styles.pendingTag} aria-hidden="true">
-        Pending
+        {mutation.kind === "sample" ? "Sample" : "Unavailable"}
       </span>
       <span className={styles.visuallyHidden}>{reason}</span>
     </button>

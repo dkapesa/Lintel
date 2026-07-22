@@ -34,6 +34,13 @@ import { VerificationCanvas } from "./components/VerificationCanvas";
 import { WorkspaceInspector, type InspectorMutations } from "./components/WorkspaceInspector";
 import { WorkspaceShellState } from "./components/WorkspaceShellState";
 import { WorkstationMinWidthNotice } from "./components/atoms";
+import type { PlateDecisionHandlers, PlateAction } from "./components/DecisionPlateBoundary";
+import {
+  DecisionCreationDialog,
+  DecisionReaffirmDialog,
+  DecisionWithdrawDialog,
+  type DecisionDraft,
+} from "./components/decision-dialogs";
 import {
   resolveArtifactRef,
   resolveInspector,
@@ -43,6 +50,11 @@ import type {
   MutationResult,
   WorkspacePersistence,
 } from "../../lib/workspace-v2/persistence";
+import type {
+  DecisionMutationResult,
+  DecisionReferenceInput,
+  WorkspaceDecisionService,
+} from "../../lib/workspace-v2/decision-mutations";
 import type { ReloadOutcome } from "./RealWorkspaceBootstrap";
 import {
   WORKSPACE_V2_STAGES,
@@ -50,11 +62,45 @@ import {
   type ArtifactRef,
   type CaseDetail,
   type ConditionProgressCapability,
+  type DecisionMutationCapability,
+  type DecisionReference,
+  type EvidenceView,
+  type RequirementView,
   type ReviewStatus,
   type StageId,
   type WorkspaceReadySnapshot,
   type WorkspaceSnapshot,
 } from "../../lib/workspace-v2/view-model";
+
+/* The active decision dialog. `null` when none is open. `change` maps to a
+   supersession; `record` to a new decision (state A / withdrawn H). */
+type DecisionDialogKind = "record" | "change" | "reaffirm" | "withdraw";
+
+function requirementToReference(requirement: RequirementView): DecisionReference {
+  return {
+    id: requirement.requirementId,
+    kind: "clause",
+    label: requirement.title,
+    available: true,
+    stale: requirement.stale,
+    modelAssisted: false,
+  };
+}
+
+function evidenceToReference(evidence: EvidenceView): DecisionReference {
+  return {
+    id: evidence.evidenceId,
+    kind: "evidence",
+    label: evidence.title,
+    available: true,
+    stale: evidence.stale,
+    modelAssisted: evidence.evidenceClass === "model-inferred",
+  };
+}
+
+function toReferenceInput(reference: DecisionReference): DecisionReferenceInput {
+  return { id: reference.id, kind: reference.kind };
+}
 
 /* An `available` condition capability — the only shape the client acts on. */
 type AvailableCondition = Extract<ConditionProgressCapability, { kind: "available" }>;
@@ -62,17 +108,26 @@ type AvailableCondition = Extract<ConditionProgressCapability, { kind: "availabl
 export default function WorkspaceV2Client({
   snapshot,
   persistence,
+  decisionService,
   reload,
 }: {
   snapshot: WorkspaceSnapshot;
   /* Present only in real mode. Absent → the workstation is read-only. */
   persistence?: WorkspacePersistence | null;
+  decisionService?: WorkspaceDecisionService | null;
   reload?: () => Promise<ReloadOutcome>;
 }) {
   if (snapshot.status !== "ready") {
     return <WorkspaceShellState snapshot={snapshot} />;
   }
-  return <ReadyWorkspace snapshot={snapshot} persistence={persistence ?? null} reload={reload ?? null} />;
+  return (
+    <ReadyWorkspace
+      snapshot={snapshot}
+      persistence={persistence ?? null}
+      decisionService={decisionService ?? null}
+      reload={reload ?? null}
+    />
+  );
 }
 
 /* Reduced-motion-aware scroll behaviour. Programmatic smooth scrolling is
@@ -98,10 +153,12 @@ type FocusRequest = { ref: ArtifactRef; token: number };
 function ReadyWorkspace({
   snapshot,
   persistence,
+  decisionService,
   reload,
 }: {
   snapshot: WorkspaceReadySnapshot;
   persistence: WorkspacePersistence | null;
+  decisionService: WorkspaceDecisionService | null;
   reload: (() => Promise<ReloadOutcome>) | null;
 }) {
   /* ---- Held UI values (single route-level owner) ---- */
@@ -122,6 +179,25 @@ function ReadyWorkspace({
     { conditionKey: string; result: MutationResult } | null
   >(null);
   const interactive = persistence !== null && reload !== null;
+  const decisionInteractive = decisionService !== null && reload !== null;
+
+  /* ---- Decision flow state (R1B.6) ----
+     One dialog at a time; `decisionResult` is the last decision mutation
+     outcome, shown in Decision Context and announced. The trigger ref restores
+     focus when the dialog closes. */
+  const [activeDecisionDialog, setActiveDecisionDialog] = useState<DecisionDialogKind | null>(null);
+  const [decisionResult, setDecisionResult] = useState<DecisionMutationResult | null>(null);
+  /* A retryable decision failure (failed / verification-mismatch) shown inline
+     inside the open dialog while all entered form state is preserved. */
+  const [decisionDialogError, setDecisionDialogError] = useState<string | null>(null);
+  const decisionActionTriggerRef = useRef<HTMLElement | null>(null);
+  /* Assertive region for decision errors only (record/reaffirm/withdraw
+     failures); success and no-ops go to the polite region (r0b2 §19). */
+  const [assertiveMessage, setAssertiveMessage] = useState<{ text: string; n: number }>({
+    text: "",
+    n: 0,
+  });
+
   /* Pending post-render focus move for related-artifact navigation. Ordinary
      record clicks never set this (focus is already on the clicked control), so
      de-emphasis / focus is only forcibly moved when the Inspector drives it. */
@@ -143,6 +219,10 @@ function ReadyWorkspace({
 
   const announce = useCallback((text: string) => {
     setPoliteMessage((current) => ({ text, n: current.n + 1 }));
+  }, []);
+
+  const announceAssertive = useCallback((text: string) => {
+    setAssertiveMessage((current) => ({ text, n: current.n + 1 }));
   }, []);
 
   /* ---- Pure projections ---- */
@@ -190,6 +270,12 @@ function ReadyWorkspace({
          previous case's status message never bleeds onto a different case. */
       setReviewResult(null);
       setConditionResult(null);
+      /* A decision dialog or result belongs to the case it was opened for; a
+         changed case must never let a stale dialog write to a different case. */
+      setActiveDecisionDialog(null);
+      setDecisionResult(null);
+      setDecisionDialogError(null);
+      decisionActionTriggerRef.current = null;
       decisionTriggerRef.current = null;
       const body = bodyRef.current;
       if (body) {
@@ -382,6 +468,219 @@ function ReadyWorkspace({
     [persistence, reload, pendingMutation, selectedCaseId, announce, restoreMutationFocus],
   );
 
+  /* ---- Human Decision flow (R1B.6) ----
+     The client owns the flow but never touches storage: it validates the
+     command target against the selected case, marks the decision action
+     pending, runs the narrow (read-after-write-verified) decision command, and
+     only on a verified persist asks the bootstrap to reproject through the
+     read-only adapter. Nothing on screen is optimistically edited — the Plate,
+     Inspector, Queue group and history change only via that reprojection. If the
+     reprojection fails after a verified write, the interface stays truthful: the
+     decision is saved but the workspace could not refresh. */
+
+  /* Turn any terminal decision result into UI: reproject on a verified persist,
+     disclose a save-without-refresh honestly, and never show a requested
+     outcome as recorded on a non-persist. Always closes the dialog and surfaces
+     the result in Decision Context so retry (reopening the action) stays
+     reachable. */
+  const finalizeDecision = useCallback(
+    async (result: DecisionMutationResult) => {
+      /* Close the dialog and surface the result in Decision Context. Used for
+         terminal outcomes where retrying the same command from this dialog is
+         either done (persisted) or unsafe (stale / unavailable / no-op). */
+      const closeAndShow = () => {
+        setPendingMutation(null);
+        setActiveDecisionDialog(null);
+        setDecisionDialogError(null);
+        setFocusedArtifact(null);
+        setDecisionFocused(true);
+        restoreMutationFocus("decision");
+      };
+
+      if (result.outcome === "persisted") {
+        const outcome = await reload!();
+        if (outcome.ok) {
+          setDecisionResult(result);
+          announce(result.message);
+        } else {
+          /* Verified ledger write that could not be re-projected. Close so no
+             duplicate submission is invited; the projection is not claimed
+             current, and no hidden session-only fallback is introduced. */
+          const message =
+            "The decision was saved, but the workspace could not be refreshed. The decision is " +
+            "stored; reopen the workspace to see it applied. Do not record it again.";
+          setDecisionResult({ outcome: "persisted-refresh-failed", message });
+          announce(message);
+        }
+        closeAndShow();
+        return;
+      }
+
+      if (result.outcome === "failed" || result.outcome === "verification-mismatch") {
+        /* Retryable: keep the dialog open with every entered value preserved,
+           clear pending, show a restrained inline error associated with the
+           form, announce it, and leave the authoritative Plate / Queue /
+           Inspector / history untouched (no reprojection). Focus stays on the
+           dialog's submit control so the engineer can retry explicitly. */
+        setPendingMutation(null);
+        setDecisionDialogError(result.message);
+        announceAssertive(result.message);
+        return;
+      }
+
+      /* unchanged / stale-command / unavailable: retrying the same command from
+         this dialog is either a no-op or unsafe (case, head, effective decision,
+         malformed ledger, or a vanished reference changed underneath it). The
+         service message explains precisely; close and surface it in context. */
+      setDecisionResult(result);
+      if (result.outcome === "unchanged") announce(result.message);
+      else announceAssertive(result.message);
+      closeAndShow();
+    },
+    [reload, announce, announceAssertive, restoreMutationFocus],
+  );
+
+  /* Open the correct dialog for a plate/inspector action, or run a read-only
+     retry for the unavailable state. */
+  const handleDecisionAction = useCallback(
+    async (action: PlateAction | "withdraw", trigger: HTMLElement) => {
+      if (!decisionInteractive || pendingMutation) return;
+      if (action === "retry") {
+        setPendingMutation(`decision:${activeCase.caseId}`);
+        const outcome = await reload!();
+        announce(
+          outcome.ok
+            ? "Workspace re-read."
+            : "The workspace could not be re-read. The previous state is retained.",
+        );
+        setPendingMutation(null);
+        return;
+      }
+      const capability = caseById.get(selectedCaseId)?.decisionMutation;
+      if (!capability || capability.kind !== "available") return;
+      decisionActionTriggerRef.current = trigger;
+      setDecisionResult(null);
+      setDecisionDialogError(null);
+      setActiveDecisionDialog(action);
+    },
+    [decisionInteractive, pendingMutation, activeCase.caseId, reload, announce, caseById, selectedCaseId],
+  );
+
+  /* Submit a create (state A) or change/supersede (state B/F/H) draft. */
+  const submitDecisionDraft = useCallback(
+    async (draft: DecisionDraft) => {
+      if (!decisionService || !reload || pendingMutation) return;
+      const kind = activeDecisionDialog;
+      const capability = caseById.get(selectedCaseId)?.decisionMutation;
+      if (!capability || capability.kind !== "available" || capability.caseId !== selectedCaseId) return;
+
+      const references = draft.references.map(toReferenceInput);
+      const acceptedRiskReferences = draft.acceptedRiskReferences.map(toReferenceInput);
+      setPendingMutation(`decision:${capability.caseId}`);
+      setDecisionDialogError(null);
+
+      let result: DecisionMutationResult;
+      if (kind === "record") {
+        result = decisionService.recordDecision({
+          kind: "record",
+          caseId: capability.caseId,
+          expectedHeadSha: capability.currentHeadSha,
+          outcome: draft.outcome,
+          rationale: draft.rationale,
+          references,
+          acceptedRiskReferences,
+        });
+      } else if (kind === "change") {
+        if (capability.effectiveEntryId === null) {
+          setPendingMutation(null);
+          return;
+        }
+        result = decisionService.supersedeDecision({
+          kind: "supersede",
+          caseId: capability.caseId,
+          expectedEffectiveEntryId: capability.effectiveEntryId,
+          expectedHeadSha: capability.currentHeadSha,
+          outcome: draft.outcome,
+          rationale: draft.rationale,
+          references,
+          acceptedRiskReferences,
+        });
+      } else {
+        setPendingMutation(null);
+        return;
+      }
+      await finalizeDecision(result);
+    },
+    [
+      decisionService,
+      reload,
+      pendingMutation,
+      activeDecisionDialog,
+      caseById,
+      selectedCaseId,
+      finalizeDecision,
+    ],
+  );
+
+  const submitReaffirm = useCallback(
+    async (rationale: string) => {
+      if (!decisionService || !reload || pendingMutation) return;
+      const capability = caseById.get(selectedCaseId)?.decisionMutation;
+      if (
+        !capability ||
+        capability.kind !== "available" ||
+        capability.caseId !== selectedCaseId ||
+        capability.effectiveEntryId === null
+      ) {
+        return;
+      }
+      setPendingMutation(`decision:${capability.caseId}`);
+      setDecisionDialogError(null);
+      const result = decisionService.reaffirmDecision({
+        kind: "reaffirm",
+        caseId: capability.caseId,
+        expectedEffectiveEntryId: capability.effectiveEntryId,
+        expectedHeadSha: capability.currentHeadSha,
+        rationale,
+      });
+      await finalizeDecision(result);
+    },
+    [decisionService, reload, pendingMutation, caseById, selectedCaseId, finalizeDecision],
+  );
+
+  const submitWithdraw = useCallback(
+    async (rationale: string) => {
+      if (!decisionService || !reload || pendingMutation) return;
+      const capability = caseById.get(selectedCaseId)?.decisionMutation;
+      if (
+        !capability ||
+        capability.kind !== "available" ||
+        capability.caseId !== selectedCaseId ||
+        capability.effectiveEntryId === null
+      ) {
+        return;
+      }
+      setPendingMutation(`decision:${capability.caseId}`);
+      setDecisionDialogError(null);
+      const result = decisionService.withdrawDecision({
+        kind: "withdraw",
+        caseId: capability.caseId,
+        expectedEffectiveEntryId: capability.effectiveEntryId,
+        expectedHeadSha: capability.currentHeadSha,
+        rationale,
+      });
+      await finalizeDecision(result);
+    },
+    [decisionService, reload, pendingMutation, caseById, selectedCaseId, finalizeDecision],
+  );
+
+  const cancelDecisionDialog = useCallback(() => {
+    /* Escape / cancel never cancels a pending write. */
+    if (pendingMutation) return;
+    setActiveDecisionDialog(null);
+    setDecisionDialogError(null);
+  }, [pendingMutation]);
+
   /* ---- Spine navigation: scroll the canvas body / mark the plate ---- */
   const goToStage = useCallback((stage: StageId) => {
     const definition = WORKSPACE_V2_STAGES.find((item) => item.id === stage);
@@ -500,6 +799,10 @@ function ReadyWorkspace({
   /* The interactive mutation bundle handed to the Inspector. Present only in real
      mode; in fixture mode it is null and the Inspector renders read-only copy
      from the (sample) capabilities alone. */
+  const decisionCapabilityForBundle: DecisionMutationCapability = decisionInteractive
+    ? activeCase.decisionMutation
+    : { kind: "unavailable", reason: "Decisions cannot be saved in this browser right now." };
+
   const mutations: InspectorMutations | null = useMemo(() => {
     if (!interactive) return null;
     return {
@@ -518,6 +821,13 @@ function ReadyWorkspace({
         result: conditionResult,
         onToggle: toggleCondition,
       },
+      decision: {
+        pending: pendingMutation === `decision:${activeCase.caseId}`,
+        busy: pendingMutation !== null,
+        result: decisionResult,
+        capability: decisionCapabilityForBundle,
+        onAction: handleDecisionAction,
+      },
     };
   }, [
     interactive,
@@ -525,9 +835,38 @@ function ReadyWorkspace({
     activeCase.caseId,
     reviewResult,
     conditionResult,
+    decisionResult,
+    decisionCapabilityForBundle,
     applyReviewStatus,
     toggleCondition,
+    handleDecisionAction,
   ]);
+
+  /* Plate decision handlers (real mode only). */
+  const decisionHandlers: PlateDecisionHandlers | null = decisionInteractive
+    ? { pending: pendingMutation !== null, onAction: handleDecisionAction }
+    : null;
+
+  /* Candidate references for the dialogs, prepared from the already-projected
+     current case (no re-read, no reproject on keystroke). */
+  const candidateReferences: DecisionReference[] = useMemo(
+    () => [
+      ...activeCase.requirements.map(requirementToReference),
+      ...activeCase.evidence.map(evidenceToReference),
+    ],
+    [activeCase.requirements, activeCase.evidence],
+  );
+  /* Accepted-risk candidates are the complete set of available current-case
+     artifacts the ledger contract supports — evidence and requirements/clauses,
+     regardless of whether a requirement is blocking. Assumptions are not
+     represented as current-case artifacts, so none are offered (never
+     fabricated). All are present in the case, so all are available; each carries
+     its kind, stale and model-assisted status via the selector. The mutation
+     service validates the same rules independently. */
+  const candidateRiskReferences: DecisionReference[] = candidateReferences;
+
+  const decisionCap = activeCase.decisionMutation;
+  const decisionPending = pendingMutation !== null;
 
   /* ---- Render ---- */
   return (
@@ -553,6 +892,8 @@ function ReadyWorkspace({
         onToggleFocus={toggleFocus}
         bodyRef={bodyRef}
         decision={activeCase.decision}
+        decisionMutation={activeCase.decisionMutation}
+        decisionHandlers={decisionHandlers}
         plateCurrent={plateCurrent}
         onViewDecisionContext={openDecisionContext}
       />
@@ -567,10 +908,69 @@ function ReadyWorkspace({
       />
 
       {/* Restrained polite live region for navigation the eye may miss (case
-          selected, unresolved relation target). Assistive-tech only. */}
+          selected, unresolved relation target) and decision successes / no-ops.
+          Assistive-tech only. */}
       <div className={styles.visuallyHidden} aria-live="polite" aria-atomic="true">
         {politeMessage.text}
       </div>
+      {/* Assertive region for decision errors only (r0b2 §19). */}
+      <div className={styles.visuallyHidden} role="alert" aria-live="assertive" aria-atomic="true">
+        {assertiveMessage.text}
+      </div>
+
+      {/* Human Decision dialogs (real mode only). Rendered at the route root so
+          they are modal siblings of the planes with focus containment. Only ever
+          one is open, and only when the case's decision is actually mutable. */}
+      {decisionInteractive && activeDecisionDialog !== null && decisionCap.kind === "available" ? (
+        <>
+          {activeDecisionDialog === "record" || activeDecisionDialog === "change" ? (
+            <DecisionCreationDialog
+              mode={activeDecisionDialog === "change" ? "change" : "record"}
+              headSha={decisionCap.currentHeadSha}
+              headRecorded={decisionCap.headRecorded}
+              recommendation={activeCase.recommendation}
+              openBlockingRequirements={decisionCap.openBlockingRequirements}
+              candidateReferences={candidateReferences}
+              candidateRiskReferences={candidateRiskReferences}
+              pending={decisionPending}
+              submitError={decisionDialogError}
+              onSubmit={submitDecisionDraft}
+              onCancel={cancelDecisionDialog}
+              returnFocusRef={decisionActionTriggerRef}
+            />
+          ) : null}
+
+          {activeDecisionDialog === "reaffirm" && activeCase.decision.status === "recorded" ? (
+            <DecisionReaffirmDialog
+              outcome={activeCase.decision.outcome}
+              priorHeadSha={activeCase.decision.priorHeadSha}
+              currentHeadSha={activeCase.decision.currentHeadSha}
+              priorRationale={activeCase.decision.rationale}
+              survivingReferences={activeCase.decision.references.filter(
+                (reference) => reference.available && !reference.stale,
+              )}
+              staleReferences={activeCase.decision.references.filter(
+                (reference) => !reference.available || reference.stale,
+              )}
+              pending={decisionPending}
+              submitError={decisionDialogError}
+              onSubmit={submitReaffirm}
+              onCancel={cancelDecisionDialog}
+              returnFocusRef={decisionActionTriggerRef}
+            />
+          ) : null}
+
+          {activeDecisionDialog === "withdraw" ? (
+            <DecisionWithdrawDialog
+              pending={decisionPending}
+              submitError={decisionDialogError}
+              onSubmit={submitWithdraw}
+              onCancel={cancelDecisionDialog}
+              returnFocusRef={decisionActionTriggerRef}
+            />
+          ) : null}
+        </>
+      ) : null}
 
       {/* Below the practical workstation minimum, a truthful notice replaces the
           dense four-plane grid rather than presenting a clipped interface. */}

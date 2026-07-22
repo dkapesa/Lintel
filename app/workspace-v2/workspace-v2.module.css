@@ -1800,6 +1800,519 @@
   line-height: 16px;
 }
 
+/* --- Human Decision · plate primary action (R1B.6) -------------------- */
+
+/* A live, wired primary action on the Decision Plate. Restrained; the semantic
+   weight is carried by the outcome token, not the button. */
+.plateActionPrimary {
+  flex: none;
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--wsv2-accent);
+  border-radius: var(--wsv2-r-control);
+  background: color-mix(in srgb, var(--wsv2-accent) 16%, transparent);
+  color: var(--wsv2-text);
+  font-family: inherit;
+  font-size: var(--wsv2-support-size);
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.plateActionPrimary:hover {
+  background: color-mix(in srgb, var(--wsv2-accent) 26%, transparent);
+}
+
+.plateActionPrimary:focus-visible {
+  outline: 2px solid var(--wsv2-focus-ring);
+  outline-offset: 2px;
+}
+
+.plateActionPrimary[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* --- Human Decision · fingerprint chip (R1B.6, §17.11) ---------------- */
+
+.fingerprintChip {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: var(--wsv2-r-chip);
+  border: 1px solid var(--wsv2-hairline);
+  background: rgb(255 255 255 / 3%);
+  color: var(--wsv2-text-3);
+  font-family: var(--wsv2-mono);
+  font-size: 10px;
+  line-height: 15px;
+  white-space: nowrap;
+}
+
+/* --- Human Decision · reference flags (R1B.6) ------------------------- */
+
+.referenceFlags {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.referenceStale,
+.referenceModel {
+  padding: 0 5px;
+  border-radius: var(--wsv2-r-chip);
+  border: 1px solid var(--wsv2-hairline);
+  color: var(--wsv2-text-3);
+  font-size: 9px;
+  line-height: 14px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.referenceStale {
+  color: var(--wsv2-warning);
+}
+
+.inlineMono {
+  font-family: var(--wsv2-mono);
+  color: var(--wsv2-text-2);
+}
+
+/* --- Human Decision · lineage history (R1B.6, §14) -------------------- */
+
+.historyList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.historyRow {
+  padding: 8px 10px;
+  border-radius: var(--wsv2-r-chip);
+  border: 1px solid var(--wsv2-hairline);
+  background: rgb(255 255 255 / 2%);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.historyRowHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.historyTitle {
+  font-size: var(--wsv2-support-size);
+  font-weight: 600;
+  color: var(--wsv2-text);
+}
+
+.historyRole {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.historyMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--wsv2-support-size);
+  color: var(--wsv2-text-3);
+}
+
+.historyRationale {
+  margin: 0;
+  font-size: var(--wsv2-support-size);
+  line-height: 16px;
+  color: var(--wsv2-text-2);
+}
+
+.decisionActionRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.decisionDestructiveButton {
+  flex: none;
+  min-height: 26px;
+  padding: 3px 12px;
+  border: 1px solid color-mix(in srgb, var(--wsv2-danger) 45%, transparent);
+  border-radius: var(--wsv2-r-chip);
+  background: color-mix(in srgb, var(--wsv2-danger) 10%, transparent);
+  color: var(--wsv2-danger);
+  font: inherit;
+  font-size: var(--wsv2-support-size);
+  cursor: pointer;
+}
+
+.decisionDestructiveButton:hover {
+  background: color-mix(in srgb, var(--wsv2-danger) 18%, transparent);
+}
+
+.decisionDestructiveButton:focus-visible {
+  outline: 2px solid var(--wsv2-focus-ring);
+  outline-offset: 1px;
+}
+
+.decisionDestructiveButton[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* --- Human Decision · dialogs (R1B.6, §19, §24.17) -------------------- */
+
+/* An accessible, focus-managed in-product confirmation surface — never
+   window.confirm. Restrained: no gradient, glow, glass or motion. Fully
+   operable and unclipped at 1024×768 (the body scrolls). */
+.dialogOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.dialogScrim {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 62%);
+}
+
+.dialogPanel {
+  position: relative;
+  z-index: 1;
+  width: min(560px, 100%);
+  max-height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--wsv2-rail);
+  border-radius: var(--wsv2-r-card);
+  background: var(--wsv2-raised);
+  box-shadow: 0 18px 48px rgb(0 0 0 / 45%);
+}
+
+.dialogDestructive {
+  border-color: color-mix(in srgb, var(--wsv2-danger) 45%, var(--wsv2-rail));
+}
+
+.dialogHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px 0;
+}
+
+.dialogTitle {
+  margin: 0;
+  font-size: 17px;
+  line-height: 22px;
+  font-weight: 700;
+  color: var(--wsv2-text);
+}
+
+.dialogDescription {
+  padding: 6px 18px 0;
+  font-size: var(--wsv2-support-size);
+  line-height: 18px;
+  color: var(--wsv2-text-2);
+}
+
+.dialogBody {
+  padding: 14px 18px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.dialogNotice {
+  padding: 0 18px;
+}
+
+.dialogError {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: var(--wsv2-r-chip);
+  border: 1px solid color-mix(in srgb, var(--wsv2-danger) 45%, transparent);
+  background: color-mix(in srgb, var(--wsv2-danger) 10%, transparent);
+  color: var(--wsv2-danger);
+  font-size: var(--wsv2-support-size);
+  line-height: 16px;
+}
+
+.dialogFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 18px 16px;
+  border-top: 1px solid var(--wsv2-hairline);
+}
+
+.dialogPrimary {
+  min-height: 34px;
+  padding: 0 16px;
+  border: 1px solid var(--wsv2-accent);
+  border-radius: var(--wsv2-r-control);
+  background: color-mix(in srgb, var(--wsv2-accent) 20%, transparent);
+  color: var(--wsv2-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dialogPrimary:hover {
+  background: color-mix(in srgb, var(--wsv2-accent) 30%, transparent);
+}
+
+.dialogPrimary:focus-visible {
+  outline: 2px solid var(--wsv2-focus-ring);
+  outline-offset: 2px;
+}
+
+.dialogPrimary[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.dialogSecondary {
+  min-height: 34px;
+  padding: 0 14px;
+  border: 1px solid var(--wsv2-rail);
+  border-radius: var(--wsv2-r-control);
+  background: transparent;
+  color: var(--wsv2-text-2);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dialogSecondary:hover {
+  background: rgb(255 255 255 / 5%);
+  color: var(--wsv2-text);
+}
+
+.dialogSecondary:focus-visible {
+  outline: 2px solid var(--wsv2-focus-ring);
+  outline-offset: 2px;
+}
+
+.dialogSecondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.dialogDestructiveButton {
+  min-height: 34px;
+  padding: 0 16px;
+  border: 1px solid var(--wsv2-danger);
+  border-radius: var(--wsv2-r-control);
+  background: color-mix(in srgb, var(--wsv2-danger) 20%, transparent);
+  color: var(--wsv2-text);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.dialogDestructiveButton:hover {
+  background: color-mix(in srgb, var(--wsv2-danger) 30%, transparent);
+}
+
+.dialogDestructiveButton:focus-visible {
+  outline: 2px solid var(--wsv2-focus-ring);
+  outline-offset: 2px;
+}
+
+.dialogDestructiveButton[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* --- Human Decision · dialog form controls (R1B.6) -------------------- */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fieldLegend,
+.fieldLabel {
+  padding: 0;
+  font-size: var(--wsv2-support-size);
+  font-weight: 600;
+  color: var(--wsv2-text);
+}
+
+.fieldHint {
+  margin: 0;
+  font-size: var(--wsv2-support-size);
+  line-height: 16px;
+  color: var(--wsv2-text-3);
+}
+
+.dialogTextarea {
+  width: 100%;
+  min-height: 68px;
+  padding: 8px 10px;
+  border: 1px solid var(--wsv2-rail);
+  border-radius: var(--wsv2-r-control);
+  background: rgb(255 255 255 / 4%);
+  color: var(--wsv2-text);
+  font: inherit;
+  font-size: var(--wsv2-body-size);
+  line-height: var(--wsv2-body-line);
+  resize: vertical;
+}
+
+.dialogTextarea:focus-visible {
+  outline: 2px solid var(--wsv2-focus-ring);
+  outline-offset: 1px;
+}
+
+.fieldInvalid {
+  border-color: var(--wsv2-danger);
+}
+
+.outcomeOptions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.outcomeOption {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 8px 10px;
+  border: 1px solid var(--wsv2-hairline);
+  border-radius: var(--wsv2-r-control);
+  background: rgb(255 255 255 / 2%);
+  cursor: pointer;
+}
+
+.outcomeOption:hover {
+  background: rgb(255 255 255 / 5%);
+}
+
+.outcomeOptionSelected {
+  border-color: var(--wsv2-accent);
+  background: color-mix(in srgb, var(--wsv2-accent) 10%, transparent);
+}
+
+.outcomeRadio {
+  margin-top: 3px;
+  flex: none;
+  accent-color: var(--wsv2-accent);
+}
+
+.outcomeRadio:focus-visible {
+  outline: 2px solid var(--wsv2-focus-ring);
+  outline-offset: 2px;
+}
+
+.outcomeOptionBody {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.outcomeOptionLabel {
+  font-size: var(--wsv2-body-size);
+  font-weight: 600;
+  color: var(--wsv2-text);
+}
+
+.outcomeOptionMeaning {
+  font-size: var(--wsv2-support-size);
+  line-height: 16px;
+  color: var(--wsv2-text-3);
+}
+
+.riskOptions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  max-height: 168px;
+  overflow-y: auto;
+}
+
+.riskOption {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--wsv2-hairline);
+  border-radius: var(--wsv2-r-chip);
+  background: rgb(255 255 255 / 2%);
+  cursor: pointer;
+  font-size: var(--wsv2-support-size);
+  color: var(--wsv2-text-2);
+}
+
+.riskOptionBody {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 7px;
+}
+
+.riskOptionKind {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--wsv2-text-3);
+}
+
+.ackRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: var(--wsv2-support-size);
+  line-height: 16px;
+  color: var(--wsv2-text-2);
+  cursor: pointer;
+}
+
+.checkbox {
+  margin-top: 2px;
+  flex: none;
+  accent-color: var(--wsv2-accent);
+}
+
+.checkbox:focus-visible {
+  outline: 2px solid var(--wsv2-focus-ring);
+  outline-offset: 2px;
+}
+
 /* --- Persistence controls (R1B.5) ------------------------------------- */
 
 /* Restrained review-status / condition controls. Native controls, visible

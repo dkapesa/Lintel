@@ -11,7 +11,10 @@
 import { type RefObject } from "react";
 import styles from "../workspace-v2.module.css";
 import { ArtifactMarker, ProvenanceBadge, StrengthMeter } from "./atoms";
-import { DecisionPlateBoundary } from "./DecisionPlateBoundary";
+import {
+  DecisionPlateBoundary,
+  type PlateDecisionHandlers,
+} from "./DecisionPlateBoundary";
 import {
   evidenceStatusTone,
   recommendationTone,
@@ -27,6 +30,7 @@ import {
   type ArtifactRef,
   type CaseDetail,
   type ChangedFileView,
+  type DecisionMutationCapability,
   type DecisionPlateViewModel,
   type EvidenceView,
   type FindingView,
@@ -49,6 +53,8 @@ export function VerificationCanvas({
   onToggleFocus,
   bodyRef,
   decision,
+  decisionMutation,
+  decisionHandlers,
   plateCurrent,
   onViewDecisionContext,
 }: {
@@ -59,6 +65,8 @@ export function VerificationCanvas({
   onToggleFocus: (kind: ArtifactKind, id: string) => void;
   bodyRef: RefObject<HTMLDivElement | null>;
   decision: DecisionPlateViewModel;
+  decisionMutation: DecisionMutationCapability;
+  decisionHandlers: PlateDecisionHandlers | null;
   plateCurrent: boolean;
   onViewDecisionContext: (trigger: HTMLElement) => void;
 }) {
@@ -198,7 +206,9 @@ export function VerificationCanvas({
       {/* Row 3 — terminal act */}
       <DecisionPlateBoundary
         decision={decision}
+        mutation={decisionMutation}
         current={plateCurrent}
+        handlers={decisionHandlers}
         onViewContext={onViewDecisionContext}
       />
     </main>

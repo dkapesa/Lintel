@@ -757,7 +757,12 @@ function ReadyWorkspace({
       announce("The related artifact is not present in this case.");
       return;
     }
-    target.scrollIntoView({ behavior: scrollBehavior(), block: "start" });
+    /* Minimal movement: `nearest` leaves an already-visible target in place and
+       otherwise moves the least amount needed. The target's scroll-margin keeps
+       it clear of the fixed case header and the Decision Plate edges, so it is
+       never tucked under either. Reduced motion resolves this to an instant
+       jump via scrollBehavior(). */
+    target.scrollIntoView({ behavior: scrollBehavior(), block: "nearest" });
     const control = target.querySelector<HTMLElement>("button, a[href], [tabindex]") ?? target;
     control.focus({ preventScroll: true });
   }, [focusRequest, announce]);

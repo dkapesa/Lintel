@@ -43,6 +43,19 @@
   --wsv2-accent: var(--color-accent);
   --wsv2-focus-ring: var(--color-focus-ring);
 
+  /* R1D — Motion. A restrained, functional transition system: only the state
+     changes that aid orientation animate (hover, pressed, selection, active
+     stage, sibling de-emphasis, dialog presentation), and only through explicit
+     properties — never transition:all, never a layout-affecting property, and
+     never the focus ring (focus visibility must stay instant for a11y). The
+     durations live as tokens so the prefers-reduced-motion query can collapse
+     every transition to 0s in one place, making reduced motion a first-class
+     operating mode rather than a scatter of per-rule overrides. Authoritative
+     text is never gated behind any of these — they animate presentation only. */
+  --wsv2-t-fast: 100ms; /* hover / pressed / control colour response */
+  --wsv2-t-state: 140ms; /* selection, active stage, de-emphasis, dialog */
+  --wsv2-ease: cubic-bezier(0.2, 0, 0, 1);
+
   /* R1C — Interaction states. Selected, keyboard-focused, active and
      pressed/toggled are deliberately kept distinct: selection is a persistent
      inset well with an accent edge; focus is the high-contrast ring; active is
@@ -182,6 +195,9 @@
   flex: 1;
   overflow-y: auto;
   scrollbar-width: thin;
+  /* Reserve the scrollbar gutter so a Queue that gains or loses a scrollbar
+     during regrouping never shifts row width sideways. */
+  scrollbar-gutter: stable;
   padding: 0 8px 16px;
 }
 
@@ -230,6 +246,11 @@
   display: grid;
   gap: 3px;
   cursor: pointer;
+  /* Selection and hover settle rather than snap; the focus ring is deliberately
+     excluded so it still appears the instant the row is focused. */
+  transition:
+    background-color var(--wsv2-t-state) var(--wsv2-ease),
+    border-left-color var(--wsv2-t-state) var(--wsv2-ease);
 }
 
 .queueRow:hover {
@@ -403,6 +424,9 @@
   align-items: center;
   gap: 10px;
   cursor: pointer;
+  /* Active-stage and hover response settle; distinct from the instant focus
+     ring and from the connecting rail, which never animates as progress. */
+  transition: background-color var(--wsv2-t-state) var(--wsv2-ease);
 }
 
 .spineNode:hover {
@@ -644,6 +668,10 @@
   overflow-x: hidden;
   overscroll-behavior: contain;
   scrollbar-width: thin;
+  /* Reserve the gutter so a case whose body is shorter than the viewport reads
+     at the same content width as one that scrolls — no sideways jump between
+     cases as the vertical scrollbar comes and goes. */
+  scrollbar-gutter: stable;
   scroll-behavior: smooth;
 }
 
@@ -1140,6 +1168,9 @@
      it is never tucked under the fixed case header row above the scroll region. */
   scroll-margin-top: 16px;
   scroll-margin-bottom: 16px;
+  /* Sibling de-emphasis settles instead of snapping when an artifact is focused,
+     so the eye follows which record rose rather than seeing the whole list jump. */
+  transition: opacity var(--wsv2-t-state) var(--wsv2-ease);
 }
 
 .canvasInnerFocusing .focusable:not(.recordFocused) {
@@ -1375,6 +1406,9 @@
   font-weight: 650;
   cursor: pointer;
   white-space: nowrap;
+  transition:
+    background-color var(--wsv2-t-fast) var(--wsv2-ease),
+    border-color var(--wsv2-t-fast) var(--wsv2-ease);
 }
 
 .plateAction:hover {
@@ -1399,6 +1433,9 @@
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
+  transition:
+    background-color var(--wsv2-t-fast) var(--wsv2-ease),
+    color var(--wsv2-t-fast) var(--wsv2-ease);
 }
 
 .plateActionSecondary:hover {
@@ -1615,6 +1652,7 @@
   font-family: var(--wsv2-mono);
   font-size: 9px;
   cursor: pointer;
+  transition: color var(--wsv2-t-fast) var(--wsv2-ease);
 }
 
 .inspectorClear:hover {
@@ -1631,6 +1669,9 @@
   flex: 1;
   overflow-y: auto;
   scrollbar-width: thin;
+  /* Reserve the gutter so switching between a short artifact view and a long
+     Decision Context never reflows the Inspector's content width. */
+  scrollbar-gutter: stable;
   padding: 2px var(--wsv2-plane-pad) 24px;
   display: flex;
   flex-direction: column;
@@ -1826,6 +1867,7 @@
   font: inherit;
   text-align: left;
   cursor: pointer;
+  transition: background-color var(--wsv2-t-fast) var(--wsv2-ease);
 }
 
 .relatedButton:hover {
@@ -1928,6 +1970,7 @@
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
+  transition: background-color var(--wsv2-t-fast) var(--wsv2-ease);
 }
 
 .plateActionPrimary:hover {
@@ -2077,6 +2120,7 @@
   font: inherit;
   font-size: var(--wsv2-support-size);
   cursor: pointer;
+  transition: background-color var(--wsv2-t-fast) var(--wsv2-ease);
 }
 
 .decisionDestructiveButton:hover {
@@ -2106,6 +2150,20 @@
   align-items: center;
   justify-content: center;
   padding: 24px;
+  /* A single, restrained opacity-only settle on open — no movement, so the
+     panel never shifts after it appears and aria-modal is present immediately.
+     Runs once per open (not a repeated entrance) and is removed under reduced
+     motion. */
+  animation: wsv2-dialog-in var(--wsv2-t-state) var(--wsv2-ease);
+}
+
+@keyframes wsv2-dialog-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 .dialogScrim {
@@ -2157,6 +2215,11 @@
 .dialogBody {
   padding: 14px 18px;
   overflow-y: auto;
+  scrollbar-width: thin;
+  /* Reserve the gutter so a form that grows past the panel height (accepted-risk
+     lists, long rationale) does not shift its fields when the scrollbar appears;
+     the footer actions sit outside this region and never move. */
+  scrollbar-gutter: stable;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -2195,6 +2258,7 @@
   font: inherit;
   font-weight: 600;
   cursor: pointer;
+  transition: background-color var(--wsv2-t-fast) var(--wsv2-ease);
 }
 
 .dialogPrimary:hover {
@@ -2221,6 +2285,9 @@
   font: inherit;
   font-weight: 600;
   cursor: pointer;
+  transition:
+    background-color var(--wsv2-t-fast) var(--wsv2-ease),
+    color var(--wsv2-t-fast) var(--wsv2-ease);
 }
 
 .dialogSecondary:hover {
@@ -2248,6 +2315,7 @@
   font: inherit;
   font-weight: 600;
   cursor: pointer;
+  transition: background-color var(--wsv2-t-fast) var(--wsv2-ease);
 }
 
 .dialogDestructiveButton:hover {
@@ -2334,6 +2402,9 @@
   border-radius: var(--wsv2-r-control);
   background: rgb(255 255 255 / 2%);
   cursor: pointer;
+  transition:
+    background-color var(--wsv2-t-fast) var(--wsv2-ease),
+    border-color var(--wsv2-t-fast) var(--wsv2-ease);
 }
 
 .outcomeOption:hover {
@@ -2482,6 +2553,7 @@
   font: inherit;
   font-size: var(--wsv2-support-size);
   cursor: pointer;
+  transition: background-color var(--wsv2-t-fast) var(--wsv2-ease);
 }
 
 .mutationButton:hover {
@@ -2766,6 +2838,23 @@
 /* --- Reduced motion --------------------------------------------------- */
 
 @media (prefers-reduced-motion: reduce) {
+  /* Reduced motion is a first-class operating mode, not a degraded fallback.
+     Collapsing the two duration tokens to 0s makes every R1D transition
+     resolve instantly — selection, active stage, sibling de-emphasis, hover,
+     pressed and dialog colour response all become immediate truth — in one
+     place, so no per-rule override can be forgotten. Focus visibility and all
+     functionality are unaffected (the focus ring was never transitioned). */
+  .root {
+    --wsv2-t-fast: 0s;
+    --wsv2-t-state: 0s;
+  }
+
+  /* Remove the dialog's opacity settle entirely: the panel is present at full
+     opacity immediately, with no entry movement. */
+  .dialogOverlay {
+    animation: none;
+  }
+
   /* Belt-and-braces: CSS smooth scrolling is disabled and programmatic scrolls
      in the client already fall back to "auto" under this preference, so no
      essential state change depends on animation. */

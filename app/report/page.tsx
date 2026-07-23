@@ -120,6 +120,26 @@ import {
 
 type GeneratedReportSource = "ai" | "deterministic";
 type ReportSource = GeneratedReportSource | "demo";
+/* R2E — Case File provenance mode. This is distinct from the analysis `source`
+   (ai / deterministic / demo). Provenance answers "where did this report come
+   from and can it be written to durably", and must be unmistakable:
+   - durable  : an exact entry in lintel.reportHistory.v1, selected by reportId;
+                authoritative local read and permitted writes; addressable.
+   - session  : the New Review sessionStorage handoff; functional this session
+                only; durable writes are guarded.
+   - demo     : the explicit demo / sample fixture; read-only, never durable. */
+type ReportProvenance = "durable" | "session" | "demo";
+/* The resolved state of the route. `loading` precedes client-side resolution;
+   `unavailable` is a truthful terminal state for an explicit identity failure
+   and never falls back to session or demo data. */
+type CaseFileResolution = "loading" | "ready" | "unavailable";
+/* Why an explicit reportId could not be honoured. Each is diagnostic and never
+   silently substitutes another report. */
+type UnavailableReason =
+  | "unknown-report"
+  | "ambiguous-report"
+  | "malformed-history"
+  | "storage-unavailable";
 type CopyState = "idle" | "copied" | "failed";
 type DownloadState = "idle" | "downloaded" | "failed";
 type QuickActionMessageState = "success" | "failed";
@@ -200,6 +220,22 @@ type LocalClauseOverride = {
   headSha?: string;
 };
 
+const SSR_SAFE_EMPTY_STORAGE: Storage = {
+  get length() {
+    return 0;
+  },
+  clear() {},
+  getItem() {
+    return null;
+  },
+  key() {
+    return null;
+  },
+  removeItem() {},
+  setItem() {},
+};
+const SSR_SAFE_READ_ONLY_STORAGE = readOnlyStorage(SSR_SAFE_EMPTY_STORAGE);
+
 type StoredReport = {
   report: Report;
   source: GeneratedReportSource;
@@ -218,6 +254,24 @@ const sourceLabels: Record<ReportSource, ReportSourceLabel> = {
   ai: "Baseline + model-assisted",
   deterministic: "Baseline only",
   demo: "Demo report",
+};
+
+/* R2E — provenance mode presentation. The label is short and technical; the
+   note states, in plain engineering language, whether durable local writes
+   apply. No provenance ever claims a hosted or shareable URL. */
+const provenanceLabels: Record<ReportProvenance, string> = {
+  durable: "Stored on this device",
+  session: "Session report",
+  demo: "Demo report",
+};
+
+const provenanceNotes: Record<ReportProvenance, string> = {
+  durable:
+    "This Case File is a durable entry in your local report history. It survives refresh and its recorded decisions are stored on this device.",
+  session:
+    "This Case File was generated in New Review for the current browser session. Recorded decisions apply to this session only and are not stored on this device.",
+  demo:
+    "This is the demo Case File. It shows sample data for reference. Recorded decisions are not stored on this device.",
 };
 
 const copyLabels: Record<CopyState, string> = {
@@ -1783,6 +1837,14 @@ function SourceBadge({ source }: { source: ReportSource }) {
   return <span className={`source-badge source-badge--${source}`}>{sourceLabels[source]}</span>;
 }
 
+/* R2E — the provenance chip. Durable / Session / Demo must be visually and
+   textually distinct so the three modes are never mistaken for one another. */
+function ProvenanceBadge({ provenance }: { provenance: ReportProvenance }) {
+  return (
+    <span className={`provenance-badge provenance-badge--${provenance}`}>{provenanceLabels[provenance]}</span>
+  );
+}
+
 function firstOrFallback(items: string[], fallback: string) {
   return items.find((item) => item.trim().length > 0) ?? fallback;
 }
@@ -2473,6 +2535,7 @@ function HumanDecisionLedgerRow({ entry, currentHeadSha }: { entry: HumanDecisio
 
 export default function ReportPage() {
   const guidedTour = useGuidedTour();
+  const [browserLocalStorage, setBrowserLocalStorage] = useState<Storage | null>(null);
   const [displayedReport, setDisplayedReport] = useState<{ report: Report; source: ReportSource }>({
     report: demoReport,
     source: "demo",
@@ -2513,7 +2576,33 @@ export default function ReportPage() {
      position/fuzzy matching. */
   const [workspaceReturnReportId, setWorkspaceReturnReportId] = useState<string | null>(null);
 
+  /* R2E — deterministic provenance resolution. `resolution` gates the render:
+     `loading` before client resolution, `ready` for a durable/session/demo
+     report, and `unavailable` for an explicit identity failure that must never
+     fall through to session or demo data. `provenance` is the resolved mode.
+     `durableReportId` is the exact, schema-stable local history identity
+     (`ReportHistoryEntry.createdAt`) and is set ONLY for a durable report; it
+     is the single authoritative identity used for the deep link and the exact
+     Open in Workspace link. `requestedReportId` records what the URL asked for
+     so the unavailable state can name it. */
+  const [resolution, setResolution] = useState<CaseFileResolution>("loading");
+  const [provenance, setProvenance] = useState<ReportProvenance>("demo");
+  const [durableReportId, setDurableReportId] = useState<string | null>(null);
+  const [requestedReportId, setRequestedReportId] = useState<string | null>(null);
+  const [unavailableReason, setUnavailableReason] = useState<UnavailableReason | null>(null);
+
   useEffect(() => {
+    setBrowserLocalStorage(window.localStorage);
+  }, []);
+
+  useEffect(() => {
+    /* A durable Case File already knows its exact identity from the resolver;
+       the canonical-run match is unnecessary and would be a redundant history
+       read. Defer to `durableReportId` in that case. */
+    if (durableReportId) {
+      setWorkspaceReturnReportId(null);
+      return;
+    }
     const runId = canonicalRun?.runId;
     if (!runId) {
       setWorkspaceReturnReportId(null);
@@ -2533,14 +2622,81 @@ export default function ReportPage() {
          plain /workspace rather than guessing a selection. */
       setWorkspaceReturnReportId(null);
     }
-  }, [canonicalRun]);
+  }, [canonicalRun, durableReportId]);
 
   /* The one return-to-Workspace destination for the current report: a deep link
      preserving exact selection when durable, otherwise the plain canonical
      route. The reportId is the history entry's own stable id and is URL-encoded. */
-  const workspaceReturnHref = workspaceReturnReportId
-    ? `/workspace?reportId=${encodeURIComponent(workspaceReturnReportId)}`
-    : "/workspace";
+  /* R2E — one return-to-Workspace destination. A durable Case File links to the
+     EXACT Workspace case using its own durable identity (no guessing). Session
+     and demo preserve the existing behaviour: a unique canonical-run match may
+     still resolve an exact case, otherwise the plain /workspace route — never a
+     fabricated identity. `durableReportId` takes precedence and is authoritative
+     when set. */
+  const workspaceReturnHref = durableReportId
+    ? `/workspace?reportId=${encodeURIComponent(durableReportId)}`
+    : workspaceReturnReportId
+      ? `/workspace?reportId=${encodeURIComponent(workspaceReturnReportId)}`
+      : "/workspace";
+  /* Only a durable Case File may promise the exact same report in Workspace. */
+  const hasExactWorkspaceCase = durableReportId !== null;
+
+  /* R2E / R2E.1 — one report-related storage boundary for the whole route.
+     Every report-specific storage access (Human Decision ledger, decision
+     history, review state, condition progress, action status, assumption /
+     clause overrides, and the read-time ensure* initialisers they reach) goes
+     through `reportStorage`:
+       - durable Case File → real window.localStorage: reads load recorded
+         state and authorised writes persist, with all existing lineage and
+         idempotency behaviour preserved;
+       - session / demo (or while still loading) → the existing readOnlyStorage
+         no-op boundary: reads pass through and return empty/default
+         projections, while EVERY write — including read-time self-heal and
+         ensure / initialise writes — becomes a silent no-op.
+     This keeps demo/session Case Files byte-for-byte non-mutating on durable
+     report storage, without changing any schema, key or domain helper (the
+     boundary is injected at the route call sites only). The mutation helpers
+     still compute and return the next value, so a session-only interaction
+     updates the current view without persisting. */
+  const canPersistDurably = resolution === "ready" && provenance === "durable";
+  const reportStorage = browserLocalStorage === null
+    ? SSR_SAFE_READ_ONLY_STORAGE
+    : canPersistDurably
+      ? browserLocalStorage
+      : readOnlyStorage(browserLocalStorage);
+
+  /* R2E — diagnostic copy for the unavailable Case File. Each reason is distinct
+     and truthful; none suggests a retry that could not succeed, and none offers
+     an alternative report. */
+  const unavailableStateCopy = ((): { heading: string; detail: string } => {
+    switch (unavailableReason) {
+      case "ambiguous-report":
+        return {
+          heading: "This report link is ambiguous",
+          detail:
+            "More than one stored report matches this identity, so the exact Case File cannot be resolved. No report was selected.",
+        };
+      case "malformed-history":
+        return {
+          heading: "Local report history is unreadable",
+          detail:
+            "The stored report history could not be read as valid data. It was left unchanged and no report was selected.",
+        };
+      case "storage-unavailable":
+        return {
+          heading: "Local storage is unavailable",
+          detail:
+            "This device's storage could not be read, so the requested Case File cannot be resolved.",
+        };
+      case "unknown-report":
+      default:
+        return {
+          heading: "This report is not on this device",
+          detail:
+            "No report in your local history matches this identity. It may have been created on another device, deleted, or never stored durably.",
+        };
+    }
+  })();
 
   useEffect(() => {
     const closeForShellNavigation = () => closeDecisionSheet({ restoreFocus: false });
@@ -2584,49 +2740,127 @@ export default function ReportPage() {
   const decisionSheetReturnFocusRef = useRef<HTMLElement | null>(null);
   const contractDisclosureKeyRef = useRef<string | null>(null);
 
+  /* R2E — one authoritative, deterministic source-precedence resolver. This is
+     the single place that decides which report the route shows and in which
+     provenance mode. Precedence is strict and explicit:
+
+       1. explicit ?reportId=<durable-history-identity>  (durable, or unavailable)
+       2. explicit ?demo=1                                (demo)
+       3. valid New Review session handoff                (session)
+       4. demo default                                    (demo)
+
+     An explicit reportId NEVER falls through to session or demo data: an
+     unknown, ambiguous, malformed or unreadable identity resolves to the
+     truthful `unavailable` state and does not select or mutate anything.
+     Reading history uses the read-only storage guard so the history helper's
+     self-heal-on-read cannot mutate storage while a link is being resolved. */
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get("demo") === "1") return;
+    const params = new URLSearchParams(window.location.search);
+    const rawReportId = params.get("reportId");
+    const isDemoRoute = params.get("demo") === "1";
 
-    const storedReport = sessionStorage.getItem(GENERATED_REPORT_STORAGE_KEY);
-
-    if (!storedReport) return;
-
-    try {
-      const parsedReport: unknown = JSON.parse(storedReport);
-
-      if (isStoredReport(parsedReport)) {
-        setDisplayedReport(parsedReport);
-        setReadinessDelta(isReadinessDelta(parsedReport.readinessDelta) ? parsedReport.readinessDelta : null);
-        setReviewDiff(isReviewDiff(parsedReport.reviewDiff) ? parsedReport.reviewDiff : null);
-        setCanonicalRun(isCanonicalRun(parsedReport.canonicalRun) ? parsedReport.canonicalRun : historicalCanonicalRunManifest(parsedReport.report, "github-pr"));
-        setChangePassport(isChangePassport(parsedReport.changePassport) ? parsedReport.changePassport : null);
-        setStoredMergeContract(isMergeContract(parsedReport.mergeContract) ? parsedReport.mergeContract : null);
-        setStoredVerificationPack(isVerificationPack(parsedReport.verificationPack) ? parsedReport.verificationPack : null);
-        setStoredContractRecheck(isContractRecheck(parsedReport.contractRecheck) ? parsedReport.contractRecheck : null);
-        setVerificationTarget(isVerificationTarget(parsedReport.verificationTarget) ? parsedReport.verificationTarget : null);
-        setVerificationResult(null);
-        if (parsedReport.initialTab === "review-diff") setActiveDossierSection("appendix");
+    /* 1. Explicit durable deep link — highest precedence. */
+    if (rawReportId !== null) {
+      const reportId = rawReportId.trim();
+      setRequestedReportId(reportId);
+      if (reportId.length === 0) {
+        setUnavailableReason("unknown-report");
+        setResolution("unavailable");
         return;
       }
-
-      if (isReport(parsedReport)) {
-        setDisplayedReport({ report: parsedReport, source: "deterministic" });
-        setReadinessDelta(null);
-        setReviewDiff(null);
-        setCanonicalRun(historicalCanonicalRunManifest(parsedReport, "manual"));
-        setChangePassport(null);
-        setStoredMergeContract(null);
-        setStoredVerificationPack(null);
-        setStoredContractRecheck(null);
-        setVerificationTarget(null);
-        setVerificationResult(null);
+      let history;
+      try {
+        history = readReportHistory(readOnlyStorage(window.localStorage));
+      } catch {
+        setUnavailableReason("storage-unavailable");
+        setResolution("unavailable");
         return;
       }
-
-      sessionStorage.removeItem(GENERATED_REPORT_STORAGE_KEY);
-    } catch {
-      sessionStorage.removeItem(GENERATED_REPORT_STORAGE_KEY);
+      const matches = history.filter((entry) => entry.createdAt === reportId);
+      if (matches.length === 0) {
+        setUnavailableReason("unknown-report");
+        setResolution("unavailable");
+        return;
+      }
+      if (matches.length > 1) {
+        /* Ambiguous identity — never guess. */
+        setUnavailableReason("ambiguous-report");
+        setResolution("unavailable");
+        return;
+      }
+      const entry = matches[0];
+      setDisplayedReport({ report: entry.report, source: entry.source });
+      setReadinessDelta(null);
+      setReviewDiff(null);
+      setCanonicalRun(entry.canonicalRun ?? historicalCanonicalRunManifest(entry.report, "github-pr"));
+      setChangePassport(entry.changePassport ?? null);
+      setStoredMergeContract(entry.mergeContract ?? null);
+      setStoredVerificationPack(entry.verificationPack ?? null);
+      setStoredContractRecheck(entry.contractRecheck ?? null);
+      setVerificationTarget(null);
+      setVerificationResult(null);
+      setDurableReportId(entry.createdAt);
+      setProvenance("durable");
+      setResolution("ready");
+      return;
     }
+
+    /* 2. Explicit demo route — skips the session handoff, as before. */
+    if (isDemoRoute) {
+      setProvenance("demo");
+      setResolution("ready");
+      return;
+    }
+
+    /* 3. New Review session handoff. Reading it does not consume the key, so a
+       refresh re-reads it and the report stays a Session report. */
+    const storedReport = sessionStorage.getItem(GENERATED_REPORT_STORAGE_KEY);
+    if (storedReport) {
+      try {
+        const parsedReport: unknown = JSON.parse(storedReport);
+
+        if (isStoredReport(parsedReport)) {
+          setDisplayedReport(parsedReport);
+          setReadinessDelta(isReadinessDelta(parsedReport.readinessDelta) ? parsedReport.readinessDelta : null);
+          setReviewDiff(isReviewDiff(parsedReport.reviewDiff) ? parsedReport.reviewDiff : null);
+          setCanonicalRun(isCanonicalRun(parsedReport.canonicalRun) ? parsedReport.canonicalRun : historicalCanonicalRunManifest(parsedReport.report, "github-pr"));
+          setChangePassport(isChangePassport(parsedReport.changePassport) ? parsedReport.changePassport : null);
+          setStoredMergeContract(isMergeContract(parsedReport.mergeContract) ? parsedReport.mergeContract : null);
+          setStoredVerificationPack(isVerificationPack(parsedReport.verificationPack) ? parsedReport.verificationPack : null);
+          setStoredContractRecheck(isContractRecheck(parsedReport.contractRecheck) ? parsedReport.contractRecheck : null);
+          setVerificationTarget(isVerificationTarget(parsedReport.verificationTarget) ? parsedReport.verificationTarget : null);
+          setVerificationResult(null);
+          if (parsedReport.initialTab === "review-diff") setActiveDossierSection("appendix");
+          setProvenance("session");
+          setResolution("ready");
+          return;
+        }
+
+        if (isReport(parsedReport)) {
+          setDisplayedReport({ report: parsedReport, source: "deterministic" });
+          setReadinessDelta(null);
+          setReviewDiff(null);
+          setCanonicalRun(historicalCanonicalRunManifest(parsedReport, "manual"));
+          setChangePassport(null);
+          setStoredMergeContract(null);
+          setStoredVerificationPack(null);
+          setStoredContractRecheck(null);
+          setVerificationTarget(null);
+          setVerificationResult(null);
+          setProvenance("session");
+          setResolution("ready");
+          return;
+        }
+
+        sessionStorage.removeItem(GENERATED_REPORT_STORAGE_KEY);
+      } catch {
+        sessionStorage.removeItem(GENERATED_REPORT_STORAGE_KEY);
+      }
+    }
+
+    /* 4. Demo default. */
+    setProvenance("demo");
+    setResolution("ready");
   }, []);
 
   useEffect(() => () => {
@@ -3111,9 +3345,21 @@ export default function ReportPage() {
   const studioDecisionReasonRequired = studioDecisionDiverges || studioDecision === "Approved with accepted risk";
   const currentHumanDecision = humanDecisionProjection.latestEffectiveEntry;
 
+  /* R2E.1 — decision action language is driven by provenance, not duplicated
+     route state. A durable Case File keeps the authoritative "Record decision"
+     wording and durable persistence. Session and demo report the truthful
+     interaction model: the decision is recorded for the current session only
+     and is not stored on this device. */
+  const decisionOpenLabel = canPersistDurably
+    ? (currentHumanDecision ? "Record new decision" : "Record decision")
+    : "Record for this session";
+  const decisionSaveIdleLabel = canPersistDurably ? "Record decision" : "Record for this session";
+  const decisionSaveDoneLabel = canPersistDurably ? "Decision recorded" : "Recorded for this session";
+  const decisionSaveLegendVerb = canPersistDurably ? "Record decision for" : "Record a session-only decision for";
+
   useEffect(() => {
     try {
-      setClearedConditionKeys(readConditionProgress(window.localStorage, report, displayedConditions));
+      setClearedConditionKeys(readConditionProgress(reportStorage, report, displayedConditions));
     } catch {
       setClearedConditionKeys(new Set());
     }
@@ -3121,7 +3367,7 @@ export default function ReportPage() {
 
   useEffect(() => {
     try {
-      setAssumptionOverrides(readAssumptionOverrides(window.localStorage, currentAssumptionStateKey));
+      setAssumptionOverrides(readAssumptionOverrides(reportStorage, currentAssumptionStateKey));
     } catch {
       setAssumptionOverrides({});
     }
@@ -3129,7 +3375,7 @@ export default function ReportPage() {
 
   useEffect(() => {
     try {
-      setClauseOverrides(readClauseOverrides(window.localStorage, mergeContractStateKey));
+      setClauseOverrides(readClauseOverrides(reportStorage, mergeContractStateKey));
     } catch {
       setClauseOverrides({});
     }
@@ -3143,7 +3389,7 @@ export default function ReportPage() {
 
   useEffect(() => {
     try {
-      setHumanDecisionLedger(readHumanDecisionLedger(window.localStorage, humanDecisionLedgerKey, humanDecisionLedgerContext, reviewState));
+      setHumanDecisionLedger(readHumanDecisionLedger(reportStorage, humanDecisionLedgerKey, humanDecisionLedgerContext, reviewState));
     } catch {
       setHumanDecisionLedger(createEmptyHumanDecisionLedger(humanDecisionLedgerContext));
     }
@@ -3151,7 +3397,7 @@ export default function ReportPage() {
 
   useEffect(() => {
     try {
-      setWorkspaceStore(ensureWorkspaceStore(window.localStorage));
+      setWorkspaceStore(ensureWorkspaceStore(reportStorage));
     } catch {
       setWorkspaceStore(null);
     }
@@ -3159,11 +3405,11 @@ export default function ReportPage() {
 
   useEffect(() => {
     try {
-      const store = ensureWorkspaceStore(window.localStorage);
+      const store = ensureWorkspaceStore(reportStorage);
       setWorkspaceStore(store);
       const key = workspaceScopedReviewKey(store.activeWorkspaceId, reviewStateKeyForReport(report));
-      const allStates = readReviewStates(window.localStorage);
-      const savedState = allStates[key] ?? readReviewState(window.localStorage, report);
+      const allStates = readReviewStates(reportStorage);
+      const savedState = allStates[key] ?? readReviewState(reportStorage, report);
       setReviewState(savedState);
       setStudioDecision(studioDecisionFromReviewState(savedState.status));
       setDecisionStudioExpanded(false);
@@ -3181,7 +3427,7 @@ export default function ReportPage() {
 
   useEffect(() => {
     try {
-      setDecisionHistory(ensureDecisionHistory(window.localStorage, decisionHistoryKey, report));
+      setDecisionHistory(ensureDecisionHistory(reportStorage, decisionHistoryKey, report));
     } catch {
       setDecisionHistory(initialDecisionHistory(report));
     }
@@ -3189,7 +3435,7 @@ export default function ReportPage() {
 
   useEffect(() => {
     try {
-      setActionStatusOverrides(readReviewActionStatuses(window.localStorage, decisionHistoryKey));
+      setActionStatusOverrides(readReviewActionStatuses(reportStorage, decisionHistoryKey));
     } catch {
       setActionStatusOverrides({});
     }
@@ -3204,7 +3450,7 @@ export default function ReportPage() {
 
   function recordDecisionEvent(event: Parameters<typeof appendDecisionHistoryEvent>[2]) {
     try {
-      setDecisionHistory(appendDecisionHistoryEvent(window.localStorage, decisionHistoryKey, event));
+      setDecisionHistory(appendDecisionHistoryEvent(reportStorage, decisionHistoryKey, event));
     } catch {
       setDecisionHistory((current) => [{
         id: `local-${Date.now()}`,
@@ -3244,7 +3490,7 @@ export default function ReportPage() {
     };
     try {
       const next = appendHumanDecisionLedgerEntryToStorage(
-        window.localStorage,
+        reportStorage,
         humanDecisionLedgerKey,
         humanDecisionLedger,
         humanDecisionLedgerContext,
@@ -3285,9 +3531,9 @@ export default function ReportPage() {
 
   function updateReviewState(nextState: ReportReviewState) {
     try {
-      const store = ensureWorkspaceStore(window.localStorage);
+      const store = ensureWorkspaceStore(reportStorage);
       setWorkspaceStore(store);
-      const savedState = writeReviewState(window.localStorage, workspaceScopedReviewKey(store.activeWorkspaceId, reviewStateKeyForReport(report)), nextState);
+      const savedState = writeReviewState(reportStorage, workspaceScopedReviewKey(store.activeWorkspaceId, reviewStateKeyForReport(report)), nextState);
       setReviewState(savedState);
       return savedState;
     } catch {
@@ -3308,7 +3554,7 @@ export default function ReportPage() {
   function updateReviewActionStatus(action: ReviewActionItem & { status: ReviewActionStatus }, status: ReviewActionStatus) {
     const previousStatus = action.status;
     try {
-      setActionStatusOverrides(writeReviewActionStatus(window.localStorage, decisionHistoryKey, action.key, status));
+      setActionStatusOverrides(writeReviewActionStatus(reportStorage, decisionHistoryKey, action.key, status));
     } catch {
       setActionStatusOverrides((current) => ({ ...current, [action.key]: status }));
     }
@@ -3346,7 +3592,7 @@ export default function ReportPage() {
     };
 
     try {
-      setAssumptionOverrides(writeAssumptionOverride(window.localStorage, currentAssumptionStateKey, assumption.assumptionId, nextOverride));
+      setAssumptionOverrides(writeAssumptionOverride(reportStorage, currentAssumptionStateKey, assumption.assumptionId, nextOverride));
     } catch {
       setAssumptionOverrides((current) => ({ ...current, [assumption.assumptionId]: nextOverride }));
     }
@@ -3396,7 +3642,7 @@ export default function ReportPage() {
     };
 
     try {
-      setClauseOverrides(writeClauseOverride(window.localStorage, mergeContractStateKey, clause.clauseId, nextOverride));
+      setClauseOverrides(writeClauseOverride(reportStorage, mergeContractStateKey, clause.clauseId, nextOverride));
     } catch {
       setClauseOverrides((current) => ({ ...current, [clause.clauseId]: nextOverride }));
     }
@@ -3465,7 +3711,7 @@ export default function ReportPage() {
     setClearedConditionKeys(nextConditionKeys);
 
     try {
-      writeConditionProgress(window.localStorage, report, displayedConditions, nextConditionKeys);
+      writeConditionProgress(reportStorage, report, displayedConditions, nextConditionKeys);
     } catch {
       // Condition tracking is local-only and should not affect report rendering.
     }
@@ -3759,29 +4005,59 @@ export default function ReportPage() {
 
   return (
     <AppShell
-      context={<>{pr.project} · PR #{pr.number}</>}
+      context={resolution === "ready" ? <>{pr.project} · PR #{pr.number}</> : "Case File"}
       contextTone="technical"
       actions={
-        <>
-          <SourceBadge source={source} />
-          <button
-            className={quickActionsOpen ? "quick-actions-trigger quick-actions-trigger--active" : "quick-actions-trigger"}
-            type="button"
-            onClick={() => setQuickActionsOpen((current) => !current)}
-            aria-expanded={quickActionsOpen}
-            aria-controls="report-quick-actions"
-          >
-            Actions <span>Ctrl/Cmd K</span>
-          </button>
-          <button className={`copy-summary-button copy-summary-button--${copyState}`} type="button" onClick={handleCopySummary} aria-live="polite">
-            {copyLabels[copyState]}
-          </button>
-          <button className={`download-markdown-button download-markdown-button--${downloadState}`} type="button" onClick={handleDownloadMarkdown} aria-live="polite">
-            {downloadLabels[downloadState]}
-          </button>
-        </>
+        resolution === "ready" ? (
+          <>
+            <ProvenanceBadge provenance={provenance} />
+            <SourceBadge source={source} />
+            <button
+              className={quickActionsOpen ? "quick-actions-trigger quick-actions-trigger--active" : "quick-actions-trigger"}
+              type="button"
+              onClick={() => setQuickActionsOpen((current) => !current)}
+              aria-expanded={quickActionsOpen}
+              aria-controls="report-quick-actions"
+            >
+              Actions <span>Ctrl/Cmd K</span>
+            </button>
+            <button className={`copy-summary-button copy-summary-button--${copyState}`} type="button" onClick={handleCopySummary} aria-live="polite">
+              {copyLabels[copyState]}
+            </button>
+            <button className={`download-markdown-button download-markdown-button--${downloadState}`} type="button" onClick={handleDownloadMarkdown} aria-live="polite">
+              {downloadLabels[downloadState]}
+            </button>
+          </>
+        ) : undefined
       }
     >
+      {resolution === "loading" ? (
+        <div className="main-content report-surface report-case-file report-case-file--state" id="report">
+          <section className="case-file-state" aria-busy="true" aria-live="polite">
+            <span className="case-file-state-kicker">CASE FILE</span>
+            <h1>Loading Case File</h1>
+            <p>Resolving the requested report from this device.</p>
+          </section>
+        </div>
+      ) : resolution === "unavailable" ? (
+        <div className="main-content report-surface report-case-file report-case-file--state" id="report">
+          <section className="case-file-state case-file-state--unavailable" role="alert" aria-live="assertive">
+            <span className="case-file-state-kicker">CASE FILE UNAVAILABLE</span>
+            <h1>{unavailableStateCopy.heading}</h1>
+            <p>{unavailableStateCopy.detail}</p>
+            {requestedReportId && requestedReportId.length > 0 && (
+              <dl className="case-file-state-identity" aria-label="Requested report">
+                <div><dt>Requested report</dt><dd><code>{requestedReportId}</code></dd></div>
+              </dl>
+            )}
+            <p className="case-file-state-note">No other report was selected. Nothing on this device was changed. This is an on-device Case File link, not a hosted or shareable URL.</p>
+            <div className="case-file-state-actions">
+              <a href="/new">Start a review</a>
+              <a href="/workspace">Open Workspace</a>
+            </div>
+          </section>
+        </div>
+      ) : (
       <div className="main-content report-surface report-case-file" id="report">
         {quickActionsOpen && (
           <section className="quick-actions-panel quick-actions-panel--case-file" id="report-quick-actions" aria-label="Report quick actions" data-report-sheet-background>
@@ -3794,7 +4070,7 @@ export default function ReportPage() {
               {quickActionMessage && <span className={`quick-actions-status quick-actions-status--${quickActionMessage.state}`} role="status">{quickActionMessage.text}</span>}
             </div>
             <div className="case-file-action-list">
-              <button type="button" onClick={() => window.location.assign(workspaceReturnHref)}>Risk inbox</button>
+              <button type="button" onClick={() => window.location.assign(workspaceReturnHref)}>{hasExactWorkspaceCase ? "Open in Workspace" : "Open Workspace"}</button>
               <button type="button" onClick={() => guidedTour?.startTour()}>Start guided tour</button>
               <button type="button" onClick={() => quickSetReviewStatus("Ready to merge")}>Mark ready</button>
               <button type="button" onClick={() => quickSetReviewStatus("Tests requested")}>Request tests</button>
@@ -3820,7 +4096,16 @@ export default function ReportPage() {
             <div><dt>Head</dt><dd><code>{shortSha(canonicalRun?.headSha)}</code></dd></div>
             <div><dt>Run</dt><dd><code>{canonicalRun ? fingerprintPrefix(canonicalRun.runId) : "Historical"}</code></dd></div>
             <div><dt>Analysis</dt><dd>{canonicalRun?.analysisSource ?? sourceLabels[source]}</dd></div>
+            <div><dt>Report identity</dt><dd>{durableReportId ? <code>{durableReportId}</code> : <span className="case-file-value-muted">{provenance === "session" ? "Session (not stored)" : "Not stored"}</span>}</dd></div>
+            <div><dt>Provenance</dt><dd>{provenanceLabels[provenance]}</dd></div>
           </dl>
+          <div className="case-file-provenance" data-provenance={provenance}>
+            <ProvenanceBadge provenance={provenance} />
+            <p>{provenanceNotes[provenance]}</p>
+            {hasExactWorkspaceCase && (
+              <a className="case-file-provenance-link" href={workspaceReturnHref}>Open in Workspace</a>
+            )}
+          </div>
           <nav className="case-file-trace" aria-label="Verification trace">
             {traceNodes.map((node, index) => (
               <div className="case-file-trace-step" key={node.label}>
@@ -4221,21 +4506,29 @@ export default function ReportPage() {
               </section>
               <section className="decision-studio decision-studio--rail" id="human-decision-record" aria-labelledby="decision-studio-title">
                 <div className="decision-studio-header"><div><span className="card-kicker" id="decision-studio-title">HUMAN DECISION</span><p>Final authority remains human. This does not change Lintel’s analysis.</p></div></div>
+                {!canPersistDurably && (
+                  <p className="decision-studio-provenance-note" role="note">
+                    {provenance === "session"
+                      ? "Session report — a recorded decision applies to this session only and is not stored on this device. Open this change from your local history or Workspace to record a durable decision."
+                      : "Demo report — decisions are not stored on this device. Generate or open a durable report to record a decision."}
+                  </p>
+                )}
                 {staleDecisionNotice}
                 {currentHumanDecision ? (
                   <div className="current-human-decision">
                     <span className="current-decision-lintel">Lintel recommended: {verdict.recommendation.replaceAll("_", " ")}</span>
-                    <div className="current-decision-outcome"><span>Engineer decided</span><strong>{humanDecisionOutcomeLabel(currentHumanDecision.outcome)}</strong></div>
+                    <div className="current-decision-outcome"><span>{canPersistDurably ? "Engineer decided" : "Engineer decided (this session)"}</span><strong>{humanDecisionOutcomeLabel(currentHumanDecision.outcome)}</strong></div>
+                    {!canPersistDurably && <span className="decision-non-durable-tag">Session only · Not stored on this device</span>}
                     <dl><div><dt>Actor</dt><dd>{currentHumanDecision.actor.displayLabel}</dd></div><div><dt>Recorded</dt><dd><time dateTime={currentHumanDecision.recordedAt}>{timelineTime(currentHumanDecision.recordedAt)}</time></dd></div>{currentHumanDecision.applicableHeadSha && <div><dt>Applies to</dt><dd><code>{shortSha(currentHumanDecision.applicableHeadSha)}</code></dd></div>}</dl>
                     {currentHumanDecision.reason && <p>{currentHumanDecision.reason}</p>}
                     <span className="current-decision-alignment">{humanDecisionDivergence.replaceAll("-", " ")}</span>
                   </div>
                 ) : <div className="decision-awaiting"><strong>Engineer decision pending.</strong><p>Record the next bounded decision after reviewing open proof and requirements.</p></div>}
-                {!decisionStudioExpanded ? <button className="decision-studio-save" type="button" onClick={() => setDecisionStudioExpanded(true)}>{currentHumanDecision ? "Record new decision" : "Record decision"}</button> : <>
-                  <fieldset><legend>Record decision for {humanDecisionLedgerContext.currentHeadSha ? <code>{shortSha(humanDecisionLedgerContext.currentHeadSha)}</code> : "this review"}</legend><div className="decision-studio-options">{studioDecisionOptions.map((option) => <label key={option}><input type="radio" name="studio-decision-case-file" value={option} checked={studioDecision === option} onChange={() => { setStudioDecision(option); setAcceptedRiskReason(""); }} /><span>{option}</span></label>)}</div></fieldset>
+                {!decisionStudioExpanded ? <button className="decision-studio-save" type="button" onClick={() => setDecisionStudioExpanded(true)}>{decisionOpenLabel}</button> : <>
+                  <fieldset><legend>{decisionSaveLegendVerb} {humanDecisionLedgerContext.currentHeadSha ? <code>{shortSha(humanDecisionLedgerContext.currentHeadSha)}</code> : "this review"}</legend><div className="decision-studio-options">{studioDecisionOptions.map((option) => <label key={option}><input type="radio" name="studio-decision-case-file" value={option} checked={studioDecision === option} onChange={() => { setStudioDecision(option); setAcceptedRiskReason(""); }} /><span>{option}</span></label>)}</div></fieldset>
                   {studioDecisionDiverges && <p className="decision-divergence-preview" role="status"><strong>Differs from Lintel's recommendation</strong> — reason required. Lintel remains {verdict.recommendation.replaceAll("_", " ").toLowerCase()}.</p>}
                   {studioDecisionReasonRequired && <label className="decision-studio-reason"><span>{studioDecision === "Approved with accepted risk" ? "Accepted risk reason" : "Decision reason"}</span><textarea value={acceptedRiskReason} rows={3} maxLength={700} required onChange={(event) => setAcceptedRiskReason(event.target.value)} placeholder={studioDecision === "Approved with accepted risk" ? "State the risk and why proceeding is acceptable." : "Explain why the human decision differs from Lintel's recommendation."} /></label>}
-                  <div className="decision-studio-form-actions"><button className="decision-studio-save" type="button" onClick={saveStudioDecision} disabled={studioDecisionReasonRequired && acceptedRiskReason.trim().length === 0}>{studioDecisionState === "copied" ? "Decision recorded" : studioDecisionState === "failed" ? "Reason required" : "Record decision"}</button><button type="button" onClick={() => setDecisionStudioExpanded(false)}>Cancel</button></div>
+                  <div className="decision-studio-form-actions"><button className="decision-studio-save" type="button" onClick={saveStudioDecision} disabled={studioDecisionReasonRequired && acceptedRiskReason.trim().length === 0}>{studioDecisionState === "copied" ? decisionSaveDoneLabel : studioDecisionState === "failed" ? "Reason required" : decisionSaveIdleLabel}</button><button type="button" onClick={() => setDecisionStudioExpanded(false)}>Cancel</button></div>
                   <p className="decision-studio-impact">Current handoff: <strong>{studioDecisionText}</strong></p>
                 </>}
               </section>
@@ -4259,6 +4552,7 @@ export default function ReportPage() {
           </aside>
         </div>
       </div>
+      )}
     </AppShell>
   );
 

@@ -1530,6 +1530,39 @@ html[data-theme="light"] .lp-frame--hero { box-shadow:none; }
 .case-file-trace strong { color:var(--color-text-primary); font-weight:600; }
 .case-file-trace-note { grid-column:1 / -1; margin:-12px 0 0; color:var(--color-text-muted); font:10px var(--font-mono); }
 
+/* R2E — provenance chip, header provenance strip, and truthful route states.
+   Colour is semantic only: durable uses the provenance token, session uses the
+   warning family (ephemeral), demo stays muted. No gradients, glows or glass. */
+.provenance-badge { padding:5px 8px; border:1px solid var(--color-border); border-radius:var(--radius-pill); background:var(--color-surface-hover); color:var(--color-text-muted); font-size:var(--type-label); font-weight:600; letter-spacing:.04em; white-space:nowrap; }
+.app-shell .provenance-badge { font-family:var(--dmono); }
+.provenance-badge--durable { border-color:color-mix(in srgb, var(--color-provenance) 38%, transparent); background:var(--color-provenance-soft); color:var(--color-provenance); }
+.provenance-badge--session { border-color:color-mix(in srgb, var(--color-warning) 32%, transparent); background:var(--dwarm-soft); color:var(--color-warning-muted); }
+.provenance-badge--demo { background:var(--color-surface-hover); color:var(--color-text-muted); }
+.case-file-value-muted { color:var(--color-text-muted); }
+.case-file-provenance { grid-column:1 / -1; display:flex; flex-wrap:wrap; align-items:center; gap:10px 14px; padding:11px 14px; border:1px solid var(--color-border); border-radius:var(--radius-row); background:var(--color-surface); }
+.case-file-provenance[data-provenance="durable"] { border-color:color-mix(in srgb, var(--color-provenance) 24%, var(--color-border)); }
+.case-file-provenance p { flex:1 1 260px; min-width:0; margin:0; color:var(--color-text-secondary); font-size:11px; line-height:1.5; }
+.case-file-provenance-link { color:var(--color-accent); font-size:11px; font-weight:600; text-decoration:none; white-space:nowrap; }
+.case-file-provenance-link:hover { text-decoration:underline; }
+.case-file-provenance-link:focus-visible { outline:2px solid var(--color-focus-ring); outline-offset:2px; }
+.decision-studio-provenance-note { margin:0; padding:9px 11px; border:1px solid color-mix(in srgb, var(--color-warning) 26%, transparent); border-radius:var(--radius-row); background:var(--color-warning-soft); color:var(--color-warning-muted); font-size:11px; line-height:1.5; }
+.decision-non-durable-tag { display:inline-block; align-self:start; padding:3px 8px; border:1px solid color-mix(in srgb, var(--color-warning) 30%, transparent); border-radius:var(--radius-pill); background:var(--dwarm-soft); color:var(--color-warning-muted); font-size:10px; font-weight:600; letter-spacing:.03em; }
+.report-case-file--state { min-height:52vh; }
+.case-file-state { max-width:560px; margin:8vh auto 0; display:grid; gap:12px; justify-items:start; }
+.case-file-state-kicker { color:var(--color-text-muted); font:600 10px var(--font-mono); letter-spacing:.1em; text-transform:uppercase; }
+.case-file-state--unavailable .case-file-state-kicker { color:var(--color-warning-muted); }
+.case-file-state h1 { margin:0; color:var(--color-text-primary); font-size:clamp(21px,2vw,26px); font-weight:600; letter-spacing:-.02em; }
+.case-file-state p { margin:0; color:var(--color-text-secondary); font-size:13px; line-height:1.55; }
+.case-file-state-note { color:var(--color-text-muted); font-size:11px; }
+.case-file-state-identity { margin:2px 0 0; display:grid; gap:4px; }
+.case-file-state-identity dt { color:var(--color-text-muted); font-size:10px; font-weight:600; letter-spacing:.08em; text-transform:uppercase; }
+.case-file-state-identity dd { margin:0; color:var(--color-text-primary); }
+.case-file-state-identity code { font:11px var(--font-mono); overflow-wrap:anywhere; }
+.case-file-state-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:6px; }
+.case-file-state-actions a { padding:7px 12px; border:1px solid var(--color-border); border-radius:var(--radius-control); background:var(--color-surface); color:var(--color-text-primary); font-size:12px; font-weight:600; text-decoration:none; }
+.case-file-state-actions a:hover { border-color:var(--color-border-strong); background:var(--color-surface-hover); }
+.case-file-state-actions a:focus-visible { outline:2px solid var(--color-focus-ring); outline-offset:2px; }
+
 .case-file-grid { display:grid; grid-template-columns:150px minmax(0,760px) minmax(290px,310px); gap:24px; align-items:start; margin-top:30px; }
 .case-file-outline { position:sticky; top:96px; display:grid; gap:13px; }
 .case-file-outline-label { color:var(--color-text-faint); font:600 10px var(--font-mono); letter-spacing:.12em; text-transform:uppercase; }

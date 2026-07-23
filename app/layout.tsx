@@ -19,7 +19,32 @@ export const metadata: Metadata = {
     "Lintel turns pull requests into inspectable evidence, unresolved conditions and a clear engineering decision. Agents create code; Lintel verifies what is ready — and the engineer stays the final authority.",
 };
 
+/* R2B — logged-in AppShell routes render one authoritative dark theme. The
+   bootstrap forces dark for these paths at first paint (no light flash on hard
+   load/refresh) without ever reading or writing the stored public preference.
+   AppShell re-asserts the same lock for client-side navigations. */
+const SHELL_DARK_PATHS = [
+  "/new",
+  "/report",
+  "/review-operations",
+  "/team",
+  "/review-policies",
+  "/github-action",
+  "/slack-handoff",
+  "/settings",
+];
+
 const themeBootstrapScript = `(() => {
+  var shellPaths = ${JSON.stringify(SHELL_DARK_PATHS)};
+  function isShellPath() {
+    try {
+      var path = window.location.pathname;
+      for (var i = 0; i < shellPaths.length; i++) {
+        if (path === shellPaths[i] || path.indexOf(shellPaths[i] + "/") === 0) return true;
+      }
+    } catch (e) {}
+    return false;
+  }
   try {
     const key = ${JSON.stringify(THEME_PREFERENCE_STORAGE_KEY)};
     const stored = window.localStorage.getItem(key);
@@ -27,8 +52,9 @@ const themeBootstrapScript = `(() => {
     const resolved = preference === "system"
       ? (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
       : preference;
-    document.documentElement.dataset.theme = resolved;
-    document.documentElement.style.colorScheme = resolved;
+    const applied = isShellPath() ? "dark" : resolved;
+    document.documentElement.dataset.theme = applied;
+    document.documentElement.style.colorScheme = applied;
   } catch {
     let resolved = "dark";
     try {
@@ -38,8 +64,9 @@ const themeBootstrapScript = `(() => {
     } catch {
       // Match-media access can also be unavailable in restricted contexts.
     }
-    document.documentElement.dataset.theme = resolved;
-    document.documentElement.style.colorScheme = resolved;
+    const applied = isShellPath() ? "dark" : resolved;
+    document.documentElement.dataset.theme = applied;
+    document.documentElement.style.colorScheme = applied;
   }
 })();`;
 

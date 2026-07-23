@@ -246,7 +246,7 @@ export default function TeamWorkspacePage() {
   const shellContext = workspace ? `${workspace.name} · ${workspaceLabel(workspace)}` : "Local workspace";
 
   return (
-    <AppShell title="Team workspace" context={shellContext}>
+    <AppShell title="Team" context={shellContext}>
       <div className={styles.page}>
         <div className={styles.document}>
           <header className={styles.pageHeader}>

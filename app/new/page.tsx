@@ -378,12 +378,14 @@ export default function NewReportPage() {
   const [passportUncertainty, setPassportUncertainty] = useState("");
   const [passportHandoffNotes, setPassportHandoffNotes] = useState("");
   const [history, setHistory] = useState<ReportHistoryEntry[]>([]);
-  const [activeSource, setActiveSource] = useState<ChangeSource>("connected");
+  const [activeSource, setActiveSource] = useState<ChangeSource>("public-url");
+  const sourceUserSelectedRef = useRef(false);
   const [selectedRepoKey, setSelectedRepoKey] = useState<string | null>(null);
   const [selectedAutomatedPrId, setSelectedAutomatedPrId] = useState<string | null>(null);
   const [selectedSampleId, setSelectedSampleId] = useState<string | null>(null);
   const technologyValueRef = useRef("");
   const technologyEditedRef = useRef(false);
+  const errorRef = useRef<HTMLParagraphElement>(null);
   const selectedReviewModeDescription = reviewProfileDescription(reviewProfile);
 
   const mergedRepositories = useMemo(() => {
@@ -457,6 +459,11 @@ export default function NewReportPage() {
     setTechnology(value);
   }
 
+  function chooseSource(source: ChangeSource) {
+    sourceUserSelectedRef.current = true;
+    setActiveSource(source);
+  }
+
   useEffect(() => {
     try {
       setHistory(readReportHistory(window.localStorage));
@@ -464,6 +471,19 @@ export default function NewReportPage() {
       setHistory([]);
     }
   }, []);
+
+  // Presentation-only default: prefer Connected GitHub once a usable browsing
+  // connection is confirmed, but never override a source the engineer picked.
+  useEffect(() => {
+    if (!sourceUserSelectedRef.current && githubAvailable && activeSource === "public-url") {
+      setActiveSource("connected");
+    }
+  }, [githubAvailable, activeSource]);
+
+  // Move focus to the generation error summary when a retryable failure occurs.
+  useEffect(() => {
+    if (error) errorRef.current?.focus();
+  }, [error]);
 
   useEffect(() => {
     loadGitHubAppManagement();
@@ -953,6 +973,33 @@ export default function NewReportPage() {
           ? (repository.trim() || "Manual diff")
           : "No change loaded";
 
+  const selectedProfile = REVIEW_PROFILES.find((profile) => profile.id === reviewProfile) ?? REVIEW_PROFILES[1];
+
+  const generationBlocker: string | null = (() => {
+    if (isGenerating) return null;
+    if (isFetchingDiff) return "Wait for the current import to finish.";
+    if (!hasLoadedChange) {
+      if (activeSource === "public-url") {
+        return githubUrl.trim() ? "Import the pull request to load its diff." : "Enter a public pull request URL.";
+      }
+      if (activeSource === "manual") return "Paste the change diff.";
+      if (activeSource === "sample") return "Select a sample scenario.";
+      return "Import or paste a change.";
+    }
+    if (activeSource === "manual") {
+      if (!title.trim()) return "Add the required title.";
+      if (!repository.trim()) return "Add the repository identity.";
+      if (!technology.trim()) return "Add the language or framework.";
+    }
+    return null;
+  })();
+  const readyToGenerate = !isGenerating && generationBlocker === null;
+  const readinessLabel = isGenerating
+    ? "Generating Case File…"
+    : readyToGenerate
+      ? "Ready to generate"
+      : (generationBlocker ?? "Load a change to begin");
+
   const importStatusNotice = importStatus && (
     <p
       className={`github-import-status github-import-status--${importStatus.type}`}
@@ -1131,6 +1178,35 @@ export default function NewReportPage() {
         <p className="brief-note">Sample scenarios use built-in diffs, so you can inspect a full readiness report without sharing code.</p>
       </div>
     );
+  } else if (activeSource === "manual" && hasLoadedChange) {
+    inspector = (
+      <div className="change-brief" aria-label="Manual change brief">
+        <div className="brief-head">
+          <span className="card-kicker">Manual change</span>
+          <span className="state-chip">Local</span>
+        </div>
+        <h2 className="brief-id">{title.trim() || "Untitled change"}</h2>
+        <dl className="brief-grid">
+          <div>
+            <dt>Repository</dt>
+            <dd className="wb-code">{repository.trim() || "Not set"}</dd>
+          </div>
+          <div>
+            <dt>Language / framework</dt>
+            <dd>{technology.trim() || "Not set"}</dd>
+          </div>
+          <div>
+            <dt>Diff</dt>
+            <dd>{diff.trim() ? `${diff.split("\n").length} lines pasted` : "Not provided"}</dd>
+          </div>
+          <div>
+            <dt>Head commit</dt>
+            <dd>Unknown</dd>
+          </div>
+        </dl>
+        <p className="brief-note">Manual diffs are analysed transiently and are not saved in local report history.</p>
+      </div>
+    );
   } else {
     const stepOneState = selectedRepoKey ? "done" : activeSource === "connected" ? "current" : "upcoming";
     const stepTwoState = hasLoadedChange ? "done" : selectedRepoKey ? "current" : "upcoming";
@@ -1160,7 +1236,7 @@ export default function NewReportPage() {
     );
   }
 
-  const showInspector = activeSource !== "manual";
+  const showInspector = true;
   const sourceStage = activeSource === "connected"
     ? ["02", "Choose a pull request Lintel can access"]
     : activeSource === "public-url"
@@ -1175,10 +1251,10 @@ export default function NewReportPage() {
         <section className="new-intro">
           <span className="eyebrow">NEW REVIEW</span>
           <h1>Check merge readiness</h1>
-          <p>Bring one change into a review sequence: source, change context, review behaviour, then a Case File for the human decision.</p>
+          <p>Prepare one change for verification: choose a source, confirm the change, pick a review profile, then generate a Case File for the human decision.</p>
           <div className="new-route-links">
             <Link href="/workspace">Back to Workspace</Link>
-            <span>Generated reports stay on this device; raw diffs do not enter local history.</span>
+            <span>Generated reports are stored on this device. Raw diffs are not added to local history.</span>
           </div>
         </section>
 
@@ -1190,7 +1266,7 @@ export default function NewReportPage() {
                 type="button"
                 className={activeSource === "connected" ? "source-option source-option--primary source-option--active" : "source-option source-option--primary"}
                 aria-pressed={activeSource === "connected"}
-                onClick={() => setActiveSource("connected")}
+                onClick={() => chooseSource("connected")}
               >
                 <strong>Connected GitHub</strong>
                 <span>{connectedRailCaption}</span>
@@ -1200,16 +1276,16 @@ export default function NewReportPage() {
                 type="button"
                 className={activeSource === "public-url" ? "source-option source-option--active" : "source-option"}
                 aria-pressed={activeSource === "public-url"}
-                onClick={() => setActiveSource("public-url")}
+                onClick={() => chooseSource("public-url")}
               >
-                <strong>Public PR URL</strong>
+                <strong>Public pull request URL</strong>
                 <span>Import any public pull request</span>
               </button>
               <button
                 type="button"
                 className={activeSource === "manual" ? "source-option source-option--active" : "source-option"}
                 aria-pressed={activeSource === "manual"}
-                onClick={() => setActiveSource("manual")}
+                onClick={() => chooseSource("manual")}
               >
                 <strong>Manual diff</strong>
                 <span>Paste a diff directly</span>
@@ -1218,7 +1294,7 @@ export default function NewReportPage() {
                 type="button"
                 className={activeSource === "sample" ? "source-option source-option--active" : "source-option"}
                 aria-pressed={activeSource === "sample"}
-                onClick={() => setActiveSource("sample")}
+                onClick={() => chooseSource("sample")}
               >
                 <strong>Sample review</strong>
                 <span>Built-in review scenarios</span>
@@ -1425,9 +1501,9 @@ export default function NewReportPage() {
                       <p>Set <span className="wb-code">GITHUB_TOKEN</span> locally to browse repositories and import open pull requests. Configure the GitHub App environment to receive verified webhook analyses and publish one decision comment per pull request.</p>
                       <p>Reviews do not depend on this connection — the other sources work now:</p>
                       <div className="connection-setup-actions">
-                        <button type="button" onClick={() => setActiveSource("public-url")}>Public PR URL</button>
-                        <button type="button" onClick={() => setActiveSource("manual")}>Manual diff</button>
-                        <button type="button" onClick={() => setActiveSource("sample")}>Sample review</button>
+                        <button type="button" onClick={() => chooseSource("public-url")}>Public pull request URL</button>
+                        <button type="button" onClick={() => chooseSource("manual")}>Manual diff</button>
+                        <button type="button" onClick={() => chooseSource("sample")}>Sample review</button>
                       </div>
                       {importStatusNotice}
                     </div>
@@ -1439,7 +1515,7 @@ export default function NewReportPage() {
                 <div className="public-pane">
                   <div className="github-import-row">
                     <label className="form-field" htmlFor="github-pr-url">
-                      <span>Public GitHub PR URL</span>
+                      <span>Public pull request URL</span>
                       <input
                         id="github-pr-url"
                         type="url"
@@ -1521,9 +1597,12 @@ export default function NewReportPage() {
 
               <details className="change-passport-input" open={passportOpen} onToggle={(event) => setPassportOpen(event.currentTarget.open)}>
                 <summary>
-                  <span>03 / Add review context — Change Passport</span>
-                  <small>Optional builder-declared context. It never clears blockers or changes the recommendation.</small>
+                  <span>03 / Add review context</span>
+                  <small>Optional context you supply (Change Passport). It stays separate from Lintel&apos;s analysis.</small>
                 </summary>
+                <p className="passport-boundary">
+                  This context is supplied by the person starting the review. It does not prove a requirement, clear a blocker, or override deterministic findings, and it never becomes a Human Decision.
+                </p>
                 {importedPullRequest?.changePassport || selectedSample?.input.changePassport ? (
                   <div className="passport-import-note">
                     <strong>Passport supplied by {importedPullRequest?.changePassport ? "PR body" : "sample scenario"}.</strong>
@@ -1586,30 +1665,67 @@ export default function NewReportPage() {
             </div>
 
             {showInspector && (
-              <aside className="workbench-inspector" aria-label="Selected change">
+              <aside className="workbench-inspector" aria-label="Change brief and verification plan">
                 {inspector}
+                <section className="plan-card" aria-label="Review profile">
+                  <span className="plan-kicker">04 / Review profile</span>
+                  <h3 className="plan-title">{selectedProfile.label}</h3>
+                  <p className="plan-purpose">{selectedProfile.description}</p>
+                  <ul className="plan-lines">
+                    <li>Deterministic checks run for every profile.</li>
+                    <li>Optional analysis from a configured model may add context.</li>
+                  </ul>
+                  <p className="plan-note">Change the profile in the action bar below.</p>
+                </section>
+                <section className="plan-card" aria-label="Verification plan">
+                  <span className="plan-kicker">Verification plan</span>
+                  <dl className="plan-grid">
+                    <div>
+                      <dt>Source</dt>
+                      <dd>{SOURCE_LABELS[activeSource]}</dd>
+                    </div>
+                    <div>
+                      <dt>Change</dt>
+                      <dd className="wb-code">{commandTarget}</dd>
+                    </div>
+                    <div>
+                      <dt>Review profile</dt>
+                      <dd>{selectedProfile.label}</dd>
+                    </div>
+                  </dl>
+                  <ul className="plan-lines">
+                    <li>Deterministic analysis runs by default.</li>
+                    <li>Optional analysis from a configured model may add context.</li>
+                    <li>Expected outputs: findings, evidence, missing proof, requirements and a recommendation.</li>
+                    <li>Generated reports are stored on this device.</li>
+                    <li>Raw diffs are not added to local history.</li>
+                  </ul>
+                  <p className={readyToGenerate ? "plan-readiness plan-readiness--ready" : "plan-readiness"}>{readinessLabel}</p>
+                </section>
               </aside>
             )}
           </div>
 
           <div className="command-dock">
-            {error && <p className="form-error" role="alert">{error}</p>}
+            {error && <p className="form-error" role="alert" tabIndex={-1} ref={errorRef}>{error}</p>}
             <div className="command-bar">
               <div className="command-context">
                 <span className="command-source">{SOURCE_LABELS[activeSource]}</span>
                 <span className="command-target">{commandTarget}</span>
               </div>
               <label className="command-mode">
-                <span>04 / Review behaviour</span>
+                <span>Review profile</span>
                 <select name="reviewProfile" value={reviewProfile} onChange={(event) => setReviewProfile(event.target.value as ReviewProfile)}>
                   {REVIEW_PROFILES.map((profile) => <option key={profile.id} value={profile.id}>{profile.label}</option>)}
                 </select>
                 <small className="review-mode-description">{selectedReviewModeDescription}</small>
               </label>
               <div className="command-run">
-                {!hasLoadedChange && <span className="command-hint">Load a change to enable the review</span>}
-                <button className="generate-button" type="submit" disabled={isGenerating || isFetchingDiff || !hasLoadedChange}>
-                  {isGenerating ? "Generating Case File…" : "05 / Generate Case File"}<span aria-hidden="true">→</span>
+                {!readyToGenerate && !isGenerating && generationBlocker && (
+                  <span className="command-hint">{generationBlocker}</span>
+                )}
+                <button className="generate-button" type="submit" disabled={isGenerating || generationBlocker !== null}>
+                  {isGenerating ? "Generating Case File…" : "Generate Case File"}<span aria-hidden="true">→</span>
                 </button>
               </div>
             </div>
@@ -1619,8 +1735,8 @@ export default function NewReportPage() {
         <section className="report-history" aria-labelledby="report-history-title">
           <div className="report-history-heading">
             <div>
-              <span className="eyebrow">LOCAL HISTORY</span>
-              <h2 id="report-history-title">Recent reports</h2>
+              <span className="eyebrow">STORED ON THIS DEVICE</span>
+              <h2 id="report-history-title">Recent Case Files</h2>
             </div>
             {history.length > 0 && <button type="button" onClick={clearHistory}>Clear all</button>}
           </div>
@@ -1646,7 +1762,7 @@ export default function NewReportPage() {
               ))}
             </ul>
           ) : (
-            <p className="report-history-empty">Generated reports will appear here on this browser.</p>
+            <p className="report-history-empty">Generated Case Files appear here, stored on this device.</p>
           )}
         </section>
       </div>

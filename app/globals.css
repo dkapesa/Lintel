@@ -182,6 +182,24 @@ button { font:inherit; }
 .guide-steps li[data-state="current"]::before { border-color:var(--color-focus-ring); color:var(--color-information); }
 .guide-steps li[data-state="done"]::before { content:"✓"; border-color:color-mix(in srgb, var(--color-success) 40%, transparent); color:var(--dgreen); }
 
+/* Review profile and verification plan cards */
+.plan-card { display:grid; gap:8px; align-content:start; margin-top:14px; padding:13px 13px 14px; border:1px solid var(--line); border-radius:var(--radius-row); background:var(--color-surface); }
+.plan-card + .plan-card { margin-top:10px; }
+.plan-kicker { color:var(--color-text-faint); font-family:var(--font-sans); font-size:var(--type-role-micro-label-size); font-weight:600; letter-spacing:var(--type-role-micro-label-tracking); text-transform:uppercase; }
+.plan-title { margin:0; color:var(--color-text-primary); font-size:13px; font-weight:600; letter-spacing:-.01em; }
+.plan-purpose { margin:0; color:var(--color-text-secondary); font-size:11px; line-height:1.55; }
+.plan-note { margin:0; color:var(--color-text-faint); font-size:10px; line-height:1.5; }
+.plan-grid { display:grid; gap:1px; margin:0; border:1px solid var(--line); border-radius:var(--radius-control); overflow:hidden; background:var(--line); }
+.plan-grid > div { display:flex; align-items:baseline; justify-content:space-between; gap:10px; padding:7px 10px; background:var(--color-surface); }
+.plan-grid dt { margin:0; color:var(--color-text-faint); font-family:var(--font-sans); font-size:var(--type-role-micro-label-size); font-weight:600; letter-spacing:var(--type-role-micro-label-tracking); text-transform:uppercase; white-space:nowrap; }
+.plan-grid dd { margin:0; color:var(--color-text-primary); font-size:11px; font-weight:550; line-height:1.4; text-align:right; overflow-wrap:anywhere; }
+.plan-lines { display:grid; gap:5px; margin:2px 0 0; padding:0; list-style:none; }
+.plan-lines li { position:relative; padding-left:13px; color:var(--color-text-muted); font-size:10.5px; line-height:1.55; }
+.plan-lines li::before { content:""; position:absolute; top:7px; left:2px; width:4px; height:4px; border-radius:50%; background:var(--color-border-strong); }
+.plan-readiness { margin:2px 0 0; padding-top:9px; border-top:1px solid var(--line); color:var(--color-text-muted); font-size:11px; font-weight:600; }
+.plan-readiness--ready { color:var(--dgreen); }
+.passport-boundary { margin:12px 0 0; color:var(--color-text-faint); font-size:10.5px; line-height:1.6; }
+
 /* Command dock */
 .command-dock { position:sticky; bottom:0; z-index:6; border-top:1px solid var(--line); border-radius:0 0 10px 10px; background:var(--color-surface-inset); }
 .command-bar { display:flex; align-items:center; gap:18px; padding:11px 16px; }

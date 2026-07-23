@@ -23,7 +23,8 @@
 .shell-global-link::after { position:absolute; top:8px; bottom:8px; left:-12px; width:2px; background:transparent; content:""; }
 .shell-global-link:hover { border-color:var(--color-border); background:var(--color-surface-hover); color:var(--color-text-primary); }
 .shell-global-link--active { border-color:var(--color-border-strong); background:var(--color-surface-selected); color:var(--color-text-primary); }
-.shell-global-link--active::after { background:currentColor; }
+/* Selection edge reads as interaction blue (R2C §3); the fill stays warm graphite. */
+.shell-global-link--active::after { background:var(--color-selected-edge, var(--color-accent)); }
 .shell-global-link svg { display:block; flex:0 0 auto; }
 .shell-global-link-label { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
 .shell-workspace-affordance { margin-top:auto; }
@@ -49,7 +50,8 @@
 .shell-context-link::before { position:absolute; top:8px; bottom:8px; left:0; width:2px; background:transparent; content:""; }
 .shell-context-link:hover { border-color:var(--color-border); background:var(--color-surface-hover); color:var(--color-text-primary); }
 .shell-context-link--active { border-color:var(--color-border); background:var(--color-surface-selected); color:var(--color-text-primary); font-weight:var(--type-role-record-title-weight); }
-.shell-context-link--active::before { background:currentColor; }
+/* Selection edge reads as interaction blue (R2C §3); the row reads as a flat desktop selection. */
+.shell-context-link--active::before { background:var(--color-selected-edge, var(--color-accent)); }
 .shell-context-link-icon { display:grid; flex:0 0 auto; place-items:center; color:var(--color-text-muted); }
 .shell-context-link--active .shell-context-link-icon, .shell-context-link:hover .shell-context-link-icon { color:currentColor; }
 .shell-context-link-label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }

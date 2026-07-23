@@ -304,6 +304,84 @@
   --shadow-selected: inset 0 0 0 1px rgb(66 111 158 / 30%);
 }
 
+/* ============================================================
+   R2C — Logged-in shared product system (AppShell-scoped).
+
+   The recalibration lives on the stable `.app-shell` root class
+   (app-shell.tsx renders `<div class="app-shell shell">`). CSS custom
+   properties resolve against the nearest defining ancestor, so these
+   overrides cascade to every AppShell route while leaving untouched:
+   the public landing (never wrapped in `.app-shell`), the `.lp` scope,
+   the frozen Workspace (`--wsv2-c-*`, rendered OUTSIDE the shell), the
+   light editorial theme (`:root[data-theme="light"]`), and any internal
+   lab not wrapped in the shell. Only literal-valued semantic tokens are
+   restated here; every reference-valued alias (`--d*`, `--app-*`,
+   `--color-control-background`, `--color-glass`, `--ink`/`--line`/…)
+   re-resolves through these values automatically.
+
+   Direction (locked by R2A §5 / §9): warm-neutral graphite substrate,
+   the broad cool blue-grey cast removed, low-chroma pane relationships,
+   subtle luminance separation over broad colour shifts, blue reserved
+   for interaction, quieter hairlines, flatter records and lists. Not
+   brown/olive/sepia: channel spread is kept small so the neutral reads
+   as graphite, not warm wood.
+   ============================================================ */
+.app-shell {
+  /* Level 0 — application canvas / route body (near-black, faintly warm) */
+  --color-canvas: #0c0b0a;
+
+  /* Level 1 — rails, contextual navigation, command bar, route background.
+     Kept close in luminance so the shell panes read as structurally
+     connected rather than as separate coloured zones. */
+  --color-sidebar: #141210;          /* global rail */
+  --color-surface-inset: #100f0d;    /* contextual-nav column, wells, fields, code */
+
+  /* Level 2 — primary working surfaces: command bar, panels, tables, cards */
+  --color-surface: #191713;
+  --color-surface-hover: #201d18;
+  --color-surface-raised: #211e19;   /* group headers / table headers — a quiet step, not a raised card */
+
+  /* Level 3 / selection — selected rows and active navigation. Warm graphite,
+     low chroma; the interactive read comes from the blue edge + strong border,
+     never from a broad blue fill. */
+  --color-surface-selected: #241f18;
+
+  /* Borders — precise, quiet warm hairlines */
+  --color-border: #2b2823;
+  --color-border-strong: #3b362e;
+
+  /* Text — warm off-white primary; readable, de-blued secondary tiers.
+     Luminance is held at or above the previous cool values, so contrast
+     does not regress. */
+  --color-text-primary: #edece7;
+  --color-text-secondary: #b2aca0;
+  --color-text-muted: #969084;
+  --color-text-faint: #928c80;
+  --color-text-inverse: #0c0b0a;
+
+  /* Literal-valued surface tokens that must track the warm ramp explicitly */
+  --color-code-background: #100f0d;
+  --color-overlay-surface: #211e19;
+  --color-autofill: #241f18;
+
+  /* Interaction blue and the semantic hues are already the Workspace
+     reference values (--wsv2-c-accent / -focus / -success / …); they are
+     intentionally NOT restated so they stay identical to the frozen
+     reference. Only the neutral substrate is recalibrated. */
+
+  /* --- New shared semantic tokens (R2A §1 justified additions) ---------
+     Added only where a real shared concept was previously missing; each
+     maps to one of the concepts named in the contract. Fallbacks keep the
+     shared chip vocabulary graceful if ever rendered outside this scope. */
+  --color-selected-edge: var(--color-accent);        /* selected navigation / active-object edge = interaction blue */
+  --color-fixture: var(--color-provenance);          /* violet: explicit fixture / sample / demo provenance */
+  --color-fixture-soft: var(--color-provenance-soft);
+  --color-model: #96a6b2;                            /* muted cool: optional model analysis / inferred evidence */
+  --color-model-soft: rgba(150, 166, 178, 0.12);
+  --color-unavailable: #928c81;                      /* neutral: unavailable / withdrawn / superseded / read-only */
+  --color-unavailable-soft: rgba(146, 140, 129, 0.12);
+}
+
 /* The application shell shares the single semantic palette. */
 .app-shell,
 .workspace-shell {
@@ -450,6 +528,163 @@ html.theme-transitioning :where(.fetch-diff-button, .generate-button, .history-d
 /* Empty states and callouts use a consistent inset treatment. */
 :where(.section-empty, .missing-tests-empty, .merge-conditions-clear, .merge-contract-clear, .reviewer-focus-empty, .reviewer-focus-legacy, .quality-pass, .quality-legacy, .workspace-section-empty, .workspace-empty) {
   border-radius: var(--radius-card);
+}
+
+/* ============================================================
+   R2C — Shared status / provenance / boundary chip vocabulary.
+
+   One compact, reusable contract (R2A §9 / §14). Colour is always
+   paired with explicit text — never the sole carrier of meaning — and
+   every tone maps to a shared semantic token. Consumed by AppShell
+   routes today and by R2D–R2G as they converge. Fallbacks keep chips
+   legible even if rendered before the AppShell token scope resolves.
+
+   Meaning map (locked by R2A §4):
+   - positive  (green)  present · observed · verified · satisfied · approved
+   - caution   (amber)  tests/review required · missing proof · stale ·
+                        accepted risk · reaffirmation · partial
+   - critical  (red)    blocking · failed · invalid · destructive
+   - fixture   (violet) explicit sample / demo / prototype / fixture
+   - model     (cool)   optional model analysis · inferred / assumed
+   - neutral   (grey)   unavailable · withdrawn · superseded · read-only ·
+                        local-only · export-only · not configured
+   ============================================================ */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 20px;
+  padding: 2px 7px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xs);
+  background: var(--color-surface-raised);
+  color: var(--color-text-secondary);
+  font-family: var(--font-sans);
+  font-size: var(--type-role-micro-label-size);
+  line-height: var(--type-role-micro-label-line);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+/* Technical identifiers inside a chip (SHAs, run ids) use mono. */
+.chip--technical { font-family: var(--font-mono); letter-spacing: 0; }
+
+/* Tone classes — the shared semantic vocabulary. */
+.chip--positive {
+  border-color: color-mix(in srgb, var(--color-success) 34%, transparent);
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+.chip--caution {
+  border-color: color-mix(in srgb, var(--color-warning) 34%, transparent);
+  background: var(--color-warning-soft);
+  color: var(--color-warning-muted);
+}
+.chip--critical {
+  border-color: color-mix(in srgb, var(--color-danger) 38%, transparent);
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+.chip--fixture {
+  border-color: color-mix(in srgb, var(--color-fixture, var(--color-provenance)) 36%, transparent);
+  background: var(--color-fixture-soft, var(--color-provenance-soft));
+  color: var(--color-fixture, var(--color-provenance));
+}
+.chip--model {
+  border-color: color-mix(in srgb, var(--color-model, var(--color-information)) 34%, transparent);
+  background: var(--color-model-soft, var(--color-information-soft));
+  color: var(--color-model, var(--color-information-muted));
+}
+.chip--neutral {
+  border-color: color-mix(in srgb, var(--color-unavailable, var(--color-text-muted)) 30%, transparent);
+  background: var(--color-unavailable-soft, var(--color-surface-hover));
+  color: var(--color-unavailable, var(--color-text-muted));
+}
+
+/* Intent aliases — named hooks for the concepts routes already express,
+   so R2D–R2G adopt one vocabulary rather than bespoke variants. */
+.chip--ready,
+.chip--observed,
+.chip--approved { /* -> positive */
+  border-color: color-mix(in srgb, var(--color-success) 34%, transparent);
+  background: var(--color-success-soft);
+  color: var(--color-success);
+}
+.chip--tests-required,
+.chip--review-required,
+.chip--stale,
+.chip--accepted-risk,
+.chip--missing { /* -> caution; accepted risk stays amber, never green */
+  border-color: color-mix(in srgb, var(--color-warning) 34%, transparent);
+  background: var(--color-warning-soft);
+  color: var(--color-warning-muted);
+}
+.chip--blocked { /* -> critical */
+  border-color: color-mix(in srgb, var(--color-danger) 38%, transparent);
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+.chip--sample,
+.chip--demo,
+.chip--prototype { /* -> fixture violet; unmistakable vs production data */
+  border-color: color-mix(in srgb, var(--color-fixture, var(--color-provenance)) 36%, transparent);
+  background: var(--color-fixture-soft, var(--color-provenance-soft));
+  color: var(--color-fixture, var(--color-provenance));
+}
+.chip--inferred { /* -> model cool; never reads as observed evidence */
+  border-color: color-mix(in srgb, var(--color-model) 34%, transparent);
+  background: var(--color-model-soft);
+  color: var(--color-model);
+}
+.chip--unavailable,
+.chip--read-only,
+.chip--local-only,
+.chip--export-only,
+.chip--not-configured { /* -> neutral; distinct from a calm empty state */
+  border-color: color-mix(in srgb, var(--color-unavailable) 30%, transparent);
+  background: var(--color-unavailable-soft);
+  color: var(--color-unavailable);
+}
+
+/* ------------------------------------------------------------
+   Consolidation of existing route provenance / boundary indicators
+   onto the shared meaning. Colour-only corrections, scoped to AppShell
+   — no content, structure, or business-logic change. Reported in the
+   R2C notes. Model/inferred moves to muted cool so it can never read as
+   directly-observed evidence (green); demo/sample moves to violet;
+   unavailable moves to neutral so it is distinct from empty.
+   ------------------------------------------------------------ */
+.app-shell .source-badge--ai,
+.app-shell .finding-provenance--model-assisted {
+  border-color: color-mix(in srgb, var(--color-model) 34%, transparent);
+  background: var(--color-model-soft);
+  color: var(--color-model);
+}
+.app-shell .source-badge--demo {
+  border-color: color-mix(in srgb, var(--color-fixture) 36%, transparent);
+  background: var(--color-fixture-soft);
+  color: var(--color-fixture);
+}
+.app-shell .case-file-trace-node--unavailable {
+  color: var(--color-unavailable);
+}
+.app-shell .contract-recheck-status--unavailable {
+  border-color: color-mix(in srgb, var(--color-unavailable) 30%, transparent);
+  color: var(--color-unavailable);
+}
+
+/* ============================================================
+   R2C — Shared pending / busy control state (R2A §8).
+
+   Keeps focus, selected, active, pressed, disabled and pending visually
+   distinct. Pending reads as active-and-working (not dimmed like
+   disabled); the accessible status rides on `aria-busy`, and duplicate-
+   activation guarding remains the component's responsibility.
+   ============================================================ */
+:where(.app-shell button, .app-shell [role="button"], .app-shell input[type="submit"])[aria-busy="true"],
+:where(.app-shell button, .app-shell [role="button"])[data-pending="true"] {
+  cursor: progress;
 }
 
 @media (max-width: 900px) {

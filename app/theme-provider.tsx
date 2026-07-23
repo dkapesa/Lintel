@@ -11,6 +11,10 @@ type ThemeContextValue = {
   preference: ThemePreference;
   resolvedTheme: ResolvedTheme;
   setThemePreference: (preference: ThemePreference) => void;
+  /* R2B — logged-in AppShell routes lock an authoritative dark theme without
+     mutating the stored public preference. AppShell forces "dark" on mount and
+     clears (null) on unmount, which restores the resolved public preference. */
+  setForcedTheme: (theme: ResolvedTheme | null) => void;
 };
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
@@ -38,6 +42,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [preference, setPreference] = useState<ThemePreference>("system");
   const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>("dark");
   const preferenceRef = useRef<ThemePreference>("system");
+  const forcedThemeRef = useRef<ResolvedTheme | null>(null);
   const transitionRemovalTimer = useRef<number | null>(null);
 
   const applyThemeWithTransition = (theme: ResolvedTheme) => {
@@ -79,7 +84,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       preferenceRef.current = nextPreference;
       setPreference(nextPreference);
       setResolvedTheme(nextTheme);
-      applyResolvedTheme(nextTheme);
+      /* A forced logged-in dark theme must win over the resolved public
+         preference (including live system-theme changes) while it is active. */
+      if (forcedThemeRef.current === null) applyResolvedTheme(nextTheme);
     };
 
     applyPreference(storedPreference);
@@ -111,7 +118,19 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       preferenceRef.current = safePreference;
       setPreference(safePreference);
       setResolvedTheme(nextTheme);
-      applyThemeWithTransition(nextTheme);
+      // Never repaint the DOM while a logged-in dark theme is locked.
+      if (forcedThemeRef.current === null) applyThemeWithTransition(nextTheme);
+    },
+    setForcedTheme(theme) {
+      forcedThemeRef.current = theme;
+      // Apply synchronously so AppShell can lock dark before paint (no flash),
+      // and restore the resolved public preference on release. Storage is
+      // never touched by either path.
+      if (theme) {
+        applyResolvedTheme(theme);
+      } else {
+        applyResolvedTheme(resolveTheme(preferenceRef.current, systemPrefersDark()));
+      }
     },
   }), [preference, resolvedTheme]);
 

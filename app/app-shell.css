@@ -7,12 +7,16 @@
    ============================================================ */
 
 .shell { display:block; min-height:100dvh; background:var(--color-canvas); color:var(--color-text-primary); }
+/* Immediate layout truth: grid-template-columns is never transitioned.
+   The collapsed override is scoped to wide desktop (≥1180px) below, where the
+   contextual column is actually rendered. */
 .shell-frame { display:grid; grid-template-columns:56px 220px minmax(0,1fr); min-height:100dvh; }
 
 /* Global rail: exactly 56px on supported desktop widths. */
 .shell-global-rail { position:sticky; z-index:40; top:0; display:flex; flex-direction:column; align-items:center; width:56px; height:100dvh; padding:10px 0; border-right:1px solid var(--color-border); background:var(--color-sidebar); overflow:visible; }
-.shell-brand-mark, .shell-account-control { position:relative; display:grid; flex:0 0 auto; place-items:center; width:36px; height:36px; border:1px solid transparent; border-radius:var(--radius-control); color:var(--color-text-primary); }
-.shell-brand-mark:hover, .shell-account-control:hover { border-color:var(--color-border); background:var(--color-surface-hover); }
+.shell-brand-mark, .shell-workspace-affordance { position:relative; display:grid; flex:0 0 auto; place-items:center; width:36px; height:36px; border:1px solid transparent; border-radius:var(--radius-control); color:var(--color-text-primary); }
+.shell-workspace-affordance { color:var(--color-text-muted); }
+.shell-brand-mark:hover, .shell-workspace-affordance:hover { border-color:var(--color-border); background:var(--color-surface-hover); color:var(--color-text-primary); }
 .shell-brand-mark .brand-mark, .shell-drawer-brand .brand-mark { display:block; width:14px; height:14px; border:1px solid currentColor; border-radius:var(--radius-xs); transform:rotate(45deg); }
 .shell-global-navigation { display:flex; flex:0 0 auto; flex-direction:column; align-items:center; gap:4px; margin-top:18px; }
 .shell-global-link { position:relative; display:grid; place-items:center; width:32px; height:32px; border:1px solid transparent; border-radius:var(--radius-control); color:var(--color-text-muted); }
@@ -22,25 +26,41 @@
 .shell-global-link--active::after { background:currentColor; }
 .shell-global-link svg { display:block; flex:0 0 auto; }
 .shell-global-link-label { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
-.shell-account-control { margin-top:auto; }
-.shell-avatar { display:grid; place-items:center; width:26px; height:26px; border:1px solid var(--color-border-strong); border-radius:var(--radius-row); background:var(--color-surface-selected); color:var(--color-text-primary); font-size:var(--type-role-support-size); line-height:var(--type-role-support-line); font-weight:var(--type-role-micro-label-weight); }
+.shell-workspace-affordance { margin-top:auto; }
 .shell-rail-tooltip { position:absolute; z-index:100; top:50%; left:calc(100% + 10px); width:max-content; max-width:180px; padding:5px 7px; border:1px solid var(--color-border-strong); border-radius:var(--radius-control); background:var(--color-overlay-surface); box-shadow:var(--shadow-overlay); color:var(--color-text-primary); font-size:var(--type-role-support-size); line-height:var(--type-role-support-line); font-weight:500; pointer-events:none; opacity:0; visibility:hidden; transform:translateY(-50%); transition:opacity var(--transition-fast); }
-.shell-global-link:hover .shell-rail-tooltip, .shell-global-link:focus-visible .shell-rail-tooltip, .shell-account-control:hover .shell-rail-tooltip, .shell-account-control:focus-visible .shell-rail-tooltip { opacity:1; visibility:visible; }
+.shell-global-link:hover .shell-rail-tooltip, .shell-global-link:focus-visible .shell-rail-tooltip, .shell-workspace-affordance:hover .shell-rail-tooltip, .shell-workspace-affordance:focus-visible .shell-rail-tooltip { opacity:1; visibility:visible; }
 
-/* Contextual navigation: exactly 220px on wide desktop. */
+/* Contextual navigation: ≈220px expanded, ≈64px compact on wide desktop. */
 .shell-context-navigation { position:sticky; top:0; display:flex; flex-direction:column; width:220px; height:100dvh; min-width:0; padding:20px 12px 14px; border-right:1px solid var(--color-border); background:var(--color-surface-inset); overflow:hidden; }
+.shell-context-navigation[data-collapsed="true"] { width:64px; padding:14px 8px; align-items:center; }
 .shell-context-navigation-content { display:grid; gap:22px; min-width:0; }
-.shell-context-identity { display:grid; gap:2px; padding:0 8px 14px; border-bottom:1px solid var(--color-border); }
+.shell-context-navigation-content--compact { justify-items:center; gap:14px; width:100%; }
+.shell-context-head { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; padding:0 4px 14px 8px; border-bottom:1px solid var(--color-border); }
+.shell-context-identity { display:grid; gap:2px; min-width:0; }
 .shell-context-identity span, .shell-context-group-label, .shell-workspace-switcher label > span { color:var(--color-text-muted); font-size:var(--type-role-micro-label-size); line-height:var(--type-role-micro-label-line); font-weight:var(--type-role-micro-label-weight); letter-spacing:var(--type-role-micro-label-tracking); text-transform:uppercase; }
 .shell-context-identity strong { overflow:hidden; color:var(--color-text-primary); font-size:var(--type-role-record-title-size); line-height:var(--type-role-record-title-line); font-weight:var(--type-role-record-title-weight); text-overflow:ellipsis; white-space:nowrap; }
+.shell-context-toggle { display:grid; flex:0 0 auto; place-items:center; width:28px; height:28px; padding:0; border:1px solid var(--color-border); border-radius:var(--radius-control); background:transparent; color:var(--color-text-secondary); cursor:pointer; }
+.shell-context-toggle:hover { border-color:var(--color-border-strong); background:var(--color-surface-hover); color:var(--color-text-primary); }
+.shell-context-toggle--compact { position:relative; width:36px; height:36px; }
 .shell-context-links { display:grid; gap:2px; }
+.shell-context-links--compact { justify-items:center; gap:4px; width:100%; }
 .shell-context-group-label { margin:0 8px 5px; }
-.shell-context-link { position:relative; display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:36px; padding:0 9px; border:1px solid transparent; border-radius:var(--radius-control); color:var(--color-text-secondary); font-size:var(--type-role-record-title-size); line-height:var(--type-role-record-title-line); font-weight:500; }
+.shell-context-link { position:relative; display:flex; align-items:center; gap:9px; min-height:36px; padding:0 9px; border:1px solid transparent; border-radius:var(--radius-control); color:var(--color-text-secondary); font-size:var(--type-role-record-title-size); line-height:var(--type-role-record-title-line); font-weight:500; }
 .shell-context-link::before { position:absolute; top:8px; bottom:8px; left:0; width:2px; background:transparent; content:""; }
 .shell-context-link:hover { border-color:var(--color-border); background:var(--color-surface-hover); color:var(--color-text-primary); }
 .shell-context-link--active { border-color:var(--color-border); background:var(--color-surface-selected); color:var(--color-text-primary); font-weight:var(--type-role-record-title-weight); }
 .shell-context-link--active::before { background:currentColor; }
-.shell-context-current { color:var(--color-text-muted); font-size:var(--type-role-micro-label-size); line-height:var(--type-role-micro-label-line); font-weight:var(--type-role-micro-label-weight); letter-spacing:.08em; text-transform:uppercase; }
+.shell-context-link-icon { display:grid; flex:0 0 auto; place-items:center; color:var(--color-text-muted); }
+.shell-context-link--active .shell-context-link-icon, .shell-context-link:hover .shell-context-link-icon { color:currentColor; }
+.shell-context-link-label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.shell-context-current { margin-left:auto; color:var(--color-text-muted); font-size:var(--type-role-micro-label-size); line-height:var(--type-role-micro-label-line); font-weight:var(--type-role-micro-label-weight); letter-spacing:.08em; text-transform:uppercase; }
+/* Compact destinations: icon targets with tooltips, no rotated/truncated text. */
+.shell-context-links--compact .shell-context-link { position:relative; justify-content:center; width:40px; min-height:40px; padding:0; }
+.shell-context-links--compact .shell-context-link::before { top:8px; bottom:8px; left:-8px; }
+.shell-context-links--compact .shell-context-link-icon { color:inherit; }
+.shell-context-compact-workspace { position:relative; display:grid; place-items:center; width:40px; height:40px; margin-top:6px; border:1px solid transparent; border-radius:var(--radius-control); color:var(--color-text-muted); }
+.shell-context-compact-workspace:hover { border-color:var(--color-border); background:var(--color-surface-hover); color:var(--color-text-primary); }
+.shell-context-toggle--compact:hover .shell-rail-tooltip, .shell-context-toggle--compact:focus-visible .shell-rail-tooltip, .shell-context-links--compact .shell-context-link:hover .shell-rail-tooltip, .shell-context-links--compact .shell-context-link:focus-visible .shell-rail-tooltip, .shell-context-compact-workspace:hover .shell-rail-tooltip, .shell-context-compact-workspace:focus-visible .shell-rail-tooltip { opacity:1; visibility:visible; }
 .shell-context-footer { display:grid; gap:10px; margin-top:auto; padding-top:14px; border-top:1px solid var(--color-border); }
 .shell-workspace-switcher { display:grid; gap:7px; min-width:0; padding:0; border:0; border-radius:0; background:transparent; }
 .shell-workspace-switcher label { display:grid; gap:5px; margin:0; }
@@ -101,7 +121,7 @@
 .shell-drawer-close:hover { border-color:var(--color-border-strong); background:var(--color-surface-hover); color:var(--color-text-primary); }
 .shell-drawer-global { display:none; padding:18px 0 0; }
 .shell-drawer-context { padding-top:18px; }
-.shell-drawer-context .shell-context-identity { padding-inline:9px; }
+.shell-drawer-context .shell-context-identity { margin-bottom:12px; padding:0 9px 12px; border-bottom:1px solid var(--color-border); }
 .shell-drawer-context .shell-context-link { min-height:44px; }
 .shell-drawer-footer { display:grid; gap:14px; margin-top:auto; padding-top:16px; border-top:1px solid var(--color-border); }
 .shell-drawer-footer .shell-workspace-switcher select, .shell-drawer-footer .shell-theme-control select { min-height:44px; }
@@ -110,6 +130,7 @@
 
 @media (min-width:1180px) {
   .shell-navigation-drawer-root { display:none; }
+  .shell-frame[data-context-collapsed="true"] { grid-template-columns:56px 64px minmax(0,1fr); }
 }
 
 @media (min-width:900px) and (max-width:1179px) {

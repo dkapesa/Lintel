@@ -1,25 +1,37 @@
 "use client";
 
-/* LVOS-2 — definitive authenticated application shell.
-   Wide desktop keeps the 56px global rail and 220px contextual navigation
-   structurally separate. Intermediate widths retain the rail and move only
-   contextual navigation into a drawer. Mobile uses one combined drawer.
-   Route bodies remain unchanged children below the 52px command bar. */
+/* R2B — authoritative logged-in application shell.
+   Four structural regions: a 56px global product rail (five areas), a
+   contextual navigation column that expands (≈220px) or collapses to a compact
+   icon rail (≈64px) at wide desktop, a 52px command bar, and the route body.
+   Intermediate widths move contextual navigation into a drawer; mobile uses one
+   combined drawer. The Workspace renders full-bleed OUTSIDE this shell.
+   Logged-in routes are locked to one authoritative dark theme. */
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Children, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import {
+  Children,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import {
   findShellArea,
   findShellRoute,
   isShellAreaActive,
   isShellContextDestinationActive,
-  SHELL_CONTEXT_DESTINATIONS,
   SHELL_GLOBAL_AREAS,
   ShellIcon,
+  visibleShellContextDestinations,
+  type ShellGlobalArea,
   type ShellRouteContext,
 } from "./nav-config";
-import { ThemeControl } from "./theme-provider";
+import { useTheme } from "./theme-provider";
 import {
   activeWorkspace,
   ensureWorkspaceStore,
@@ -34,6 +46,10 @@ const MOBILE_QUERY = "(max-width: 899px)";
 const DRAWER_QUERY = "(max-width: 1179px)";
 export const SHELL_NAVIGATION_OPEN_EVENT = "lintel:shell-navigation-open";
 
+/* SSR-safe layout effect: the dark-theme lock must apply before paint on the
+   client, without emitting a useLayoutEffect warning during server rendering. */
+const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
+
 type AppShellProps = {
   children: ReactNode;
   title?: string;
@@ -46,9 +62,28 @@ function RailTooltip({ id, children }: { id: string; children: ReactNode }) {
   return <span className="shell-rail-tooltip" id={id} role="tooltip">{children}</span>;
 }
 
+function LocalWorkspaceGlyph() {
+  return (
+    <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <rect x="2.5" y="3.25" width="11" height="7.5" rx="1" />
+      <path d="M5.75 13.25h4.5M8 10.75v2.5" />
+    </svg>
+  );
+}
+
+function CollapseGlyph({ collapsed }: { collapsed: boolean }) {
+  return (
+    <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {collapsed
+        ? <path d="M6 3.5l4.5 4.5L6 12.5" />
+        : <path d="M10 3.5L5.5 8l4.5 4.5" />}
+    </svg>
+  );
+}
+
 function GlobalNavigation({ route, onNavigate }: { route: ShellRouteContext; onNavigate?: () => void }) {
   return (
-    <nav className="shell-global-navigation" aria-label="Primary navigation">
+    <nav className="shell-global-navigation" aria-label="Product areas">
       {SHELL_GLOBAL_AREAS.map((area) => {
         const active = isShellAreaActive(area, route);
         const tooltipId = `shell-area-${area.id}-tooltip`;
@@ -72,35 +107,55 @@ function GlobalNavigation({ route, onNavigate }: { route: ShellRouteContext; onN
   );
 }
 
-function ContextNavigation({ route, onNavigate }: { route: ShellRouteContext; onNavigate?: () => void }) {
+function DestinationList({
+  route,
+  navId,
+  compact,
+  onNavigate,
+}: {
+  route: ShellRouteContext;
+  navId: string;
+  compact?: boolean;
+  onNavigate?: () => void;
+}) {
   const area = findShellArea(route.area);
-  const destinations = SHELL_CONTEXT_DESTINATIONS[route.area];
+  const destinations = visibleShellContextDestinations(route);
 
   return (
-    <div className="shell-context-navigation-content">
-      <div className="shell-context-identity">
-        <span>Current area</span>
-        <strong>{area.label}</strong>
-      </div>
-      <nav className="shell-context-links" aria-label={`${area.label} navigation`}>
-        <span className="shell-context-group-label">Destinations</span>
-        {destinations.map((destination) => {
-          const active = isShellContextDestinationActive(destination, route);
-          return (
-            <Link
-              className={active ? "shell-context-link shell-context-link--active" : "shell-context-link"}
-              href={destination.href}
-              aria-current={active ? "page" : undefined}
-              key={`${route.area}-${destination.pathname}`}
-              onClick={onNavigate}
-            >
-              <span>{destination.label}</span>
-              {active && <span className="shell-context-current" aria-hidden="true">Current</span>}
-            </Link>
-          );
-        })}
-      </nav>
-    </div>
+    <nav
+      className={compact ? "shell-context-links shell-context-links--compact" : "shell-context-links"}
+      id={navId}
+      aria-label={`${area.label} destinations`}
+    >
+      {!compact && <span className="shell-context-group-label">Destinations</span>}
+      {destinations.map((destination) => {
+        const active = isShellContextDestinationActive(destination, route);
+        const tooltipId = compact ? `shell-dest-${destination.id}-tooltip` : undefined;
+        return (
+          <Link
+            className={active ? "shell-context-link shell-context-link--active" : "shell-context-link"}
+            href={destination.href}
+            aria-current={active ? "page" : undefined}
+            aria-label={compact ? destination.label : undefined}
+            aria-describedby={tooltipId}
+            key={`${route.area}-${destination.id}`}
+            onClick={onNavigate}
+          >
+            <span className="shell-context-link-icon" aria-hidden="true">
+              <ShellIcon name={destination.icon} />
+            </span>
+            {compact ? (
+              <RailTooltip id={tooltipId!}>{destination.label}</RailTooltip>
+            ) : (
+              <>
+                <span className="shell-context-link-label">{destination.label}</span>
+                {active && <span className="shell-context-current" aria-hidden="true">Current</span>}
+              </>
+            )}
+          </Link>
+        );
+      })}
+    </nav>
   );
 }
 
@@ -147,13 +202,13 @@ function WorkspaceSwitcher({ onNavigate }: { onNavigate?: () => void }) {
   }
 
   return (
-    <div className="shell-workspace-switcher" aria-label="Active team workspace">
+    <div className="shell-workspace-switcher" aria-label="Local workspace">
       <label>
         <span>Workspace</span>
         <select
           value={store?.activeWorkspaceId ?? current?.workspaceId ?? ""}
           onChange={(event) => changeWorkspace(event.target.value)}
-          aria-label="Select active workspace"
+          aria-label="Select active local workspace"
         >
           {workspaces.map((workspace) => (
             <option key={workspace.workspaceId} value={workspace.workspaceId}>{workspace.name}</option>
@@ -177,15 +232,84 @@ function GlobalRail({ route }: { route: ShellRouteContext }) {
       </Link>
       <GlobalNavigation route={route} />
       <Link
-        className="shell-account-control"
+        className="shell-workspace-affordance"
         href="/team"
-        aria-label="Open team workspace and account controls"
-        aria-describedby="shell-account-tooltip"
+        aria-label="Local workspace, stored on this device"
+        aria-describedby="shell-workspace-affordance-tooltip"
       >
-        <span className="shell-avatar" aria-hidden="true">N</span>
-        <RailTooltip id="shell-account-tooltip">Team workspace</RailTooltip>
+        <LocalWorkspaceGlyph />
+        <RailTooltip id="shell-workspace-affordance-tooltip">Local workspace · stored on this device</RailTooltip>
       </Link>
     </aside>
+  );
+}
+
+function ContextNavigation({
+  route,
+  area,
+  collapsed,
+  onToggle,
+  toggleRef,
+  navId,
+}: {
+  route: ShellRouteContext;
+  area: ShellGlobalArea;
+  collapsed: boolean;
+  onToggle: () => void;
+  toggleRef: RefObject<HTMLButtonElement | null>;
+  navId: string;
+}) {
+  if (collapsed) {
+    return (
+      <div className="shell-context-navigation-content shell-context-navigation-content--compact">
+        <button
+          className="shell-context-toggle shell-context-toggle--compact"
+          type="button"
+          ref={toggleRef}
+          onClick={onToggle}
+          aria-expanded={false}
+          aria-controls={navId}
+          aria-label={`Expand ${area.label} navigation`}
+          aria-describedby="shell-context-expand-tooltip"
+        >
+          <CollapseGlyph collapsed />
+          <RailTooltip id="shell-context-expand-tooltip">Expand navigation</RailTooltip>
+        </button>
+        <DestinationList route={route} navId={navId} compact />
+        <Link
+          className="shell-context-compact-workspace"
+          href="/team"
+          aria-label="Local workspace, stored on this device"
+          aria-describedby="shell-context-compact-workspace-tooltip"
+        >
+          <LocalWorkspaceGlyph />
+          <RailTooltip id="shell-context-compact-workspace-tooltip">Local workspace · stored on this device</RailTooltip>
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="shell-context-navigation-content">
+      <div className="shell-context-head">
+        <div className="shell-context-identity">
+          <span>Current area</span>
+          <strong>{area.label}</strong>
+        </div>
+        <button
+          className="shell-context-toggle"
+          type="button"
+          ref={toggleRef}
+          onClick={onToggle}
+          aria-expanded
+          aria-controls={navId}
+          aria-label={`Collapse ${area.label} navigation`}
+        >
+          <CollapseGlyph collapsed={false} />
+        </button>
+      </div>
+      <DestinationList route={route} navId={navId} />
+    </div>
   );
 }
 
@@ -315,11 +439,24 @@ export default function AppShell({
   const pathname = usePathname() ?? "";
   const route = findShellRoute(pathname) ?? findShellRoute("/workspace")!;
   const area = findShellArea(route.area);
+  const { setForcedTheme } = useTheme();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [contextCollapsed, setContextCollapsed] = useState(false);
   const [commandMenuCloseSignal, setCommandMenuCloseSignal] = useState(0);
   const [mobile, setMobile] = useState(false);
   const drawerRef = useRef<HTMLDivElement | null>(null);
   const menuButtonRef = useRef<HTMLButtonElement | null>(null);
+  const contextToggleRef = useRef<HTMLButtonElement | null>(null);
+  const pendingToggleFocus = useRef(false);
+  const contextNavId = useId();
+
+  /* Lock the authoritative dark theme for this logged-in route. Applied before
+     paint on the client (no light flash) and released on unmount, which
+     restores the resolved public preference. Storage is never mutated. */
+  useIsomorphicLayoutEffect(() => {
+    setForcedTheme("dark");
+    return () => setForcedTheme(null);
+  }, [setForcedTheme]);
 
   useEffect(() => {
     const mobileMedia = window.matchMedia(MOBILE_QUERY);
@@ -332,6 +469,14 @@ export default function AppShell({
   useEffect(() => {
     setDrawerOpen(false);
   }, [pathname]);
+
+  /* Collapse is presentation-only. Keep keyboard focus on the toggle across the
+     expanded/compact switch — never drop it to the body, never change route. */
+  useEffect(() => {
+    if (!pendingToggleFocus.current) return;
+    pendingToggleFocus.current = false;
+    contextToggleRef.current?.focus();
+  }, [contextCollapsed]);
 
   useEffect(() => {
     if (!drawerOpen) return;
@@ -392,17 +537,40 @@ export default function AppShell({
     window.requestAnimationFrame(() => setDrawerOpen(true));
   }
 
+  function toggleContextNavigation() {
+    pendingToggleFocus.current = true;
+    setContextCollapsed((current) => !current);
+  }
+
   return (
     <div className="app-shell shell">
-      <div className="shell-frame" aria-hidden={drawerOpen ? true : undefined} inert={drawerOpen ? true : undefined}>
+      <div
+        className="shell-frame"
+        data-context-collapsed={contextCollapsed ? "true" : undefined}
+        aria-hidden={drawerOpen ? true : undefined}
+        inert={drawerOpen ? true : undefined}
+      >
         <GlobalRail route={route} />
 
-        <aside className="shell-context-navigation" aria-label={`${area.label} contextual navigation`}>
-          <ContextNavigation route={route} />
-          <div className="shell-context-footer">
-            <WorkspaceSwitcher />
-            <ShellLocalNote />
-          </div>
+        <aside
+          className="shell-context-navigation"
+          data-collapsed={contextCollapsed ? "true" : undefined}
+          aria-label={`${area.label} contextual navigation`}
+        >
+          <ContextNavigation
+            route={route}
+            area={area}
+            collapsed={contextCollapsed}
+            onToggle={toggleContextNavigation}
+            toggleRef={contextToggleRef}
+            navId={contextNavId}
+          />
+          {!contextCollapsed && (
+            <div className="shell-context-footer">
+              <WorkspaceSwitcher />
+              <ShellLocalNote />
+            </div>
+          )}
         </aside>
 
         <div className="shell-body">
@@ -437,7 +605,6 @@ export default function AppShell({
                 </Link>
               )}
               <CommandActionOverflow route={route} actions={actions} closeSignal={commandMenuCloseSignal} />
-              <ThemeControl />
             </div>
           </header>
           <main className="shell-main" aria-label={route.accessiblePageName}>{children}</main>
@@ -483,12 +650,15 @@ export default function AppShell({
               <GlobalNavigation route={route} onNavigate={() => setDrawerOpen(false)} />
             </div>
             <div className="shell-drawer-context">
-              <ContextNavigation route={route} onNavigate={() => setDrawerOpen(false)} />
+              <div className="shell-context-identity">
+                <span>Current area</span>
+                <strong>{area.label}</strong>
+              </div>
+              <DestinationList route={route} navId={`${contextNavId}-drawer`} onNavigate={() => setDrawerOpen(false)} />
             </div>
 
             <div className="shell-drawer-footer">
               <WorkspaceSwitcher onNavigate={() => setDrawerOpen(false)} />
-              <ThemeControl />
               <ShellLocalNote onNavigate={() => setDrawerOpen(false)} />
             </div>
           </div>

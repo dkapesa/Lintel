@@ -1037,6 +1037,299 @@
   font: var(--type-role-support-weight) var(--type-role-support-size) / var(--type-role-support-line) var(--type-family-application);
 }
 
+/* ─── R2F · Review Operations & Team convergence ───────────────────────── */
+
+.opsFilters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px 20px;
+  margin: 0 0 22px;
+  padding: 0 0 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.opsFilterFields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+}
+
+.opsFilterField {
+  display: grid;
+  gap: 4px;
+  min-width: 132px;
+}
+
+.opsFilterField > span {
+  color: var(--color-text-muted);
+  font: var(--type-role-micro-label-weight) var(--type-role-micro-label-size) / var(--type-role-micro-label-line) var(--type-family-application);
+  letter-spacing: var(--type-role-micro-label-tracking);
+  text-transform: uppercase;
+}
+
+.opsFilterField select {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 4px;
+  background: var(--color-control-background);
+  color: var(--color-text-primary);
+  font: var(--type-role-support-weight) var(--type-role-support-size) / var(--type-role-support-line) var(--type-family-application);
+}
+
+.opsFilterField select:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.opsFilterStatus {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--color-text-secondary);
+  font: var(--type-role-support-weight) var(--type-role-support-size) / var(--type-role-support-line) var(--type-family-application);
+  font-variant-numeric: tabular-nums;
+}
+
+.opsLayout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(272px, 340px);
+  gap: 24px;
+  align-items: start;
+  margin-bottom: 28px;
+}
+
+.opsList { min-width: 0; }
+
+.opsGroup + .opsGroup { margin-top: 22px; }
+
+.opsGroupHeading {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0 0 2px;
+  padding: 0 8px 6px;
+  border-bottom: 1px solid var(--color-border-strong);
+  color: var(--color-text-primary);
+  font: 600 var(--type-role-support-size) / var(--type-role-support-line) var(--type-family-application);
+}
+
+.opsGroupCount {
+  color: var(--color-text-muted);
+  font-family: var(--type-family-technical);
+  font-size: var(--type-role-technical-size);
+  font-variant-numeric: tabular-nums;
+}
+
+.opsRows {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.opsRow {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px 16px;
+  align-items: start;
+  padding: 11px 8px;
+  border: 0;
+  border-top: 1px solid var(--color-border);
+  border-left: 2px solid transparent;
+  background: transparent;
+  color: var(--color-text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+
+.opsRows li:first-child .opsRow { border-top: 0; }
+
+.opsRow:hover { background: var(--color-surface-hover); }
+
+.opsRowSelected {
+  background: var(--color-surface-selected);
+  border-left-color: var(--color-selected-edge);
+}
+
+.opsRow:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: -2px;
+}
+
+.opsRowMain {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.opsRowIdentity {
+  color: var(--color-text-secondary);
+  font: var(--type-role-technical-weight) var(--type-role-technical-size) / var(--type-role-technical-line) var(--type-family-technical);
+  overflow-wrap: anywhere;
+}
+
+.opsRowSignals {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font: var(--type-role-support-weight) var(--type-role-support-size) / var(--type-role-support-line) var(--type-family-application);
+}
+
+.opsMetric {
+  color: var(--color-text-muted);
+  font-family: var(--type-family-technical);
+  font-size: var(--type-role-technical-size);
+  font-variant-numeric: tabular-nums;
+}
+
+.opsRowState {
+  display: grid;
+  gap: 2px;
+  justify-items: end;
+  align-content: start;
+  text-align: right;
+  font: var(--type-role-support-weight) var(--type-role-support-size) / var(--type-role-support-line) var(--type-family-application);
+}
+
+.opsRowSub {
+  color: var(--color-text-muted);
+  font-size: var(--type-role-support-size);
+}
+
+.opsProvenance,
+.opsProvenanceSample {
+  font-family: var(--type-family-application);
+}
+
+.opsProvenance { color: var(--color-text-muted); }
+.opsProvenanceSample { color: var(--color-warning); font-weight: 500; }
+
+.opsInspector {
+  align-self: start;
+  padding: 16px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
+}
+
+.opsInspectorHint {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font: var(--type-role-body-weight) var(--type-role-body-size) / var(--type-role-body-line) var(--type-family-application);
+}
+
+.opsInspectorHead h3 {
+  margin: 0;
+  color: var(--color-text-primary);
+  font: var(--type-role-record-title-weight) var(--type-role-record-title-size) / var(--type-role-record-title-line) var(--type-family-application);
+}
+
+.opsInspectorIdentity {
+  margin: 2px 0 0;
+  color: var(--color-text-secondary);
+  font: var(--type-role-technical-weight) var(--type-role-technical-size) / var(--type-role-technical-line) var(--type-family-technical);
+  overflow-wrap: anywhere;
+}
+
+.opsInspectorFacts {
+  margin: 14px 0 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.opsInspectorFacts > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.opsInspectorFacts dt {
+  margin: 0;
+  color: var(--color-text-muted);
+  font: var(--type-role-support-weight) var(--type-role-support-size) / var(--type-role-support-line) var(--type-family-application);
+}
+
+.opsInspectorFacts dd {
+  margin: 0;
+  color: var(--color-text-primary);
+  font: var(--type-role-support-weight) var(--type-role-support-size) / var(--type-role-support-line) var(--type-family-application);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.opsInspectorActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.opsInspectorNote {
+  margin: 12px 0 0;
+  color: var(--color-text-muted);
+  font: var(--type-role-support-weight) var(--type-role-support-size) / var(--type-role-support-line) var(--type-family-application);
+}
+
+.opsEmpty,
+.opsFilteredEmpty { margin-bottom: 24px; }
+
+.opsEmptyActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.teamSampleBanner {
+  display: grid;
+  gap: 3px;
+  margin: 0 0 22px;
+  padding: 12px 16px;
+  border: 1px solid var(--color-warning);
+  border-left-width: 3px;
+  background: var(--color-surface-inset);
+}
+
+.teamSampleBanner strong {
+  color: var(--color-warning);
+  font: var(--type-role-support-weight) var(--type-role-support-size) / var(--type-role-support-line) var(--type-family-application);
+  font-weight: 600;
+}
+
+.teamSampleBanner span {
+  color: var(--color-text-secondary);
+  font: var(--type-role-support-weight) var(--type-role-support-size) / var(--type-role-support-line) var(--type-family-application);
+}
+
+.teamMember {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.teamMemberText {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+
+.teamInitials {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text-secondary);
+  font-family: var(--type-family-technical);
+  font-size: var(--type-role-technical-size);
+  font-variant-numeric: tabular-nums;
+}
+
 @media (max-width: 1179px) {
   .page { padding-top: 32px; }
   .summaryStrip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1048,6 +1341,8 @@
   .operationsSummaryStrip li:nth-child(5) { border-top: 1px solid var(--color-border); }
   .policyColumns,
   .policySummary { grid-template-columns: minmax(180px, 1.1fr) minmax(130px, .75fr) minmax(180px, 1fr) minmax(112px, .6fr); }
+  .opsLayout { grid-template-columns: 1fr; gap: 20px; }
+  .opsInspector { order: 2; }
 }
 
 @media (min-width: 900px) and (max-width: 1179px) {
@@ -1109,6 +1404,16 @@
   .operationsLedger > div:nth-child(-n + 2) { border-top: 0; }
   .operationsViewBar { gap: 4px 16px; overflow-x: auto; flex-wrap: nowrap; }
   .operationsViewBar button { min-height: 44px; flex: 0 0 auto; }
+  .opsFilters { flex-direction: column; align-items: stretch; }
+  .opsFilterField { min-width: 0; }
+  .opsFilterField select { min-height: 44px; }
+  .opsRow { grid-template-columns: 1fr; gap: 8px; padding: 12px 8px; }
+  .opsRowSignals { flex-direction: row; flex-wrap: wrap; gap: 4px 12px; }
+  .opsRowState { justify-items: start; text-align: left; }
+  .opsRowSub { text-align: left; }
+  .opsInspectorFacts > div { grid-template-columns: 1fr; gap: 2px; }
+  .opsInspectorFacts dd { text-align: left; }
+  .opsInspectorActions a { flex: 1 1 auto; text-align: center; }
   .workflowList li { grid-template-columns: 28px minmax(0, 1fr); gap: 5px 10px; }
   .workflowList p { grid-column: 2; }
   .definitionList > div { grid-template-columns: 1fr; gap: 3px; }

@@ -233,9 +233,96 @@
   padding-inline: var(--lnd-gutter);
 }
 
-.section { padding-block: var(--lnd-y); }
-.sectionMajor { padding-block: var(--lnd-y-major); }
-.sectionTight { padding-block: var(--lnd-y-tight); }
+/* ============================================================
+   ACT RHYTHM (R3E.1)
+
+   The page's vertical reserve belongs to five acts, not to eleven sections.
+   Sections inside an act sit measurably closer to one another than acts do,
+   so the reader feels five arrivals rather than eleven equal stops.
+
+     I    the hero owns its own reserve
+     II   the argument, standalone
+     III  the register runs into the dark edge with no gap, so the light band
+          is visibly swallowed by the instrument
+     IV   three sections read as one movement
+     V    trust, then the CTA, which owns its own opening and flows into the
+          footer without a dividing band
+
+   Act-to-act boundaries land at 104–184px; the gap inside Act IV is 54–90px.
+   That ratio is what makes the chapters legible without any label.
+   ============================================================ */
+
+.act { position: relative; }
+.act1 { padding-block: 0; }
+.act2 { padding-block: clamp(52px, 5.4vw, 92px); }
+.act3 { padding-block: clamp(52px, 5.4vw, 92px) 0; }
+.act4 { padding-block: clamp(62px, 6.2vw, 104px) clamp(52px, 5.4vw, 92px); }
+.act4 > * + * { margin-top: clamp(54px, 5.4vw, 90px); }
+.act5 { padding-block: clamp(52px, 5.4vw, 92px) 0; }
+
+/* ============================================================
+   SECTION ENTRIES (R3E.1)
+
+   Four entrances, assigned once, never mixed. No two consecutive light
+   sections share one — that repetition was the page's strongest tell.
+
+     A  artifact arrival    the object opens the section (hero, theatre)
+     B  editorial thesis    the statement opens; the coordinate closes
+     C  structural register a coordinate, then one organised register
+     D  operational artifact a caption strip, then the artifact
+   ============================================================ */
+
+/* B — the coordinate moves to the section foot, where it reads as a plate
+   number rather than a header. No rule: it closes by position, not by line. */
+.coordinateFoot {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: clamp(30px, 3.2vw, 46px);
+  color: var(--lnd-ink-4);
+  font-family: var(--lnd-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+.coordinateFoot b { color: var(--lnd-ink-3); font-weight: 600; }
+.coordinateFoot span:last-child { margin-left: auto; }
+
+/* C — one compact head above a register. Not a chapter opening: the title is
+   a register label, and the note sits beside it rather than beneath. */
+.registerHead {
+  display: grid;
+  grid-template-columns: minmax(0, 42fr) minmax(0, 58fr);
+  gap: 10px clamp(24px, 3.2vw, 56px);
+  align-items: baseline;
+  margin-bottom: clamp(20px, 2.2vw, 30px);
+}
+.registerTitle { font-size: clamp(21px, 2vw, 27px); font-weight: 600; letter-spacing: -0.018em; line-height: 1.24; }
+.registerNote { color: var(--lnd-ink-3); font-size: 13.5px; line-height: 1.6; max-width: 58ch; }
+
+/* D — a caption strip, roughly 90px, instead of a 200px chapter opening. The
+   artifact below it does the explaining. */
+.opHead {
+  display: grid;
+  grid-template-columns: minmax(0, 46fr) minmax(0, 54fr);
+  gap: 10px clamp(24px, 3.2vw, 56px);
+  align-items: baseline;
+  margin-bottom: clamp(20px, 2.2vw, 30px);
+}
+.opHeadMain { display: grid; gap: 9px; }
+.opHeadEyebrow {
+  color: var(--lnd-ink-4);
+  font-family: var(--lnd-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+.opHeadEyebrow b { color: var(--lnd-ink-3); font-weight: 600; }
+.opHeadTitle { font-size: clamp(19px, 1.75vw, 24px); font-weight: 600; letter-spacing: -0.017em; line-height: 1.26; }
+.opHeadNote { color: var(--lnd-ink-3); font-size: 13.5px; line-height: 1.6; max-width: 54ch; }
 
 /* The navigation is sticky, so an anchored section must clear it rather than
    landing underneath it. */
@@ -576,7 +663,7 @@
    The rail and its nodes carry the chain; borders no longer have to.
    ============================================================ */
 
-.hero { padding-block: clamp(40px, 4.2vw, 66px) clamp(72px, 8vw, 124px); }
+.hero { padding-block: clamp(40px, 4.2vw, 66px) clamp(54px, 5.6vw, 92px); }
 .heroGrid {
   display: grid;
   grid-template-columns: minmax(0, 46fr) minmax(0, 54fr);
@@ -813,14 +900,6 @@
    principal object. No cell dividers.
    ============================================================ */
 
-.chainHeader {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: clamp(22px, 3.4vw, 56px);
-  align-items: end;
-  margin-bottom: clamp(38px, 4.4vw, 64px);
-}
-
 .chain { position: relative; }
 /* The one continuous structural line through all five stations. */
 .chainLine {
@@ -851,25 +930,24 @@
 
 /* The worked record — the principal object in each station. */
 .stationRecord {
-  margin-top: clamp(16px, 1.8vw, 24px);
-  padding: 13px 14px 15px;
+  margin-top: clamp(12px, 1.4vw, 18px);
+  padding: 11px 12px 12px;
   border-left: 2px solid var(--lnd-edge, var(--lnd-rule-strong));
   border-radius: 0 var(--lnd-r-record) var(--lnd-r-record) 0;
   background: var(--lnd-paper);
 }
 .stationRecordId { font-family: var(--lnd-mono); font-size: 10.5px; font-weight: 600; color: var(--lnd-ink); letter-spacing: 0.04em; }
-.stationRecordTitle { margin-top: 8px; font-size: 14px; line-height: 1.45; letter-spacing: -0.008em; }
-.stationRecordState { margin-top: 11px; }
+.stationRecordTitle { margin-top: 7px; font-size: 14px; line-height: 1.45; letter-spacing: -0.008em; }
+.stationRecordState { margin-top: 9px; }
 
-.chainRegisterHead {
+/* One directional line into the instrument, and the register's provenance.
+   The lower padding is the only air between the register and the dark edge —
+   the register is meant to run into the theatre, not sit apart from it. */
+.chainFoot {
   display: flex; align-items: baseline; justify-content: space-between;
-  gap: 16px;
-  margin-top: clamp(30px, 3.4vw, 46px);
-  margin-bottom: 4px;
-}
-.chainBridge {
-  display: flex; align-items: baseline; justify-content: space-between; gap: 20px; flex-wrap: wrap;
-  margin-top: clamp(32px, 3.6vw, 52px);
+  gap: 16px; flex-wrap: wrap;
+  margin-top: clamp(22px, 2.4vw, 34px);
+  padding-bottom: clamp(26px, 2.8vw, 42px);
 }
 
 /* ============================================================
@@ -1157,12 +1235,12 @@
    one can be read. Both records stay legible at every width. */
 .evoColumn:not(.evoDim) .evoHeadName { font-weight: 700; }
 .evoDim .evoHeadName { color: var(--lnd-ink-2); font-weight: 550; }
-.evoNote { margin-top: 18px; max-width: 76ch; }
+.evoNote { margin-top: 14px; max-width: 76ch; }
 .evoRows { display: grid; }
 .evoRow {
   display: grid; grid-template-columns: minmax(0, 1fr) auto;
   gap: 16px; align-items: baseline;
-  padding-block: 11px;
+  padding-block: 9px;
   border-bottom: 1px solid var(--lnd-line-record);
 }
 .evoRow:last-child { border-bottom: 0; }
@@ -1176,14 +1254,14 @@
   letter-spacing: 0.09em; text-transform: uppercase; color: var(--lnd-blue);
 }
 
-.movements { margin-top: clamp(28px, 3.2vw, 44px); }
+.movements { margin-top: clamp(20px, 2.2vw, 30px); }
 .movementList { display: grid; }
 .movement {
   display: grid;
   grid-template-columns: 52px 128px minmax(0, 1fr);
   gap: 4px 20px;
   align-items: baseline;
-  padding-block: 12px;
+  padding-block: 10px;
   border-bottom: 1px solid var(--lnd-line-record);
 }
 .movement:last-child { border-bottom: 0; }
@@ -1291,7 +1369,7 @@
   align-items: start;
 }
 
-.flowSteps { position: relative; display: grid; gap: clamp(15px, 1.7vw, 22px); padding-left: 30px; }
+.flowSteps { position: relative; display: grid; gap: clamp(12px, 1.4vw, 17px); padding-left: 30px; }
 .flowSteps::before {
   content: "";
   position: absolute;
@@ -1314,15 +1392,15 @@
 .flowIndex { font-family: var(--lnd-mono); font-size: 10px; letter-spacing: 0.12em; color: var(--lnd-ink-4); }
 .flowLabel { font-size: 15.5px; font-weight: 600; letter-spacing: -0.012em; }
 .flowStepLast .flowLabel { color: var(--lnd-blue); }
-.flowDetail { margin-top: 5px; color: var(--lnd-ink-3); font-size: 12.5px; line-height: 1.55; max-width: 46ch; }
+.flowDetail { margin-top: 5px; color: var(--lnd-ink-3); font-size: 12.5px; line-height: 1.55; max-width: 54ch; }
 
 .flowNote {
-  margin-top: clamp(24px, 2.8vw, 36px);
+  margin-top: clamp(18px, 2vw, 26px);
   padding-left: 30px;
   color: var(--lnd-ink-3);
   font-size: 12.5px;
   line-height: 1.62;
-  max-width: 54ch;
+  max-width: 68ch;
 }
 .flowCapabilities {
   margin-top: 16px;
@@ -1332,7 +1410,7 @@
   font-size: 10.5px;
   line-height: 1.9;
   letter-spacing: 0.02em;
-  max-width: 54ch;
+  max-width: 68ch;
 }
 
 /* A graphite record inside a light section — a record, not a band. */
@@ -1389,43 +1467,81 @@
    a staggered measure, a large quiet index, and short visible copy.
    ============================================================ */
 
-.principles { display: grid; gap: clamp(32px, 3.6vw, 54px); margin-top: clamp(30px, 3.4vw, 48px); }
+/* R3E.1 — the section is now a two-column register, so the right side carries
+   real product vocabulary instead of an unfilled column. R3E.3 replaces that
+   right column with the canonical run manifest; the geometry is already the
+   one the manifest will occupy, so no placeholder is needed and nothing has
+   to be re-composed when it arrives. */
+.trustGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 56fr) minmax(0, 44fr);
+  gap: clamp(30px, 3.6vw, 68px);
+  align-items: start;
+  margin-top: clamp(24px, 2.8vw, 40px);
+}
+
+/* The four principles as a 2×2 field rather than a staggered column. */
+.principles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(24px, 2.6vw, 38px) clamp(22px, 2.4vw, 36px);
+}
+
+/* Interim right column: the provenance vocabulary the page already uses,
+   given a home. Real, truthful and useful on its own. */
+.provenanceRegister { display: grid; gap: 13px; }
+.provenanceRow {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  gap: 5px 13px;
+  align-items: baseline;
+}
+.provenanceGloss { color: var(--lnd-ink-3); font-size: 12.5px; line-height: 1.5; }
+.provenanceNote { margin-top: clamp(20px, 2.2vw, 30px); max-width: 46ch; }
 .principle {
   display: grid;
-  grid-template-columns: 54px minmax(0, 1fr);
-  gap: 6px clamp(16px, 2vw, 30px);
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 5px clamp(12px, 1.4vw, 20px);
   align-items: start;
-  max-width: 72ch;
 }
-.principle:nth-child(even) { margin-left: clamp(0px, 7vw, 118px); }
-.principleIndex { font-family: var(--lnd-mono); font-size: 11px; color: var(--lnd-ink-4); letter-spacing: 0.1em; padding-top: 6px; }
-.principleTitle { font-size: clamp(20px, 1.9vw, 26px); font-weight: 600; letter-spacing: -0.018em; line-height: 1.25; }
-.principleBody { grid-column: 2; display: grid; gap: 9px; color: var(--lnd-ink-2); font-size: 14px; line-height: 1.6; max-width: 54ch; }
-.principleFoot { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-top: clamp(34px, 3.8vw, 54px); }
+.principleIndex { font-family: var(--lnd-mono); font-size: 10.5px; color: var(--lnd-ink-4); letter-spacing: 0.1em; padding-top: 5px; }
+.principleTitle { font-size: clamp(18px, 1.5vw, 21px); font-weight: 600; letter-spacing: -0.017em; line-height: 1.26; }
+/* Three copy levels: the principle, one concise explanation, then the
+   technical boundary as annotation. Never all three at one weight. */
+.principleBody { grid-column: 2; display: grid; gap: 7px; color: var(--lnd-ink-2); font-size: 13.5px; line-height: 1.58; }
 .provChips { display: flex; gap: 8px; flex-wrap: wrap; }
 
 /* ============================================================
-   10 — WHO LINTEL IS FOR (compressed register)
+   10 — AUDIENCE, folded into the final CTA (R3E.1)
+
+   No longer a standalone section: a quiet register that names the reader
+   immediately before the ask. Three short statements, never persona cards.
    ============================================================ */
 
+.audienceLead { width: min(100%, 820px); margin-inline: auto; }
+.audienceLeadTitle {
+  font-size: clamp(18px, 1.55vw, 21px);
+  font-weight: 550;
+  letter-spacing: -0.015em;
+  line-height: 1.35;
+}
 .audienceRegister {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: clamp(20px, 3vw, 52px);
-  margin-top: clamp(26px, 3vw, 40px);
+  gap: clamp(14px, 1.8vw, 30px);
+  margin-top: clamp(16px, 1.8vw, 24px);
+  text-align: left;
 }
-.audienceItem { display: grid; gap: 9px; align-content: start; }
-.audienceItem span {
-  font-family: var(--lnd-mono); font-size: 10px; font-weight: 500;
-  color: var(--lnd-ink-4); letter-spacing: 0.1em;
-}
-.audienceItem p { font-size: 15.5px; line-height: 1.5; color: var(--lnd-ink-2); letter-spacing: -0.008em; max-width: 30ch; }
+.audienceItem { color: var(--lnd-ink-3); font-size: 13px; line-height: 1.55; }
 
 /* ============================================================
    11 — FINAL CTA
    ============================================================ */
 
-.final { padding-block: clamp(84px, 9vw, 148px) clamp(52px, 5.5vw, 84px); text-align: center; }
+/* The CTA owns its own opening — it is the release at the end of Act V, so
+   the act contributes no gap above it. */
+.final { padding-block: clamp(44px, 4.6vw, 78px) clamp(48px, 5vw, 78px); text-align: center; }
+.finalStatementBlock { margin-top: clamp(32px, 3.4vw, 56px); }
 /* No ch-based cap: each authored line is allowed its own full width so the
    break lands where it was written, not where a container forced it. */
 .finalStatement {
@@ -1561,7 +1677,8 @@
   .gapContrast { grid-template-columns: minmax(0, 1fr); }
   .gapPipeline::after { display: none; }
 
-  .chainHeader { grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
+  .registerHead,
+  .opHead { grid-template-columns: minmax(0, 1fr); gap: 14px; align-items: start; }
   /* The chain rotates to a left rail; the connective line survives the change. */
   .chainLine { top: 0; bottom: 0; left: 4px; right: auto; width: 1px; height: auto; }
   .chainStations { grid-template-columns: minmax(0, 1fr); }
@@ -1575,7 +1692,6 @@
   .spineName { font-size: 12px; }
   .spineBtn { padding: 13px 12px 14px; }
 
-  .evoHeader { grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
   .movement { grid-template-columns: 48px 110px minmax(0, 1fr); }
 
   .rvdIntro { grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
@@ -1584,12 +1700,12 @@
   .rvdSide { padding: 0 0 26px; }
   .rvdSide + .rvdSide { padding: 26px 0 0; border-left: 0; border-top: 1px solid var(--lnd-line-structural); }
 
-  .flowHeader { grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
+  /* Trust stacks: the principles keep their 2×2 field, the provenance
+     register follows beneath rather than being squeezed. */
+  .trustGrid { grid-template-columns: minmax(0, 1fr); gap: 34px; }
+  .principle { grid-template-columns: 32px minmax(0, 1fr); gap: 5px 14px; }
 
-  .principle { grid-template-columns: 44px minmax(0, 1fr); gap: 6px 18px; }
-  .principle:nth-child(even) { margin-left: clamp(0px, 4vw, 56px); }
-
-  .audienceRegister { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+  .audienceRegister { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
 
   .footerTop { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; }
   .footerAction { grid-column: 1 / -1; }
@@ -1597,9 +1713,15 @@
 
 /* -- Mobile: 768px and below -- */
 @media (max-width: 767px) {
-  .section, .sectionMajor { padding-block: clamp(52px, 12vw, 76px); }
+  /* Act rhythm on mobile: the act-to-act boundary stays roughly twice the
+     within-act gap, so the five chapters survive the single column. */
+  .act2 { padding-block: 46px; }
+  .act3 { padding-block: 46px 0; }
+  .act4 { padding-block: 54px 46px; }
+  .act4 > * + * { margin-top: 44px; }
+  .act5 { padding-block: 46px 0; }
 
-  .hero { padding-block: 34px 56px; }
+  .hero { padding-block: 34px 52px; }
   .heroLede { max-width: none; }
   .heroActions { display: grid; gap: 10px; }
   .heroActions .btn { width: 100%; }
@@ -1659,15 +1781,17 @@
   .flowStep::before { left: -26px; }
   .flowSteps::before { left: 3px; }
 
-  .principle { grid-template-columns: 34px minmax(0, 1fr); }
-  .principle:nth-child(even) { margin-left: 0; }
+  /* The 2×2 principles field becomes a single column rather than two cramped
+     ones; the provenance register follows below. */
+  .principles { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  .principle { grid-template-columns: 30px minmax(0, 1fr); }
 
-  .audienceRegister { grid-template-columns: minmax(0, 1fr); gap: 20px; }
-  .audienceItem { grid-template-columns: 34px minmax(0, 1fr); display: grid; gap: 4px 14px; }
-  .audienceItem span { grid-row: span 1; }
-  .audienceItem p { max-width: none; }
+  /* The audience becomes one concise stack, still not persona cards. */
+  .audienceLead { margin-inline: 0; }
+  .audienceRegister { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .finalStatementBlock { margin-top: 44px; }
 
-  .final { padding-block: 68px 44px; text-align: left; }
+  .final { padding-block: 52px 40px; text-align: left; }
   .finalStatement { margin-inline: 0; font-size: 32px; }
   .finalLede { margin-inline: 0; }
   .finalActions { justify-content: stretch; display: grid; gap: 10px; }

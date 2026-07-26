@@ -1,450 +1,657 @@
 import Link from "next/link";
-import { historicalCanonicalRunManifest } from "../lib/canonical-review-run";
-import { buildEvidenceHierarchy } from "../lib/evidence-hierarchy";
-import { buildMergeContract } from "../lib/merge-contract";
-import { report } from "../lib/mock-report";
+import type { CSSProperties } from "react";
+import styles from "./landing/landing.module.css";
 import LandingMotion from "./landing-motion";
 import LandingNav from "./landing-nav";
+import LandingEvolution from "./landing/landing-evolution";
+import LandingTheatre from "./landing/landing-theatre";
+import { FooterSceneNarrow, FooterSceneWide } from "./landing/landing-footer-scene";
+import { Chip, Coordinate, EDGE, Sample, step } from "./landing/landing-primitives";
+import {
+  LANDING_AUDIENCE,
+  LANDING_CHAIN,
+  LANDING_COMMENT,
+  LANDING_EVOLUTION,
+  LANDING_HERO_FRAGMENTS,
+  LANDING_HERO_PROVENANCE,
+  LANDING_RECOMMENDATION_ENTRIES,
+  LANDING_RECOMMENDATION_STATE,
+  LANDING_SCENARIOS,
+  LANDING_TRUST_PRINCIPLES,
+  LANDING_WORKFLOW_BOUNDARY,
+  LANDING_WORKFLOW_CAPABILITIES,
+  LANDING_WORKFLOW_STEPS,
+  type LandingFragmentRole,
+} from "../lib/landing-theatre-fixtures";
 
-const run = historicalCanonicalRunManifest(report, "demo");
-const evidence = buildEvidenceHierarchy(report, null, {
-  runId: run.runId,
-  createdAt: run.completedAt,
-});
-const contract = buildMergeContract({
-  report,
-  evidenceHierarchy: evidence,
-  canonicalRunId: run.runId,
-  sourceType: run.sourceType,
-  reviewMode: run.reviewMode,
-  createdAt: run.completedAt,
-});
+/* R3D — the production landing page.
 
-const openConditions = report.conditionsBeforeMerge.length;
-const openBlockingClauses = contract.clauses.filter(
-  (clause) => clause.importance === "blocking" && clause.status === "open",
-).length;
-const advisoryOpenClauses = contract.clauses.filter(
-  (clause) => clause.importance === "advisory" && clause.status === "open",
-).length;
-const satisfiedClauses = contract.clauses.filter((clause) => clause.status === "satisfied").length;
-const finding = report.findings[0];
-const findingEvidence = evidence.records.find((record) => record.relatedFindingIds.includes("finding-0"));
-const expandedClause = contract.clauses[0];
-const collapsedClauses = contract.clauses.slice(1, 3);
+   Server-rendered apart from three client boundaries: the navigation, the
+   motion controller / public root, and the two interactive product surfaces
+   (theatre and review evolution). Every product value on the page is derived
+   at build time by lib/landing-theatre-fixtures from the canonical sample
+   report and the real evidence-hierarchy and merge-contract builders.
 
-const verificationTrace = [
-  { label: "Change", detail: "Diff received", state: "satisfied" },
-  { label: "Observation", detail: "Behaviour mapped", state: "satisfied" },
-  { label: "Evidence", detail: "Proof attached", state: "partial" },
-  { label: "Requirement", detail: "Clause remains open", state: "partial" },
-  { label: "Human decision", detail: "Engineer accountable", state: "open" },
-] as const;
+   The route destinations are real: `/new` and `/workspace?source=fixture`. */
 
-const failureModes = [
-  {
-    reference: "01",
-    title: "A retry can duplicate a redemption.",
-    detail: report.operationalReadiness?.failureModes[0] ?? finding.evidence,
-  },
-  {
-    reference: "02",
-    title: "Provider failure states remain unproved.",
-    detail: report.findings[1].evidence,
-  },
-  {
-    reference: "03",
-    title: "The client-facing error contract is unclear.",
-    detail: report.findings[2].evidence,
-  },
-] as const;
+const FRAGMENT_ROLE: Record<LandingFragmentRole, string> = {
+  anchor: styles.fragAnchor,
+  principal: styles.fragPrincipal,
+  support: styles.fragSupport,
+  terminal: styles.fragTerminal,
+};
 
-const trustRecords = [
-  {
-    title: "Credentials stay server-side",
-    detail: "GitHub credentials are held by the server integration; the browser never receives a token.",
-  },
-  {
-    title: "Diffs are processed transiently",
-    detail: "Raw diffs are analysed transiently and are not stored in local report history.",
-  },
-  {
-    title: "Deterministic analysis remains available",
-    detail: "The deterministic baseline is the safety floor and deterministic-only mode remains first-class.",
-  },
-  {
-    title: "Findings label their provenance",
-    detail: "Every finding exposes its origin, including Rule detected and Model assisted.",
-  },
-] as const;
+const REVIEW_HREF = "/new";
+const WORKSPACE_HREF = "/workspace?source=fixture";
 
-function SampleData() {
-  return <span className="lp-sample">SAMPLE DATA</span>;
-}
-
-function Status({ tone, children }: { tone: "warning" | "danger" | "success" | "info"; children: React.ReactNode }) {
-  return <span className={`lp-status lp-status--${tone}`}>{children}</span>;
-}
-
-function Trace({ compact = false }: { compact?: boolean }) {
+export default function LandingPage() {
   return (
-    <ol className={compact ? "lp-trace lp-trace--compact" : "lp-trace"} aria-label="Verification trace">
-      {verificationTrace.map((stage, index) => (
-        <li className={`lp-trace-node lp-trace-node--${stage.state}`} key={stage.label}>
-          <span className="lp-trace-index" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
-          <span>{stage.label}</span>
-        </li>
-      ))}
-    </ol>
-  );
-}
+    <LandingMotion>
+      <a className={styles.skip} href="#main">
+        Skip to content
+      </a>
 
-function CaseTraceSegment({ stages, label }: { stages: readonly number[]; label: string }) {
-  return (
-    <ol className="lp-case-segment" aria-label={label}>
-      {stages.map((index) => {
-        const stage = verificationTrace[index];
-        return (
-          <li className={`lp-case-segment-node lp-case-segment-node--${stage.state}`} key={stage.label}>
-            <span className="lp-case-segment-mark" aria-hidden="true" />
-            <span>{stage.label}</span>
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
-function CaseCoordinate({ section }: { section: string }) {
-  return (
-    <div className="lp-case-coordinate" aria-label={`Case coordinate ${section}`}>
-      <span>{section}</span>
-      <code>#{report.pr.number}</code>
-      <code>{run.runId}</code>
-    </div>
-  );
-}
-
-function FrameHeader({ label }: { label: string }) {
-  return (
-    <div className="lp-frame-header" aria-hidden="true">
-      <span>{label}</span>
-      <SampleData />
-    </div>
-  );
-}
-
-export default function Home() {
-  return (
-    <main className="lp">
-      <LandingMotion>
-      <a className="lp-skip" href="#lp-main">Skip to content</a>
+      {/* ---------------------------------------------------- 1 · NAVIGATION */}
       <LandingNav />
 
-      <div id="lp-main">
-        <section className="lp-hero" data-motion-section="hero" aria-labelledby="lp-hero-title">
-          <div className="lp-hero-grid">
-            <div className="lp-hero-copy">
-              <p className="lp-eyebrow">Engineering verification workspace</p>
-              <h1 id="lp-hero-title" className="lp-serif">
-                Agents create code.<br />
-                Lintel verifies what is ready.
-              </h1>
-              <p className="lp-lede">
-                Lintel analyses pull-request changes, connects findings to evidence, and turns missing proof into explicit merge requirements. The final decision remains with the engineer accountable for it.
+      <main id="main">
+        {/* ------------------------------------------------------- 2 · HERO */}
+        <section className={styles.hero} data-motion-section="hero" aria-labelledby="hero-title">
+          <div className={styles.heroGrid}>
+            <div className={styles.heroCopy}>
+              <p className={`${styles.micro} ${styles.heroEyebrow}`} data-reveal style={step(0)}>
+                Engineering verification
               </p>
-              <div className="lp-actions">
-                <Link className="lp-btn lp-btn--primary" href="/new">Check a pull request</Link>
-                <Link className="lp-btn lp-btn--secondary" href="/report?demo=1">View the sample report</Link>
+              <h1 id="hero-title" className={`${styles.display} ${styles.heroTitle}`} data-reveal style={step(1)}>
+                <span>Agents create code.</span>
+                <span>Lintel verifies what is ready.</span>
+              </h1>
+              <p className={`${styles.lede} ${styles.heroLede}`} data-reveal style={step(2)}>
+                Inspect the evidence behind a change, identify missing proof, see what must be resolved before merge,
+                and record the final human decision.
+              </p>
+              <div className={`${styles.actions} ${styles.heroActions}`} data-reveal style={step(3)}>
+                <Link className={`${styles.btn} ${styles.btnPrimary}`} href={REVIEW_HREF}>
+                  Review a pull request
+                </Link>
+                <Link className={`${styles.btn} ${styles.btnSecondary}`} href={WORKSPACE_HREF}>
+                  Explore the sample Workspace
+                </Link>
+              </div>
+              <div className={styles.heroNote} data-reveal style={step(4)}>
+                <Sample />
+                <span className={styles.support}>
+                  One change, moving through five stages. Nothing here has been decided.
+                </span>
               </div>
             </div>
 
-            <div
-              id="case-file"
-              className="lp-frame lp-frame--hero"
-              role="img"
-              aria-label={`Sample Lintel Case File for ${report.pr.repository} pull request ${report.pr.number}, ${report.pr.title}. Run ${run.runId}. The verification trace shows change and observation satisfied, evidence and requirement partial, and human decision open. Lintel recommends tests required with medium risk ${report.verdict.riskScore} out of 100, ${openBlockingClauses} blocking requirements open, and ${openConditions} report conditions open. Finding F1 is linked to evidence E1 and open blocking Merge Contract clause C1. The human engineer decision is pending.`}
-            >
-              <FrameHeader label="Case File / verification dossier" />
-              <div className="lp-case-body" aria-hidden="true">
-                <aside className="lp-case-outline">
-                  <span className="lp-ui-label">Case File</span>
-                  <span><code>01</code> What changed</span>
-                  <span><code>02</code> What Lintel observed</span>
-                  <span><code>03</code> Uncertain or missing</span>
-                  <span><code>04</code> Merge Contract</span>
-                  <span><code>05</code> Human decision</span>
-                </aside>
-                <div className="lp-case-main">
-              <div className="lp-case-identity">
-                <div>
-                  <span className="lp-ui-label">Report identity</span>
-                  <code>{run.runId}</code>
-                </div>
-                <div className="lp-case-number">
-                  <span className="lp-ui-label">Pull request</span>
-                  <strong>#{report.pr.number}</strong>
-                </div>
-              </div>
-              <div className="lp-case-title">
-                <code>{report.pr.repository}</code>
-                <h2>{report.pr.title}</h2>
-                <span>{report.pr.branch}</span>
-              </div>
-              <Trace compact />
-              <div className="lp-case-verdict">
-                <div>
-                  <span className="lp-ui-label">Lintel recommendation</span>
-                  <Status tone="warning">TESTS REQUIRED</Status>
-                </div>
-                <dl>
-                  <div><dt>Risk record</dt><dd><strong>{report.verdict.riskScore}</strong><span>/100 · {report.verdict.riskLevel}</span></dd></div>
-                  <div><dt>Requirements</dt><dd><strong>{openBlockingClauses}</strong><span>blocking open</span></dd></div>
-                  <div><dt>Conditions</dt><dd><strong>{openConditions}</strong><span>open</span></dd></div>
-                </dl>
-              </div>
-              <div className="lp-hero-records">
-                <article className="lp-hero-finding">
-                  <header>
-                    <code>F1</code>
-                    <div><strong>{finding.title}</strong><span>{finding.category} · {finding.provenance}</span></div>
-                  </header>
-                  <p>{finding.evidence}</p>
-                  <div className="lp-hero-evidence">
-                    <code>E1</code>
-                    <div><strong>{findingEvidence?.title}</strong><span>{findingEvidence?.statement}</span></div>
-                  </div>
-                </article>
-                <aside className="lp-hero-decision">
-                  <div className="lp-hero-clause"><code>C1</code><span>OPEN · BLOCKING</span><strong>{expandedClause.statement}</strong></div>
-                  <div className="lp-hero-pending"><span className="lp-ui-label">Human decision</span><strong>Pending engineer decision</strong><p>Open proof and requirements remain.</p></div>
-                </aside>
-              </div>
-                </div>
+            <div className={styles.heroField}>
+              <div className={styles.fieldGrid} aria-hidden="true" />
+              <div className={styles.heroRail} aria-hidden="true" />
+              <ol className={styles.heroFragments} aria-label="One verification chain, in order">
+                {LANDING_HERO_FRAGMENTS.map((fragment, index) => (
+                  <li
+                    key={`${fragment.kind}-${index}`}
+                    className={[
+                      styles.heroFragment,
+                      FRAGMENT_ROLE[fragment.role],
+                      fragment.mobile ? "" : styles.heroFragmentDesktopOnly,
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    style={
+                      {
+                        "--lnd-indent": `${fragment.indent}px`,
+                        "--lnd-frag-w": fragment.width,
+                        "--lnd-edge": EDGE[fragment.tone ?? "neutral"],
+                      } as CSSProperties
+                    }
+                  >
+                    <div className={styles.heroFragmentIn} data-reveal style={step(index + 2)}>
+                      <div className={styles.fragHead}>
+                        {fragment.id ? <span className={styles.recordId}>{fragment.id}</span> : null}
+                        <span className={styles.recordKind}>{fragment.kind}</span>
+                      </div>
+                      <p className={styles.fragTitle}>{fragment.title}</p>
+                      {fragment.detail ? <p className={styles.fragDetail}>{fragment.detail}</p> : null}
+                      {fragment.state ? (
+                        <p className={styles.fragState}>
+                          <Chip tone={fragment.tone}>{fragment.state}</Chip>
+                        </p>
+                      ) : null}
+                    </div>
+                  </li>
+                ))}
+              </ol>
+              <div className={styles.heroFieldFoot}>
+                <Sample />
+                <span className={styles.monoMicro} style={{ color: "var(--lnd-ink-4)" }}>
+                  {LANDING_HERO_PROVENANCE}
+                </span>
               </div>
             </div>
           </div>
         </section>
 
-        <section className="lp-problem lp-case-movement lp-case-movement--readiness" data-motion-section="readiness" aria-labelledby="lp-problem-title">
-          <div className="lp-movement-spine" aria-hidden="true">
-            <CaseCoordinate section="01 / readiness" />
-            <CaseTraceSegment stages={[0, 1]} label="Readiness trace: change to observation" />
+        {/* -------------------------------------------- 3 · VERIFICATION GAP */}
+        <section className={`${styles.shell} ${styles.sectionMajor}`} data-motion-section="gap" aria-labelledby="gap-title">
+          <Coordinate section="01" of="The verification gap" />
+          <div className={styles.gapGrid}>
+            <h2 id="gap-title" className={`${styles.editorial} ${styles.gapStatement}`} data-reveal style={step(0)}>
+              Software can now be created faster than teams can verify it.
+            </h2>
+            <div className={styles.gapSupport} data-reveal style={step(1)}>
+              <p className={styles.body}>
+                A passing build does not show that a change is understood, that the important failure paths were
+                tested, or that the evidence behind it is strong enough to merge. Verification, not creation, is where
+                the time now goes.
+              </p>
+            </div>
           </div>
-          <div className="lp-problem-copy">
-            <p className="lp-eyebrow">The readiness gap</p>
-            <h2 id="lp-problem-title">CI green does not mean the change is ready.</h2>
-            <p>
-              A passing pipeline can still leave retry behaviour, failure handling and client contracts unverified. Lintel keeps those gaps as explicit records.
+
+          <ul className={styles.distinctions}>
+            {[
+              {
+                left: "Created quickly",
+                right: "understood",
+                note: "Speed of authorship says nothing about whether anyone has read the failure paths.",
+              },
+              {
+                left: "Tests passed",
+                right: "sufficient proof",
+                note: "A green pipeline proves the tests that exist passed. It does not name the ones that are missing.",
+              },
+              {
+                left: "Recommendation",
+                right: "Human Decision",
+                note: "Lintel reaches a recommendation. Only an accountable engineer reaches a decision.",
+              },
+            ].map((row, index) => (
+              <li key={row.left} className={styles.distinction} data-reveal style={step(index)}>
+                <p className={styles.distinctionClaim}>
+                  <span>{row.left}</span>
+                  <span className={styles.notEqual}>≠</span>
+                  <em>{row.right}</em>
+                </p>
+                <p className={styles.distinctionNote}>{row.note}</p>
+              </li>
+            ))}
+          </ul>
+
+          {/* One focal proof scene: what passed, and what passing does not prove. */}
+          <div className={styles.gapContrast}>
+            <div className={styles.gapPipeline} data-reveal style={step(0)}>
+              <div className={styles.recordHead} style={{ marginBottom: 0 }}>
+                <span className={styles.recordKind}>Pipeline record</span>
+                <Chip tone="success">ALL CHECKS PASSED</Chip>
+              </div>
+              <ul>
+                <li>lint</li>
+                <li>type-check</li>
+                <li>unit</li>
+                <li>build</li>
+              </ul>
+              <p className={styles.support} style={{ marginTop: 13 }}>
+                <Sample />
+              </p>
+            </div>
+            <ul className={styles.unresolved}>
+              {[
+                ["F1 · RELIABILITY", "A retry after a provider timeout can issue a second discount code."],
+                ["F2 · MISSING TESTS", "Provider timeout, 5xx, malformed and empty responses have no explicit test."],
+                ["F3 · API CONTRACT", "Clients have no stable shape to distinguish a retryable failure from a permanent one."],
+              ].map(([label, text], index) => (
+                <li key={label} data-reveal style={step(index)}>
+                  <span>{label}</span>
+                  <span>{text}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        {/* --------------------------------------------- 4 · EVIDENCE CHAIN */}
+        <section
+          id="how-it-works"
+          className={`${styles.shell} ${styles.section}`}
+          data-motion-section="chain"
+          aria-labelledby="chain-title"
+        >
+          <Coordinate section="02" of="How it works" note="Change → Human Decision" />
+          <div className={styles.chainHeader}>
+            <h2 id="chain-title" className={styles.heading} data-reveal style={step(0)}>
+              One record, five stages.
+            </h2>
+            <p className={styles.body} data-reveal style={step(1)}>
+              Lintel does not produce a stream of remarks. It produces one structure in which every finding carries its
+              proof, everything unproved becomes an explicit condition, and the last stage belongs to a person.
             </p>
           </div>
-          <div className="lp-readiness-diagnostic">
-            <div className="lp-readiness-context" data-motion-focus="ci">
-              <span className="lp-ui-label">Pipeline record</span>
-              <strong>CI passed</strong>
-              <p>Merge readiness remains unresolved.</p>
-            </div>
-            <ol className="lp-failures" data-motion-focus="observations">
-              {failureModes.map((mode) => (
-                <li key={mode.reference}>
-                  <code>{mode.reference}</code>
-                  <div><h3>{mode.title}</h3><p>{mode.detail}</p></div>
+
+          <div className={styles.chainRegisterHead}>
+            <p className={styles.micro}>The same record, carried through every stage</p>
+            <Sample />
+          </div>
+
+          <div className={styles.chain}>
+            <div className={styles.fieldGrid} aria-hidden="true" />
+            <div className={styles.chainLine} aria-hidden="true" />
+            <ol className={styles.chainStations}>
+              {LANDING_CHAIN.map((stage, index) => (
+                <li
+                  key={stage.id}
+                  className={`${styles.station} ${index === LANDING_CHAIN.length - 1 ? styles.stationLast : ""}`}
+                  data-reveal
+                  style={step(index)}
+                >
+                  <span className={styles.stationIndex}>{String(index + 1).padStart(2, "0")}</span>
+                  <span className={styles.stationMark} aria-hidden="true" />
+                  <h3 className={styles.stationName}>{stage.label}</h3>
+                  <p className={styles.stationDef}>{stage.definition}</p>
+                  <div className={styles.stationRecord} style={{ "--lnd-edge": EDGE[stage.exampleTone] } as CSSProperties}>
+                    <span className={styles.stationRecordId}>{stage.exampleId}</span>
+                    <p className={styles.stationRecordTitle}>{stage.exampleTitle}</p>
+                    <p className={styles.stationRecordState}>
+                      <Chip tone={stage.exampleTone}>{stage.exampleState}</Chip>
+                    </p>
+                  </div>
                 </li>
               ))}
             </ol>
           </div>
+
+          <div className={styles.chainBridge}>
+            <p className={styles.body}>That is the model. The next section is the instrument — you drive it.</p>
+            <a className={styles.textLink} href="#product">
+              Open the product ↓
+            </a>
+          </div>
         </section>
 
-        <section className="lp-exhibit lp-exhibit--finding lp-case-movement" data-motion-section="finding" aria-labelledby="lp-finding-title">
-          <div className="lp-exhibit-copy">
-            <div className="lp-movement-heading-record">
-              <CaseCoordinate section="02 / finding" />
-              <CaseTraceSegment stages={[1, 2]} label="Finding trace: observation to evidence" />
-            </div>
-            <p className="lp-eyebrow">Exhibit I · Finding and evidence</p>
-            <h2 id="lp-finding-title">A finding is only useful when the proof travels with it.</h2>
-            <p>
-              The ledger binds the observed risk to its provenance, supporting record, related condition and required action.
-            </p>
-          </div>
-          <div
-            className="lp-frame lp-frame--finding"
-            role="img"
-            aria-label={`Sample finding F1, high severity: ${finding.title} Reliability, rule detected. Supporting evidence E1 says ${findingEvidence?.statement}. Related condition: ${report.conditionsBeforeMerge[0]}. Required action: ${finding.action}. The evidence register contains ${evidence.records.length} records.`}
-          >
-            <FrameHeader label="Finding record / F1" />
-            <article className="lp-finding-record" data-motion-focus="finding" aria-hidden="true">
-              <header>
-                <code>F1</code>
-                <Status tone="danger">{finding.severity}</Status>
-                <div><h3>{finding.title}</h3><span>{finding.category} · {finding.provenance}</span></div>
-              </header>
-              <p className="lp-finding-explanation">{finding.evidence}</p>
-              <div className="lp-evidence-record" data-motion-focus="evidence">
-                <div><code>E1</code><strong>{findingEvidence?.title}</strong><Status tone="info">DIRECTLY OBSERVED</Status></div>
-                <p>{findingEvidence?.statement}</p>
-                <small>{findingEvidence?.source} · {findingEvidence?.provenance} · <code>{findingEvidence?.evidenceId}</code></small>
-              </div>
-              <dl className="lp-record-links">
-                <div><dt>Related requirement</dt><dd><code>C1 · OPEN · BLOCKING</code><span>{report.conditionsBeforeMerge[0]}</span></dd></div>
-                <div><dt>Required action</dt><dd>{finding.action}</dd></div>
-              </dl>
-              <p className="lp-register-count">
-                Evidence register <strong>{evidence.records.length} records</strong> · {evidence.countsByClass["directly-observed"]} directly observed · {evidence.countsByClass.unknown} unknown
+        {/* ------------------------------------- 5 · INTERACTIVE PRODUCT THEATRE
+            The page's only full-width dark band. */}
+        <section id="product" className={styles.theatre} aria-labelledby="theatre-title">
+          <div className={styles.theatreGround} aria-hidden="true" />
+          <div className={styles.theatreInner}>
+            <div className={styles.theatreCopy}>
+              <p className={`${styles.micro} ${styles.theatreEyebrow}`}>Product</p>
+              <h2 id="theatre-title" className={styles.theatreHeading}>
+                Drive one verification record.
+              </h2>
+              <p className={styles.theatreLede}>
+                Change the scenario. Move along the chain. Every stage holds real product structure — findings,
+                evidence classes, requirement states, and a decision that stays pending.
               </p>
-            </article>
+              <p className={styles.theatreBoundary}>
+                This is a landing demonstration built on sample data. It does not read or write review history, and it
+                offers no control that would merge, approve, block or record a decision.
+              </p>
+            </div>
+            <LandingTheatre scenarios={LANDING_SCENARIOS} />
           </div>
         </section>
 
-        <section className="lp-exhibit lp-exhibit--contract lp-case-movement" data-motion-section="contract" aria-labelledby="lp-contract-title">
-          <div
-            className="lp-frame lp-frame--contract"
-            role="img"
-            aria-label={`Sample Merge Contract ${contract.contractId}, open. ${openBlockingClauses} blocking clauses open, ${advisoryOpenClauses} advisory open, ${satisfiedClauses} satisfied. Clause C1 is open and blocking: ${expandedClause.statement}. It clears with ${expandedClause.evidenceRequired}. Related records E1, E3 and A2. Clauses C2 and C3 are shown collapsed.`}
-          >
-            <FrameHeader label="Evidence-backed Merge Contract" />
-            <div className="lp-contract-summary" aria-hidden="true">
-              <div><span className="lp-ui-label">Contract identity</span><code>{contract.contractId}</code></div>
-              <div className="lp-contract-trace"><CaseTraceSegment stages={[2, 3]} label="Contract trace: evidence to requirement" /></div>
-              <dl>
-                <div><dt>Blocking open</dt><dd>{openBlockingClauses}</dd></div>
-                <div><dt>Advisory open</dt><dd>{advisoryOpenClauses}</dd></div>
-                <div><dt>Satisfied</dt><dd>{satisfiedClauses}</dd></div>
-              </dl>
-            </div>
-            <article className="lp-clause lp-clause--expanded" data-motion-focus="clause" aria-hidden="true">
-              <header><code>C1</code><strong>{expandedClause.statement}</strong><Status tone="warning">OPEN · BLOCKING</Status></header>
-              <p>{expandedClause.rationale}</p>
-              <dl>
-                <div><dt>Clears with</dt><dd>{expandedClause.evidenceRequired}</dd></div>
-                <div><dt>Current evidence</dt><dd><code>E1</code> · DIRECTLY OBSERVED</dd></div>
-                <div><dt>Related records</dt><dd><code>E1, E3, A2</code></dd></div>
-                <div><dt>Owner cue</dt><dd>{expandedClause.ownerCue}</dd></div>
-              </dl>
-            </article>
-            <div className="lp-collapsed-clauses" aria-hidden="true">
-              {collapsedClauses.map((clause, index) => (
-                <div key={clause.clauseId}><code>C{index + 2}</code><strong>{clause.statement}</strong><span>OPEN</span></div>
-              ))}
-            </div>
-          </div>
-          <div className="lp-exhibit-copy">
-            <div className="lp-movement-heading-record">
-              <CaseCoordinate section="03 / contract" />
-            </div>
-            <p className="lp-eyebrow">Exhibit II · Merge Contract</p>
-            <h2 id="lp-contract-title">Requirements stay open until stronger evidence clears them.</h2>
-            <p>
-              The contract turns report conditions into durable clauses, with named proof, related records and an owner cue.
+        {/* -------------------------------------------- 6 · REVIEW EVOLUTION */}
+        <section
+          className={`${styles.shell} ${styles.section}`}
+          data-motion-section="evolution"
+          aria-labelledby="evolution-title"
+        >
+          <Coordinate section="03" of="Review evolution" note="acme/redemption-api · #482" />
+          <div className={styles.evoHeader}>
+            <h2 id="evolution-title" className={styles.heading} data-reveal style={step(0)}>
+              The next run changes the record, not just the score.
+            </h2>
+            <p className={styles.body} data-reveal style={step(1)}>
+              A review is not a one-off opinion. When the change moves, the record is re-read and you can see exactly
+              what moved — including proof that no longer applies.
             </p>
           </div>
+          <div data-reveal style={step(2)}>
+            <LandingEvolution
+              previous={LANDING_EVOLUTION.previous}
+              current={LANDING_EVOLUTION.current}
+              movements={LANDING_EVOLUTION.movements}
+              headNote={LANDING_EVOLUTION.headNote}
+            />
+          </div>
         </section>
 
-        <section className="lp-thesis lp-case-movement lp-case-movement--ledger" data-motion-section="ledger" aria-labelledby="lp-thesis-title">
-          <div className="lp-ledger-intro">
-            <CaseCoordinate section="04 / verification ledger" />
-            <CaseTraceSegment stages={[3, 4]} label="Ledger trace: requirement to human decision" />
+        {/* -------------------------- 7 · RECOMMENDATION VS HUMAN DECISION */}
+        <section
+          id="principles"
+          className={`${styles.shell} ${styles.sectionMajor}`}
+          data-motion-section="authority"
+          aria-labelledby="authority-title"
+        >
+          <Coordinate section="04" of="Principles" note="Where analysis ends" />
+          <div className={styles.rvdIntro}>
+            <h2 id="authority-title" className={`${styles.editorial} ${styles.rvdStatement}`} data-reveal style={step(0)}>
+              <span>Lintel recommends.</span>
+              <span>The engineer decides.</span>
+            </h2>
+            <p className={styles.body} data-reveal style={step(1)}>
+              These are two different kinds of record, and the page refuses to draw them as equals. One is analysis.
+              The other is accountability, and it is authored by a person who is answerable for it.
+            </p>
           </div>
-          <p className="lp-eyebrow">Verification ledger</p>
-          <h2 id="lp-thesis-title" className="lp-serif">A quiet ledger of evidence, moving toward a human decision.</h2>
-          <p>Each record keeps its meaning, source and state without pretending that analysis is authority.</p>
-          <ul className="lp-trust-records">
-            {trustRecords.map((record) => (
-              <li key={record.title}><h3>{record.title}</h3><p>{record.detail}</p></li>
+
+          <div className={styles.rvdColumns}>
+            {/* Denser, technical, mono-heavy. */}
+            <section className={styles.rvdSide} aria-labelledby="recommendation-title" data-reveal style={step(0)}>
+              <header className={styles.rvdSideHead}>
+                <h3 id="recommendation-title" className={styles.rvdSideName}>
+                  Lintel recommendation
+                </h3>
+                <Chip tone={LANDING_RECOMMENDATION_STATE.tone}>{LANDING_RECOMMENDATION_STATE.label}</Chip>
+              </header>
+              <div className={styles.rvdDense}>
+                {LANDING_RECOMMENDATION_ENTRIES.map((entry, index) => (
+                  <div key={`${entry.id}-${index}`} className={styles.rvdEntry}>
+                    <span className={styles.rvdEntryId}>{entry.id}</span>
+                    <span className={styles.rvdEntryLabel}>{entry.label}</span>
+                    <span className={styles.rvdEntryValue}>{entry.value}</span>
+                  </div>
+                ))}
+              </div>
+              <ul className={styles.rvdLimits}>
+                <li>A recommendation is not an approval and carries no authority.</li>
+                <li>Lintel does not run tests, enforce policy or gate a merge.</li>
+                <li>Exact reproduction of optional model output is not claimed.</li>
+                <li>Requirements clear when a person supplies proof — never by Lintel.</li>
+              </ul>
+              <p className={styles.support} style={{ marginTop: 16 }}>
+                <Sample />
+              </p>
+            </section>
+
+            {/* Calmer, more air, visibly authored. */}
+            <section className={styles.rvdSide} aria-labelledby="decision-title" data-reveal style={step(1)}>
+              <header className={styles.rvdSideHead}>
+                <h3 id="decision-title" className={styles.rvdSideName}>
+                  Human Decision
+                </h3>
+                <Chip tone="neutral">PENDING</Chip>
+              </header>
+              <div className={styles.rvdAuthored}>
+                <div className={styles.rvdField}>
+                  <span className={styles.rvdFieldLabel}>Decision</span>
+                  <p className={styles.rvdPending}>No engineer decision recorded</p>
+                </div>
+                <div className={styles.rvdField}>
+                  <span className={styles.rvdFieldLabel}>Rationale</span>
+                  <p className={styles.rvdFieldValue} style={{ color: "var(--lnd-ink-3)" }}>
+                    Written by the person who decides, in their words.
+                  </p>
+                </div>
+                <div className={styles.rvdField}>
+                  <span className={styles.rvdFieldLabel}>Accepted risk</span>
+                  <p className={styles.rvdFieldValue} style={{ color: "var(--lnd-ink-3)" }}>
+                    Explicit, referenced, and never inferred from a recommendation.
+                  </p>
+                </div>
+                <div className={styles.rvdField}>
+                  <span className={styles.rvdFieldLabel}>Applicability</span>
+                  <p className={styles.rvdFieldValue} style={{ color: "var(--lnd-ink-3)" }}>
+                    Tied to the exact commit, where the head is available. It can go stale as the change moves on.
+                  </p>
+                </div>
+              </div>
+
+              <div className={styles.rvdRecorded}>
+                <div className={styles.recordHead} style={{ marginBottom: 0 }}>
+                  <span className={styles.recordKind}>What a recorded decision contains</span>
+                  <Chip tone="neutral">EXAMPLE</Chip>
+                </div>
+                <dl className={styles.rvdRecordedRows}>
+                  {[
+                    ["Outcome", "Approve with accepted risk"],
+                    ["Actor", "The accountable engineer"],
+                    ["Rationale", "Written by that person, in their words."],
+                    ["Accepted risk", "An explicit, referenced clause"],
+                    ["Recorded", "At the moment the person recorded it"],
+                    ["Applies to", "The head commit, where one is available"],
+                  ].map(([label, value]) => (
+                    <div key={label} className={styles.rvdRecordedRow}>
+                      <dt>{label}</dt>
+                      <dd>{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+                <p className={styles.support} style={{ marginTop: 14 }}>
+                  This is the shape of a recorded decision, not a decision on the pending record above. Lintel never
+                  authors one.
+                </p>
+              </div>
+
+              <p className={`${styles.support} ${styles.rvdNote}`}>
+                A decision can later be reaffirmed, superseded or withdrawn. Lintel records that lineage; it never
+                authors it.
+              </p>
+            </section>
+          </div>
+        </section>
+
+        {/* --------------------------------------------- 8 · GITHUB WORKFLOW */}
+        <section
+          id="github"
+          className={`${styles.shell} ${styles.section}`}
+          data-motion-section="github"
+          aria-labelledby="github-title"
+        >
+          <Coordinate section="05" of="GitHub" />
+          <div className={styles.flowHeader}>
+            <h2 id="github-title" className={styles.heading} data-reveal style={step(0)}>
+              A pull request goes in. One updated decision comment comes out.
+            </h2>
+            <p className={styles.body} data-reveal style={step(1)}>
+              The whole integration resolves to a single comment per pull request, rewritten in place as the change
+              moves — never a thread that grows every time analysis runs.
+            </p>
+          </div>
+
+          <div className={styles.flowScene}>
+            <div>
+              <ol className={styles.flowSteps}>
+                {LANDING_WORKFLOW_STEPS.map((item, index) => (
+                  <li
+                    key={item.id}
+                    className={`${styles.flowStep} ${index === LANDING_WORKFLOW_STEPS.length - 1 ? styles.flowStepLast : ""}`}
+                    data-reveal
+                    style={step(index)}
+                  >
+                    <div className={styles.flowStepHead}>
+                      <span className={styles.flowIndex}>{item.id}</span>
+                      <h3 className={styles.flowLabel}>{item.label}</h3>
+                    </div>
+                    <p className={styles.flowDetail}>{item.detail}</p>
+                  </li>
+                ))}
+              </ol>
+
+              <p className={styles.flowCapabilities} data-reveal style={step(0)}>
+                {LANDING_WORKFLOW_CAPABILITIES.join("  ·  ")}
+              </p>
+              <p className={styles.flowNote} data-reveal style={step(1)}>
+                {LANDING_WORKFLOW_BOUNDARY}
+              </p>
+            </div>
+
+            <div data-reveal style={step(1)}>
+              <div className={styles.wellDark}>
+                <div className={styles.wellDarkHead}>
+                  <span>Webhook verification</span>
+                  <span>raw body · timing-safe</span>
+                </div>
+                <div className={styles.wellDarkBody}>
+                  <div>
+                    <em>POST</em> /api/github-app/webhook
+                  </div>
+                  <div>
+                    <em>x-github-event:</em> pull_request
+                  </div>
+                  <div>
+                    <em>x-hub-signature-256:</em> sha256=<b>…</b>
+                  </div>
+                  <div>
+                    <em>verify:</em> <b>HMAC SHA-256 over the raw body</b>
+                  </div>
+                  <div>
+                    <em>compare:</em> <b>timing-safe</b>
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.comment}>
+                <div className={styles.commentHead}>
+                  <span className={styles.commentAvatar} aria-hidden="true" />
+                  <span className={styles.commentAuthor}>Lintel</span>
+                  <span className={styles.commentEdited}>updated in place · one comment per pull request</span>
+                  <span className={styles.sample} style={{ marginLeft: "auto" }}>
+                    Sample
+                  </span>
+                </div>
+                <div className={styles.commentBody}>
+                  <p className={styles.commentTitle}>Lintel recommends: {LANDING_COMMENT.recommendation}</p>
+                  <p className={styles.commentRow}>
+                    {LANDING_COMMENT.meta.map((entry, index) => (
+                      <span key={entry}>
+                        {index > 0 ? <span aria-hidden="true">· </span> : null}
+                        {entry}
+                      </span>
+                    ))}
+                  </p>
+                  <ul className={styles.commentList}>
+                    {LANDING_COMMENT.clauses.map((clause) => (
+                      <li key={clause.id}>
+                        <code>{clause.id}</code>
+                        <span>{clause.statement}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className={styles.commentFoot}>
+                    No engineer decision recorded. Lintel does not merge, block or approve this pull request.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* --------------------------------------- 9 · TRUST AND ARCHITECTURE */}
+        <section className={`${styles.shell} ${styles.section}`} data-motion-section="trust" aria-labelledby="trust-title">
+          <Coordinate section="06" of="Trust and architecture" />
+          <h2 id="trust-title" className={styles.heading} data-reveal style={step(0)}>
+            Deterministic first, model optional, results traceable, boundaries explicit.
+          </h2>
+
+          <ol className={styles.principles}>
+            {LANDING_TRUST_PRINCIPLES.map((principle, index) => (
+              <li key={principle.id} className={styles.principle} data-reveal style={step(index)}>
+                <span className={styles.principleIndex}>{principle.id}</span>
+                <h3 className={styles.principleTitle}>{principle.title}</h3>
+                <div className={styles.principleBody}>
+                  <p style={{ color: "var(--lnd-ink)" }}>{principle.lead}</p>
+                  <p className={styles.support}>{principle.note}</p>
+                </div>
+              </li>
+            ))}
+          </ol>
+
+          <div className={styles.principleFoot}>
+            <p className={styles.micro}>Provenance appears on every finding</p>
+            <div className={styles.provChips}>
+              <Chip tone="info">RULE DETECTED</Chip>
+              <Chip tone="provenance">MODEL ASSISTED</Chip>
+              <Chip tone="warning">MISSING · UNVERIFIED</Chip>
+              <Chip tone="neutral">INFERRED</Chip>
+            </div>
+          </div>
+        </section>
+
+        {/* ------------------------------------------ 10 · WHO LINTEL IS FOR */}
+        <section
+          className={`${styles.shell} ${styles.sectionTight}`}
+          data-motion-section="audience"
+          aria-labelledby="audience-title"
+        >
+          <Coordinate section="07" of="Who Lintel is for" />
+          <h2 id="audience-title" className={styles.heading} data-reveal style={step(0)}>
+            For the engineers answerable for what merges.
+          </h2>
+          <ul className={styles.audienceRegister}>
+            {LANDING_AUDIENCE.map((line, index) => (
+              <li key={line} className={styles.audienceItem} data-reveal style={step(index)}>
+                <span>{String(index + 1).padStart(2, "0")}</span>
+                <p>{line}</p>
+              </li>
             ))}
           </ul>
-          <p className="lp-ledger-bridge">The case now reaches the decision ledger. Its engineer decision remains pending.</p>
-          <Link className="lp-text-link" href="/docs/security-model.md">Read the security model <span aria-hidden="true">→</span></Link>
         </section>
 
-        <section className="lp-decision" data-motion-section="decision" aria-labelledby="lp-decision-title">
-          <div className="lp-decision-arrival" aria-hidden="true">
-            <CaseCoordinate section="05 / human authority" />
-            <CaseTraceSegment stages={[3, 4]} label="Decision trace: requirement to human decision" />
-          </div>
-          <div className="lp-decision-heading">
-            <p className="lp-eyebrow">Exhibit III · Human authority</p>
-            <h2 id="lp-decision-title">The analysis ends where accountable judgment begins.</h2>
-            <p>Lintel has reached a recommendation. The case now waits for the engineer who will record the decision.</p>
-          </div>
-          <div
-            className="lp-frame lp-frame--decision"
-            role="img"
-            aria-label={`Sample human decision exhibit for ${report.pr.repository} pull request ${report.pr.number}. Lintel recommends tests required with medium risk ${report.verdict.riskScore} out of 100. ${openBlockingClauses} blocking requirements and ${openConditions} report conditions remain open. The current Human Decision Ledger has no entry, so the engineer decision is pending, with no actor or timestamp available and no recommendation divergence recorded.`}
-          >
-            <FrameHeader label="Decision record / Human Decision Ledger" />
-            <div className="lp-decision-context" data-motion-focus="recommendation" aria-hidden="true">
-              <div>
-                <span className="lp-ui-label">Lintel analysis / recommendation</span>
-                <strong>#{report.pr.number} · {report.pr.title}</strong>
-                <code>{report.pr.repository} · {run.runId}</code>
-              </div>
-              <dl>
-                <div><dt>Lintel recommendation</dt><dd><Status tone="warning">TESTS REQUIRED</Status></dd></div>
-                <div><dt>Risk record</dt><dd><strong>{report.verdict.riskScore}/100</strong><span>{report.verdict.riskLevel}</span></dd></div>
-                <div><dt>Requirements</dt><dd><strong>{openBlockingClauses}</strong><span>blocking open</span></dd></div>
-                <div><dt>Conditions</dt><dd><strong>{openConditions}</strong><span>open</span></dd></div>
-              </dl>
-            </div>
-            <div className="lp-human-record" data-motion-focus="human-decision" aria-hidden="true">
-              <div className="lp-human-record-heading">
-                <span className="lp-ui-label">Current human decision</span>
-                <span className="lp-decision-state"><span aria-hidden="true" /> Pending</span>
-              </div>
-              <strong>Engineer decision pending</strong>
-              <p>Review the open proof and requirements, then record the accountable decision in the ledger.</p>
-              <dl>
-                <div><dt>Actor</dt><dd>Not recorded</dd></div>
-                <div><dt>Timestamp</dt><dd>Not recorded</dd></div>
-                <div><dt>Recommendation alignment</dt><dd>No decision to compare</dd></div>
-              </dl>
-            </div>
-          </div>
-          <div className="lp-decision-conclusion">
-            <p><span>Verification boundary</span>Evidence remains provenance-linked; raw diffs are processed transiently.</p>
-            <Link className="lp-decision-report-link" href="/report?demo=1">Open the sample report to review the decision ledger <span aria-hidden="true">→</span></Link>
-            <Link className="lp-text-link" href="/docs/security-model.md">Read the security model <span aria-hidden="true">→</span></Link>
+        {/* ------------------------------------------------- 11 · FINAL CTA */}
+        <section className={`${styles.shell} ${styles.final}`} data-motion-section="final" aria-labelledby="final-title">
+          <h2 id="final-title" className={`${styles.display} ${styles.finalStatement}`} data-reveal style={step(0)}>
+            <span>Move from generated code</span>
+            <span>to an accountable merge decision.</span>
+          </h2>
+          <p className={`${styles.lede} ${styles.finalLede}`} data-reveal style={step(1)}>
+            Bring one pull request into Lintel and inspect what changed, what evidence exists, what proof is missing,
+            and what must happen next.
+          </p>
+          <div className={`${styles.actions} ${styles.finalActions}`} data-reveal style={step(2)}>
+            <Link className={`${styles.btn} ${styles.btnPrimary}`} href={REVIEW_HREF}>
+              Review a pull request
+            </Link>
+            <Link className={`${styles.btn} ${styles.btnSecondary}`} href={WORKSPACE_HREF}>
+              Explore the sample Workspace
+            </Link>
           </div>
         </section>
+      </main>
 
-        <section className="lp-final" data-motion-section="final" aria-labelledby="lp-final-title">
-          <div className="lp-final-record">
-            <CaseCoordinate section="case close / next review" />
-            <span>Example case remains open</span>
+      {/* ------------------------------------------ 12 · ILLUSTRATED FOOTER */}
+      <footer className={`${styles.shellWide} ${styles.footer}`}>
+        <div className={styles.footerTop}>
+          <div>
+            <span className={styles.brand}>
+              <span className={styles.brandMark} aria-hidden="true" />
+              <span>Lintel</span>
+            </span>
+            <p className={styles.footerBrandLine}>
+              Engineering verification for pull requests. Lintel recommends; the accountable engineer decides.
+            </p>
           </div>
-          <Trace compact />
-          <h2 id="lp-final-title" className="lp-serif">Bring the change you’re unsure about.</h2>
-          <p>This sample remains pending. Inspect its full Case File, or start the next verification case with your change.</p>
-          <div className="lp-actions">
-            <Link className="lp-btn lp-btn--primary" href="/new">Check a pull request</Link>
-            <Link className="lp-btn lp-btn--secondary" href="/report?demo=1">View the sample report</Link>
+          <div className={styles.footerCol}>
+            <h2>Product</h2>
+            <Link href={REVIEW_HREF}>Review a pull request</Link>
+            <Link href={WORKSPACE_HREF}>Sample Workspace</Link>
           </div>
-          <code className="lp-run-reference">SAMPLE DATA · {run.runId}</code>
-        </section>
-      </div>
-
-      <footer className="lp-footer">
-        <div className="lp-footer-brand">
-          <span className="brand-mark" aria-hidden="true" />
-          <span>Lintel</span>
-          <p>Engineering verification for human- and agent-produced change.</p>
+          <div className={styles.footerCol}>
+            <h2>Reference</h2>
+            <a href="#how-it-works">How it works</a>
+            <a href="#principles">Principles</a>
+            <a href="#github">GitHub</a>
+          </div>
+          <div className={styles.footerAction}>
+            <Link className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSmall}`} href={REVIEW_HREF}>
+              Review a pull request
+            </Link>
+          </div>
         </div>
-        <nav aria-label="Product">
-          <h3>Product</h3>
-          <Link href="/new">New review</Link>
-          <Link href="/workspace">Risk inbox</Link>
-          <Link href="/review-operations">Review operations</Link>
-          <Link href="/review-policies">Review policies</Link>
-        </nav>
-        <nav aria-label="Integrations and documentation">
-          <h3>Reference</h3>
-          <Link href="/github-action">GitHub Action</Link>
-          <Link href="/slack-handoff">Slack handoff</Link>
-          <Link href="/settings">Analysis settings</Link>
-          <Link href="/docs/security-model.md">Security model</Link>
-        </nav>
+
+        <div className={styles.footerScene}>
+          <FooterSceneWide />
+          <FooterSceneNarrow />
+        </div>
+
+        <div className={styles.footerBase}>
+          <span>© Lintel</span>
+          <span>Review history is stored on your device by default.</span>
+          <span className={styles.monoMicro}>Lintel does not replace human review, CI, tests or security review.</span>
+        </div>
       </footer>
-      </LandingMotion>
-    </main>
+    </LandingMotion>
   );
 }

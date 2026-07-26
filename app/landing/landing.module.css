@@ -1,0 +1,1682 @@
+/* ============================================================
+   R3C.1 — Public visual system · Landing V3 visual laboratory.
+
+   ISOLATION CONTRACT
+   ------------------
+   Every custom property declared here is namespaced --lnd-* and is
+   declared on .root. Nothing is declared on :root, html or body, and
+   nothing here consumes an application token (--color-*, --app-*, --d*,
+   --wsv2-*) or the .lp layer. The consequence is that:
+
+     - application theme state cannot alter this lab;
+     - OS colour-scheme preference cannot invert this lab;
+     - the pinned light/dark composition is fixed;
+     - no public value can leak into a logged-in route.
+
+   Only the three next/font variables from app/layout.tsx are read
+   (--font-geist, --font-geist-mono, --font-newsreader). Newsreader is
+   confined to the .display / .editorial roles inside this scope.
+
+   THE ONE DARK SECTION
+   --------------------
+   Exactly one full-width dark band exists: .theatre. Every other section
+   sits on the light paper ground. Graphite records inside light sections
+   (.wellDark) are records, not bands.
+
+   R3C.1 LINE DOCTRINE
+   -------------------
+   The hairline remains the Lintel signature, but it is no longer default
+   decoration. Every visible line performs one of three jobs:
+
+     1  STRUCTURAL  --lnd-line-structural
+        Carries the product model: the hero rail, the evidence chain, the
+        pipeline-to-findings stem, the GitHub flow stem, the rule that
+        divides recommendation from decision, the footer datum.
+
+     2  RECORD      --lnd-line-record
+        Divides genuinely different records inside a technical surface.
+
+     3  GHOST       --lnd-line-ghost
+        Sparse atmosphere in intentional product moments only. Never
+        repeated section furniture.
+
+   Section coordinates, list rows, principle rows, audience rows, chain
+   cells, flow columns and header underlines carry NO rule. Whitespace,
+   scale and alignment separate them instead.
+   ============================================================ */
+
+.root {
+  /* ---------- Public light palette (pinned) ---------- */
+  --lnd-canvas: #f6f4ef;          /* page ground — warm technical paper, never #fff */
+  --lnd-paper: #fbfaf6;           /* raised paper — records, panels */
+  --lnd-paper-sunk: #efece4;      /* recessed paper — technical wells */
+  --lnd-paper-tint: #f1eee6;      /* differentiated paper band */
+  --lnd-ink: #1c1e21;             /* printed graphite black */
+  --lnd-ink-2: #4a4f56;           /* secondary copy */
+  --lnd-ink-3: #5f656d;           /* muted copy, micro labels */
+  --lnd-ink-4: #7e848c;           /* decorative marks only — never body text */
+  --lnd-rule: #ddd8cd;            /* hairline */
+  --lnd-rule-strong: #b9b3a6;     /* structural rule */
+  --lnd-rule-ink: #3a3d42;        /* ink rule — chain spine, emphasis */
+  --lnd-blue: #2f5f92;            /* interaction blue — links, focus, affordance */
+  --lnd-blue-strong: #24507f;
+  --lnd-blue-soft: rgb(47 95 146 / 9%);
+  --lnd-focus: #2f6ea8;
+  --lnd-bronze: #8a6a3c;          /* single illustration accent */
+  --lnd-bronze-soft: rgb(138 106 60 / 12%);
+
+  /* ---------- Line roles (R3C.1) ---------- */
+  --lnd-line-structural: var(--lnd-rule-ink);
+  --lnd-line-record: var(--lnd-rule);
+  --lnd-line-ghost: rgb(28 30 33 / 7%);
+
+  /* ---------- Semantic public state ---------- */
+  --lnd-success: #1f7554;
+  --lnd-success-soft: rgb(31 117 84 / 10%);
+  --lnd-warning: #8a5a10;
+  --lnd-warning-soft: rgb(138 90 16 / 11%);
+  --lnd-danger: #9c3b33;
+  --lnd-danger-soft: rgb(156 59 51 / 10%);
+  --lnd-info: #3a6c9b;
+  --lnd-info-soft: rgb(58 108 155 / 10%);
+  --lnd-provenance: #6f5389;
+  --lnd-provenance-soft: rgb(111 83 137 / 10%);
+
+  /* ---------- Dark product theatre ---------- */
+  --lnd-t-ground: #0d0f12;
+  --lnd-t-panel: #14171c;
+  --lnd-t-panel-2: #1b1f26;
+  --lnd-t-inset: #0a0c0f;
+  --lnd-t-rule: rgb(255 255 255 / 8%);
+  --lnd-t-rule-strong: rgb(255 255 255 / 17%);
+  --lnd-t-text: #e9e7e2;
+  --lnd-t-text-2: #a9aeb6;
+  --lnd-t-text-3: #7f858e;
+  --lnd-t-blue: #6fa2dc;
+  --lnd-t-success: #5fbd93;
+  --lnd-t-warning: #d3a04f;
+  --lnd-t-danger: #e0776c;
+  --lnd-t-info: #6fa2dc;
+  --lnd-t-provenance: #b291d1;
+
+  /* ---------- Type ---------- */
+  --lnd-serif: var(--font-newsreader), Georgia, "Times New Roman", serif;
+  --lnd-sans: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --lnd-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  /* ---------- Grid ---------- */
+  --lnd-max: 1240px;
+  --lnd-max-wide: 1400px;
+  --lnd-measure: 640px;
+  --lnd-gutter: clamp(20px, 4.5vw, 56px);
+
+  /* ---------- Rhythm (R3C.1: ~20% tighter than the first pass) ---------- */
+  --lnd-y-major: clamp(84px, 8.4vw, 140px);
+  --lnd-y: clamp(66px, 6.6vw, 108px);
+  --lnd-y-tight: clamp(48px, 4.6vw, 72px);
+
+  /* ---------- Radius ---------- */
+  --lnd-r-action: 999px;   /* actions are human: soft */
+  --lnd-r-record: 3px;     /* records are technical: square */
+  --lnd-r-panel: 4px;
+  --lnd-r-chip: 2px;
+
+  /* ---------- Motion (V8 constitution bands) ---------- */
+  --lnd-micro: 120ms;
+  --lnd-state: 180ms;
+  --lnd-spatial: 240ms;
+  --lnd-narrative: 360ms;
+  --lnd-ease: cubic-bezier(.2, .65, .35, 1);
+  --lnd-ease-enter: cubic-bezier(.16, .76, .3, 1);
+
+  position: relative;
+  isolation: isolate;
+  min-height: 100vh;
+  overflow-x: clip;
+  background: var(--lnd-canvas);
+  color: var(--lnd-ink);
+  font-family: var(--lnd-sans);
+  font-size: 15px;
+  line-height: 1.68;
+  -webkit-font-smoothing: antialiased;
+}
+
+.root *,
+.root *::before,
+.root *::after { box-sizing: border-box; }
+
+.root ::selection { background: var(--lnd-blue-soft); color: var(--lnd-ink); }
+
+/* ZERO-SPECIFICITY RESETS.
+   `.root a { color: inherit }` is specificity (0,1,1) and therefore beats
+   every single-class component rule (0,1,0). That is precisely what made the
+   dark primary CTAs render ink-on-ink and appear as blank pills, and what
+   stripped the blue from .textLink. Wrapping both sides in :where() drops the
+   reset to (0,0,0) so a component class always wins. Do not reintroduce a
+   bare type selector here. */
+:where(.root) :where(a) { color: inherit; text-decoration: none; }
+:where(.root) :where(button) { font: inherit; color: inherit; }
+:where(.root) :where(p) { margin: 0; text-wrap: pretty; }
+:where(.root) :where(h1, h2, h3, h4) { margin: 0; font-weight: 500; }
+:where(.root) :where(ul, ol) { margin: 0; padding: 0; list-style: none; }
+
+.root :is(a, button, [tabindex]):focus-visible {
+  outline: 2px solid var(--lnd-focus);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* ============================================================
+   TEXTURE — material, not graph paper.
+
+   R3C.1 removes the page-wide 32px drafting grid. What remains across
+   ordinary editorial sections is only:
+     1. a sparse 23px halftone at 3.4%, masked away below ~62% of the page,
+        so the lower half is almost unmarked paper;
+     2. a single very-large-scale 240px ghost column line at 2%;
+     3. a 5px paper tooth at 3% × 0.42 opacity.
+   Drafting geometry is now OPT-IN via .fieldGrid, used only in the hero
+   product field, the evidence chain and the footer scene.
+   ============================================================ */
+
+.paper {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 1px 1px, rgb(28 30 33 / 3.4%) 0.55px, transparent 0.65px),
+    repeating-linear-gradient(90deg, transparent 0 239px, rgb(28 30 33 / 2%) 239px 240px);
+  background-size: 23px 23px, 240px 100%;
+  mask-image: linear-gradient(to bottom, #000 0%, rgb(0 0 0 / 34%) 34%, transparent 62%);
+}
+
+.grain {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.42;
+  background-image:
+    repeating-conic-gradient(from 12deg, rgb(28 30 33 / 3%) 0% 25%, transparent 0% 50%);
+  background-size: 5px 5px;
+}
+
+/* Opt-in drafting geometry for intentional product moments only. */
+.fieldGrid {
+  position: absolute;
+  inset: -18px -24px;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(0deg, var(--lnd-line-ghost) 0 1px, transparent 1px 44px),
+    repeating-linear-gradient(90deg, var(--lnd-line-ghost) 0 1px, transparent 1px 44px);
+  mask-image: radial-gradient(78% 72% at 34% 30%, #000, transparent 76%);
+  opacity: 0.5;
+}
+
+.page { position: relative; z-index: 1; }
+
+/* ============================================================
+   PRIMITIVES
+   ============================================================ */
+
+.shell {
+  width: min(100%, var(--lnd-max));
+  margin-inline: auto;
+  padding-inline: var(--lnd-gutter);
+}
+
+.shellWide {
+  width: min(100%, var(--lnd-max-wide));
+  margin-inline: auto;
+  padding-inline: var(--lnd-gutter);
+}
+
+.section { padding-block: var(--lnd-y); }
+.sectionMajor { padding-block: var(--lnd-y-major); }
+.sectionTight { padding-block: var(--lnd-y-tight); }
+
+/* The navigation is sticky, so an anchored section must clear it rather than
+   landing underneath it. */
+.root :target,
+.root [id] { scroll-margin-top: 92px; }
+
+/* -- Type roles -- */
+
+.display {
+  font-family: var(--lnd-serif);
+  font-size: clamp(40px, 4.3vw, 62px);
+  font-weight: 500;
+  line-height: 1.06;
+  letter-spacing: -0.026em;
+  text-wrap: balance;
+}
+
+.editorial {
+  font-family: var(--lnd-serif);
+  font-size: clamp(31px, 3.4vw, 47px);
+  font-weight: 500;
+  line-height: 1.12;
+  letter-spacing: -0.024em;
+  text-wrap: balance;
+}
+
+.heading {
+  font-size: clamp(23px, 2.3vw, 31px);
+  font-weight: 550;
+  line-height: 1.2;
+  letter-spacing: -0.021em;
+  text-wrap: balance;
+}
+
+.subheading {
+  font-size: 17px;
+  font-weight: 550;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+}
+
+.lede {
+  max-width: var(--lnd-measure);
+  color: var(--lnd-ink-2);
+  font-size: clamp(16px, 1.25vw, 18px);
+  line-height: 1.62;
+  letter-spacing: -0.004em;
+}
+
+.body { max-width: var(--lnd-measure); color: var(--lnd-ink-2); }
+
+.support { color: var(--lnd-ink-3); font-size: 13px; line-height: 1.55; }
+
+.micro {
+  color: var(--lnd-ink-3);
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+.mono {
+  font-family: var(--lnd-mono);
+  font-size: 11.5px;
+  font-weight: 450;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+}
+
+.monoMicro {
+  font-family: var(--lnd-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+}
+
+/* -- Coordinate: places a section within the case.
+      R3C.1 — no rule. It is a quiet mono line, not a header underscore. -- */
+.coordinate {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin-bottom: clamp(20px, 2.4vw, 32px);
+  color: var(--lnd-ink-4);
+  font-family: var(--lnd-mono);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+.coordinate b { color: var(--lnd-ink-3); font-weight: 600; }
+.coordinate span:last-child { margin-left: auto; }
+
+/* -- Provenance mark -- */
+.sample {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--lnd-ink-3);
+  font-family: var(--lnd-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.sample::before {
+  content: "";
+  width: 5px; height: 5px;
+  border: 1px solid currentColor;
+  transform: rotate(45deg);
+}
+
+/* -- State chip -- */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  width: max-content;
+  max-width: 100%;
+  padding: 3px 6px;
+  border: 1px solid currentColor;
+  border-radius: var(--lnd-r-chip);
+  font-family: var(--lnd-mono);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+.toneNeutral { background: rgb(28 30 33 / 5%); color: var(--lnd-ink-3); }
+.toneWarning { background: var(--lnd-warning-soft); color: var(--lnd-warning); }
+.toneDanger { background: var(--lnd-danger-soft); color: var(--lnd-danger); }
+.toneSuccess { background: var(--lnd-success-soft); color: var(--lnd-success); }
+.toneInfo { background: var(--lnd-info-soft); color: var(--lnd-info); }
+.toneProvenance { background: var(--lnd-provenance-soft); color: var(--lnd-provenance); }
+
+/* -- Record -- */
+.record {
+  position: relative;
+  padding: 15px 17px 16px;
+  border: 1px solid var(--lnd-line-record);
+  border-left: 2px solid var(--lnd-edge, var(--lnd-rule-strong));
+  border-radius: var(--lnd-r-record);
+  background: var(--lnd-paper);
+}
+.recordHead {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.recordId {
+  font-family: var(--lnd-mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--lnd-ink);
+}
+.recordKind {
+  color: var(--lnd-ink-3);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+.recordTitle { font-size: 14px; font-weight: 550; line-height: 1.42; letter-spacing: -0.008em; }
+.recordDetail { margin-top: 7px; color: var(--lnd-ink-3); font-size: 13px; line-height: 1.55; }
+.recordMeta {
+  display: flex; flex-wrap: wrap; gap: 4px 22px;
+  margin-top: 12px; padding-top: 11px;
+  border-top: 1px solid var(--lnd-line-record);
+}
+.recordMeta div { display: grid; gap: 2px; }
+.recordMeta dt { color: var(--lnd-ink-3); font-size: 9.5px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; }
+.recordMeta dd { margin: 0; font-family: var(--lnd-mono); font-size: 11px; color: var(--lnd-ink); }
+
+/* -- Technical well -- */
+.well {
+  display: grid; gap: 3px;
+  margin-top: 11px; padding: 9px 11px;
+  border-radius: var(--lnd-r-chip);
+  background: var(--lnd-paper-sunk);
+  color: var(--lnd-ink-2);
+  font-family: var(--lnd-mono);
+  font-size: 11px;
+  line-height: 1.55;
+  overflow-x: auto;
+}
+.well span { white-space: nowrap; }
+
+/* -- Actions --
+   The label colour is restated on every interactive state so no future
+   inherited-colour rule can blank a dark pill again. -- */
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 22px;
+  border: 1px solid transparent;
+  border-radius: var(--lnd-r-action);
+  font-size: 14px;
+  font-weight: 550;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--lnd-micro) var(--lnd-ease),
+              border-color var(--lnd-micro) var(--lnd-ease),
+              color var(--lnd-micro) var(--lnd-ease);
+}
+.btnPrimary,
+.btnPrimary:link,
+.btnPrimary:visited,
+.btnPrimary:hover,
+.btnPrimary:focus,
+.btnPrimary:focus-visible,
+.btnPrimary:active {
+  background: var(--lnd-ink);
+  border-color: var(--lnd-ink);
+  color: var(--lnd-canvas);
+}
+.btnPrimary:hover,
+.btnPrimary:active { background: #000; border-color: #000; }
+
+.btnSecondary,
+.btnSecondary:link,
+.btnSecondary:visited { border-color: var(--lnd-rule-strong); background: transparent; color: var(--lnd-ink-2); }
+.btnSecondary:hover { border-color: var(--lnd-ink); color: var(--lnd-ink); }
+
+.btnSmall { min-height: 38px; padding: 0 17px; font-size: 12.5px; }
+
+.textLink {
+  display: inline-flex; align-items: center; gap: 7px;
+  color: var(--lnd-blue);
+  font-size: 13px; font-weight: 550;
+  border-bottom: 1px solid rgb(47 95 146 / 32%);
+  padding-bottom: 1px;
+  transition: color var(--lnd-micro) var(--lnd-ease), border-color var(--lnd-micro) var(--lnd-ease);
+}
+.textLink:hover { color: var(--lnd-blue-strong); border-bottom-color: var(--lnd-blue-strong); }
+
+.skip {
+  position: absolute; top: -60px; left: 16px; z-index: 90;
+  min-height: 44px; padding: 12px 18px;
+  border: 1px solid var(--lnd-rule-strong); border-radius: var(--lnd-r-record);
+  background: var(--lnd-paper); color: var(--lnd-ink);
+  font-size: 13px; font-weight: 600;
+}
+.skip:focus { top: 14px; }
+
+/* ============================================================
+   1 — NAVIGATION
+   ============================================================ */
+
+.nav {
+  position: sticky; top: 0; z-index: 50;
+  background: var(--lnd-canvas);
+  border-bottom: 1px solid transparent;
+  transition: border-color var(--lnd-micro) linear;
+}
+/* The bar carries no rule until the page scrolls under it, and even then the
+   rule is the ghost weight — spacing already defines the bar. */
+.navScrolled { border-bottom-color: var(--lnd-line-ghost); }
+.navInner {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 32px;
+  min-height: 70px;
+  width: min(100%, var(--lnd-max-wide));
+  margin-inline: auto;
+  padding-inline: var(--lnd-gutter);
+}
+.brand {
+  display: inline-flex; align-items: center; gap: 11px;
+  min-height: 44px;
+  font-size: 16.5px; font-weight: 600; letter-spacing: -0.025em;
+}
+.brandMark {
+  position: relative;
+  width: 15px; height: 15px;
+  border: 1.25px solid var(--lnd-ink);
+  transform: rotate(45deg);
+}
+.brandMark::after {
+  content: ""; position: absolute; inset: 3px;
+  border-top: 1.25px solid var(--lnd-ink);
+  border-right: 1.25px solid var(--lnd-ink);
+}
+.navLinks { display: flex; align-items: center; gap: 4px; }
+.navLinks a {
+  display: inline-flex; align-items: center;
+  min-height: 44px; padding: 0 13px;
+  color: var(--lnd-ink-2);
+  font-size: 13.5px; font-weight: 500; letter-spacing: -0.006em;
+  transition: color var(--lnd-micro) var(--lnd-ease);
+}
+.navLinks a:hover { color: var(--lnd-ink); }
+.navActions { display: flex; align-items: center; gap: 10px; }
+.navToggle {
+  display: none;
+  flex-direction: column; gap: 5px;
+  align-items: center; justify-content: center;
+  width: 44px; height: 44px;
+  border: 1px solid var(--lnd-rule); border-radius: var(--lnd-r-record);
+  background: transparent; cursor: pointer;
+}
+.navToggle span { width: 16px; height: 1px; background: var(--lnd-ink); transition: transform var(--lnd-micro) var(--lnd-ease); }
+.navToggle[aria-expanded="true"] span:first-child { transform: translateY(3px) rotate(45deg); }
+.navToggle[aria-expanded="true"] span:last-child { transform: translateY(-3px) rotate(-45deg); }
+.navMenu {
+  display: grid;
+  padding: 4px var(--lnd-gutter) 18px;
+  border-top: 1px solid var(--lnd-line-record);
+  border-bottom: 1px solid var(--lnd-rule-strong);
+  background: var(--lnd-paper);
+}
+.navMenu[hidden] { display: none; }
+.navMenu a {
+  display: flex; align-items: center;
+  min-height: 52px;
+  border-bottom: 1px solid var(--lnd-line-record);
+  font-size: 15px; font-weight: 500;
+}
+.navMenuAction { margin-top: 16px; width: 100%; }
+
+/* ============================================================
+   2 — HERO (asymmetric, composed)
+
+   R3C.1 gives the six fragments four roles instead of six equal boxes:
+     anchor     the pull request identity — dominant, bordered, widest
+     principal  evidence and missing proof — bordered, medium, offset
+     support    observation and requirement — bare type, narrow
+     terminal   the pending decision — wide, shallow, dashed, quiet
+   The rail and its nodes carry the chain; borders no longer have to.
+   ============================================================ */
+
+.hero { padding-block: clamp(40px, 4.2vw, 66px) clamp(72px, 8vw, 124px); }
+.heroGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 46fr) minmax(0, 54fr);
+  gap: clamp(36px, 4vw, 64px);
+  align-items: start;
+  width: min(100%, var(--lnd-max-wide));
+  margin-inline: auto;
+  padding-inline: var(--lnd-gutter);
+}
+.heroCopy { padding-top: clamp(6px, 1.6vw, 26px); }
+.heroEyebrow { margin-bottom: 22px; }
+.heroTitle { margin-bottom: 26px; }
+.heroTitle span { display: block; text-wrap: balance; }
+.heroTitle span:first-child { color: var(--lnd-ink-3); }
+.heroLede { max-width: 42ch; }
+.heroActions { margin-top: 34px; }
+.heroNote {
+  display: flex; align-items: baseline; gap: 12px;
+  margin-top: 28px;
+  max-width: 44ch;
+}
+
+/* -- Hero field: one chain, one rail -- */
+.heroField {
+  position: relative;
+  padding-left: 34px;
+}
+/* The continuous connective line. It runs the full height of the field and
+   continues past the last fragment toward the page edge. */
+.heroRail {
+  position: absolute;
+  left: 0; top: 4px; bottom: -48px;
+  width: 1px;
+  background: linear-gradient(
+    to bottom,
+    var(--lnd-rule-strong) 0%,
+    var(--lnd-line-structural) 7%,
+    var(--lnd-line-structural) 80%,
+    var(--lnd-rule-strong) 92%,
+    transparent 100%
+  );
+}
+.heroFragments { display: grid; gap: 15px; }
+.heroFragment { position: relative; }
+
+/* Stub: rail → record. Starts ON the rail and ends at the record's own left
+   edge, so the indent lengthens the connector instead of dragging the node
+   off the rail (which is what the first pass did). */
+.heroFragment::before {
+  content: "";
+  position: absolute;
+  top: var(--lnd-node-y, 21px);
+  left: -34px;
+  width: calc(34px + var(--lnd-indent, 0px));
+  height: 1px;
+  background: var(--lnd-rule-strong);
+}
+/* Node mark, always centred on the rail. */
+.heroFragment::after {
+  content: "";
+  position: absolute;
+  top: calc(var(--lnd-node-y, 21px) - 3px);
+  left: -37px;
+  width: 7px; height: 7px;
+  border: 1px solid var(--lnd-line-structural);
+  background: var(--lnd-canvas);
+  transform: rotate(45deg);
+}
+.heroFragmentIn {
+  margin-left: var(--lnd-indent, 0px);
+  width: var(--lnd-frag-w, auto);
+  max-width: calc(100% - var(--lnd-indent, 0px));
+}
+
+/* Role: anchor — the dominant record. */
+.fragAnchor { --lnd-node-y: 25px; --lnd-frag-w: 100%; }
+.fragAnchor::after {
+  width: 9px; height: 9px;
+  left: -38px;
+  top: calc(var(--lnd-node-y) - 4px);
+  border-width: 1.25px;
+}
+.fragAnchor .heroFragmentIn {
+  padding: 18px 20px 19px;
+  border: 1px solid var(--lnd-line-record);
+  border-left: 2px solid var(--lnd-rule-ink);
+  border-radius: var(--lnd-r-record);
+  background: var(--lnd-paper);
+}
+.fragAnchor .fragTitle { font-size: 19px; font-weight: 550; line-height: 1.3; margin-top: 10px; }
+
+/* Role: principal — the two proof records. */
+.fragPrincipal { --lnd-node-y: 21px; }
+.fragPrincipal .heroFragmentIn {
+  padding: 14px 16px 15px;
+  border: 1px solid var(--lnd-line-record);
+  border-left: 2px solid var(--lnd-edge, var(--lnd-rule-strong));
+  border-radius: var(--lnd-r-record);
+  background: var(--lnd-paper);
+}
+
+/* Role: support — bare type. No box, no background. */
+.fragSupport { --lnd-node-y: 11px; }
+.fragSupport::after { width: 5px; height: 5px; left: -36px; top: calc(var(--lnd-node-y) - 2px); }
+.fragSupport .heroFragmentIn { padding: 0 0 0 2px; }
+.fragSupport .fragTitle { font-size: 13.5px; font-weight: 500; color: var(--lnd-ink-2); }
+
+/* Role: terminal — wide, shallow, dashed, deliberately quiet. */
+.fragTerminal { --lnd-node-y: 18px; margin-top: 10px; }
+.fragTerminal::after { background: var(--lnd-line-structural); }
+.fragTerminal .heroFragmentIn {
+  padding: 13px 0 0;
+  border-top: 1px dashed var(--lnd-rule-strong);
+}
+.fragTerminal .fragTitle { font-size: 15px; font-weight: 550; }
+
+.fragHead { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.fragTitle { margin-top: 7px; font-size: 14.5px; font-weight: 550; line-height: 1.4; letter-spacing: -0.01em; }
+.fragDetail { margin-top: 6px; color: var(--lnd-ink-3); font-family: var(--lnd-mono); font-size: 10.5px; line-height: 1.5; overflow-wrap: anywhere; }
+.fragState { margin-top: 9px; }
+
+.heroFieldFoot {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
+  margin-top: 26px;
+  padding-left: var(--lnd-gutter);
+}
+
+/* ============================================================
+   3 — VERIFICATION GAP
+
+   R3C.1: three free editorial statements on a descending stagger, with no
+   separators at all. The lower contrast becomes one focal proof scene — the
+   green pipeline record on a structural stem that carries what it does not
+   prove.
+   ============================================================ */
+
+.gapGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 58fr) minmax(0, 42fr);
+  gap: clamp(28px, 4vw, 72px);
+  align-items: end;
+}
+.gapStatement { max-width: 15ch; }
+.gapSupport { padding-bottom: 6px; }
+
+.distinctions {
+  margin-top: clamp(38px, 4.2vw, 60px);
+  display: grid;
+  gap: clamp(24px, 2.7vw, 38px);
+}
+.distinction { display: grid; gap: 9px; max-width: 58ch; }
+.distinction:nth-child(2) { margin-left: clamp(0px, 6vw, 96px); }
+.distinction:nth-child(3) { margin-left: clamp(0px, 12vw, 192px); }
+.distinctionClaim {
+  display: flex; align-items: baseline; gap: 13px; flex-wrap: wrap;
+  font-size: clamp(21px, 2.3vw, 32px);
+  font-weight: 550;
+  letter-spacing: -0.021em;
+  line-height: 1.24;
+}
+.distinctionClaim em { font-style: normal; font-weight: 400; color: var(--lnd-ink-3); }
+.notEqual {
+  font-family: var(--lnd-mono);
+  font-size: 0.72em;
+  font-weight: 500;
+  color: var(--lnd-blue);
+}
+.distinctionNote { color: var(--lnd-ink-3); font-size: 13.5px; line-height: 1.6; max-width: 48ch; }
+
+/* One focal proof scene. */
+.gapContrast {
+  display: grid;
+  grid-template-columns: minmax(0, 300px) minmax(0, 1fr);
+  gap: clamp(26px, 3.4vw, 56px);
+  margin-top: clamp(38px, 4.2vw, 62px);
+  align-items: start;
+}
+.gapPipeline {
+  position: relative;
+  align-self: start;
+  padding: 16px 18px 17px;
+  border: 1px solid var(--lnd-line-record);
+  border-left: 2px solid var(--lnd-success);
+  border-radius: var(--lnd-r-record);
+  background: var(--lnd-paper);
+}
+/* Structural connector: the passing pipeline reaches the things it cannot prove. */
+.gapPipeline::after {
+  content: "";
+  position: absolute;
+  top: 27px; right: calc(-1 * clamp(26px, 3.4vw, 56px));
+  width: clamp(26px, 3.4vw, 56px);
+  height: 1px;
+  background: var(--lnd-line-structural);
+}
+.gapPipeline ul { margin-top: 12px; display: grid; gap: 6px; }
+.gapPipeline li {
+  display: flex; align-items: center; gap: 9px;
+  font-family: var(--lnd-mono); font-size: 11px; color: var(--lnd-ink-2);
+}
+.gapPipeline li::before {
+  content: ""; width: 9px; height: 9px; flex: none;
+  border: 1px solid var(--lnd-success); border-radius: 50%;
+  background: var(--lnd-success-soft);
+}
+
+.unresolved {
+  display: grid;
+  gap: clamp(17px, 1.9vw, 25px);
+  padding-left: clamp(20px, 2.4vw, 34px);
+  border-left: 1px solid var(--lnd-line-structural);
+}
+.unresolved li { position: relative; display: grid; gap: 5px; }
+.unresolved li::before {
+  content: "";
+  position: absolute;
+  left: calc(-1 * clamp(20px, 2.4vw, 34px) - 1px);
+  top: 8px;
+  width: clamp(11px, 1.3vw, 18px);
+  height: 1px;
+  background: var(--lnd-rule-strong);
+}
+.unresolved li span:first-child {
+  font-family: var(--lnd-mono); font-size: 10px; font-weight: 600;
+  letter-spacing: 0.09em; color: var(--lnd-warning);
+}
+.unresolved li span:last-child { font-size: 15.5px; line-height: 1.5; color: var(--lnd-ink); letter-spacing: -0.008em; }
+
+/* ============================================================
+   4 — EVIDENCE CHAIN
+
+   R3C.1 merges the two equal registers into one. Each station carries the
+   stage name, a quiet definition, and the worked canonical record as the
+   principal object. No cell dividers.
+   ============================================================ */
+
+.chainHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(22px, 3.4vw, 56px);
+  align-items: end;
+  margin-bottom: clamp(38px, 4.4vw, 64px);
+}
+
+.chain { position: relative; }
+/* The one continuous structural line through all five stations. */
+.chainLine {
+  position: absolute;
+  top: 30px; left: 0; right: 0;
+  height: 1px;
+  background: var(--lnd-line-structural);
+}
+.chainStations {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  column-gap: clamp(14px, 1.9vw, 30px);
+}
+.station { position: relative; }
+.stationIndex { color: var(--lnd-ink-4); font-family: var(--lnd-mono); font-size: 10px; letter-spacing: 0.1em; }
+.stationMark { position: relative; height: 20px; margin-top: 5px; }
+.stationMark::before {
+  content: "";
+  position: absolute; top: 5px; left: 0;
+  width: 9px; height: 9px;
+  border: 1px solid var(--lnd-line-structural);
+  background: var(--lnd-canvas);
+  transform: rotate(45deg);
+}
+.stationLast .stationMark::before { background: var(--lnd-line-structural); }
+.stationName { margin-top: 10px; font-size: 16.5px; font-weight: 600; letter-spacing: -0.014em; }
+.stationDef { margin-top: 7px; color: var(--lnd-ink-3); font-size: 12.5px; line-height: 1.5; }
+
+/* The worked record — the principal object in each station. */
+.stationRecord {
+  margin-top: clamp(16px, 1.8vw, 24px);
+  padding: 13px 14px 15px;
+  border-left: 2px solid var(--lnd-edge, var(--lnd-rule-strong));
+  border-radius: 0 var(--lnd-r-record) var(--lnd-r-record) 0;
+  background: var(--lnd-paper);
+}
+.stationRecordId { font-family: var(--lnd-mono); font-size: 10.5px; font-weight: 600; color: var(--lnd-ink); letter-spacing: 0.04em; }
+.stationRecordTitle { margin-top: 8px; font-size: 14px; line-height: 1.45; letter-spacing: -0.008em; }
+.stationRecordState { margin-top: 11px; }
+
+.chainRegisterHead {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 16px;
+  margin-top: clamp(30px, 3.4vw, 46px);
+  margin-bottom: 4px;
+}
+.chainBridge {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 20px; flex-wrap: wrap;
+  margin-top: clamp(32px, 3.6vw, 52px);
+}
+
+/* ============================================================
+   5 — INTERACTIVE PRODUCT THEATRE (the one dark band)
+   ============================================================ */
+
+.theatre {
+  position: relative;
+  background: var(--lnd-t-ground);
+  color: var(--lnd-t-text);
+  /* The page's single dark moment is also its most generous section: the
+     visitor should feel they have arrived somewhere, not passed a banner. */
+  padding-block: clamp(76px, 8.4vw, 148px);
+}
+/* The chain descends into the instrument: a short structural line receives the
+   visitor at the material change, and another releases them at the bottom. */
+.theatre::before,
+.theatre::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  width: 1px;
+  height: 44px;
+  background: linear-gradient(to bottom, var(--lnd-t-rule-strong), transparent);
+}
+.theatre::before { top: 0; }
+.theatre::after { bottom: 0; transform: scaleY(-1); }
+
+/* Sparse structural linework in the ground. Static, very low contrast. */
+.theatreGround {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 2.6%) 0 1px, transparent 1px 88px);
+  mask-image: linear-gradient(to bottom, transparent, #000 30%, #000 70%, transparent);
+}
+.theatreInner {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 27fr) minmax(0, 73fr);
+  gap: clamp(32px, 4vw, 64px);
+  align-items: start;
+  width: min(100%, var(--lnd-max-wide));
+  margin-inline: auto;
+  padding-inline: var(--lnd-gutter);
+}
+.theatreCopy { position: sticky; top: 100px; }
+.theatreEyebrow { color: var(--lnd-t-text-3); }
+.theatreHeading { margin-top: 20px; color: var(--lnd-t-text); font-size: clamp(23px, 2.1vw, 29px); font-weight: 550; line-height: 1.22; letter-spacing: -0.02em; }
+.theatreLede { margin-top: 17px; color: var(--lnd-t-text-2); font-size: 14.5px; line-height: 1.62; max-width: 38ch; }
+.theatreBoundary {
+  margin-top: 24px; padding-top: 15px;
+  border-top: 1px solid var(--lnd-t-rule);
+  color: var(--lnd-t-text-3); font-size: 12px; line-height: 1.6; max-width: 38ch;
+}
+
+/* -- Panel -- */
+.panel {
+  border: 1px solid var(--lnd-t-rule-strong);
+  border-radius: var(--lnd-r-panel);
+  background: var(--lnd-t-panel);
+  overflow: hidden;
+}
+.panelHead {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px 24px;
+  align-items: start;
+  padding: 16px 20px 15px;
+  border-bottom: 1px solid var(--lnd-t-rule);
+  background: var(--lnd-t-inset);
+}
+.panelIdentity { min-width: 0; }
+.panelRepo {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px;
+  font-family: var(--lnd-mono); font-size: 11.5px; color: var(--lnd-t-text);
+}
+.panelRepo b { font-weight: 600; }
+.panelRepo em { font-style: normal; color: var(--lnd-t-text-3); }
+.panelTitle { margin-top: 7px; font-size: 14px; font-weight: 500; color: var(--lnd-t-text); line-height: 1.4; }
+.panelVerdict { display: flex; align-items: center; gap: 18px; justify-content: flex-end; flex-wrap: wrap; }
+.verdictBlock { display: grid; gap: 4px; justify-items: end; text-align: right; }
+.verdictLabel { color: var(--lnd-t-text-3); font-size: 9.5px; font-weight: 600; letter-spacing: 0.11em; text-transform: uppercase; }
+.verdictValue { font-family: var(--lnd-mono); font-size: 13px; font-weight: 600; color: var(--lnd-t-text); letter-spacing: 0.02em; }
+
+.chipDark { border: 1px solid currentColor; border-radius: var(--lnd-r-chip); padding: 3px 6px; font-family: var(--lnd-mono); font-size: 9.5px; font-weight: 600; letter-spacing: 0.07em; white-space: nowrap; }
+.dNeutral { background: rgb(255 255 255 / 6%); color: var(--lnd-t-text-2); }
+.dWarning { background: rgb(211 160 79 / 13%); color: var(--lnd-t-warning); }
+.dDanger { background: rgb(224 119 108 / 13%); color: var(--lnd-t-danger); }
+.dSuccess { background: rgb(95 189 147 / 13%); color: var(--lnd-t-success); }
+.dInfo { background: rgb(111 162 220 / 13%); color: var(--lnd-t-info); }
+.dProvenance { background: rgb(178 145 209 / 13%); color: var(--lnd-t-provenance); }
+
+.sampleDark { color: var(--lnd-t-text-3); }
+
+/* -- Scenario control -- */
+.scenarioBar {
+  display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+  padding: 13px 20px;
+  border-bottom: 1px solid var(--lnd-t-rule);
+}
+.scenarioGroup {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--lnd-t-rule-strong);
+  border-radius: var(--lnd-r-panel);
+  background: var(--lnd-t-inset);
+}
+.scenarioBtn {
+  min-height: 34px;
+  padding: 0 14px;
+  border: 0; border-radius: 2px;
+  background: transparent;
+  color: var(--lnd-t-text-3);
+  font-size: 12.5px; font-weight: 550; letter-spacing: -0.005em;
+  cursor: pointer;
+  transition: background-color var(--lnd-state) var(--lnd-ease), color var(--lnd-state) var(--lnd-ease);
+}
+.scenarioBtn:hover { color: var(--lnd-t-text); }
+.scenarioBtnOn { background: var(--lnd-t-panel-2); color: var(--lnd-t-text); box-shadow: inset 0 0 0 1px var(--lnd-t-rule); }
+.scenarioNote { color: var(--lnd-t-text-3); font-size: 12.5px; }
+
+/* -- Stage spine -- */
+.spine {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  border-bottom: 1px solid var(--lnd-t-rule);
+  background: var(--lnd-t-inset);
+}
+.spineBtn {
+  position: relative;
+  display: grid; gap: 7px; justify-items: start;
+  padding: 15px 16px 16px;
+  border: 0;
+  border-right: 1px solid var(--lnd-t-rule);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--lnd-state) var(--lnd-ease);
+}
+.spine .spineBtn:last-child { border-right: 0; }
+.spineBtn:hover { background: rgb(255 255 255 / 3%); }
+.spineIndex { color: var(--lnd-t-text-3); font-family: var(--lnd-mono); font-size: 9.5px; letter-spacing: 0.1em; transition: color var(--lnd-state) var(--lnd-ease); }
+.spineName { color: var(--lnd-t-text-2); font-size: 13px; font-weight: 550; letter-spacing: -0.008em; transition: color var(--lnd-state) var(--lnd-ease); }
+.spineBtn::after {
+  content: "";
+  position: absolute; left: 0; right: 0; bottom: -1px;
+  height: 2px;
+  background: var(--lnd-t-blue);
+  opacity: 0;
+  transition: opacity var(--lnd-state) var(--lnd-ease);
+}
+.spineOn { background: var(--lnd-t-panel); }
+.spineOn .spineName { color: var(--lnd-t-text); font-weight: 600; }
+.spineOn .spineIndex { color: var(--lnd-t-blue); }
+.spineOn::after { opacity: 1; }
+.spineDone .spineIndex { color: var(--lnd-t-text-2); }
+/* Introductory sequence: stages the walk has not yet reached. */
+.spineIdle { opacity: 0.42; }
+
+/* -- Stage body --
+   A reserved height so switching stage or scenario never resizes the panel.
+   Layout stability is part of the interaction language: the instrument holds
+   still while its contents change. */
+.stageBody {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 264px);
+  min-height: 700px;
+}
+.stageMain { padding: 22px 20px 24px; border-right: 1px solid var(--lnd-t-rule); min-width: 0; }
+.stageCaption { color: var(--lnd-t-text-2); font-size: 13.5px; line-height: 1.6; max-width: 62ch; }
+.stageRecords { display: grid; gap: 12px; margin-top: 20px; }
+
+.dRecord {
+  padding: 14px 16px 15px;
+  border: 1px solid var(--lnd-t-rule);
+  border-left: 2px solid var(--lnd-t-rule-strong);
+  border-radius: var(--lnd-r-record);
+  background: var(--lnd-t-panel-2);
+}
+.dRecordHead { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.dRecordId { font-family: var(--lnd-mono); font-size: 10.5px; font-weight: 600; color: var(--lnd-t-text); letter-spacing: 0.04em; }
+.dRecordKind { color: var(--lnd-t-text-3); font-size: 9.5px; font-weight: 600; letter-spacing: 0.11em; text-transform: uppercase; }
+.dRecordTitle { font-size: 13.5px; font-weight: 550; line-height: 1.45; color: var(--lnd-t-text); letter-spacing: -0.008em; }
+.dRecordDetail { margin-top: 7px; color: var(--lnd-t-text-2); font-size: 12.5px; line-height: 1.58; }
+.dWell {
+  display: grid; gap: 2px;
+  margin-top: 11px; padding: 8px 10px;
+  border-radius: var(--lnd-r-chip);
+  background: var(--lnd-t-inset);
+  color: var(--lnd-t-text-2);
+  font-family: var(--lnd-mono); font-size: 10.5px; line-height: 1.55;
+  overflow-x: auto;
+}
+.dWell span { white-space: nowrap; }
+.dMeta {
+  display: flex; flex-wrap: wrap; gap: 4px 24px;
+  margin-top: 12px; padding-top: 11px;
+  border-top: 1px solid var(--lnd-t-rule);
+}
+.dMeta div { display: grid; gap: 2px; }
+.dMeta dt { color: var(--lnd-t-text-3); font-size: 9px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; }
+.dMeta dd { margin: 0; font-family: var(--lnd-mono); font-size: 11px; color: var(--lnd-t-text); }
+
+/* -- Context rail: the preceding and following record -- */
+.stageAside { padding: 22px 20px 24px; display: grid; gap: 18px; align-content: start; min-width: 0; }
+.asideBlock { display: grid; gap: 7px; }
+.asideLabel { color: var(--lnd-t-text-3); font-size: 9.5px; font-weight: 600; letter-spacing: 0.11em; text-transform: uppercase; }
+.asideLink {
+  display: grid; gap: 5px;
+  padding: 11px 12px;
+  border: 1px solid var(--lnd-t-rule);
+  border-radius: var(--lnd-r-record);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--lnd-state) var(--lnd-ease), background-color var(--lnd-state) var(--lnd-ease);
+}
+.asideLink:hover { border-color: var(--lnd-t-rule-strong); background: rgb(255 255 255 / 3%); }
+.asideLink b { font-size: 12.5px; font-weight: 550; color: var(--lnd-t-text); }
+.asideLink span { color: var(--lnd-t-text-3); font-size: 11.5px; line-height: 1.5; }
+.asideNone { color: var(--lnd-t-text-3); font-size: 11.5px; line-height: 1.5; padding: 11px 12px; border: 1px dashed var(--lnd-t-rule); border-radius: var(--lnd-r-record); }
+.asideCounts { display: grid; gap: 9px; padding-top: 16px; border-top: 1px solid var(--lnd-t-rule); }
+.asideCount { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.asideCount span { color: var(--lnd-t-text-3); font-size: 11.5px; }
+.asideCount b { font-family: var(--lnd-mono); font-size: 12.5px; font-weight: 600; color: var(--lnd-t-text); }
+
+.panelFoot {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  padding: 12px 20px;
+  border-top: 1px solid var(--lnd-t-rule);
+  background: var(--lnd-t-inset);
+  color: var(--lnd-t-text-3); font-size: 11.5px;
+}
+
+/* Stage content transition — `state` band, opacity + small transform. */
+.stagePane { animation: stageIn var(--lnd-state) var(--lnd-ease-enter) both; }
+@keyframes stageIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ============================================================
+   6 — REVIEW EVOLUTION
+   ============================================================ */
+
+.evoHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(22px, 3.4vw, 56px);
+  align-items: end;
+  margin-bottom: clamp(28px, 3.2vw, 44px);
+}
+.evoToggle {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--lnd-rule-strong);
+  border-radius: var(--lnd-r-panel);
+  background: var(--lnd-paper-sunk);
+  width: max-content;
+}
+.evoToggleBtn {
+  display: inline-flex; align-items: baseline; gap: 9px;
+  min-height: 36px; padding: 0 14px;
+  border: 0; border-radius: 2px; background: transparent;
+  color: var(--lnd-ink-3); font-size: 12.5px; font-weight: 550;
+  cursor: pointer;
+  transition: background-color var(--lnd-state) var(--lnd-ease), color var(--lnd-state) var(--lnd-ease);
+}
+.evoToggleBtn code { font-family: var(--lnd-mono); font-size: 10.5px; }
+.evoToggleOn { background: var(--lnd-paper); color: var(--lnd-ink); box-shadow: inset 0 0 0 1px var(--lnd-rule); }
+
+/* The comparison is the focal scene: the only rule is the one that divides
+   the two heads, because that division is the point. */
+.evoCompare {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  margin-top: clamp(20px, 2.4vw, 30px);
+}
+.evoColumn { padding: 0 clamp(18px, 2.4vw, 32px) 4px 0; }
+.evoColumn + .evoColumn { padding-left: clamp(18px, 2.4vw, 32px); padding-right: 0; border-left: 1px solid var(--lnd-line-structural); }
+.evoHead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-bottom: 12px; }
+.evoHeadName { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+/* Emphasis only: the toggle changes which run leads, never whether the other
+   one can be read. Both records stay legible at every width. */
+.evoColumn:not(.evoDim) .evoHeadName { font-weight: 700; }
+.evoDim .evoHeadName { color: var(--lnd-ink-2); font-weight: 550; }
+.evoNote { margin-top: 18px; max-width: 76ch; }
+.evoRows { display: grid; }
+.evoRow {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px; align-items: baseline;
+  padding-block: 11px;
+  border-bottom: 1px solid var(--lnd-line-record);
+}
+.evoRow:last-child { border-bottom: 0; }
+.evoRow dt { color: var(--lnd-ink-3); font-size: 12.5px; }
+.evoRow dd { margin: 0; font-family: var(--lnd-mono); font-size: 12.5px; font-weight: 600; color: var(--lnd-ink); text-align: right; }
+.evoChanged dd { color: var(--lnd-blue); }
+.evoChanged dt::after {
+  content: "changed";
+  margin-left: 9px;
+  font-family: var(--lnd-mono); font-size: 9px; font-weight: 600;
+  letter-spacing: 0.09em; text-transform: uppercase; color: var(--lnd-blue);
+}
+
+.movements { margin-top: clamp(28px, 3.2vw, 44px); }
+.movementList { display: grid; }
+.movement {
+  display: grid;
+  grid-template-columns: 52px 128px minmax(0, 1fr);
+  gap: 4px 20px;
+  align-items: baseline;
+  padding-block: 12px;
+  border-bottom: 1px solid var(--lnd-line-record);
+}
+.movement:last-child { border-bottom: 0; }
+.movementId { font-family: var(--lnd-mono); font-size: 11.5px; font-weight: 600; }
+.movementDetail { color: var(--lnd-ink-2); font-size: 13.5px; line-height: 1.55; }
+
+/* ============================================================
+   7 — RECOMMENDATION VERSUS HUMAN DECISION
+   (the reference quality model for every other light product moment)
+   ============================================================ */
+
+.rvdStatement { max-width: 15ch; }
+.rvdStatement span { display: block; }
+.rvdStatement span:last-child { color: var(--lnd-ink); }
+.rvdIntro {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(22px, 3.4vw, 56px);
+  align-items: end;
+  margin-bottom: clamp(32px, 3.6vw, 52px);
+}
+
+/* Deliberately unmatched columns. The ink rule between them is the argument. */
+.rvdColumns {
+  display: grid;
+  grid-template-columns: minmax(0, 54fr) minmax(0, 46fr);
+}
+.rvdSide { padding: 0 clamp(22px, 3vw, 44px) 4px 0; }
+.rvdSide + .rvdSide {
+  padding-left: clamp(22px, 3vw, 44px);
+  padding-right: 0;
+  border-left: 1px solid var(--lnd-line-structural);
+}
+.rvdSideHead { display: flex; align-items: baseline; justify-content: space-between; gap: 14px; flex-wrap: wrap; padding-bottom: 15px; }
+.rvdSideName { font-size: 16px; font-weight: 600; letter-spacing: -0.012em; }
+
+/* Left: dense, technical, mono-heavy. */
+.rvdDense { display: grid; }
+.rvdEntry {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 3px 14px;
+  padding-block: 11px;
+  border-bottom: 1px solid var(--lnd-line-record);
+}
+.rvdEntry:last-child { border-bottom: 0; }
+.rvdEntryId { font-family: var(--lnd-mono); font-size: 10.5px; font-weight: 600; color: var(--lnd-ink-3); padding-top: 2px; }
+.rvdEntryLabel { color: var(--lnd-ink-3); font-size: 10px; font-weight: 600; letter-spacing: 0.11em; text-transform: uppercase; grid-column: 2; }
+.rvdEntryValue { grid-column: 2; font-size: 13.5px; line-height: 1.5; }
+.rvdEntryValue code { font-family: var(--lnd-mono); font-size: 11.5px; }
+.rvdLimits { margin-top: 20px; padding: 13px 15px; border-left: 2px solid var(--lnd-rule-strong); border-radius: 0 var(--lnd-r-record) var(--lnd-r-record) 0; background: var(--lnd-paper-sunk); }
+.rvdLimits li { display: flex; gap: 9px; color: var(--lnd-ink-3); font-size: 12.5px; line-height: 1.55; }
+.rvdLimits li + li { margin-top: 7px; }
+.rvdLimits li::before { content: "—"; color: var(--lnd-ink-4); flex: none; }
+
+/* Right: calmer, more air, visibly authored. */
+.rvdAuthored { display: grid; gap: clamp(20px, 2.4vw, 30px); padding-top: 4px; }
+.rvdField { display: grid; gap: 8px; }
+.rvdFieldLabel { color: var(--lnd-ink-3); font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; }
+.rvdFieldValue { font-size: 15.5px; line-height: 1.55; color: var(--lnd-ink); max-width: 40ch; }
+.rvdPending {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 9px 13px;
+  border: 1px dashed var(--lnd-rule-strong);
+  border-radius: var(--lnd-r-record);
+  color: var(--lnd-ink-3);
+  font-family: var(--lnd-mono); font-size: 11px; letter-spacing: 0.05em;
+  width: max-content; max-width: 100%;
+}
+.rvdRecorded {
+  margin-top: clamp(22px, 2.4vw, 32px);
+  padding: 18px 20px 20px;
+  border: 1px solid var(--lnd-line-record);
+  border-left: 2px solid var(--lnd-success);
+  border-radius: var(--lnd-r-record);
+  background: var(--lnd-paper);
+}
+.rvdRecordedRows { display: grid; gap: 9px; margin-top: 14px; }
+.rvdRecordedRow { display: grid; grid-template-columns: 116px minmax(0, 1fr); gap: 14px; align-items: baseline; }
+.rvdRecordedRow dt { color: var(--lnd-ink-3); font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; }
+.rvdRecordedRow dd { margin: 0; font-size: 13px; line-height: 1.5; }
+.rvdRecordedRow dd code { font-family: var(--lnd-mono); font-size: 11.5px; }
+.rvdNote { margin-top: clamp(22px, 2.6vw, 34px); }
+
+/* ============================================================
+   8 — GITHUB WORKFLOW (light)
+
+   R3C.1: one composed product scene. The five steps hang off a single
+   structural stem on the left; the updated decision comment on the right is
+   the visual resolution the whole stem leads to.
+   ============================================================ */
+
+.flowHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(22px, 3.4vw, 56px);
+  align-items: end;
+  margin-bottom: clamp(36px, 4.2vw, 60px);
+}
+
+.flowScene {
+  display: grid;
+  grid-template-columns: minmax(0, 41fr) minmax(0, 59fr);
+  gap: clamp(28px, 4vw, 68px);
+  align-items: start;
+}
+
+.flowSteps { position: relative; display: grid; gap: clamp(15px, 1.7vw, 22px); padding-left: 30px; }
+.flowSteps::before {
+  content: "";
+  position: absolute;
+  left: 4px; top: 7px; bottom: 22px;
+  width: 1px;
+  background: var(--lnd-line-structural);
+}
+.flowStep { position: relative; }
+.flowStep::before {
+  content: "";
+  position: absolute;
+  left: -30px; top: 4px;
+  width: 7px; height: 7px;
+  border: 1px solid var(--lnd-line-structural);
+  background: var(--lnd-canvas);
+  transform: rotate(45deg);
+}
+.flowStepLast::before { background: var(--lnd-blue); border-color: var(--lnd-blue); }
+.flowStepHead { display: flex; align-items: baseline; gap: 11px; }
+.flowIndex { font-family: var(--lnd-mono); font-size: 10px; letter-spacing: 0.12em; color: var(--lnd-ink-4); }
+.flowLabel { font-size: 15.5px; font-weight: 600; letter-spacing: -0.012em; }
+.flowStepLast .flowLabel { color: var(--lnd-blue); }
+.flowDetail { margin-top: 5px; color: var(--lnd-ink-3); font-size: 12.5px; line-height: 1.55; max-width: 46ch; }
+
+.flowNote {
+  margin-top: clamp(24px, 2.8vw, 36px);
+  padding-left: 30px;
+  color: var(--lnd-ink-3);
+  font-size: 12.5px;
+  line-height: 1.62;
+  max-width: 54ch;
+}
+.flowCapabilities {
+  margin-top: 16px;
+  padding-left: 30px;
+  color: var(--lnd-ink-3);
+  font-family: var(--lnd-mono);
+  font-size: 10.5px;
+  line-height: 1.9;
+  letter-spacing: 0.02em;
+  max-width: 54ch;
+}
+
+/* A graphite record inside a light section — a record, not a band. */
+.wellDark {
+  border-radius: var(--lnd-r-record);
+  background: var(--lnd-t-panel);
+  color: var(--lnd-t-text-2);
+  overflow: hidden;
+}
+.wellDarkHead {
+  display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--lnd-t-rule);
+  background: var(--lnd-t-inset);
+  color: var(--lnd-t-text-3);
+  font-family: var(--lnd-mono); font-size: 10px; font-weight: 600;
+  letter-spacing: 0.1em; text-transform: uppercase;
+}
+.wellDarkBody { padding: 13px 14px; font-family: var(--lnd-mono); font-size: 11px; line-height: 1.7; overflow-x: auto; }
+.wellDarkBody div { white-space: pre; }
+.wellDarkBody em { font-style: normal; color: var(--lnd-t-text-3); }
+.wellDarkBody b { font-weight: 600; color: var(--lnd-t-text); }
+
+/* The resolution of the whole scene. */
+.comment {
+  margin-top: clamp(22px, 2.6vw, 32px);
+  border: 1px solid var(--lnd-line-record);
+  border-left: 2px solid var(--lnd-blue);
+  border-radius: var(--lnd-r-record);
+  background: var(--lnd-paper);
+  overflow: hidden;
+}
+.commentHead {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--lnd-line-record);
+  background: var(--lnd-paper-sunk);
+}
+.commentAvatar { width: 18px; height: 18px; border: 1px solid var(--lnd-ink); transform: rotate(45deg); flex: none; }
+.commentAuthor { font-size: 12.5px; font-weight: 600; }
+.commentEdited { color: var(--lnd-ink-3); font-size: 11.5px; }
+.commentBody { padding: 18px 16px; display: grid; gap: 12px; }
+.commentTitle { font-size: 16px; font-weight: 600; letter-spacing: -0.014em; }
+.commentRow { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; font-family: var(--lnd-mono); font-size: 11.5px; color: var(--lnd-ink-2); }
+.commentList { display: grid; gap: 6px; }
+.commentList li { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px; font-size: 12.5px; color: var(--lnd-ink-2); line-height: 1.5; }
+.commentList li code { font-family: var(--lnd-mono); font-size: 11px; color: var(--lnd-ink); }
+.commentFoot { padding-top: 12px; border-top: 1px solid var(--lnd-line-record); color: var(--lnd-ink-3); font-size: 12px; }
+
+/* ============================================================
+   9 — TRUST AND ARCHITECTURE
+
+   R3C.1: composed editorial principles. No rules, no cards, no icons —
+   a staggered measure, a large quiet index, and short visible copy.
+   ============================================================ */
+
+.principles { display: grid; gap: clamp(32px, 3.6vw, 54px); margin-top: clamp(30px, 3.4vw, 48px); }
+.principle {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  gap: 6px clamp(16px, 2vw, 30px);
+  align-items: start;
+  max-width: 72ch;
+}
+.principle:nth-child(even) { margin-left: clamp(0px, 7vw, 118px); }
+.principleIndex { font-family: var(--lnd-mono); font-size: 11px; color: var(--lnd-ink-4); letter-spacing: 0.1em; padding-top: 6px; }
+.principleTitle { font-size: clamp(20px, 1.9vw, 26px); font-weight: 600; letter-spacing: -0.018em; line-height: 1.25; }
+.principleBody { grid-column: 2; display: grid; gap: 9px; color: var(--lnd-ink-2); font-size: 14px; line-height: 1.6; max-width: 54ch; }
+.principleFoot { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; margin-top: clamp(34px, 3.8vw, 54px); }
+.provChips { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* ============================================================
+   10 — WHO LINTEL IS FOR (compressed register)
+   ============================================================ */
+
+.audienceRegister {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(20px, 3vw, 52px);
+  margin-top: clamp(26px, 3vw, 40px);
+}
+.audienceItem { display: grid; gap: 9px; align-content: start; }
+.audienceItem span {
+  font-family: var(--lnd-mono); font-size: 10px; font-weight: 500;
+  color: var(--lnd-ink-4); letter-spacing: 0.1em;
+}
+.audienceItem p { font-size: 15.5px; line-height: 1.5; color: var(--lnd-ink-2); letter-spacing: -0.008em; max-width: 30ch; }
+
+/* ============================================================
+   11 — FINAL CTA
+   ============================================================ */
+
+.final { padding-block: clamp(84px, 9vw, 148px) clamp(52px, 5.5vw, 84px); text-align: center; }
+/* No ch-based cap: each authored line is allowed its own full width so the
+   break lands where it was written, not where a container forced it. */
+.finalStatement {
+  margin-inline: auto;
+  max-width: none;
+  font-size: clamp(34px, 3.9vw, 56px);
+  line-height: 1.1;
+}
+.finalStatement span { display: block; text-wrap: balance; }
+.finalStatement span:first-child { color: var(--lnd-ink-3); }
+.finalLede { margin: 26px auto 0; max-width: 54ch; }
+.finalActions { justify-content: center; margin-top: 36px; }
+
+/* ============================================================
+   12 — ILLUSTRATED FOOTER
+   ============================================================ */
+
+.footer { position: relative; padding-top: clamp(4px, 1.4vw, 16px); }
+.footerTop {
+  display: grid;
+  grid-template-columns: minmax(0, 1.5fr) repeat(2, minmax(0, 1fr)) auto;
+  gap: clamp(26px, 3.6vw, 64px);
+  align-items: start;
+  padding-bottom: clamp(30px, 3.4vw, 46px);
+}
+.footerBrandLine { margin-top: 15px; color: var(--lnd-ink-3); font-size: 13px; line-height: 1.6; max-width: 34ch; }
+.footerCol { display: grid; gap: 11px; align-content: start; }
+.footerCol h2 { color: var(--lnd-ink-4); font-size: 10px; font-weight: 600; letter-spacing: 0.13em; text-transform: uppercase; }
+.footerCol a { color: var(--lnd-ink-2); font-size: 13.5px; transition: color var(--lnd-micro) var(--lnd-ease); }
+.footerCol a:hover { color: var(--lnd-ink); }
+
+.footerScene { position: relative; margin-top: clamp(8px, 1.6vw, 20px); }
+/* Width/height only — the display switch lives on the two variant classes so
+   the mobile media query can win without a specificity fight. */
+.footerScene svg { width: 100%; height: auto; }
+.footerSceneDesktop { display: block; }
+.footerSceneMobile { display: none; }
+
+.footerBase {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 16px 32px; flex-wrap: wrap;
+  padding-block: 20px clamp(26px, 3vw, 40px);
+  border-top: 1px solid var(--lnd-line-record);
+  margin-top: clamp(10px, 1.4vw, 18px);
+  color: var(--lnd-ink-3); font-size: 12.5px;
+}
+
+/* ============================================================
+   MOTION — one-time section reveal.
+
+   The DOM is complete and readable before any of this runs; the reveal only
+   applies when the client controller has declared itself ready AND reduced
+   motion is not requested. Opacity + small transform only.
+   ============================================================ */
+
+.root[data-motion-ready="true"][data-reduced-motion="false"] [data-reveal] {
+  opacity: 0;
+  transform: translateY(10px);
+  transition:
+    opacity var(--lnd-narrative) var(--lnd-ease-enter),
+    transform var(--lnd-narrative) var(--lnd-ease-enter);
+  transition-delay: calc(var(--lnd-reveal-step, 0) * 70ms);
+}
+.root[data-motion-ready="true"][data-reduced-motion="false"] [data-motion-state="revealed"] [data-reveal],
+.root[data-motion-ready="true"][data-reduced-motion="false"] [data-motion-state="active"] [data-reveal] {
+  opacity: 1;
+  transform: none;
+}
+
+/* Hero connective line draws once, under 600ms total, and only when the
+   motion controller is ready. */
+.root[data-motion-ready="true"][data-reduced-motion="false"] .heroRail {
+  transform-origin: top;
+  animation: railDraw 520ms var(--lnd-ease-enter) both;
+}
+@keyframes railDraw {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root [data-reveal] { opacity: 1 !important; transform: none !important; transition: none !important; }
+  .root .heroRail { animation: none !important; transform: none !important; }
+  .root .stagePane { animation: none !important; }
+  .root * { scroll-behavior: auto !important; }
+  .root .spineIdle { opacity: 1; }
+}
+
+/* ============================================================
+   RESPONSIVE — deliberate compositions at 1440, 1024 and 390.
+   ============================================================ */
+
+/* -- Laptop and below (< 1180px): the two compositions that need real width.
+
+   R3B sets desktop at ≥ 1180px. Below it, the hero's editorial column and the
+   theatre's side copy would both fall under a comfortable measure, so they
+   stack first — before anything else changes — rather than being squeezed. */
+@media (max-width: 1179px) {
+  .heroGrid { grid-template-columns: minmax(0, 1fr); gap: clamp(40px, 5vw, 56px); }
+  .heroCopy { padding-top: 0; }
+  .heroField { max-width: 760px; }
+  .heroRail { bottom: -20px; }
+  .heroFieldFoot { padding-left: 0; }
+
+  .theatreInner { grid-template-columns: minmax(0, 1fr); gap: 30px; }
+  .theatreCopy { position: static; }
+  .theatreHeading { max-width: 26ch; }
+  .theatreLede, .theatreBoundary { max-width: 68ch; }
+  .stageBody { min-height: 600px; }
+
+  .flowScene { grid-template-columns: minmax(0, 1fr); gap: 34px; }
+
+  /* The chain stays horizontal down to 1024 (R3B calls that laptop), so its
+     register tightens rather than being squeezed at full desktop scale. */
+  .stationName { font-size: 15px; }
+  .stationDef { font-size: 12px; }
+  .stationRecord { padding: 12px 12px 13px; }
+  .stationRecordTitle { font-size: 13px; }
+}
+
+/* -- Tablet: 1024px and below -- */
+@media (max-width: 1023px) {
+  .root { font-size: 15px; }
+
+  .navLinks { display: none; }
+  .navToggle { display: inline-flex; }
+  .navActions .btn { display: none; }
+  .navInner { grid-template-columns: auto 1fr auto; min-height: 62px; }
+
+  .gapGrid { grid-template-columns: minmax(0, 1fr); gap: 24px; align-items: start; }
+  .gapStatement { max-width: 19ch; }
+  .distinction:nth-child(2) { margin-left: clamp(0px, 4vw, 48px); }
+  .distinction:nth-child(3) { margin-left: clamp(0px, 8vw, 96px); }
+  .gapContrast { grid-template-columns: minmax(0, 1fr); }
+  .gapPipeline::after { display: none; }
+
+  .chainHeader { grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
+  /* The chain rotates to a left rail; the connective line survives the change. */
+  .chainLine { top: 0; bottom: 0; left: 4px; right: auto; width: 1px; height: auto; }
+  .chainStations { grid-template-columns: minmax(0, 1fr); }
+  .station { padding: 16px 0 20px 30px; }
+  .stationMark { position: absolute; left: 0; top: 19px; height: 12px; width: 9px; margin: 0; }
+  .stationName { margin-top: 4px; }
+  .stationRecord { margin-top: 14px; }
+
+  .stageBody { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+  .stageMain { border-right: 0; border-bottom: 1px solid var(--lnd-t-rule); }
+  .spineName { font-size: 12px; }
+  .spineBtn { padding: 13px 12px 14px; }
+
+  .evoHeader { grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
+  .movement { grid-template-columns: 48px 110px minmax(0, 1fr); }
+
+  .rvdIntro { grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
+  .rvdStatement { max-width: 20ch; }
+  .rvdColumns { grid-template-columns: minmax(0, 1fr); }
+  .rvdSide { padding: 0 0 26px; }
+  .rvdSide + .rvdSide { padding: 26px 0 0; border-left: 0; border-top: 1px solid var(--lnd-line-structural); }
+
+  .flowHeader { grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
+
+  .principle { grid-template-columns: 44px minmax(0, 1fr); gap: 6px 18px; }
+  .principle:nth-child(even) { margin-left: clamp(0px, 4vw, 56px); }
+
+  .audienceRegister { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+
+  .footerTop { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; }
+  .footerAction { grid-column: 1 / -1; }
+}
+
+/* -- Mobile: 768px and below -- */
+@media (max-width: 767px) {
+  .section, .sectionMajor { padding-block: clamp(52px, 12vw, 76px); }
+
+  .hero { padding-block: 34px 56px; }
+  .heroLede { max-width: none; }
+  .heroActions { display: grid; gap: 10px; }
+  .heroActions .btn { width: 100%; }
+  .heroField { padding-left: 24px; }
+  .heroFragment::before { left: -24px; width: calc(24px + var(--lnd-indent, 0px)); }
+  .heroFragment::after { left: -27px; }
+  .fragAnchor::after { left: -28px; }
+  .fragSupport::after { left: -26px; }
+  /* Mobile composition uses three complete fragments, not six cropped ones. */
+  .heroFragmentDesktopOnly { display: none; }
+  .heroFragmentIn { margin-left: 0; width: auto; max-width: 100%; }
+
+  .distinctionClaim { font-size: 21px; gap: 10px; }
+  .distinction:nth-child(2), .distinction:nth-child(3) { margin-left: 0; }
+  .unresolved li span:last-child { font-size: 15px; }
+  .gapPipeline { order: 2; }
+
+  .stationName { font-size: 16px; }
+
+  .theatre { padding-block: 52px 60px; }
+  .theatre::before, .theatre::after { height: 30px; }
+  .scenarioBar { padding: 12px 14px; gap: 12px; }
+  .scenarioGroup { width: 100%; overflow-x: auto; }
+  .scenarioBtn { flex: 1 0 auto; min-height: 40px; padding: 0 13px; font-size: 12.5px; }
+  /* Stage spine becomes a horizontally scrollable labelled row; every stage
+     stays reachable by tap and nothing is hover-only. */
+  .spine { display: flex; overflow-x: auto; scrollbar-width: thin; scroll-snap-type: x proximity; }
+  .spineBtn { flex: 0 0 auto; min-width: 142px; min-height: 62px; scroll-snap-align: start; }
+  .panelHead { grid-template-columns: minmax(0, 1fr); }
+  .panelVerdict { justify-content: flex-start; gap: 14px; }
+  .verdictBlock { justify-items: start; text-align: left; }
+  .stageMain, .stageAside { padding: 18px 14px 20px; }
+  .panelFoot { padding: 12px 14px; }
+
+  /* Both runs stack and stay readable; the toggle only moves emphasis. */
+  .evoCompare { grid-template-columns: minmax(0, 1fr); }
+  .evoColumn { padding: 0 0 18px; }
+  .evoColumn + .evoColumn { padding: 18px 0 4px; border-left: 0; border-top: 1px solid var(--lnd-line-structural); }
+  .movement { grid-template-columns: 44px minmax(0, 1fr); }
+  .movementDetail { grid-column: 2; }
+
+  .rvdEntry { grid-template-columns: 26px minmax(0, 1fr); }
+  .rvdRecordedRow { grid-template-columns: minmax(0, 1fr); gap: 3px; }
+
+  .fieldGrid { inset: -10px -6px; }
+  /* Two run labels plus their identities do not fit side by side at 390px,
+     so each control stacks its own label over its run id. */
+  .evoToggle { width: 100%; }
+  .evoToggleBtn {
+    flex: 1 1 0; min-width: 0; min-height: 46px;
+    flex-direction: column; align-items: flex-start; justify-content: center;
+    gap: 1px; padding: 6px 11px;
+  }
+  .evoToggleBtn code { font-size: 9.5px; }
+
+  .flowSteps, .flowNote, .flowCapabilities { padding-left: 26px; }
+  .flowStep::before { left: -26px; }
+  .flowSteps::before { left: 3px; }
+
+  .principle { grid-template-columns: 34px minmax(0, 1fr); }
+  .principle:nth-child(even) { margin-left: 0; }
+
+  .audienceRegister { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .audienceItem { grid-template-columns: 34px minmax(0, 1fr); display: grid; gap: 4px 14px; }
+  .audienceItem span { grid-row: span 1; }
+  .audienceItem p { max-width: none; }
+
+  .final { padding-block: 68px 44px; text-align: left; }
+  .finalStatement { margin-inline: 0; font-size: 32px; }
+  .finalLede { margin-inline: 0; }
+  .finalActions { justify-content: stretch; display: grid; gap: 10px; }
+  .finalActions .btn { width: 100%; }
+
+  .footerTop { grid-template-columns: minmax(0, 1fr); gap: 26px; }
+  /* The scene simplifies to its resolution rather than shrinking to
+     illegibility. It is never removed. */
+  .footerSceneDesktop { display: none; }
+  .footerSceneMobile { display: block; }
+  .footerBase { gap: 10px; }
+}

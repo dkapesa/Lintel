@@ -13,10 +13,23 @@ const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
 const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-geist-mono" });
 const newsreader = Newsreader({ subsets: ["latin"], weight: ["400", "500"], style: ["normal"], variable: "--font-newsreader" });
 
+/* R3D — public metadata, per R3A §29. Truthful category language, no
+   superlatives, no unsupported claim. No canonical deployment URL, social
+   handle or share image is asserted here: the social/product-proof asset
+   system belongs to R3E. */
+const PUBLIC_TITLE = "Lintel — engineering verification for pull requests";
+const PUBLIC_DESCRIPTION =
+  "Lintel helps engineers decide whether a pull request is ready to merge: inspect the evidence behind a change, identify missing proof, see what must be resolved before merge, and record the final decision.";
+
 export const metadata: Metadata = {
-  title: "Lintel — Engineering verification for human and agent code",
-  description:
-    "Lintel turns pull requests into inspectable evidence, unresolved conditions and a clear engineering decision. Agents create code; Lintel verifies what is ready — and the engineer stays the final authority.",
+  title: PUBLIC_TITLE,
+  description: PUBLIC_DESCRIPTION,
+  openGraph: {
+    title: PUBLIC_TITLE,
+    description: PUBLIC_DESCRIPTION,
+    siteName: "Lintel",
+    type: "website",
+  },
 };
 
 /* R2B — logged-in AppShell routes render one authoritative dark theme. The

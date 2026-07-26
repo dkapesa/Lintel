@@ -48,12 +48,55 @@ export function Sample({ children = "Sample data" }: { children?: string }) {
   return <span className={styles.sample}>{children}</span>;
 }
 
+/* Entry type C — the coordinate opens a structural register. */
 export function Coordinate({ section, of, note }: { section: string; of: string; note?: string }) {
   return (
     <div className={styles.coordinate}>
       <b>{section}</b>
       <span>{of}</span>
       {note ? <span>{note}</span> : null}
+    </div>
+  );
+}
+
+/* Entry type B — the statement opens the section and the coordinate closes it,
+   where it reads as a plate number rather than a header. */
+export function CoordinateFoot({ section, of, note }: { section: string; of: string; note?: string }) {
+  return (
+    <div className={styles.coordinateFoot}>
+      <b>{section}</b>
+      <span>{of}</span>
+      {note ? <span>{note}</span> : null}
+    </div>
+  );
+}
+
+/* Entry type D — a caption strip above an operational artifact. Deliberately
+   about half the height of a chapter opening: the artifact explains itself. */
+export function OperationalHead({
+  coordinate,
+  label,
+  titleId,
+  title,
+  note,
+}: {
+  coordinate: string;
+  label: string;
+  titleId: string;
+  title: string;
+  note: string;
+}) {
+  return (
+    <div className={styles.opHead}>
+      <div className={styles.opHeadMain}>
+        <p className={styles.opHeadEyebrow}>
+          <b>{coordinate}</b> {label}
+        </p>
+        <h2 id={titleId} className={styles.opHeadTitle}>
+          {title}
+        </h2>
+      </div>
+      <p className={styles.opHeadNote}>{note}</p>
     </div>
   );
 }

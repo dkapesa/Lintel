@@ -5,6 +5,8 @@ import LandingMotion from "./landing-motion";
 import LandingNav from "./landing-nav";
 import Act from "./landing/landing-act";
 import LandingEvolution from "./landing/landing-evolution";
+import LandingHeroCaseFile from "./landing/landing-hero-case-file";
+import LandingRunManifest from "./landing/landing-run-manifest";
 import LandingTheatre from "./landing/landing-theatre";
 import { FooterSceneNarrow, FooterSceneWide } from "./landing/landing-footer-scene";
 import { Chip, Coordinate, CoordinateFoot, EDGE, OperationalHead, Sample, step } from "./landing/landing-primitives";
@@ -13,16 +15,14 @@ import {
   LANDING_CHAIN,
   LANDING_COMMENT,
   LANDING_EVOLUTION,
-  LANDING_HERO_FRAGMENTS,
-  LANDING_HERO_PROVENANCE,
+  LANDING_HERO_CASE_FILE,
   LANDING_RECOMMENDATION_ENTRIES,
   LANDING_RECOMMENDATION_STATE,
+  LANDING_RUN_MANIFESTS,
   LANDING_SCENARIOS,
   LANDING_TRUST_PRINCIPLES,
   LANDING_WORKFLOW_BOUNDARY,
-  LANDING_WORKFLOW_CAPABILITIES,
   LANDING_WORKFLOW_STEPS,
-  type LandingFragmentRole,
 } from "../lib/landing-theatre-fixtures";
 
 /* R3E.1 — the production landing page, re-authored as five acts.
@@ -48,25 +48,8 @@ import {
    Frozen by R3E.1: the theatre component, the evolution component, the footer
    scene, and every fixture. */
 
-const FRAGMENT_ROLE: Record<LandingFragmentRole, string> = {
-  anchor: styles.fragAnchor,
-  principal: styles.fragPrincipal,
-  support: styles.fragSupport,
-  terminal: styles.fragTerminal,
-};
-
 const REVIEW_HREF = "/new";
 const WORKSPACE_HREF = "/workspace?source=fixture";
-
-/* The provenance vocabulary the page already uses, given a home. This is the
-   interim right column of Act V's trust register: real, truthful and useful on
-   its own, occupying the geometry R3E.3's canonical run manifest will take. */
-const PROVENANCE_VOCABULARY = [
-  { label: "RULE DETECTED", tone: "info" as const, gloss: "Produced by the deterministic ruleset." },
-  { label: "MODEL ASSISTED", tone: "provenance" as const, gloss: "Enriched by a configured model, where one is configured." },
-  { label: "INFERRED", tone: "neutral" as const, gloss: "Read from the shape of the change, not confirmed by a test." },
-  { label: "MISSING · UNVERIFIED", tone: "warning" as const, gloss: "No record supports this yet." },
-];
 
 export default function LandingPage() {
   return (
@@ -82,84 +65,30 @@ export default function LandingPage() {
         {/* ============================================ ACT I — THE PROMISE */}
         <Act n={1}>
           {/* ----------------------------------------- 2 · HERO — entry A
-              Preserved verbatim pending R3E.2, which owns the Case File
-              plate, the raking-light field and the right-edge bleed. */}
+              R3E.2: one proposition, one opened Case File, one proof
+              relationship. The complete five-stage model waits for Act III. */}
           <section className={styles.hero} data-motion-section="hero" aria-labelledby="hero-title">
-            <div className={styles.heroGrid}>
-              <div className={styles.heroCopy}>
-                <p className={`${styles.micro} ${styles.heroEyebrow}`} data-reveal style={step(0)}>
-                  Engineering verification
-                </p>
-                <h1 id="hero-title" className={`${styles.display} ${styles.heroTitle}`} data-reveal style={step(1)}>
-                  <span>Agents create code.</span>
-                  <span>Lintel verifies what is ready.</span>
-                </h1>
-                <p className={`${styles.lede} ${styles.heroLede}`} data-reveal style={step(2)}>
-                  Inspect the evidence behind a change, identify missing proof, see what must be resolved before merge,
-                  and record the final human decision.
-                </p>
-                <div className={`${styles.actions} ${styles.heroActions}`} data-reveal style={step(3)}>
-                  <Link className={`${styles.btn} ${styles.btnPrimary}`} href={REVIEW_HREF}>
-                    Review a pull request
-                  </Link>
-                  <Link className={`${styles.btn} ${styles.btnSecondary}`} href={WORKSPACE_HREF}>
-                    Explore the sample Workspace
-                  </Link>
-                </div>
-                <div className={styles.heroNote} data-reveal style={step(4)}>
-                  <Sample />
-                  <span className={styles.support}>
-                    One change, moving through five stages. Nothing here has been decided.
-                  </span>
-                </div>
-              </div>
-
-              <div className={styles.heroField}>
-                <div className={styles.fieldGrid} aria-hidden="true" />
-                <div className={styles.heroRail} aria-hidden="true" />
-                <ol className={styles.heroFragments} aria-label="One verification chain, in order">
-                  {LANDING_HERO_FRAGMENTS.map((fragment, index) => (
-                    <li
-                      key={`${fragment.kind}-${index}`}
-                      className={[
-                        styles.heroFragment,
-                        FRAGMENT_ROLE[fragment.role],
-                        fragment.mobile ? "" : styles.heroFragmentDesktopOnly,
-                      ]
-                        .filter(Boolean)
-                        .join(" ")}
-                      style={
-                        {
-                          "--lnd-indent": `${fragment.indent}px`,
-                          "--lnd-frag-w": fragment.width,
-                          "--lnd-edge": EDGE[fragment.tone ?? "neutral"],
-                        } as CSSProperties
-                      }
-                    >
-                      <div className={styles.heroFragmentIn} data-reveal style={step(index + 2)}>
-                        <div className={styles.fragHead}>
-                          {fragment.id ? <span className={styles.recordId}>{fragment.id}</span> : null}
-                          <span className={styles.recordKind}>{fragment.kind}</span>
-                        </div>
-                        <p className={styles.fragTitle}>{fragment.title}</p>
-                        {fragment.detail ? <p className={styles.fragDetail}>{fragment.detail}</p> : null}
-                        {fragment.state ? (
-                          <p className={styles.fragState}>
-                            <Chip tone={fragment.tone}>{fragment.state}</Chip>
-                          </p>
-                        ) : null}
-                      </div>
-                    </li>
-                  ))}
-                </ol>
-                <div className={styles.heroFieldFoot}>
-                  <Sample />
-                  <span className={styles.monoMicro} style={{ color: "var(--lnd-ink-4)" }}>
-                    {LANDING_HERO_PROVENANCE}
-                  </span>
-                </div>
+            <div className={styles.heroCopy}>
+              <p className={`${styles.micro} ${styles.heroEyebrow}`}>Engineering verification</p>
+              <h1 id="hero-title" className={`${styles.display} ${styles.heroTitle}`}>
+                <span>Agents create code.</span>
+                <span>Lintel verifies what is ready.</span>
+              </h1>
+              <p className={`${styles.lede} ${styles.heroLede}`}>
+                Inspect the evidence behind a change, find missing proof, and see what must be resolved before recording
+                the final human decision.
+              </p>
+              <div className={`${styles.actions} ${styles.heroActions}`}>
+                <Link className={`${styles.btn} ${styles.btnPrimary}`} href={REVIEW_HREF}>
+                  Review a pull request
+                </Link>
+                <Link className={`${styles.btn} ${styles.btnSecondary}`} href={WORKSPACE_HREF}>
+                  Explore the sample Workspace
+                </Link>
               </div>
             </div>
+
+            <LandingHeroCaseFile caseFile={LANDING_HERO_CASE_FILE} />
           </section>
         </Act>
 
@@ -464,7 +393,7 @@ export default function LandingPage() {
               label="GitHub"
               titleId="github-title"
               title="A pull request goes in. One updated decision comment comes out."
-              note="The whole integration resolves to a single comment per pull request, rewritten in place as the change moves — never a thread that grows every time analysis runs."
+              note="When the GitHub App is configured, a verified delivery runs the analysis and returns the current result to the review."
             />
 
             <div className={styles.flowScene}>
@@ -486,29 +415,23 @@ export default function LandingPage() {
                   ))}
                 </ol>
 
-                <p className={styles.flowCapabilities} data-reveal style={step(0)}>
-                  {LANDING_WORKFLOW_CAPABILITIES.join("  ·  ")}
-                </p>
                 <p className={styles.flowNote} data-reveal style={step(1)}>
                   {LANDING_WORKFLOW_BOUNDARY}
                 </p>
               </div>
 
-              <div data-reveal style={step(1)}>
+              <div className={styles.flowArtifacts} data-reveal style={step(1)}>
                 <div className={styles.wellDark}>
                   <div className={styles.wellDarkHead}>
                     <span>Webhook verification</span>
-                    <span>raw body · timing-safe</span>
+                    <span>supporting proof</span>
                   </div>
                   <div className={styles.wellDarkBody}>
                     <div>
                       <em>POST</em> /api/github-app/webhook
                     </div>
                     <div>
-                      <em>x-hub-signature-256:</em> sha256=<b>…</b>
-                    </div>
-                    <div>
-                      <em>verify:</em> <b>HMAC SHA-256 over the raw body</b>
+                      <em>verify:</em> raw body · <b>HMAC SHA-256</b>
                     </div>
                     <div>
                       <em>compare:</em> <b>timing-safe</b>
@@ -520,7 +443,7 @@ export default function LandingPage() {
                   <div className={styles.commentHead}>
                     <span className={styles.commentAvatar} aria-hidden="true" />
                     <span className={styles.commentAuthor}>Lintel</span>
-                    <span className={styles.commentEdited}>updated in place · one comment per pull request</span>
+                    <span className={styles.commentEdited}>pull request decision comment</span>
                     <span className={styles.sample} style={{ marginLeft: "auto" }}>
                       Sample
                     </span>
@@ -529,15 +452,22 @@ export default function LandingPage() {
                     <p className={styles.commentTitle}>Lintel recommends: {LANDING_COMMENT.recommendation}</p>
                     {/* The decision state travels as data on the artifact rather
                         than as another sentence of prose. */}
-                    <p className={styles.commentRow}>
-                      {LANDING_COMMENT.meta.map((entry, index) => (
-                        <span key={entry}>
-                          {index > 0 ? <span aria-hidden="true">· </span> : null}
-                          {entry}
-                        </span>
-                      ))}
-                      <Chip tone="neutral">DECISION PENDING</Chip>
-                    </p>
+                    <dl className={styles.commentStatus}>
+                      <div>
+                        <dt>Risk</dt>
+                        <dd>{LANDING_COMMENT.risk}</dd>
+                      </div>
+                      <div>
+                        <dt>Human Decision</dt>
+                        <dd>
+                          <Chip tone="neutral">{LANDING_COMMENT.decision}</Chip>
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Requirements</dt>
+                        <dd>{LANDING_COMMENT.openRequirements}</dd>
+                      </div>
+                    </dl>
                     <ul className={styles.commentList}>
                       {LANDING_COMMENT.clauses.map((clause) => (
                         <li key={clause.id}>
@@ -546,9 +476,7 @@ export default function LandingPage() {
                         </li>
                       ))}
                     </ul>
-                    <p className={styles.commentFoot}>
-                      Lintel does not merge, block or approve this pull request.
-                    </p>
+                    <p className={styles.commentHeadState}>Head {LANDING_COMMENT.head}</p>
                   </div>
                 </div>
               </div>
@@ -575,28 +503,18 @@ export default function LandingPage() {
                     <h3 className={styles.principleTitle}>{principle.title}</h3>
                     <div className={styles.principleBody}>
                       <p style={{ color: "var(--lnd-ink)" }}>{principle.lead}</p>
-                      <p className={styles.support}>{principle.note}</p>
                     </div>
                   </li>
                 ))}
+                <li className={styles.trustBoundary}>
+                  Review history is stored on the device by default, with raw diffs excluded. Integration credentials
+                  stay server-side. These are architecture characteristics, not privacy, security or compliance
+                  guarantees.
+                </li>
               </ol>
 
               <div data-reveal style={step(1)}>
-                <p className={styles.micro} style={{ marginBottom: 16 }}>
-                  Provenance appears on every finding
-                </p>
-                <ul className={styles.provenanceRegister}>
-                  {PROVENANCE_VOCABULARY.map((entry) => (
-                    <li key={entry.label} className={styles.provenanceRow}>
-                      <Chip tone={entry.tone}>{entry.label}</Chip>
-                      <span className={styles.provenanceGloss}>{entry.gloss}</span>
-                    </li>
-                  ))}
-                </ul>
-                <p className={`${styles.support} ${styles.provenanceNote}`}>
-                  Deterministic results reproduce run to run. Model-assisted output is traceable by its provenance;
-                  exact replay is not promised.
-                </p>
+                <LandingRunManifest manifests={LANDING_RUN_MANIFESTS} />
               </div>
             </div>
           </section>

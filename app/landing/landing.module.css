@@ -105,10 +105,14 @@
   --lnd-mono: var(--font-geist-mono), ui-monospace, monospace;
 
   /* ---------- Grid ---------- */
-  --lnd-max: 1240px;
-  --lnd-max-wide: 1400px;
+  --lnd-page-max: 1360px;
+  --lnd-content-max: 1240px;
+  --lnd-product-max: 1200px;
+  --lnd-editorial-max: 960px;
   --lnd-measure: 640px;
-  --lnd-gutter: clamp(20px, 4.5vw, 56px);
+  --lnd-gutter: clamp(20px, 4vw, 56px);
+  --lnd-max: calc(var(--lnd-content-max) + (2 * var(--lnd-gutter)));
+  --lnd-max-wide: calc(var(--lnd-page-max) + (2 * var(--lnd-gutter)));
 
   /* ---------- Rhythm (R3C.1: ~20% tighter than the first pass) ---------- */
   --lnd-y-major: clamp(84px, 8.4vw, 140px);
@@ -653,142 +657,213 @@
 .navMenuAction { margin-top: 16px; width: 100%; }
 
 /* ============================================================
-   2 — HERO (asymmetric, composed)
+   2 — HERO · THE CASE, OPENED ON THE TABLE
 
-   R3C.1 gives the six fragments four roles instead of six equal boxes:
-     anchor     the pull request identity — dominant, bordered, widest
-     principal  evidence and missing proof — bordered, medium, offset
-     support    observation and requirement — bare type, narrow
-     terminal   the pending decision — wide, shallow, dashed, quiet
-   The rail and its nodes carry the chain; borders no longer have to.
+   One centred proposition owns the upper field. One coherent Case File rises
+   on the same optical axis and leaves through the bottom of the viewport.
+   The hero owns the vertical crop; neither edge is used as a reveal device.
    ============================================================ */
 
-.hero { padding-block: clamp(40px, 4.2vw, 66px) clamp(54px, 5.6vw, 92px); }
-.heroGrid {
-  display: grid;
-  grid-template-columns: minmax(0, 46fr) minmax(0, 54fr);
-  gap: clamp(36px, 4vw, 64px);
-  align-items: start;
-  width: min(100%, var(--lnd-max-wide));
-  margin-inline: auto;
-  padding-inline: var(--lnd-gutter);
+.hero {
+  --hero-ground-opacity: 0.065;
+  --hero-fold-height: clamp(730px, calc(100svh - 70px), 830px);
+  position: relative;
+  isolation: isolate;
+  overflow: visible;
 }
-.heroCopy { padding-top: clamp(6px, 1.6vw, 26px); }
-.heroEyebrow { margin-bottom: 22px; }
-.heroTitle { margin-bottom: 26px; }
+.hero::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: var(--hero-fold-height);
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(110% 82% at 28% -10%, rgb(255 250 238 / 55%), transparent 62%);
+}
+.heroCopy {
+  position: relative;
+  z-index: 2;
+  width: min(100%, calc(var(--lnd-editorial-max) + (2 * var(--lnd-gutter))));
+  margin-inline: auto;
+  padding: clamp(64px, 5.55vw, 80px) var(--lnd-gutter) 0;
+  text-align: center;
+}
+.heroEyebrow { margin-bottom: 19px; }
+.heroTitle { max-width: var(--lnd-editorial-max); margin: 0 auto 24px; }
 .heroTitle span { display: block; text-wrap: balance; }
 .heroTitle span:first-child { color: var(--lnd-ink-3); }
-.heroLede { max-width: 42ch; }
-.heroActions { margin-top: 34px; }
-.heroNote {
-  display: flex; align-items: baseline; gap: 12px;
-  margin-top: 28px;
-  max-width: 44ch;
-}
+.heroLede { max-width: min(50ch, 620px); margin-inline: auto; }
+.heroActions { justify-content: center; margin-top: 32px; }
+.heroActions .btn:active { transform: translateY(1px); }
+.heroActions .btnSecondary:hover { background: var(--lnd-paper-tint); }
+.heroActions .btnSecondary:active { background: var(--lnd-canvas); }
 
-/* -- Hero field: one chain, one rail -- */
-.heroField {
+.heroReveal {
+  --hero-case-tail: 32px;
   position: relative;
-  padding-left: 34px;
+  z-index: 1;
+  margin-top: clamp(106px, calc(12.5vw - 54px), 126px);
+  padding-bottom: var(--hero-case-tail);
+  overflow: visible;
 }
-/* The continuous connective line. It runs the full height of the field and
-   continues past the last fragment toward the page edge. */
-.heroRail {
+.heroGround {
   position: absolute;
-  left: 0; top: 4px; bottom: -48px;
-  width: 1px;
-  background: linear-gradient(
-    to bottom,
-    var(--lnd-rule-strong) 0%,
-    var(--lnd-line-structural) 7%,
-    var(--lnd-line-structural) 80%,
-    var(--lnd-rule-strong) 92%,
-    transparent 100%
-  );
+  inset: -26px 0 var(--hero-case-tail);
+  width: 100%;
+  height: auto;
+  pointer-events: none;
+  fill: none;
+  stroke: var(--lnd-rule-ink);
+  stroke-width: 1.15;
+  vector-effect: non-scaling-stroke;
+  opacity: var(--hero-ground-opacity);
 }
-.heroFragments { display: grid; gap: 15px; }
-.heroFragment { position: relative; }
+.heroCaseFile {
+  position: relative;
+  width: min(calc(100% - (2 * var(--lnd-gutter))), clamp(1000px, 82vw, var(--lnd-product-max)));
+  min-height: 650px;
+  margin-inline: auto;
+  overflow: hidden;
+  border: 1px solid var(--lnd-rule-strong);
+  border-radius: 6px;
+  background: var(--lnd-paper);
+}
+.heroCaseHead {
+  padding: 25px clamp(28px, 3vw, 42px) 0;
+}
+.heroCaseIdentity {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+.heroCaseRepository {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+  color: var(--lnd-ink-2);
+  font-family: var(--lnd-mono);
+  font-size: 13px;
+  font-weight: 550;
+  letter-spacing: 0.01em;
+}
+.heroCaseTitle {
+  max-width: 760px;
+  margin-top: 13px;
+  color: var(--lnd-ink);
+  font-size: clamp(20px, 1.55vw, 22px);
+  font-weight: 600;
+  line-height: 1.28;
+  letter-spacing: -0.017em;
+  text-wrap: balance;
+}
+.heroVerdictBand {
+  display: grid;
+  grid-template-columns: minmax(0, 42fr) minmax(0, 28fr) minmax(0, 30fr);
+  min-height: 72px;
+  margin: 22px clamp(28px, 3vw, 42px) 0;
+  border-block: 1px solid var(--lnd-line-record);
+}
+.heroVerdictBand > div {
+  display: grid;
+  align-content: center;
+  gap: 7px;
+  min-width: 0;
+  padding: 11px 18px;
+}
+.heroVerdictBand > div:first-child { padding-left: 0; }
+.heroVerdictBand > div + div { border-left: 1px solid var(--lnd-line-record); }
+.heroVerdictBand dt,
+.heroRecordHead {
+  color: var(--lnd-ink-3);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.heroVerdictBand dd { margin: 0; }
+.heroVerdictBand .chip,
+.heroRecordState .chip {
+  padding: 4px 7px;
+  font-size: 13px;
+}
+.heroVerdictValue {
+  color: var(--lnd-warning);
+  font-family: var(--lnd-mono);
+  font-size: 13px;
+  font-weight: 650;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+.heroVerdictDecision { background: var(--lnd-paper-tint); }
+.heroVerdictDecision .heroVerdictValue { color: var(--lnd-ink); }
 
-/* Stub: rail → record. Starts ON the rail and ends at the record's own left
-   edge, so the indent lengthens the connector instead of dragging the node
-   off the rail (which is what the first pass did). */
-.heroFragment::before {
-  content: "";
-  position: absolute;
-  top: var(--lnd-node-y, 21px);
-  left: -34px;
-  width: calc(34px + var(--lnd-indent, 0px));
-  height: 1px;
-  background: var(--lnd-rule-strong);
+.heroRelationship {
+  position: relative;
+  margin: 25px clamp(28px, 3vw, 42px) 80px;
+  max-width: 740px;
 }
-/* Node mark, always centred on the rail. */
-.heroFragment::after {
-  content: "";
-  position: absolute;
-  top: calc(var(--lnd-node-y, 21px) - 3px);
-  left: -37px;
-  width: 7px; height: 7px;
-  border: 1px solid var(--lnd-line-structural);
+.heroProofRecord,
+.heroRequirementRecord {
+  width: min(100%, 620px);
+  padding: 15px 18px 16px;
+  border: 1px solid var(--lnd-line-record);
+  border-left: 2px solid var(--lnd-warning);
+  border-radius: var(--lnd-r-record);
   background: var(--lnd-canvas);
-  transform: rotate(45deg);
 }
-.heroFragmentIn {
-  margin-left: var(--lnd-indent, 0px);
-  width: var(--lnd-frag-w, auto);
-  max-width: calc(100% - var(--lnd-indent, 0px));
-}
-
-/* Role: anchor — the dominant record. */
-.fragAnchor { --lnd-node-y: 25px; --lnd-frag-w: 100%; }
-.fragAnchor::after {
-  width: 9px; height: 9px;
-  left: -38px;
-  top: calc(var(--lnd-node-y) - 4px);
-  border-width: 1.25px;
-}
-.fragAnchor .heroFragmentIn {
-  padding: 18px 20px 19px;
-  border: 1px solid var(--lnd-line-record);
-  border-left: 2px solid var(--lnd-rule-ink);
-  border-radius: var(--lnd-r-record);
+.heroRequirementRecord {
+  margin-left: 72px;
   background: var(--lnd-paper);
 }
-.fragAnchor .fragTitle { font-size: 19px; font-weight: 550; line-height: 1.3; margin-top: 10px; }
-
-/* Role: principal — the two proof records. */
-.fragPrincipal { --lnd-node-y: 21px; }
-.fragPrincipal .heroFragmentIn {
-  padding: 14px 16px 15px;
-  border: 1px solid var(--lnd-line-record);
-  border-left: 2px solid var(--lnd-edge, var(--lnd-rule-strong));
-  border-radius: var(--lnd-r-record);
-  background: var(--lnd-paper);
+.heroRecordHead { display: flex; align-items: baseline; gap: 11px; }
+.heroRecordHead span:first-child {
+  color: var(--lnd-ink);
+  font-family: var(--lnd-mono);
+}
+.heroRecordTitle {
+  margin-top: 8px;
+  color: var(--lnd-ink);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.42;
+  letter-spacing: -0.009em;
+}
+.heroRecordState { margin-top: 10px; }
+.heroRelationshipTrace {
+  width: 30px;
+  height: 28px;
+  margin-left: 42px;
+  border-bottom: 1px solid var(--lnd-line-structural);
+  border-left: 1px solid var(--lnd-line-structural);
 }
 
-/* Role: support — bare type. No box, no background. */
-.fragSupport { --lnd-node-y: 11px; }
-.fragSupport::after { width: 5px; height: 5px; left: -36px; top: calc(var(--lnd-node-y) - 2px); }
-.fragSupport .heroFragmentIn { padding: 0 0 0 2px; }
-.fragSupport .fragTitle { font-size: 13.5px; font-weight: 500; color: var(--lnd-ink-2); }
-
-/* Role: terminal — wide, shallow, dashed, deliberately quiet. */
-.fragTerminal { --lnd-node-y: 18px; margin-top: 10px; }
-.fragTerminal::after { background: var(--lnd-line-structural); }
-.fragTerminal .heroFragmentIn {
-  padding: 13px 0 0;
-  border-top: 1px dashed var(--lnd-rule-strong);
+@media (prefers-reduced-motion: no-preference) {
+  .heroActions { animation: heroActionsIn 140ms 80ms var(--lnd-ease-enter) both; }
+  .heroGround { animation: heroGroundIn 360ms 80ms var(--lnd-ease-enter) both; }
+  .heroCaseFile { animation: heroCaseIn 440ms 180ms var(--lnd-ease-enter) both; }
+  .heroRelationship { animation: heroRelationshipIn 240ms 420ms var(--lnd-ease-enter) both; }
 }
-.fragTerminal .fragTitle { font-size: 15px; font-weight: 550; }
+@keyframes heroActionsIn {
+  from { opacity: 0.88; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes heroGroundIn {
+  from { opacity: 0; }
+  to { opacity: var(--hero-ground-opacity); }
+}
+@keyframes heroCaseIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes heroRelationshipIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
 
-.fragHead { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-.fragTitle { margin-top: 7px; font-size: 14.5px; font-weight: 550; line-height: 1.4; letter-spacing: -0.01em; }
-.fragDetail { margin-top: 6px; color: var(--lnd-ink-3); font-family: var(--lnd-mono); font-size: 10.5px; line-height: 1.5; overflow-wrap: anywhere; }
-.fragState { margin-top: 9px; }
-
-.heroFieldFoot {
-  display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
-  margin-top: 26px;
-  padding-left: var(--lnd-gutter);
+@media (min-width: 768px) {
+  .heroTitle span { white-space: nowrap; }
 }
 
 /* ============================================================
@@ -1364,12 +1439,12 @@
 
 .flowScene {
   display: grid;
-  grid-template-columns: minmax(0, 41fr) minmax(0, 59fr);
-  gap: clamp(28px, 4vw, 68px);
+  grid-template-columns: minmax(260px, 31fr) minmax(0, 69fr);
+  gap: clamp(34px, 5vw, 84px);
   align-items: start;
 }
 
-.flowSteps { position: relative; display: grid; gap: clamp(12px, 1.4vw, 17px); padding-left: 30px; }
+.flowSteps { position: relative; display: grid; gap: clamp(18px, 2vw, 28px); padding-left: 30px; }
 .flowSteps::before {
   content: "";
   position: absolute;
@@ -1402,19 +1477,12 @@
   line-height: 1.62;
   max-width: 68ch;
 }
-.flowCapabilities {
-  margin-top: 16px;
-  padding-left: 30px;
-  color: var(--lnd-ink-3);
-  font-family: var(--lnd-mono);
-  font-size: 10.5px;
-  line-height: 1.9;
-  letter-spacing: 0.02em;
-  max-width: 68ch;
-}
+.flowArtifacts { min-width: 0; }
 
 /* A graphite record inside a light section — a record, not a band. */
 .wellDark {
+  width: min(72%, 560px);
+  margin-left: auto;
   border-radius: var(--lnd-r-record);
   background: var(--lnd-t-panel);
   color: var(--lnd-t-text-2);
@@ -1436,7 +1504,7 @@
 
 /* The resolution of the whole scene. */
 .comment {
-  margin-top: clamp(22px, 2.6vw, 32px);
+  margin-top: 18px;
   border: 1px solid var(--lnd-line-record);
   border-left: 2px solid var(--lnd-blue);
   border-radius: var(--lnd-r-record);
@@ -1452,13 +1520,38 @@
 .commentAvatar { width: 18px; height: 18px; border: 1px solid var(--lnd-ink); transform: rotate(45deg); flex: none; }
 .commentAuthor { font-size: 12.5px; font-weight: 600; }
 .commentEdited { color: var(--lnd-ink-3); font-size: 11.5px; }
-.commentBody { padding: 18px 16px; display: grid; gap: 12px; }
-.commentTitle { font-size: 16px; font-weight: 600; letter-spacing: -0.014em; }
-.commentRow { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; font-family: var(--lnd-mono); font-size: 11.5px; color: var(--lnd-ink-2); }
-.commentList { display: grid; gap: 6px; }
-.commentList li { display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 10px; font-size: 12.5px; color: var(--lnd-ink-2); line-height: 1.5; }
-.commentList li code { font-family: var(--lnd-mono); font-size: 11px; color: var(--lnd-ink); }
-.commentFoot { padding-top: 12px; border-top: 1px solid var(--lnd-line-record); color: var(--lnd-ink-3); font-size: 12px; }
+.commentBody { padding: clamp(20px, 2.4vw, 30px); display: grid; gap: clamp(18px, 2vw, 26px); }
+.commentTitle { font-size: clamp(20px, 2vw, 26px); font-weight: 600; letter-spacing: -0.021em; line-height: 1.24; }
+.commentStatus {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-block: 1px solid var(--lnd-line-record);
+}
+.commentStatus > div { min-width: 0; padding: 13px 12px; }
+.commentStatus > div:first-child { padding-left: 0; }
+.commentStatus > div + div { border-left: 1px solid var(--lnd-line-record); }
+.commentStatus dt {
+  color: var(--lnd-ink-3);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+.commentStatus dd {
+  margin: 6px 0 0;
+  color: var(--lnd-ink);
+  font-family: var(--lnd-mono);
+  font-size: 11.5px;
+  font-weight: 550;
+}
+.commentList { display: grid; gap: 10px; }
+.commentList li { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 12px; font-size: 13.5px; color: var(--lnd-ink-2); line-height: 1.52; }
+.commentList li code { font-family: var(--lnd-mono); font-size: 11.5px; color: var(--lnd-ink); }
+.commentHeadState {
+  color: var(--lnd-ink-3);
+  font-family: var(--lnd-mono);
+  font-size: 10.5px;
+}
 
 /* ============================================================
    9 — TRUST AND ARCHITECTURE
@@ -1467,14 +1560,10 @@
    a staggered measure, a large quiet index, and short visible copy.
    ============================================================ */
 
-/* R3E.1 — the section is now a two-column register, so the right side carries
-   real product vocabulary instead of an unfilled column. R3E.3 replaces that
-   right column with the canonical run manifest; the geometry is already the
-   one the manifest will occupy, so no placeholder is needed and nothing has
-   to be re-composed when it arrives. */
+/* R3E.3 — compact principles beside one dominant canonical run manifest. */
 .trustGrid {
   display: grid;
-  grid-template-columns: minmax(0, 56fr) minmax(0, 44fr);
+  grid-template-columns: minmax(0, 48fr) minmax(420px, 52fr);
   gap: clamp(30px, 3.6vw, 68px);
   align-items: start;
   margin-top: clamp(24px, 2.8vw, 40px);
@@ -1487,17 +1576,6 @@
   gap: clamp(24px, 2.6vw, 38px) clamp(22px, 2.4vw, 36px);
 }
 
-/* Interim right column: the provenance vocabulary the page already uses,
-   given a home. Real, truthful and useful on its own. */
-.provenanceRegister { display: grid; gap: 13px; }
-.provenanceRow {
-  display: grid;
-  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
-  gap: 5px 13px;
-  align-items: baseline;
-}
-.provenanceGloss { color: var(--lnd-ink-3); font-size: 12.5px; line-height: 1.5; }
-.provenanceNote { margin-top: clamp(20px, 2.2vw, 30px); max-width: 46ch; }
 .principle {
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr);
@@ -1510,6 +1588,150 @@
    technical boundary as annotation. Never all three at one weight. */
 .principleBody { grid-column: 2; display: grid; gap: 7px; color: var(--lnd-ink-2); font-size: 13.5px; line-height: 1.58; }
 .provChips { display: flex; gap: 8px; flex-wrap: wrap; }
+.trustBoundary {
+  grid-column: 1 / -1;
+  margin-left: 54px;
+  color: var(--lnd-ink-3);
+  font-size: 12.5px;
+  line-height: 1.6;
+  max-width: 62ch;
+}
+
+.manifestPlate {
+  min-width: 0;
+  border: 1px solid var(--lnd-line-record);
+  border-left: 2px solid var(--lnd-blue);
+  border-radius: var(--lnd-r-record);
+  background: var(--lnd-paper);
+  overflow: hidden;
+}
+.manifestHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--lnd-line-record);
+  background: var(--lnd-paper-sunk);
+}
+.manifestKicker {
+  color: var(--lnd-ink-3);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.manifestIdentity {
+  margin-top: 6px;
+  color: var(--lnd-ink);
+  font-family: var(--lnd-mono);
+  font-size: 13px;
+  font-weight: 550;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.manifestTabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 6px;
+  border-bottom: 1px solid var(--lnd-line-record);
+  background: var(--lnd-paper-tint);
+}
+.manifestTab {
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: 2px;
+  color: var(--lnd-ink-3);
+  background: transparent;
+  font: 550 12px/1.3 var(--lnd-sans);
+  text-align: center;
+  cursor: pointer;
+  transition:
+    color var(--lnd-state) var(--lnd-ease),
+    background var(--lnd-state) var(--lnd-ease),
+    border-color var(--lnd-state) var(--lnd-ease);
+}
+.manifestTab[aria-selected="true"] {
+  border-color: var(--lnd-rule-strong);
+  color: var(--lnd-ink);
+  background: var(--lnd-paper);
+  box-shadow: inset 0 -2px 0 var(--lnd-blue);
+}
+.manifestTab:focus-visible {
+  outline: 2px solid var(--lnd-focus);
+  outline-offset: 2px;
+}
+.manifestPanel { min-height: 430px; padding: 20px; }
+.manifestState {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--lnd-line-record);
+}
+.manifestState > div { display: grid; gap: 7px; }
+.manifestState span,
+.manifestFields dt,
+.manifestFingerprint dt {
+  color: var(--lnd-ink-3);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.manifestState strong {
+  width: max-content;
+  max-width: 100%;
+  color: var(--lnd-ink);
+  font-family: var(--lnd-mono);
+  font-size: 14px;
+  text-transform: uppercase;
+}
+.manifestState strong[data-classification="EXACT"] { color: var(--lnd-success); }
+.manifestState strong[data-classification="TRACEABLE"] { color: var(--lnd-provenance); }
+.manifestFields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding-block: 10px;
+}
+.manifestFields > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: baseline;
+  padding: 9px 0;
+  border-bottom: 1px solid var(--lnd-line-record);
+}
+.manifestFields > div:nth-child(odd) { padding-right: 14px; }
+.manifestFields > div:nth-child(even) { padding-left: 14px; border-left: 1px solid var(--lnd-line-record); }
+.manifestFields dd,
+.manifestFingerprint dd {
+  margin: 0;
+  color: var(--lnd-ink);
+  font-family: var(--lnd-mono);
+  font-size: 11.5px;
+}
+.manifestFingerprints { display: grid; gap: 0; }
+.manifestFingerprint {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: baseline;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--lnd-line-record);
+}
+.manifestFingerprint dd { color: var(--lnd-blue); overflow-wrap: anywhere; }
+.manifestLimitation {
+  min-height: 58px;
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-left: 2px solid var(--lnd-rule-strong);
+  color: var(--lnd-ink-3);
+  background: var(--lnd-paper-sunk);
+  font-size: 12px;
+  line-height: 1.55;
+}
 
 /* ============================================================
    10 — AUDIENCE, folded into the final CTA (R3E.1)
@@ -1610,20 +1832,12 @@
   transform: none;
 }
 
-/* Hero connective line draws once, under 600ms total, and only when the
-   motion controller is ready. */
-.root[data-motion-ready="true"][data-reduced-motion="false"] .heroRail {
-  transform-origin: top;
-  animation: railDraw 520ms var(--lnd-ease-enter) both;
-}
-@keyframes railDraw {
-  from { transform: scaleY(0); }
-  to { transform: scaleY(1); }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .root [data-reveal] { opacity: 1 !important; transform: none !important; transition: none !important; }
-  .root .heroRail { animation: none !important; transform: none !important; }
+  .root .heroActions,
+  .root .heroGround,
+  .root .heroCaseFile,
+  .root .heroRelationship { animation: none !important; transform: none !important; }
   .root .stagePane { animation: none !important; }
   .root * { scroll-behavior: auto !important; }
   .root .spineIdle { opacity: 1; }
@@ -1639,11 +1853,17 @@
    theatre's side copy would both fall under a comfortable measure, so they
    stack first — before anything else changes — rather than being squeezed. */
 @media (max-width: 1179px) {
-  .heroGrid { grid-template-columns: minmax(0, 1fr); gap: clamp(40px, 5vw, 56px); }
-  .heroCopy { padding-top: 0; }
-  .heroField { max-width: 760px; }
-  .heroRail { bottom: -20px; }
-  .heroFieldFoot { padding-left: 0; }
+  .hero {
+    --hero-ground-opacity: 0.05;
+    --hero-fold-height: clamp(698px, calc(100svh - 70px), 838px);
+  }
+  .hero::before { background: radial-gradient(106% 74% at 28% -8%, rgb(255 250 238 / 42%), transparent 58%); }
+  .heroCopy { padding-top: clamp(54px, 6vw, 68px); }
+  .heroCaseFile {
+    width: min(calc(100% - (2 * var(--lnd-gutter))), 1000px);
+    min-height: 610px;
+  }
+  .heroReveal { margin-top: clamp(108px, 12vw, 123px); }
 
   .theatreInner { grid-template-columns: minmax(0, 1fr); gap: 30px; }
   .theatreCopy { position: static; }
@@ -1664,6 +1884,11 @@
 /* -- Tablet: 1024px and below -- */
 @media (max-width: 1023px) {
   .root { font-size: 15px; }
+
+  .hero {
+    --hero-fold-height: max(698px, calc(100svh - 62px));
+  }
+  .heroReveal { margin-top: clamp(122px, calc(100svh - 682px), 220px); }
 
   .navLinks { display: none; }
   .navToggle { display: inline-flex; }
@@ -1711,6 +1936,10 @@
   .footerAction { grid-column: 1 / -1; }
 }
 
+@media (min-width: 768px) and (max-width: 800px) {
+  .heroCopy { padding-top: 48px; }
+}
+
 /* -- Mobile: 768px and below -- */
 @media (max-width: 767px) {
   /* Act rhythm on mobile: the act-to-act boundary stays roughly twice the
@@ -1721,18 +1950,49 @@
   .act4 > * + * { margin-top: 44px; }
   .act5 { padding-block: 46px 0; }
 
-  .hero { padding-block: 34px 52px; }
+  .hero {
+    --hero-ground-opacity: 0.035;
+    --hero-fold-height: max(782px, calc(100svh - 62px));
+  }
+  .hero::before { display: none; }
+  .heroCopy { padding: 32px 20px 0; text-align: left; }
+  .heroEyebrow { margin-bottom: 17px; }
+  .heroTitle { margin-bottom: 20px; }
   .heroLede { max-width: none; }
-  .heroActions { display: grid; gap: 10px; }
-  .heroActions .btn { width: 100%; }
-  .heroField { padding-left: 24px; }
-  .heroFragment::before { left: -24px; width: calc(24px + var(--lnd-indent, 0px)); }
-  .heroFragment::after { left: -27px; }
-  .fragAnchor::after { left: -28px; }
-  .fragSupport::after { left: -26px; }
-  /* Mobile composition uses three complete fragments, not six cropped ones. */
-  .heroFragmentDesktopOnly { display: none; }
-  .heroFragmentIn { margin-left: 0; width: auto; max-width: 100%; }
+  .heroActions { display: grid; justify-content: stretch; gap: 10px; margin-top: 22px; }
+  .heroActions .btn { width: 100%; min-height: 48px; }
+  .heroReveal { margin-top: 50px; }
+  .heroGround { display: none; }
+  .heroCaseFile {
+    width: calc(100% - 40px);
+    min-height: 540px;
+    margin-left: 20px;
+    border-radius: 5px;
+  }
+  .heroCaseHead { padding: 16px 18px 0; }
+  .heroCaseIdentity { gap: 8px; }
+  .heroCaseRepository { gap: 4px; font-size: 12px; white-space: nowrap; }
+  .heroCaseTitle { margin-top: 11px; font-size: 17.5px; line-height: 1.3; text-wrap: pretty; }
+  .heroVerdictBand {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    margin: 16px 18px 0;
+  }
+  .heroVerdictRecommendation { grid-column: 1 / -1; }
+  .heroVerdictBand > div { min-height: 48px; padding: 8px 10px; }
+  .heroVerdictBand > div:first-child { padding-left: 10px; }
+  .heroVerdictBand > div + div { border-top: 1px solid var(--lnd-line-record); border-left: 0; }
+  .heroVerdictDecision { border-left: 1px solid var(--lnd-line-record) !important; }
+  .heroVerdictBand dt,
+  .heroRecordHead,
+  .heroVerdictValue,
+  .heroVerdictBand .chip,
+  .heroRecordState .chip { font-size: 13px; }
+  .heroRelationship { margin: 18px 18px 60px; }
+  .heroProofRecord,
+  .heroRequirementRecord { padding: 13px 14px 14px; }
+  .heroRequirementRecord { margin-left: 28px; }
+  .heroRelationshipTrace { width: 14px; height: 22px; margin-left: 14px; }
+  .heroRecordTitle { font-size: 15px; }
 
   .distinctionClaim { font-size: 21px; gap: 10px; }
   .distinction:nth-child(2), .distinction:nth-child(3) { margin-left: 0; }
@@ -1777,14 +2037,28 @@
   }
   .evoToggleBtn code { font-size: 9.5px; }
 
-  .flowSteps, .flowNote, .flowCapabilities { padding-left: 26px; }
+  .flowSteps, .flowNote { padding-left: 26px; }
   .flowStep::before { left: -26px; }
   .flowSteps::before { left: 3px; }
+  .wellDark { width: 100%; margin-left: 0; }
+  .commentStatus { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .commentStatus > div:nth-child(3) {
+    grid-column: 1 / -1;
+    padding-left: 0;
+    border-top: 1px solid var(--lnd-line-record);
+    border-left: 0;
+  }
 
   /* The 2×2 principles field becomes a single column rather than two cramped
      ones; the provenance register follows below. */
   .principles { grid-template-columns: minmax(0, 1fr); gap: 24px; }
   .principle { grid-template-columns: 30px minmax(0, 1fr); }
+  .trustBoundary { margin-left: 0; }
+  .manifestTab { min-height: 48px; padding-inline: 8px; }
+  .manifestPanel { min-height: 0; padding: 16px; }
+  .manifestFields { grid-template-columns: minmax(0, 1fr); }
+  .manifestFields > div:nth-child(odd),
+  .manifestFields > div:nth-child(even) { padding-inline: 0; border-left: 0; }
 
   /* The audience becomes one concise stack, still not persona cards. */
   .audienceLead { margin-inline: 0; }

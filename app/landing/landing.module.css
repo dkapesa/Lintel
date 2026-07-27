@@ -114,10 +114,10 @@
   --lnd-max: calc(var(--lnd-content-max) + (2 * var(--lnd-gutter)));
   --lnd-max-wide: calc(var(--lnd-page-max) + (2 * var(--lnd-gutter)));
 
-  /* ---------- Rhythm (R3C.1: ~20% tighter than the first pass) ---------- */
-  --lnd-y-major: clamp(84px, 8.4vw, 140px);
-  --lnd-y: clamp(66px, 6.6vw, 108px);
-  --lnd-y-tight: clamp(48px, 4.6vw, 72px);
+  /* ---------- Rhythm (R3E.4: one small family, used by the acts) ---------- */
+  --lnd-y-major: clamp(72px, 5.6vw, 88px);
+  --lnd-y: clamp(54px, 4.8vw, 76px);
+  --lnd-y-tight: clamp(40px, 3.8vw, 60px);
 
   /* ---------- Radius ---------- */
   --lnd-r-action: 999px;   /* actions are human: soft */
@@ -258,11 +258,11 @@
 
 .act { position: relative; }
 .act1 { padding-block: 0; }
-.act2 { padding-block: clamp(52px, 5.4vw, 92px); }
-.act3 { padding-block: clamp(52px, 5.4vw, 92px) 0; }
-.act4 { padding-block: clamp(62px, 6.2vw, 104px) clamp(52px, 5.4vw, 92px); }
-.act4 > * + * { margin-top: clamp(54px, 5.4vw, 90px); }
-.act5 { padding-block: clamp(52px, 5.4vw, 92px) 0; }
+.act2 { padding-block: var(--lnd-y); }
+.act3 { padding-block: var(--lnd-y) 0; }
+.act4 { padding-block: var(--lnd-y-major) var(--lnd-y); }
+.act4 > * + * { margin-top: var(--lnd-y-tight); }
+.act5 { padding-block: var(--lnd-y) 0; }
 
 /* ============================================================
    SECTION ENTRIES (R3E.1)
@@ -1035,7 +1035,7 @@
   color: var(--lnd-t-text);
   /* The page's single dark moment is also its most generous section: the
      visitor should feel they have arrived somewhere, not passed a banner. */
-  padding-block: clamp(76px, 8.4vw, 148px);
+  padding-block: clamp(68px, 7.2vw, 124px);
 }
 /* The chain descends into the instrument: a short structural line receives the
    visitor at the material change, and another releases them at the bottom. */
@@ -1563,8 +1563,8 @@
 /* R3E.3 — compact principles beside one dominant canonical run manifest. */
 .trustGrid {
   display: grid;
-  grid-template-columns: minmax(0, 48fr) minmax(420px, 52fr);
-  gap: clamp(30px, 3.6vw, 68px);
+  grid-template-columns: minmax(0, 46fr) minmax(440px, 54fr);
+  gap: clamp(30px, 3.2vw, 56px);
   align-items: start;
   margin-top: clamp(24px, 2.8vw, 40px);
 }
@@ -1944,11 +1944,11 @@
 @media (max-width: 767px) {
   /* Act rhythm on mobile: the act-to-act boundary stays roughly twice the
      within-act gap, so the five chapters survive the single column. */
-  .act2 { padding-block: 46px; }
-  .act3 { padding-block: 46px 0; }
-  .act4 { padding-block: 54px 46px; }
-  .act4 > * + * { margin-top: 44px; }
-  .act5 { padding-block: 46px 0; }
+  .act2 { padding-block: 42px; }
+  .act3 { padding-block: 42px 0; }
+  .act4 { padding-block: 48px 42px; }
+  .act4 > * + * { margin-top: 38px; }
+  .act5 { padding-block: 42px 0; }
 
   .hero {
     --hero-ground-opacity: 0.035;
@@ -2001,7 +2001,7 @@
 
   .stationName { font-size: 16px; }
 
-  .theatre { padding-block: 52px 60px; }
+  .theatre { padding-block: 48px 54px; }
   .theatre::before, .theatre::after { height: 30px; }
   .scenarioBar { padding: 12px 14px; gap: 12px; }
   .scenarioGroup { width: 100%; overflow-x: auto; }

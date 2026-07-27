@@ -30,7 +30,12 @@
    - Human Decision is pending in every scenario. Nothing in this file can
      record one. */
 
-import { historicalCanonicalRunManifest, fingerprintPrefix } from "./canonical-review-run";
+import {
+  createCanonicalReviewRunManifest,
+  fingerprintPrefix,
+  historicalCanonicalRunManifest,
+  type CanonicalReviewRunManifest,
+} from "./canonical-review-run";
 import { buildEvidenceHierarchy, type EvidenceHierarchySummary, type EvidenceRecord } from "./evidence-hierarchy";
 import { buildMergeContract, type MergeContract, type MergeContractClause } from "./merge-contract";
 import { report as canonicalReport, type Report } from "./mock-report";
@@ -103,6 +108,23 @@ export type LandingMovement = {
   mark: "cleared" | "opened" | "reopened" | "changed";
   id: string;
   detail: string;
+};
+
+export type LandingRunManifest = {
+  mode: "deterministic" | "model";
+  runId: string;
+  schemaVersion: string;
+  sourceType: string;
+  reportSchemaVersion: string;
+  generatorVersion: string;
+  deterministicRulesetVersion: string;
+  reviewMode: string;
+  analysisSource: string;
+  inputFingerprint: { full: string; short: string };
+  configurationFingerprint: { full: string; short: string };
+  resultFingerprint: { full: string; short: string };
+  reproducibility: "EXACT" | "TRACEABLE";
+  limitation: string;
 };
 
 /* ------------------------------------------------------------- projection */
@@ -425,20 +447,30 @@ export const LANDING_SCENARIOS: LandingScenario[] = [
 
 /* ------------------------------------------------------------------- hero */
 
-export type LandingFragmentRole = "anchor" | "principal" | "support" | "terminal";
-
-export type LandingFragment = {
-  role: LandingFragmentRole;
-  kind: string;
-  id?: string;
+export type LandingHeroCaseFile = {
+  repository: string;
+  pullRequest: string;
   title: string;
-  detail?: string;
-  state?: string;
-  tone?: LandingTone;
-  indent: number;
-  width: string;
-  /** Present in the reduced three-fragment mobile composition. */
-  mobile: boolean;
+  recommendation: string;
+  recommendationTone: LandingTone;
+  riskScore: number;
+  riskBand: string;
+  decisionState: "PENDING";
+  missingProof: {
+    id: "E4";
+    kind: "Missing proof";
+    title: string;
+    state: string;
+    tone: LandingTone;
+  };
+  requirement: {
+    id: "C1";
+    kind: "Requirement";
+    title: string;
+    state: string;
+    tone: LandingTone;
+  };
+  provenance: "Sample data";
 };
 
 const heroFinding = canonicalReport.findings[0];
@@ -447,80 +479,31 @@ const heroMissing = missingEvidence(canonical.evidence)[0];
 const heroClause = blockingOpen(canonical.contract)[0] ?? openClauses(canonical.contract)[0];
 const heroOpenCount = openClauses(canonical.contract).length;
 
-export const LANDING_HERO_FRAGMENTS: LandingFragment[] = [
-  {
-    role: "anchor",
-    kind: "Change",
-    id: "#482",
-    title: canonicalReport.pr.title,
-    detail: `${RISKY_TESTS_REQUIRED_SAMPLE.repository} · ${canonicalReport.pr.branch} · ${canonicalReport.changedFiles.length} files`,
-    state: `${RECOMMENDATION_LABEL[canonicalReport.verdict.recommendation]} · RISK ${canonicalReport.verdict.riskScore}/100 ${canonicalReport.verdict.riskLevel}`,
-    tone: "warning",
-    indent: 0,
-    width: "100%",
-    mobile: true,
-  },
-  {
-    role: "support",
-    kind: "Observation",
-    id: "F1",
-    title: heroFinding.title,
-    detail: `${heroFinding.provenance ?? "Rule detected"} · ${heroFinding.category}`,
-    state: heroFinding.severity,
-    tone: SEVERITY_TONE[heroFinding.severity] ?? "danger",
-    indent: 48,
-    width: "62%",
-    mobile: false,
-  },
-  {
-    role: "principal",
-    kind: "Evidence",
-    id: "E1",
-    title: heroObserved?.statement ?? "The retry path is present; no idempotency guard is observed.",
-    detail: heroObserved?.source,
-    state: "DIRECTLY OBSERVED",
-    tone: "info",
-    indent: 20,
-    width: "82%",
-    mobile: false,
-  },
-  {
-    role: "principal",
-    kind: "Missing proof",
+export const LANDING_HERO_CASE_FILE: LandingHeroCaseFile = {
+  repository: RISKY_TESTS_REQUIRED_SAMPLE.repository,
+  pullRequest: "#482",
+  title: canonicalReport.pr.title,
+  recommendation: RECOMMENDATION_LABEL[canonicalReport.verdict.recommendation] ?? canonicalReport.verdict.recommendation,
+  recommendationTone: RECOMMENDATION_TONE[canonicalReport.verdict.recommendation] ?? "warning",
+  riskScore: canonicalReport.verdict.riskScore,
+  riskBand: canonicalReport.verdict.riskLevel,
+  decisionState: "PENDING",
+  missingProof: {
     id: "E4",
-    title: heroMissing?.title ?? "No test proves a repeated attempt cannot issue a second code.",
+    kind: "Missing proof",
+    title: heroMissing?.title ?? "Test evidence unavailable",
     state: "MISSING · UNVERIFIED",
     tone: "warning",
-    indent: 68,
-    width: "76%",
-    mobile: false,
   },
-  {
-    role: "support",
-    kind: "Requirement",
+  requirement: {
     id: "C1",
-    title: heroClause?.statement ?? "Prove retries cannot issue duplicate discount codes.",
-    detail: `1 of ${heroOpenCount} open requirements`,
+    kind: "Requirement",
+    title: heroClause?.statement ?? "Prove retries cannot issue duplicate discount codes",
     state: heroClause ? clauseState(heroClause) : "OPEN · BLOCKING",
     tone: "warning",
-    indent: 36,
-    width: "66%",
-    mobile: true,
   },
-  {
-    role: "terminal",
-    kind: "Human Decision",
-    title: "No engineer decision recorded.",
-    detail: "Open proof and requirements remain. Lintel does not decide.",
-    state: "PENDING",
-    tone: "neutral",
-    indent: 8,
-    width: "94%",
-    mobile: true,
-  },
-];
-
-export const LANDING_HERO_PROVENANCE = `${RISKY_TESTS_REQUIRED_SAMPLE.repository} · run ${canonical.runId}`;
+  provenance: "Sample data",
+};
 
 /* ---------------------------------------------------------- evidence chain */
 
@@ -684,70 +667,112 @@ export const LANDING_RECOMMENDATION_STATE = {
 /* --------------------------------------------- GitHub, trust and audience */
 
 export const LANDING_WORKFLOW_STEPS = [
-  { id: "01", label: "Pull request", detail: "A pull request is opened or updated on an installed repository." },
+  { id: "01", label: "Pull request received", detail: "An installed repository opens or updates a pull request." },
   {
     id: "02",
-    label: "Verified webhook",
-    detail: "The raw body is verified with HMAC SHA-256 and a timing-safe comparison before anything is read.",
+    label: "Webhook verified",
+    detail: "Raw-body HMAC SHA-256, checked with a timing-safe comparison.",
   },
   {
     id: "03",
-    label: "Deterministic analysis",
-    detail: "The deterministic baseline runs first. It is the safety floor, not a degraded mode.",
+    label: "Analysis run",
+    detail: "Deterministic first; configured model context can enrich the result without replacing the fallback.",
   },
   {
     id: "04",
-    label: "Optional model context",
-    detail: "A configured model can enrich the wording. On failure, timeout or invalid output the deterministic result is kept.",
+    label: "Decision comment updated",
+    detail: "The current result is created or rewritten in place.",
   },
-  {
-    id: "05",
-    label: "One decision comment",
-    detail: "A single comment per pull request, updated in place rather than appended to.",
-  },
-];
-
-export const LANDING_WORKFLOW_CAPABILITIES = [
-  "GitHub App auth · short-lived JWTs",
-  "installation tokens",
-  "raw-body HMAC SHA-256",
-  "timing-safe comparison",
-  "idempotent ingestion",
-  "automated pull-request analysis",
-  "deterministic fallback",
-  "one updated comment",
-  "server-side credentials",
 ];
 
 export const LANDING_WORKFLOW_BOUNDARY =
-  "The GitHub App is real when configured, and not configured by default; its status is always shown where it is claimed. The GitHub Action is a separate blueprint, not a live connection, and the Slack handoff copies content rather than sending it. Lintel does not merge, enforce repository policy, install itself, or claim exact reproduction of optional model output.";
+  "The GitHub App is real when configured. The GitHub Action remains a blueprint. Lintel does not merge, approve or enforce repository policy.";
 
 export const LANDING_TRUST_PRINCIPLES = [
   {
     id: "01",
-    title: "Deterministic by default",
-    lead: "A deterministic analysis runs first and is the safety floor.",
-    note: "Deterministic-only operation is first-class, not a degraded mode.",
+    title: "Deterministic first",
+    lead: "The ruleset runs first and remains the fallback if optional model analysis cannot complete.",
   },
   {
     id: "02",
     title: "Optional model analysis",
-    lead: "A configured model can enrich the analysis. It is optional, and off unless an operator supplies one.",
-    note: "On failure, timeout or invalid output the deterministic result is retained. Model output cannot silently remove a known blocker or a required test.",
+    lead: "A configured model may enrich the result, but cannot silently remove a known blocker or required test.",
   },
   {
     id: "03",
-    title: "Traceable results",
-    lead: "Every finding shows its origin.",
-    note: "Canonical provenance distinguishes deterministic reproducibility from model traceability. Exact reproduction of stochastic model output is not claimed.",
+    title: "Canonical run identity",
+    lead: "Every run binds its source, schemas, generator, ruleset and fingerprints to one manifest.",
   },
   {
     id: "04",
-    title: "Explicit data boundaries",
-    lead: "Review history is stored on the device by default, and raw diffs are excluded from it.",
-    note: "Integration credentials stay server-side. This is an architecture characteristic, not a privacy, security or compliance guarantee.",
+    title: "Explicit reproducibility",
+    lead: "Deterministic runs are reproducible; model-assisted runs retain traceable provenance without promising exact replay.",
   },
 ];
+
+function projectRunManifest(manifest: CanonicalReviewRunManifest): LandingRunManifest {
+  if (manifest.reproducibility !== "exact" && manifest.reproducibility !== "traceable") {
+    throw new Error(`Landing run manifest requires exact or traceable provenance, received ${manifest.reproducibility}.`);
+  }
+
+  return {
+    mode: manifest.analysisSource === "model" ? "model" : "deterministic",
+    runId: manifest.runId,
+    schemaVersion: manifest.schemaVersion,
+    sourceType: manifest.sourceType,
+    reportSchemaVersion: manifest.reportSchemaVersion,
+    generatorVersion: manifest.generatorVersion,
+    deterministicRulesetVersion: manifest.deterministicRulesetVersion,
+    reviewMode: manifest.reviewMode,
+    analysisSource: manifest.analysisSource,
+    inputFingerprint: {
+      full: manifest.inputFingerprint,
+      short: fingerprintPrefix(manifest.inputFingerprint),
+    },
+    configurationFingerprint: {
+      full: manifest.configurationFingerprint,
+      short: fingerprintPrefix(manifest.configurationFingerprint),
+    },
+    resultFingerprint: {
+      full: manifest.resultFingerprint,
+      short: fingerprintPrefix(manifest.resultFingerprint),
+    },
+    reproducibility: manifest.reproducibility.toUpperCase() as "EXACT" | "TRACEABLE",
+    limitation:
+      manifest.reproducibilityLimitation ??
+      "The deterministic inputs, configuration and ruleset reproduce the same canonical result.",
+  };
+}
+
+const landingManifestInput = { ...RISKY_TESTS_REQUIRED_SAMPLE, inputSource: "sample" as const };
+const landingManifestReport = generateReport(landingManifestInput);
+const landingManifestCreatedAt = landingManifestReport.pr.updatedAt || canonicalReport.pr.updatedAt;
+
+export const LANDING_RUN_MANIFESTS: Record<LandingRunManifest["mode"], LandingRunManifest> = {
+  deterministic: projectRunManifest(
+    createCanonicalReviewRunManifest({
+      input: landingManifestInput,
+      report: landingManifestReport,
+      sourceType: "sample",
+      analysisSource: "deterministic",
+      pullRequestNumber: canonicalReport.pr.number,
+      createdAt: landingManifestCreatedAt,
+      completedAt: landingManifestCreatedAt,
+    }),
+  ),
+  model: projectRunManifest(
+    createCanonicalReviewRunManifest({
+      input: landingManifestInput,
+      report: landingManifestReport,
+      sourceType: "sample",
+      analysisSource: "model",
+      pullRequestNumber: canonicalReport.pr.number,
+      createdAt: landingManifestCreatedAt,
+      completedAt: landingManifestCreatedAt,
+    }),
+  ),
+};
 
 export const LANDING_AUDIENCE = [
   "Teams using coding agents to produce more software changes",
@@ -758,11 +783,10 @@ export const LANDING_AUDIENCE = [
 /* The updated GitHub decision comment, projected from the canonical record. */
 export const LANDING_COMMENT = {
   recommendation: RECOMMENDATION_LABEL[canonicalReport.verdict.recommendation],
-  meta: [
-    `risk ${canonicalReport.verdict.riskScore}/100 ${canonicalReport.verdict.riskLevel}`,
-    `${heroOpenCount} requirements open`,
-    `head ${HEAD_NOT_RECORDED}`,
-  ],
+  risk: `${canonicalReport.verdict.riskScore}/100 ${canonicalReport.verdict.riskLevel}`,
+  openRequirements: `${heroOpenCount} open`,
+  decision: "PENDING",
+  head: HEAD_NOT_RECORDED,
   clauses: blockingOpen(canonical.contract)
     .slice(0, 2)
     .map((clause, index) => ({ id: `C${index + 1}`, statement: `${clause.statement} — open, blocking.` })),

@@ -690,3 +690,9 @@ These are implementation-tuning calls, not alternative concepts. They do not per
 ---
 
 **R3E.2A lock:** Build one calm proposition over one opened Case File. Show identity, `TESTS REQUIRED`, `46/100 · MEDIUM`, `HUMAN DECISION · PENDING`, and one `E4` missing-proof → `C1` open-requirement relationship. Let the Case File continue below the fold. Everything else waits.
+
+## R3E.2B.1 visual-acceptance amendment
+
+R3E.2B.1 supersedes only the parts of §§7–9 that require upper-left editorial copy, a strongly right-offset Case File, and right-edge viewport bleed as the dominant reveal technique. The revised direction is: **“The case, opened on the table — centred beneath one calm proposition.”** Eyebrow, two-line headline, supporting statement, CTA pair, and the outer Case File share one optical centre; the Case File is centred within the product track and its first-viewport reveal crops primarily through the bottom.
+
+All other R3E.2A rules remain binding: light-first Lintel identity; one dominant live, server-rendered Case File; canonical sample truth; concise copy; meaningful omission; one `E4` → `C1` relationship; restrained warm light and engineering ground; the approved motion and reduced-motion behavior; no screenshot, card cloud, generic dashboard, decorative technical clutter, or named-company adoption claim. Later sections retain their narrative roles and may remain asymmetric, but navigation, content sections, large product objects, and the dark theatre must use the shared page, content, editorial, and product alignment tracks established in R3E.2B.1.

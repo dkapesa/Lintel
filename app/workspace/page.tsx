@@ -1,46 +1,43 @@
 import type { Metadata } from "next";
+import WorkspaceR4Client from "./WorkspaceR4Client";
+import RealWorkspaceR4Bootstrap from "./RealWorkspaceR4Bootstrap";
 import {
-  renderWorkspaceRoute,
-  type WorkspaceRouteSearchParams,
-} from "../workspace-v2/WorkspaceRouteEntry";
-
-/* R1B.7 — CANONICAL production Workspace route.
-
-   This is the primary engineering workstation and the single Workspace shown in
-   navigation. It renders the production Workspace implementation through the
-   shared `renderWorkspaceRoute` entry — the same client, adapters, persistence,
-   decision services and projections used by the QA/compatibility `/workspace-v2`
-   route. There is no duplicated Workspace tree; the routes differ only in their
-   default source.
-
-   Canonical default behaviour:
-     • /workspace                       → real stored Report history (never
-                                          fixture): truthful loading, then ready
-                                          / empty / unavailable.
-     • /workspace?reportId=<stable-id>  → the full real Queue with the requested
-                                          case selected; an unknown id renders
-                                          unavailable and never silently selects
-                                          another case.
-     • /workspace?source=fixture        → the explicit, intentional sample path.
-     • any unsupported ?source value    → resolves to the real default (the
-                                          smallest truthful handling); it never
-                                          silently shows fixture data.
-
-   The previous `/workspace` implementation now lives at `/workspace-legacy` as a
-   temporary, non-primary rollback route. All existing production storage keys
-   and stable `reportId` conventions are reused unchanged. */
+  parseScenario,
+  resolveWorkspaceSource,
+} from "../../lib/workspace-v2/adapter";
+import { createFixtureWorkspaceAdapter } from "../../lib/workspace-v2/fixture-adapter";
 
 export const metadata: Metadata = {
   title: "Workspace — Lintel",
   description:
-    "The primary engineering workstation: real stored Report history, evidence, conditions and recorded human decisions.",
+    "The Lintel engineering verification workstation for real stored reviews, evidence, requirements and accountable Human Decisions.",
 };
 
+type SearchParams = {
+  scenario?: string | string[];
+  source?: string | string[];
+  reportId?: string | string[];
+};
+
+function first(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+/* R4D canonical route. Real validated browser-local history remains the
+   default. The pre-existing fixture source is retained only as an explicit,
+   labelled QA/sample path; it never becomes a real-data fallback. */
 export default async function WorkspacePage({
   searchParams,
 }: {
-  searchParams: Promise<WorkspaceRouteSearchParams>;
+  searchParams: Promise<SearchParams>;
 }) {
   const params = await searchParams;
-  return renderWorkspaceRoute(params, "real");
+  const source = resolveWorkspaceSource(first(params.source), "real");
+  if (source === "real") {
+    return <RealWorkspaceR4Bootstrap reportId={first(params.reportId) ?? null} />;
+  }
+
+  const adapter = createFixtureWorkspaceAdapter();
+  const snapshot = await adapter.loadSnapshot({ scenario: parseScenario(first(params.scenario)) });
+  return <WorkspaceR4Client snapshot={snapshot} />;
 }

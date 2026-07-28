@@ -69,7 +69,7 @@ export type GitHubPullRequestRecord = {
   state: GitHubWebhookProcessingState;
   latestDeliveryId: string;
   latestReport?: Report;
-  reportSource?: "deterministic";
+  reportSource?: CanonicalAnalysisSource;
   analysisRuns?: GitHubAnalysisRunRecord[];
   failureCategory?: string;
   githubCommentId?: number;

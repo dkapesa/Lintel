@@ -303,6 +303,59 @@ export type ReadinessProjection =
   | { available: true; readiness: ReadinessView }
   | { available: false; reason: string };
 
+/* R4D — canonical run/history projection. These records expose only metadata
+   already stored on Report history entries and comparison output from the
+   existing readiness-delta helpers. They do not introduce a durable history
+   schema or extend the current ten-entry browser-local retention boundary. */
+export type RunView = {
+  runId: string;
+  headSha: string | null;
+  baseSha: string | null;
+  createdAt: string;
+  completedAt: string | null;
+  analysisSource: "deterministic" | "model" | "fallback" | "demo";
+  sourceType: "github-app" | "github-pr" | "manual" | "sample" | "demo";
+  provider: string | null;
+  model: string | null;
+  reproducibility:
+    | "exact"
+    | "traceable"
+    | "source-unavailable"
+    | "configuration-unavailable"
+    | "manual-input-not-retained"
+    | "historical-schema"
+    | "drift-detected"
+    | "failed";
+  reproducibilityLimitation: string | null;
+  inputFingerprint: string;
+  configurationFingerprint: string;
+  resultFingerprint: string;
+  generatorVersion: string;
+  deterministicRulesetVersion: string;
+  reportSchemaVersion: string;
+};
+
+export type HistoryChangeView = {
+  key: string;
+  status: "added" | "cleared" | "changed" | "unchanged" | "reopened";
+  title: string;
+  category: string;
+  previousState: string | null;
+  currentState: string | null;
+};
+
+export type HistoryProjection =
+  | {
+      status: "comparison";
+      current: RunView;
+      previous: RunView;
+      readiness: ReadinessView;
+      changes: HistoryChangeView[];
+      limitation: string | null;
+    }
+  | { status: "initial"; current: RunView; reason: string }
+  | { status: "unavailable"; current: RunView | null; reason: string };
+
 export type CaseContextView = {
   summary: string;
   reviewerFocus: string[];
@@ -536,6 +589,10 @@ export type CaseDetail = {
   evidence: EvidenceView[];
   requirements: RequirementView[];
   readiness: ReadinessProjection;
+  /* Present for real R4D projections. Optional keeps the accepted fixture and
+     compatibility route serialisation stable. */
+  run?: RunView | null;
+  history?: HistoryProjection;
   decision: DecisionPlateViewModel;
   /* R1B.6 — whether this case's Human Decision can be recorded/changed and the
      identifiers a decision command needs. Case-level: the ledger key identifies

@@ -1,4 +1,5 @@
 import type { ChangePassport } from "./change-passport";
+import type { CanonicalAnalysisSource } from "./canonical-review-run";
 import { buildEvidenceHierarchy } from "./evidence-hierarchy";
 import { buildBuilderVerifierAssessment, type VerificationBoundaryClassification } from "./builder-verifier-boundary";
 import { buildMergeContract } from "./merge-contract";
@@ -107,8 +108,8 @@ export type ReviewDiff = {
 
 export type AnalysisRunSnapshot = {
   runId: string;
-  repositoryId: number;
-  owner: string;
+  repositoryId?: number;
+  owner?: string;
   repository: string;
   pullRequestNumber: number;
   baseSha?: string;
@@ -118,7 +119,7 @@ export type AnalysisRunSnapshot = {
   riskLevel: RiskLevel;
   report: Report;
   changePassport?: ChangePassport;
-  analysisSource: "deterministic";
+  analysisSource: CanonicalAnalysisSource;
   completedAt: string;
   delta?: ReadinessDelta;
   reviewDiff?: ReviewDiff;

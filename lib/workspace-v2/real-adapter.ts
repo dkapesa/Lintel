@@ -66,6 +66,11 @@ import {
   type ReportHistoryEntry,
 } from "../report-history";
 import {
+  createReadinessDelta,
+  createReviewDiff,
+  type AnalysisRunSnapshot,
+} from "../readiness-delta";
+import {
   readReviewStates,
   reviewStateKeyForReport,
   REVIEW_STATE_STORAGE_KEY,
@@ -118,6 +123,7 @@ import {
   type DecisionReference,
   type EvidenceView,
   type FindingView,
+  type HistoryProjection,
   type QueueCaseSummary,
   type QueueGroup,
   type QueueGroupId,
@@ -125,6 +131,7 @@ import {
   type RequirementView,
   type ReviewStateMutationCapability,
   type ReviewStatus,
+  type RunView,
   type WorkspaceEmptySnapshot,
   type WorkspaceIdentity,
   type WorkspaceProvenance,
@@ -849,6 +856,7 @@ export function projectContextToCaseDetail(
    that limitation. */
 type CaseProjection = {
   detail: CaseDetail;
+  entry: ReportHistoryEntry;
   createdAt: string;
   groupId: QueueGroupId;
   order: OrderableCase;
@@ -968,10 +976,168 @@ function projectCase(
 
   return {
     detail,
+    entry,
     createdAt: entry.createdAt,
     groupId: grouping.groupId,
     order,
     reviewStateAmbiguous: reviewState.kind === "ambiguous",
+  };
+}
+
+/* --- Canonical run comparison projection (R4D) ----------------------- */
+
+function runView(entry: ReportHistoryEntry): RunView | null {
+  const run = entry.canonicalRun;
+  if (!run) return null;
+  return {
+    runId: run.runId,
+    headSha: run.headSha ?? null,
+    baseSha: run.baseSha ?? null,
+    createdAt: run.createdAt,
+    completedAt: run.completedAt ?? null,
+    analysisSource: run.analysisSource,
+    sourceType: run.sourceType,
+    provider: run.provider ?? null,
+    model: run.model ?? null,
+    reproducibility: run.reproducibility,
+    reproducibilityLimitation: run.reproducibilityLimitation ?? null,
+    inputFingerprint: run.inputFingerprint,
+    configurationFingerprint: run.configurationFingerprint,
+    resultFingerprint: run.resultFingerprint,
+    generatorVersion: run.generatorVersion,
+    deterministicRulesetVersion: run.deterministicRulesetVersion,
+    reportSchemaVersion: run.reportSchemaVersion,
+  };
+}
+
+function analysisRun(entry: ReportHistoryEntry): AnalysisRunSnapshot | null {
+  const run = entry.canonicalRun;
+  if (!run?.headSha) return null;
+  return {
+    runId: run.runId,
+    repository: entry.report.pr.repository,
+    pullRequestNumber: entry.report.pr.number,
+    baseSha: run.baseSha,
+    headSha: run.headSha,
+    recommendation: entry.report.verdict.recommendation,
+    /* The existing GitHub App run store names this field readinessScore but
+       persists the Report risk score in it. Reuse that exact current contract. */
+    readinessScore: entry.report.verdict.riskScore,
+    riskLevel: entry.report.verdict.riskLevel,
+    report: entry.report,
+    changePassport: entry.changePassport,
+    analysisSource: run.analysisSource,
+    completedAt: run.completedAt ?? entry.createdAt,
+  };
+}
+
+function sameReview(left: ReportHistoryEntry, right: ReportHistoryEntry): boolean {
+  return (
+    left.report.pr.repository === right.report.pr.repository &&
+    left.report.pr.number === right.report.pr.number
+  );
+}
+
+function historyForProjection(
+  projection: CaseProjection,
+  all: CaseProjection[],
+): { run: RunView | null; history: HistoryProjection; readiness: CaseDetail["readiness"] } {
+  const currentView = runView(projection.entry);
+  const current = analysisRun(projection.entry);
+  if (!currentView || !current) {
+    const reason = currentView
+      ? "The current canonical run has no recorded head, so an applicable run comparison cannot be established."
+      : "This stored report has no canonical run manifest, so run identity and comparison are unavailable.";
+    return {
+      run: currentView,
+      history: { status: "unavailable", current: currentView, reason },
+      readiness: { available: false, reason },
+    };
+  }
+
+  const currentIndex = all.indexOf(projection);
+  const candidates = all
+    .slice(currentIndex + 1)
+    .filter((item) => sameReview(item.entry, projection.entry))
+    .sort((a, b) => Date.parse(b.entry.createdAt) - Date.parse(a.entry.createdAt));
+  const exactPreviousId = projection.entry.canonicalRun?.previousRunId;
+  const previousProjection =
+    (exactPreviousId
+      ? candidates.find((item) => item.entry.canonicalRun?.runId === exactPreviousId)
+      : undefined) ?? candidates[0];
+
+  if (!previousProjection) {
+    const reason = "Initial stored run — no previous applicable report is available in this browser.";
+    return {
+      run: currentView,
+      history: { status: "initial", current: currentView, reason },
+      readiness: { available: false, reason },
+    };
+  }
+
+  const previousView = runView(previousProjection.entry);
+  const previous = analysisRun(previousProjection.entry);
+  if (!previousView || !previous) {
+    const reason =
+      "A previous report exists, but its canonical run or head identity is incomplete; comparison claims are withheld.";
+    return {
+      run: currentView,
+      history: { status: "unavailable", current: currentView, reason },
+      readiness: { available: false, reason },
+    };
+  }
+
+  const previousIndex = candidates.indexOf(previousProjection);
+  const earlier = candidates
+    .slice(previousIndex + 1)
+    .map((item) => analysisRun(item.entry))
+    .filter((item): item is AnalysisRunSnapshot => item !== null);
+  const delta = createReadinessDelta(previous, current, earlier, current.completedAt);
+  const reviewDiff = createReviewDiff(previous, current, delta, earlier, current.completedAt);
+  const readiness = {
+    classification: delta.classification,
+    previousScore: delta.previousScore ?? previous.readinessScore,
+    currentScore: delta.currentScore,
+    scoreChange: delta.scoreChange ?? 0,
+    previousRecommendation: delta.previousRecommendation ?? previous.recommendation,
+    currentRecommendation: delta.currentRecommendation,
+    clearedCount: delta.clearedMergeConditions.length,
+    openedCount: delta.openedMergeConditions.length,
+    becameStaleCount: delta.evidenceMovement?.evidenceBecameStale ?? 0,
+    note:
+      `Canonical comparison ${previous.runId} to ${current.runId}. ` +
+      `Risk score ${previous.readinessScore} to ${current.readinessScore}.`,
+  };
+  const changes = reviewDiff
+    ? [
+        ...reviewDiff.findings,
+        ...reviewDiff.evidence,
+        ...reviewDiff.testGaps,
+        ...reviewDiff.mergeConditions,
+      ].map((item) => ({
+        key: item.key,
+        status: item.status,
+        title: item.title,
+        category: item.category,
+        previousState: item.previousState ?? null,
+        currentState: item.currentState ?? null,
+      }))
+    : [];
+  const limitations = [
+    currentView.reproducibilityLimitation,
+    previousView.reproducibilityLimitation,
+  ].filter((value): value is string => Boolean(value));
+  return {
+    run: currentView,
+    history: {
+      status: "comparison",
+      current: currentView,
+      previous: previousView,
+      readiness,
+      changes,
+      limitation: limitations.length > 0 ? [...new Set(limitations)].join(" ") : null,
+    },
+    readiness: { available: true, readiness },
   };
 }
 
@@ -1205,9 +1371,21 @@ export function createRealWorkspaceAdapter(rawStorage: Storage): WorkspaceAdapte
         }
 
         /* One case per valid entry; each appears exactly once. */
-        const projections = history.map((entry) =>
+        const baseProjections = history.map((entry) =>
           projectCase(entry, storage, reviewChannel, keyCounts),
         );
+        const projections = baseProjections.map((projection) => {
+          const runHistory = historyForProjection(projection, baseProjections);
+          return {
+            ...projection,
+            detail: {
+              ...projection.detail,
+              run: runHistory.run,
+              history: runHistory.history,
+              readiness: runHistory.readiness,
+            },
+          };
+        });
         const items = buildRealCases(projections, history);
         const groups = buildQueueGroups(items);
 

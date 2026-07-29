@@ -135,6 +135,17 @@ export function locationToPath(location: string | null | undefined): string | nu
   return withoutLine.length > 0 ? withoutLine : trimmed;
 }
 
+function locationToExactLine(location: string | null | undefined): number | null {
+  if (typeof location !== "string") return null;
+  const path = locationToPath(location);
+  if (!path) return null;
+  const suffix = location.trim().slice(path.length);
+  const match = suffix.match(/^:(\d+)(?::\d+)?$/);
+  if (!match) return null;
+  const line = Number(match[1]);
+  return Number.isSafeInteger(line) && line > 0 ? line : null;
+}
+
 /* --- Relationship-state construction ---------------------------------- */
 
 function relationshipFromRefs(
@@ -348,12 +359,26 @@ export function assembleCaseArtifacts(seeds: CaseArtifactSeeds): CaseArtifacts {
 
   const changedFileViews: ChangedFileView[] = changedFiles.map((file, index) => {
     const artifactId = changedFileArtifactIds[index];
+    const focusedRegions = findings.flatMap((finding) => {
+      if (locationToPath(finding.location) !== file.path) return [];
+      const line = locationToExactLine(finding.location);
+      return line === null
+        ? []
+        : [{
+            startLine: line,
+            endLine: line,
+            sourceFindingId: finding.findingId,
+            sourceLabel: finding.title,
+            provenance: "exact-recorded-location" as const,
+          }];
+    });
     return {
       artifactId,
       path: file.path,
       additions: file.additions,
       deletions: file.deletions,
       risk: file.risk,
+      focusedRegions,
       observations: relatedFrom(findingArtifactById, changeIdToFindings.get(artifactId)),
       evidence: relatedFrom(evidenceArtifactById, changeIdToEvidence.get(artifactId)),
     };

@@ -132,6 +132,7 @@ import {
   type ReviewStateMutationCapability,
   type ReviewStatus,
   type RunView,
+  type RunComparisonView,
   type WorkspaceEmptySnapshot,
   type WorkspaceIdentity,
   type WorkspaceProvenance,
@@ -832,6 +833,10 @@ export function projectContextToCaseDetail(
     /* R1B.5 — whether that status can be persisted, and if not, exactly why. */
     reviewStateMutation,
     executiveSummary: report.verdict.summary,
+    technicalContext: {
+      language: report.pr.language,
+      framework: report.pr.framework,
+    },
     changedFiles: context.changedFiles,
     findings: context.findings,
     evidence: context.evidence,
@@ -1087,57 +1092,85 @@ function historyForProjection(
     };
   }
 
-  const previousIndex = candidates.indexOf(previousProjection);
-  const earlier = candidates
-    .slice(previousIndex + 1)
-    .map((item) => analysisRun(item.entry))
-    .filter((item): item is AnalysisRunSnapshot => item !== null);
-  const delta = createReadinessDelta(previous, current, earlier, current.completedAt);
-  const reviewDiff = createReviewDiff(previous, current, delta, earlier, current.completedAt);
-  const readiness = {
-    classification: delta.classification,
-    previousScore: delta.previousScore ?? previous.readinessScore,
-    currentScore: delta.currentScore,
-    scoreChange: delta.scoreChange ?? 0,
-    previousRecommendation: delta.previousRecommendation ?? previous.recommendation,
-    currentRecommendation: delta.currentRecommendation,
-    clearedCount: delta.clearedMergeConditions.length,
-    openedCount: delta.openedMergeConditions.length,
-    becameStaleCount: delta.evidenceMovement?.evidenceBecameStale ?? 0,
-    note:
-      `Canonical comparison ${previous.runId} to ${current.runId}. ` +
-      `Risk score ${previous.readinessScore} to ${current.readinessScore}.`,
+  const buildComparison = (targetProjection: CaseProjection): RunComparisonView | null => {
+    const targetView = runView(targetProjection.entry);
+    const target = analysisRun(targetProjection.entry);
+    if (!targetView || !target) return null;
+    const targetIndex = candidates.indexOf(targetProjection);
+    const earlier = candidates
+      .slice(targetIndex + 1)
+      .map((item) => analysisRun(item.entry))
+      .filter((item): item is AnalysisRunSnapshot => item !== null);
+    const delta = createReadinessDelta(target, current, earlier, current.completedAt);
+    const reviewDiff = createReviewDiff(target, current, delta, earlier, current.completedAt);
+    const readiness = {
+      classification: delta.classification,
+      previousScore: delta.previousScore ?? target.readinessScore,
+      currentScore: delta.currentScore,
+      scoreChange: delta.scoreChange ?? 0,
+      previousRecommendation: delta.previousRecommendation ?? target.recommendation,
+      currentRecommendation: delta.currentRecommendation,
+      clearedCount: delta.clearedMergeConditions.length,
+      openedCount: delta.openedMergeConditions.length,
+      becameStaleCount: delta.evidenceMovement?.evidenceBecameStale ?? 0,
+      note:
+        `Canonical comparison ${target.runId} to ${current.runId}. ` +
+        `Risk score ${target.readinessScore} to ${current.readinessScore}.`,
+    };
+    const changes = reviewDiff
+      ? [
+          ...reviewDiff.findings,
+          ...reviewDiff.evidence,
+          ...reviewDiff.testGaps,
+          ...reviewDiff.mergeConditions,
+        ].map((item) => ({
+          key: item.key,
+          status: item.status,
+          title: item.title,
+          category: item.category,
+          previousState: item.previousState ?? null,
+          currentState: item.currentState ?? null,
+        }))
+      : [];
+    const limitations = [
+      currentView.reproducibilityLimitation,
+      targetView.reproducibilityLimitation,
+    ].filter((value): value is string => Boolean(value));
+    return {
+      target: targetView,
+      readiness,
+      changes,
+      limitation: limitations.length > 0 ? [...new Set(limitations)].join(" ") : null,
+    };
   };
-  const changes = reviewDiff
-    ? [
-        ...reviewDiff.findings,
-        ...reviewDiff.evidence,
-        ...reviewDiff.testGaps,
-        ...reviewDiff.mergeConditions,
-      ].map((item) => ({
-        key: item.key,
-        status: item.status,
-        title: item.title,
-        category: item.category,
-        previousState: item.previousState ?? null,
-        currentState: item.currentState ?? null,
-      }))
-    : [];
-  const limitations = [
-    currentView.reproducibilityLimitation,
-    previousView.reproducibilityLimitation,
-  ].filter((value): value is string => Boolean(value));
+
+  const comparisons = candidates
+    .slice(0, 9)
+    .map(buildComparison)
+    .filter((item): item is RunComparisonView => item !== null);
+  const defaultComparison = comparisons.find(
+    (item) => item.target.runId === previousView.runId,
+  );
+  if (!defaultComparison) {
+    const reason = "The previous stored run is incompatible with the current canonical comparison contract.";
+    return {
+      run: currentView,
+      history: { status: "unavailable", current: currentView, reason },
+      readiness: { available: false, reason },
+    };
+  }
   return {
     run: currentView,
     history: {
       status: "comparison",
       current: currentView,
       previous: previousView,
-      readiness,
-      changes,
-      limitation: limitations.length > 0 ? [...new Set(limitations)].join(" ") : null,
+      readiness: defaultComparison.readiness,
+      changes: defaultComparison.changes,
+      limitation: defaultComparison.limitation,
+      comparisons,
     },
-    readiness: { available: true, readiness },
+    readiness: { available: true, readiness: defaultComparison.readiness },
   };
 }
 

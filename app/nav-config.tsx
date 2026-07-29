@@ -13,6 +13,7 @@ export type ShellIconName =
   | "new-review"
   | "case-file"
   | "operations"
+  | "operational-home"
   | "review-operations"
   | "team"
   | "governance"
@@ -87,7 +88,7 @@ const NO_COMMAND_ACTIONS: ShellCommandActionConfig = {
 
 export const SHELL_GLOBAL_AREAS: ShellGlobalArea[] = [
   { id: "review", label: "Reviews", href: "/workspace", icon: "review" },
-  { id: "operations", label: "Operations", href: "/review-operations", icon: "operations" },
+  { id: "operations", label: "Operations", href: "/home", icon: "operations" },
   { id: "governance", label: "Governance", href: "/review-policies", icon: "governance" },
   { id: "integrations", label: "Integrations", href: "/github-action", icon: "integrations" },
   { id: "system", label: "System", href: "/settings", icon: "system" },
@@ -100,6 +101,7 @@ export const SHELL_CONTEXT_DESTINATIONS: Record<ShellGlobalAreaId, ShellContextD
     { id: "case-file", label: "Case File", href: "/report", pathname: "/report", icon: "case-file", contextual: true },
   ],
   operations: [
+    { id: "operational-home", label: "Operational Home", href: "/home", pathname: "/home", icon: "operational-home" },
     { id: "review-operations", label: "Review Operations", href: "/review-operations", pathname: "/review-operations", icon: "review-operations" },
     { id: "team", label: "Team boundaries", href: "/team", pathname: "/team", icon: "team" },
   ],
@@ -171,6 +173,20 @@ export const SHELL_ROUTE_CONTEXTS: ShellRouteContext[] = [
       visibleDesktopActionIndexes: [1, 2],
       destructiveActionIndexes: [],
     },
+  },
+  {
+    pathname: "/home",
+    area: "operations",
+    family: "operational",
+    currentItemPathname: "/home",
+    contextLabel: "Operational Home",
+    routeDescription: "Orient across browser-local review work and resume the next truthful action.",
+    scopeLabel: "Browser-local orientation",
+    documentTitle: "Operational Home",
+    accessiblePageName: "Operational Home",
+    primaryAction: null,
+    secondaryActions: [],
+    commandActions: NO_COMMAND_ACTIONS,
   },
   {
     pathname: "/review-operations",
@@ -313,6 +329,12 @@ const SHELL_ICON_PATHS: Record<ShellIconName, ReactNode> = {
     </>
   ),
   operations: <path d="M1.75 8.5h2.4l1.7-4.2 2.9 7.4 1.6-3.2h3.9" />,
+  "operational-home": (
+    <>
+      <path d="M2.5 7.25L8 2.75l5.5 4.5" />
+      <path d="M4 6.5v6.75h8V6.5M6.5 13.25V9h3v4.25" />
+    </>
+  ),
   "review-operations": <path d="M1.75 8.5h2.4l1.7-4.2 2.9 7.4 1.6-3.2h3.9" />,
   team: (
     <>

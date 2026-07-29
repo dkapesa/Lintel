@@ -19,6 +19,8 @@ type ConsequentialDialogProps = {
   returnFocusRef: RefObject<HTMLElement | null>;
   onConfirm: () => boolean | void;
   onCancel: () => void;
+  eyebrow?: string;
+  confirmTone?: "neutral" | "destructive";
 };
 
 export default function ConsequentialDialog({
@@ -34,6 +36,8 @@ export default function ConsequentialDialog({
   returnFocusRef,
   onConfirm,
   onCancel,
+  eyebrow = "Consequential administrative action",
+  confirmTone = "destructive",
 }: ConsequentialDialogProps) {
   const [mounted, setMounted] = useState(false);
   const titleId = useId();
@@ -98,7 +102,7 @@ export default function ConsequentialDialog({
         ref={panelRef}
       >
         <header className="r4-consequence-header">
-          <span>Consequential administrative action</span>
+          <span>{eyebrow}</span>
           <h2 id={titleId}>{title}</h2>
           <p id={descriptionId}>{consequence}</p>
         </header>
@@ -119,7 +123,7 @@ export default function ConsequentialDialog({
         <footer className="r4-consequence-actions">
           <button type="button" ref={cancelRef} onClick={onCancel}>Cancel</button>
           <button
-            className="r4-consequence-confirm"
+            className={confirmTone === "neutral" ? "r4-consequence-confirm r4-consequence-confirm--neutral" : "r4-consequence-confirm"}
             type="button"
             onClick={() => {
               const confirmed = onConfirm();

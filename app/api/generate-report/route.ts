@@ -14,10 +14,38 @@ const MAX_DIFF_CHARACTERS = 200_000;
 const MAX_REQUEST_BYTES = 225_000;
 const OPENAI_TIMEOUT_MS = 20_000;
 
+type RequestedAnalysisMode = "auto" | "deterministic-only" | "model-assisted";
+
 type UnknownRecord = Record<string, unknown>;
 
 function isRecord(value: unknown): value is UnknownRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function requestedAnalysisMode(value: unknown): RequestedAnalysisMode {
+  if (value === "deterministic-only" || value === "model-assisted") return value;
+  return "auto";
+}
+
+export async function GET() {
+  const model = process.env.OPENAI_MODEL?.trim();
+  const configured = Boolean(process.env.OPENAI_API_KEY?.trim() && model);
+
+  return Response.json({
+    deterministic: {
+      state: "available",
+      externalRead: false,
+      externalWrite: false,
+    },
+    modelAssisted: {
+      state: configured ? "configured" : "unavailable",
+      provider: "openai",
+      model: configured ? model : undefined,
+      externalRead: configured,
+      externalWrite: false,
+      fallback: "deterministic",
+    },
+  }, { headers: { "Cache-Control": "no-store" } });
 }
 
 function requiredString(value: unknown, maxLength: number) {
@@ -263,6 +291,7 @@ export async function POST(request: Request) {
     ? body.inputSource
     : "pasted-diff";
   const reviewProfile = isReviewProfile(body.reviewProfile) ? body.reviewProfile : "standard";
+  const analysisMode = requestedAnalysisMode(body.analysisMode);
   const sourceUrl = typeof body.sourceUrl === "string" && /^https:\/\/github\.com\/[^/\s]+\/[^/\s]+\/pull\/\d+/.test(body.sourceUrl)
     ? body.sourceUrl
     : undefined;
@@ -283,7 +312,15 @@ export async function POST(request: Request) {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   const model = process.env.OPENAI_MODEL?.trim();
 
-  if (!apiKey || !model) return responseWithReport(baseline, "deterministic", input, "deterministic", undefined, undefined, { sourceUrl, pullRequestNumber });
+  if (analysisMode === "deterministic-only") {
+    return responseWithReport(baseline, "deterministic", input, "deterministic", undefined, undefined, { sourceUrl, pullRequestNumber });
+  }
+
+  if (!apiKey || !model) {
+    return analysisMode === "model-assisted"
+      ? responseWithReport(baseline, "deterministic", input, "fallback", "openai", model, { sourceUrl, pullRequestNumber })
+      : responseWithReport(baseline, "deterministic", input, "deterministic", undefined, undefined, { sourceUrl, pullRequestNumber });
+  }
 
   const generated = await generateWithOpenAI(input, baseline, apiKey, model);
   if (!generated) return responseWithReport(baseline, "deterministic", input, "fallback", "openai", model, { sourceUrl, pullRequestNumber });

@@ -33,10 +33,11 @@ export const metadata: Metadata = {
 };
 
 /* R2B — logged-in AppShell routes render one authoritative dark theme. The
-   bootstrap forces dark for these paths at first paint (no light flash on hard
-   load/refresh) without ever reading or writing the stored public preference.
-   AppShell re-asserts the same lock for client-side navigations. */
-const SHELL_DARK_PATHS = [
+   R4F.1 supersedes that historical rule below: production logged-in paths are
+   light at first paint, while only the explicit rollback route stays dark.
+   The public preference is never read as product authority or overwritten. */
+const PRODUCT_LIGHT_PATHS = [
+  "/workspace",
   "/new",
   "/report",
   "/review-operations",
@@ -47,13 +48,16 @@ const SHELL_DARK_PATHS = [
   "/settings",
 ];
 
+const LEGACY_DARK_PATHS = ["/workspace-legacy"];
+
 const themeBootstrapScript = `(() => {
-  var shellPaths = ${JSON.stringify(SHELL_DARK_PATHS)};
-  function isShellPath() {
+  var lightPaths = ${JSON.stringify(PRODUCT_LIGHT_PATHS)};
+  var legacyDarkPaths = ${JSON.stringify(LEGACY_DARK_PATHS)};
+  function matches(paths) {
     try {
       var path = window.location.pathname;
-      for (var i = 0; i < shellPaths.length; i++) {
-        if (path === shellPaths[i] || path.indexOf(shellPaths[i] + "/") === 0) return true;
+      for (var i = 0; i < paths.length; i++) {
+        if (path === paths[i] || path.indexOf(paths[i] + "/") === 0) return true;
       }
     } catch (e) {}
     return false;
@@ -65,7 +69,7 @@ const themeBootstrapScript = `(() => {
     const resolved = preference === "system"
       ? (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
       : preference;
-    const applied = isShellPath() ? "dark" : resolved;
+    const applied = matches(lightPaths) ? "light" : matches(legacyDarkPaths) ? "dark" : resolved;
     document.documentElement.dataset.theme = applied;
     document.documentElement.style.colorScheme = applied;
   } catch {
@@ -77,7 +81,7 @@ const themeBootstrapScript = `(() => {
     } catch {
       // Match-media access can also be unavailable in restricted contexts.
     }
-    const applied = isShellPath() ? "dark" : resolved;
+    const applied = matches(lightPaths) ? "light" : matches(legacyDarkPaths) ? "dark" : resolved;
     document.documentElement.dataset.theme = applied;
     document.documentElement.style.colorScheme = applied;
   }

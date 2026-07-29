@@ -12,6 +12,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Children,
+  useCallback,
   useEffect,
   useId,
   useLayoutEffect,
@@ -26,12 +27,18 @@ import {
   isShellAreaActive,
   isShellContextDestinationActive,
   SHELL_GLOBAL_AREAS,
+  SHELL_ROUTE_CONTEXTS,
   ShellIcon,
   visibleShellContextDestinations,
   type ShellGlobalArea,
   type ShellRouteContext,
 } from "./nav-config";
 import { useTheme } from "./theme-provider";
+import {
+  readWorkspaceReturnContext,
+  workspaceReturnHref,
+  type WorkspaceReturnContext,
+} from "./workspace-return-context";
 import {
   activeWorkspace,
   ensureWorkspaceStore,
@@ -44,6 +51,8 @@ import {
 
 const MOBILE_QUERY = "(max-width: 899px)";
 const DRAWER_QUERY = "(max-width: 1179px)";
+const DRAWER_FOCUSABLE =
+  'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])';
 export const SHELL_NAVIGATION_OPEN_EVENT = "lintel:shell-navigation-open";
 
 /* SSR-safe layout effect: the dark-theme lock must apply before paint on the
@@ -429,7 +438,333 @@ function CommandActionOverflow({
   );
 }
 
-export default function AppShell({
+const ADMINISTRATIVE_ROUTES = SHELL_ROUTE_CONTEXTS.filter(
+  (route) => route.family === "administrative",
+);
+
+function ProductIdentity({ compact = false }: { compact?: boolean }) {
+  return (
+    <Link className={compact ? "r4-product-identity r4-product-identity--compact" : "r4-product-identity"} href="/workspace" aria-label="Lintel Reviews">
+      <span className="r4-product-mark" aria-hidden="true">L</span>
+      <span className="r4-product-name">Lintel</span>
+    </Link>
+  );
+}
+
+function R4GlobalRail({ route }: { route: ShellRouteContext }) {
+  return (
+    <aside className="r4-global-rail" aria-label="Global product areas">
+      <ProductIdentity compact />
+      <nav className="r4-global-navigation" aria-label="Product areas">
+        {SHELL_GLOBAL_AREAS.map((area) => {
+          const active = isShellAreaActive(area, route);
+          const tooltipId = `r4-area-${area.id}-tooltip`;
+          return (
+            <Link
+              className={active ? "r4-global-link r4-global-link--active" : "r4-global-link"}
+              href={area.href}
+              aria-current={active ? "page" : undefined}
+              aria-label={area.label}
+              aria-describedby={tooltipId}
+              key={area.id}
+            >
+              <ShellIcon name={area.icon} />
+              <span className="r4-global-label">{area.label}</span>
+              <span className="r4-global-tooltip" id={tooltipId} role="tooltip">{area.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+      <Link className="r4-global-local" href="/team" aria-label="Team boundaries, browser-local administration" title="Team boundaries">
+        <LocalWorkspaceGlyph />
+      </Link>
+    </aside>
+  );
+}
+
+function WorkspaceReturnLink({
+  context,
+  compact = false,
+  onNavigate,
+}: {
+  context: WorkspaceReturnContext | null;
+  compact?: boolean;
+  onNavigate?: () => void;
+}) {
+  const supportId = useId();
+  const support = context
+    ? "Prior review, mode and investigation context will be validated before restoration."
+    : "No prior Workspace context is stored in this tab. Reviews will open at the truthful default state.";
+  return (
+    <Link
+      className={compact ? "r4-return-link r4-return-link--compact" : "r4-return-link"}
+      href={workspaceReturnHref(context)}
+      aria-describedby={supportId}
+      onClick={onNavigate}
+    >
+      <span aria-hidden="true">←</span>
+      <span>{context ? "Back to Reviews" : "Open Reviews"}</span>
+      <span className="r4-sr-only" id={supportId}>{support}</span>
+    </Link>
+  );
+}
+
+function AdministrativeNavigation({
+  route,
+  returnContext,
+  onNavigate,
+}: {
+  route: ShellRouteContext;
+  returnContext: WorkspaceReturnContext | null;
+  onNavigate?: () => void;
+}) {
+  return (
+    <div className="r4-admin-navigation-content">
+      <div className="r4-admin-identity-block">
+        <ProductIdentity />
+        <WorkspaceReturnLink context={returnContext} onNavigate={onNavigate} />
+      </div>
+      <nav className="r4-admin-section-nav" aria-label="Administrative sections">
+        <span className="r4-admin-nav-label">Administration</span>
+        {ADMINISTRATIVE_ROUTES.map((destination) => {
+          const active = destination.pathname === route.pathname;
+          const icon = destination.pathname === "/team"
+            ? "team"
+            : destination.pathname === "/review-policies"
+              ? "review-policies"
+              : "system";
+          return (
+            <Link
+              className={active ? "r4-admin-nav-link r4-admin-nav-link--active" : "r4-admin-nav-link"}
+              href={destination.pathname}
+              aria-current={active ? "page" : undefined}
+              key={destination.pathname}
+              onClick={onNavigate}
+            >
+              <ShellIcon name={icon} />
+              <span>{destination.contextLabel}</span>
+            </Link>
+          );
+        })}
+      </nav>
+      <div className="r4-admin-scope">
+        <strong>Browser-local administration</strong>
+        <span>No organisation, account or shared-state authority is implied.</span>
+      </div>
+    </div>
+  );
+}
+
+function SharedProductShell({
+  children,
+  title,
+  context,
+  contextTone = "support",
+  actions,
+}: AppShellProps) {
+  const pathname = usePathname() ?? "";
+  const route = findShellRoute(pathname) ?? findShellRoute("/new")!;
+  const area = findShellArea(route.area);
+  const { setForcedTheme } = useTheme();
+  const [returnContext, setReturnContext] = useState<WorkspaceReturnContext | null>(null);
+  const [adminNavigationOpen, setAdminNavigationOpen] = useState(false);
+  const mainRef = useRef<HTMLElement | null>(null);
+  const adminDrawerRef = useRef<HTMLDivElement | null>(null);
+  const adminMenuButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  useIsomorphicLayoutEffect(() => {
+    setForcedTheme("light");
+    return () => setForcedTheme(null);
+  }, [setForcedTheme]);
+
+  const refreshReturnContext = useCallback(() => {
+    try {
+      setReturnContext(readWorkspaceReturnContext(window.sessionStorage));
+    } catch {
+      setReturnContext(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshReturnContext();
+    window.addEventListener("storage", refreshReturnContext);
+    window.addEventListener("pageshow", refreshReturnContext);
+    return () => {
+      window.removeEventListener("storage", refreshReturnContext);
+      window.removeEventListener("pageshow", refreshReturnContext);
+    };
+  }, [pathname, refreshReturnContext]);
+
+  useEffect(() => {
+    setAdminNavigationOpen(false);
+    const intendedTitle = `${route.documentTitle} — Lintel`;
+    const applyDocumentTitle = () => {
+      if (document.title !== intendedTitle) document.title = intendedTitle;
+    };
+    applyDocumentTitle();
+    const titleObserver = new MutationObserver(applyDocumentTitle);
+    titleObserver.observe(document.head, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+    let focusedHeading: HTMLElement | null = null;
+    const focusRouteHeading = (force = false) => {
+      const heading = mainRef.current?.querySelector<HTMLElement>("h1");
+      if (!heading) return;
+      heading.tabIndex = -1;
+      heading.dataset.routeHeading = "true";
+      const priorHeadingWasReplaced = focusedHeading !== null && !focusedHeading.isConnected;
+      if (force || focusedHeading === null || priorHeadingWasReplaced) {
+        heading.focus({ preventScroll: true });
+        focusedHeading = heading;
+      }
+    };
+    const headingObserver = new MutationObserver(() => focusRouteHeading());
+    if (mainRef.current) {
+      headingObserver.observe(mainRef.current, { childList: true, subtree: true });
+    }
+    const headingObserverTimeout = window.setTimeout(() => headingObserver.disconnect(), 10_000);
+    const frame = window.requestAnimationFrame(() => {
+      applyDocumentTitle();
+      focusRouteHeading(true);
+    });
+    return () => {
+      titleObserver.disconnect();
+      headingObserver.disconnect();
+      window.clearTimeout(headingObserverTimeout);
+      window.cancelAnimationFrame(frame);
+    };
+  }, [pathname, route.documentTitle]);
+
+  useEffect(() => {
+    if (!adminNavigationOpen) return;
+    const drawer = adminDrawerRef.current;
+    const frame = window.requestAnimationFrame(() => drawer?.focus());
+    function onKeyDown(event: KeyboardEvent) {
+      if (!drawer) return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setAdminNavigationOpen(false);
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const focusable = Array.from(drawer.querySelectorAll<HTMLElement>(DRAWER_FOCUSABLE)).filter((item) => item.offsetParent !== null);
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === drawer)) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+    document.addEventListener("keydown", onKeyDown, true);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      document.removeEventListener("keydown", onKeyDown, true);
+      adminMenuButtonRef.current?.focus();
+    };
+  }, [adminNavigationOpen]);
+
+  const routeTitle = title ?? route.contextLabel;
+  const routeActions = (
+    <div className="r4-route-actions" aria-label="Route actions">
+      <WorkspaceReturnLink context={returnContext} compact />
+      {route.primaryAction && (
+        <Link className="shell-command-link shell-command-link--primary" href={route.primaryAction.href}>
+          {route.primaryAction.label}
+        </Link>
+      )}
+      <CommandActionOverflow route={route} actions={actions} closeSignal={0} />
+    </div>
+  );
+
+  if (route.family === "administrative") {
+    return (
+      <div className="app-shell r4-product-shell r4-administrative-shell">
+        <title>{route.documentTitle} — Lintel</title>
+        <a className="r4-skip-link" href="#r4-route-main">Skip to administrative content</a>
+        <div className="r4-admin-frame" inert={adminNavigationOpen ? true : undefined} aria-hidden={adminNavigationOpen ? true : undefined}>
+          <aside className="r4-admin-sidebar" aria-label="Administrative navigation">
+            <AdministrativeNavigation route={route} returnContext={returnContext} />
+          </aside>
+          <div className="r4-product-body">
+            <header className="r4-route-header r4-route-header--administrative">
+              <button
+                className="r4-admin-menu-button"
+                type="button"
+                ref={adminMenuButtonRef}
+                onClick={() => {
+                  window.dispatchEvent(new Event(SHELL_NAVIGATION_OPEN_EVENT));
+                  setAdminNavigationOpen(true);
+                }}
+                aria-expanded={adminNavigationOpen}
+                aria-haspopup="dialog"
+                aria-label="Open administrative sections"
+              >
+                <span aria-hidden="true">☰</span>
+              </button>
+              <div className="r4-route-identity">
+                <span className="r4-route-mode">Administrative · {route.scopeLabel}</span>
+                <strong>{routeTitle}</strong>
+                <span className="r4-route-description">{route.routeDescription}</span>
+              </div>
+              {context && <span className={`r4-route-context r4-route-context--${contextTone}`}>{context}</span>}
+              <div className="r4-admin-mobile-return"><WorkspaceReturnLink context={returnContext} compact /></div>
+            </header>
+            <main className="r4-route-main" id="r4-route-main" aria-label={route.accessiblePageName} ref={mainRef}>{children}</main>
+          </div>
+        </div>
+        {adminNavigationOpen && (
+          <div className="r4-admin-drawer-layer">
+            <button className="r4-admin-drawer-scrim" type="button" tabIndex={-1} aria-label="Close administrative sections" onClick={() => setAdminNavigationOpen(false)} />
+            <div className="r4-admin-drawer" role="dialog" aria-modal="true" aria-label="Administrative sections" ref={adminDrawerRef} tabIndex={-1}>
+              <div className="r4-admin-drawer-header">
+                <span>Administrative sections</span>
+                <button type="button" onClick={() => setAdminNavigationOpen(false)} aria-label="Close administrative sections">×</button>
+              </div>
+              <AdministrativeNavigation route={route} returnContext={returnContext} onNavigate={() => setAdminNavigationOpen(false)} />
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="app-shell r4-product-shell r4-operational-shell">
+      <title>{route.documentTitle} — Lintel</title>
+      <a className="r4-skip-link" href="#r4-route-main">Skip to route content</a>
+      <div className="r4-operational-frame">
+        <R4GlobalRail route={route} />
+        <div className="r4-product-body">
+          <header className="r4-route-header">
+            <div className="r4-route-identity">
+              <span className="r4-route-mode">{area.label} · Operational · {route.scopeLabel}</span>
+              <strong>{routeTitle}</strong>
+              <span className="r4-route-description">{route.routeDescription}</span>
+            </div>
+            {context && <span className={`r4-route-context r4-route-context--${contextTone}`}>{context}</span>}
+            {routeActions}
+          </header>
+          <main className="r4-route-main" id="r4-route-main" aria-label={route.accessiblePageName} ref={mainRef}>{children}</main>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function AppShell(props: AppShellProps) {
+  const pathname = usePathname() ?? "";
+  return pathname === "/workspace-legacy"
+    ? <LegacyAppShell {...props} />
+    : <SharedProductShell {...props} />;
+}
+
+function LegacyAppShell({
   children,
   title,
   context,
@@ -543,7 +878,7 @@ export default function AppShell({
   }
 
   return (
-    <div className="app-shell shell">
+    <div className="app-shell legacy-app-shell shell">
       <div
         className="shell-frame"
         data-context-collapsed={contextCollapsed ? "true" : undefined}

@@ -45,6 +45,13 @@ import type { R4ReloadOutcome } from "./RealWorkspaceR4Bootstrap";
 import HumanDecisionDialog, { type DecisionSubmit } from "./HumanDecisionDialog";
 import { Icon, type IconName } from "./icons";
 import styles from "./workspace-r4.module.css";
+import { useTheme } from "../theme-provider";
+import {
+  clearWorkspaceReturnContext,
+  readWorkspaceReturnContext,
+  writeWorkspaceReturnContext,
+  type WorkspaceReturnContext,
+} from "../workspace-return-context";
 
 type Mode = "overview" | "change" | "evidence" | "requirements" | "history";
 type InvestigationKind =
@@ -224,10 +231,10 @@ function titleMap(snapshot: WorkspaceReadySnapshot) {
   return new Map(snapshot.groups.flatMap((group) => group.cases.map((item) => [item.caseId, item.title])));
 }
 
-function Rail() {
+function Rail({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <nav className={styles.rail} aria-label="Product areas">
-      <Link href="/" className={styles.brand} aria-label="Lintel home"><span>L</span></Link>
+      <Link href="/" className={styles.brand} aria-label="Lintel home" onClick={onNavigate}><span>L</span></Link>
       <div className={styles.railLinks}>
         {RAIL.map((item, index) => (
           <Link
@@ -236,6 +243,7 @@ function Rail() {
             className={index === 0 ? styles.railActive : styles.railLink}
             aria-current={index === 0 ? "page" : undefined}
             aria-label={item.label}
+            onClick={onNavigate}
             title={item.label === "Integrations" ? "Integrations · supporting routes; primary area arrives in R4F" : item.label}
           >
             <Icon name={item.icon} size={18} />
@@ -243,7 +251,7 @@ function Rail() {
           </Link>
         ))}
       </div>
-      <Link href="/team" className={styles.localLink} aria-label="Local workspace metadata" title="Local browser workspace"><span>LC</span></Link>
+      <Link href="/team" className={styles.localLink} aria-label="Local workspace metadata" title="Local browser workspace" onClick={onNavigate}><span>LC</span></Link>
     </nav>
   );
 }
@@ -805,14 +813,22 @@ export default function WorkspaceR4Client({
   persistence = null,
   decisionService = null,
   reload = null,
+  restoreNavigationContext = false,
 }: {
   snapshot: WorkspaceSnapshot;
   persistence?: WorkspacePersistence | null;
   decisionService?: WorkspaceDecisionService | null;
   reload?: (() => Promise<R4ReloadOutcome>) | null;
+  restoreNavigationContext?: boolean;
 }) {
+  const { setForcedTheme } = useTheme();
+  useLayoutEffect(() => {
+    setForcedTheme("light");
+    return () => setForcedTheme(null);
+  }, [setForcedTheme]);
+
   if (snapshot.status !== "ready") return <StatusShell snapshot={snapshot} />;
-  return <ReadyWorkspace snapshot={snapshot} persistence={persistence} decisionService={decisionService} reload={reload} />;
+  return <ReadyWorkspace snapshot={snapshot} persistence={persistence} decisionService={decisionService} reload={reload} restoreNavigationContext={restoreNavigationContext} />;
 }
 
 function ReadyWorkspace({
@@ -820,11 +836,13 @@ function ReadyWorkspace({
   persistence,
   decisionService,
   reload,
+  restoreNavigationContext,
 }: {
   snapshot: WorkspaceReadySnapshot;
   persistence: WorkspacePersistence | null;
   decisionService: WorkspaceDecisionService | null;
   reload: (() => Promise<R4ReloadOutcome>) | null;
+  restoreNavigationContext: boolean;
 }) {
   const [selectedCaseId, setSelectedCaseId] = useState(snapshot.defaultCaseId);
   const [mode, setMode] = useState<Mode>("overview");
@@ -858,6 +876,7 @@ function ReadyWorkspace({
   const modeScrollPositions = useRef(new Map<string, number>());
   const preFocusPanels = useRef({ queueCollapsed: false, inspectorOpen: true });
   const initialResponsive = useRef(false);
+  const restorationAttempted = useRef(false);
 
   const announce = useCallback((message: string, urgent = false) => {
     if (urgent) { setAssertive(""); window.requestAnimationFrame(() => setAssertive(message)); }
@@ -875,6 +894,29 @@ function ReadyWorkspace({
   const rememberScroll = useCallback(() => {
     if (workspaceScrollRef.current) modeScrollPositions.current.set(scrollKey(activeCase.caseId, mode), workspaceScrollRef.current.scrollTop);
   }, [activeCase.caseId, mode, scrollKey]);
+
+  const persistNavigationContext = useCallback(() => {
+    try {
+      const context: WorkspaceReturnContext = {
+        version: 1,
+        source: snapshot.provenance.isSample ? "fixture" : "real",
+        caseId: activeCase.caseId,
+        mode,
+        selection,
+        comparisonRunId,
+        queueCollapsed,
+        collapsedGroups: [...collapsedGroups],
+        inspectorOpen,
+        focusMode,
+        scrollTop: workspaceScrollRef.current?.scrollTop ?? modeScrollPositions.current.get(scrollKey(activeCase.caseId, mode)) ?? 0,
+        capturedAt: new Date().toISOString(),
+      };
+      writeWorkspaceReturnContext(window.sessionStorage, context);
+    } catch {
+      // Return context is session-only convenience. Workspace truth and route
+      // navigation remain valid if the browser blocks session storage.
+    }
+  }, [activeCase.caseId, collapsedGroups, comparisonRunId, focusMode, inspectorOpen, mode, queueCollapsed, scrollKey, selection, snapshot.provenance.isSample]);
 
   useLayoutEffect(() => {
     const frame = window.requestAnimationFrame(() => {
@@ -914,6 +956,71 @@ function ReadyWorkspace({
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
   }, []);
+
+  useEffect(() => {
+    if (restorationAttempted.current || !restoreNavigationContext) return;
+    restorationAttempted.current = true;
+
+    let context: WorkspaceReturnContext | null = null;
+    try {
+      context = readWorkspaceReturnContext(window.sessionStorage);
+    } catch {
+      context = null;
+    }
+    if (!context) return;
+
+    const expectedSource = snapshot.provenance.isSample ? "fixture" : "real";
+    if (context.source !== expectedSource) return;
+    const restoredCase = cases.get(context.caseId);
+    if (!restoredCase) {
+      try { clearWorkspaceReturnContext(window.sessionStorage); } catch { /* session storage may be unavailable */ }
+      announce("The prior review is no longer available. Reviews opened at the current truthful default state.", true);
+      return;
+    }
+
+    const restoredSelection = context.selection as Selection;
+    const selectionValid = selectionExists(restoredCase, restoredSelection);
+    const availableGroupIds = new Set<string>(snapshot.groups.map((group) => group.id));
+    const comparisonIds = restoredCase.history?.status === "comparison"
+      ? new Set([restoredCase.history.previous.runId, ...(restoredCase.history.comparisons ?? []).map((item) => item.target.runId)])
+      : new Set<string>();
+    const restoredFocusMode = context.focusMode && window.innerWidth >= 960;
+
+    modeScrollPositions.current.set(scrollKey(restoredCase.caseId, context.mode), context.scrollTop);
+    setSelectedCaseId(restoredCase.caseId);
+    setMode(context.mode);
+    setSelection(selectionValid ? restoredSelection : null);
+    setOrigin(null);
+    setComparisonRunId(context.comparisonRunId && comparisonIds.has(context.comparisonRunId) ? context.comparisonRunId : null);
+    setQueueCollapsed(context.queueCollapsed);
+    setCollapsedGroups(new Set(context.collapsedGroups.filter((groupId) => availableGroupIds.has(groupId))));
+    setInspectorOpen(restoredFocusMode ? false : context.inspectorOpen);
+    setFocusMode(restoredFocusMode);
+    setMobileView(window.innerWidth < 640 && selectionValid && restoredSelection ? "record" : "review");
+
+    try {
+      writeWorkspaceReturnContext(window.sessionStorage, {
+        ...context,
+        selection: selectionValid ? context.selection : null,
+        focusMode: restoredFocusMode,
+        capturedAt: new Date().toISOString(),
+      });
+    } catch {
+      // Restoration already succeeded in memory; storage is not authority.
+    }
+
+    announce(selectionValid && restoredSelection
+      ? `Restored ${restoredCase.github.repository}, PR ${restoredCase.github.pullRequestNumber}, ${context.mode} mode and ${restoredSelection.kind} context.`
+      : selectionValid
+        ? `Restored ${restoredCase.github.repository}, PR ${restoredCase.github.pullRequestNumber}, ${context.mode} mode.`
+        : `Restored ${restoredCase.github.repository}, PR ${restoredCase.github.pullRequestNumber}, and ${context.mode} mode. The prior selected object no longer resolves, so Inspector context was cleared.`);
+  }, [announce, cases, restoreNavigationContext, scrollKey, snapshot.groups, snapshot.provenance.isSample]);
+
+  useEffect(() => {
+    const persistOnLeave = () => persistNavigationContext();
+    window.addEventListener("pagehide", persistOnLeave);
+    return () => window.removeEventListener("pagehide", persistOnLeave);
+  }, [persistNavigationContext]);
 
   useEffect(() => {
     const container = queueDrawerOpen ? queueDrawerRef.current : inspectorDrawerActive ? inspectorDrawerRef.current : null;
@@ -1207,7 +1314,7 @@ function ReadyWorkspace({
       <a className={styles.skipLink} href="#workspace-primary">Skip to Workspace</a><a className={styles.skipQueue} href="#review-queue">Skip to review queue</a>
       <div className={styles.mobileBar}><button type="button" className={styles.iconButton} onClick={() => setQueueDrawerOpen(true)} aria-label="Open review list"><Icon name="queue" /></button><strong>Reviews</strong><span>{activeCase.github.repository} · #{activeCase.github.pullRequestNumber}</span></div>
       <div className={styles.shell} inert={dialogOpen || paletteOpen ? true : undefined} aria-hidden={dialogOpen || paletteOpen ? true : undefined}>
-        <Rail />
+        <Rail onNavigate={persistNavigationContext} />
         <div className={styles.queueStrip}><button ref={queueTriggerRef} type="button" onClick={() => setQueueDrawerOpen(true)} aria-label="Open review queue"><Icon name="queue" /><strong>{activeCase.github.pullRequestNumber}</strong><span>{blockers.length}B</span></button></div>
         <div ref={queueDrawerRef} className={styles.queueAnchor}><ReviewQueue snapshot={snapshot} selectedId={activeCase.caseId} collapsedGroups={collapsedGroups} onToggleGroup={(id) => setCollapsedGroups((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next; })} onSelect={selectReview} onClose={() => { setQueueDrawerOpen(false); queueTriggerRef.current?.focus(); }} /></div>
         <main className={styles.workspace} id="workspace-primary" tabIndex={-1}>

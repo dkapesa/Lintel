@@ -1,15 +1,15 @@
 # R4 — Workspace Product Experience Rebuild
 
-> **Milestone:** R4D — Core Workspace Production Upgrade
-> **Status:** Canonical `/workspace` upgrade and focused visual correction implemented; production build validated; refreshed rendered review pending
-> **Scope:** Index for the accepted R4A/R4B contracts, accepted R4C laboratory authority, and the contained R4D production transfer.
-> **Authoritative inputs:** The accepted R4A and R4B contracts under `docs/r4/`, the accepted R4C laboratory and review package, and `R4D_CORE_WORKSPACE_PRODUCTION_UPGRADE.md`.
-> **Excluded scope:** R4E deep-review interaction, command palette, general acknowledgement/waiver schemas, `/integrations`, app-wide R4 propagation, supporting-route redesign, dependencies, and new storage keys.
-> **Next owning milestone:** R4E — deeper investigation and sustained review interaction.
+> **Milestone:** R4E — Deep Review Interaction (accepted)
+> **Status:** R4E received manual human acceptance on 29 July 2026 after the core production `/workspace` investigation flow was exercised locally with no implementation defect observed.
+> **Scope:** Index for the accepted R4A/R4B contracts, accepted R4C laboratory authority, R4D production transfer, and the contained R4E investigation layer.
+> **Authoritative inputs:** The accepted R4A and R4B contracts under `docs/r4/`, the accepted R4C laboratory, `R4D_CORE_WORKSPACE_PRODUCTION_UPGRADE.md`, and `R4E_DEEP_REVIEW_INTERACTION.md`.
+> **Excluded scope:** General acknowledgement/waiver schemas, `/integrations`, app-wide R4 propagation, supporting-route redesign, dependencies, new storage keys, and R4F/R4G work.
+> **Next owning milestone:** R4F — route-family and integration experience propagation.
 
 ## Contract status
 
-R4 is selected. R4A remains the accepted authoritative foundation, R4B remains the binding information and interaction architecture, and the accepted R4C laboratory remains the visual and core-interaction authority. R4D transfers that authority into canonical `/workspace` using real production adapters and mutation contracts. It does not reopen strategy, the light application direction, visual references, the master shell, or product authority.
+R4 is selected. R4A remains the accepted authoritative foundation, R4B remains the binding information and interaction architecture, and the accepted R4C laboratory remains the visual and core-interaction authority. R4D transferred that authority into canonical `/workspace` using real production adapters and mutation contracts. Accepted R4E deepens that production route with investigation traversal, focused context, comparison targets, keyboard operation, and continuity. R4F is the next milestone. R4E does not reopen strategy, the light application direction, visual references, the master shell, or product authority.
 
 The governing evidence model is:
 
@@ -91,6 +91,16 @@ The canonical laboratory fixture is `acme/redemption-api`, PR #482, run `run_482
 
 The R4C laboratory remains intact at `/visual-lab/workspace-r4` as the accepted comparison authority. R4D does not make production depend on laboratory fixtures or controls.
 
+### R4E production interaction
+
+| Document or route | Responsibility |
+| --- | --- |
+| `R4E_DEEP_REVIEW_INTERACTION.md` | Investigation state, relationship provenance, origin return, deterministic next inspection, focused-code truth, comparison, keyboard/palette, Focus mode, responsive continuity, validation, and handoff. |
+| `/workspace` | The same canonical R4 production route, now supporting bounded deep investigation over real browser-local history and explicitly labelled read-only fixture coverage. |
+| `R4E_HUMAN_REVIEW_PACKAGE/` | Temporary untracked manual-review package. Refreshed captures remain outstanding because the in-app browser rejected post-edit localhost access under its URL policy. |
+
+R4E does not create a second route, a graph canvas, source reconstruction, a general requirement-resolution system, or new persistence. Exact code anchors come only from exact stored finding locations. The immediately previous compatible run remains the comparison default; up to nine compatible browser-local targets may be selected where canonical history exists.
+
 ## Locked interaction architecture
 
 - Queue groups are `Needs attention`, `In review`, `Ready`, and `Reviewed`, with deterministic priority and stable identity through filters, collapse, regrouping, and 50+ records.
@@ -106,7 +116,7 @@ The R4C laboratory remains intact at `/visual-lab/workspace-r4` as the accepted 
 
 The recommended R4C validation thresholds are Wide `≥1440px`, Normal `1280–1439px`, Narrow `960–1279px`, Tablet `640–959px`, and Mobile `<640px`. Responsive states preserve responsibility rather than compressing panels. Mobile is a functional sequence from review list to selected review to selected record or consequential action.
 
-Core work is keyboard-complete through visible controls. Candidate shortcuts are `J/K`, `Enter`, `E`, `R`, `H`, `D`, `[`, `]`, `Cmd/Ctrl K`, and `Esc`, under the exact scope and suppression rules in `R4B_RESPONSIVE_KEYBOARD_FOCUS.md`. R4C must validate candidates in real browsers before they gain production authority. No shortcut is required.
+Core work is keyboard-complete through visible controls. R4E implements `J/K`, `Enter`, `E`, `R`, `H`, `D`, `[`, `]`, `Cmd/Ctrl K`, and `Esc` under the exact scope and suppression rules in `R4B_RESPONSIVE_KEYBOARD_FOCUS.md`; every action also retains a visible control. R4E was accepted by manual human review on 29 July 2026. Refreshed automated captures remain outstanding under the recorded URL-policy block and are not represented as current evidence.
 
 ## Route-family ownership
 
@@ -134,4 +144,4 @@ R4B creates no route. The future Integrations primary destination remains planne
 
 R4B is acceptable only when every region has one primary responsibility; every canonical transition defines state, focus, announcement, scroll, responsive survival, and recovery; persistent and contextual information remain distinct; one selection produces one Inspector response; unsupported actions remain truthful; failures preserve context and input; route families are coherent; and R4C can implement the laboratory without repeating reference analysis or inventing interaction rules.
 
-The R4C authority transfer is implemented in canonical `/workspace`. The focused R4D correction replaces green application chrome with neutral charcoal/black roles, restores neutral selection and blue focus, compacts production typography/density, and distinguishes the read-only `Preview decision flow` from authoritative Human Decision recording. Workspace-local variables prepare later surface/text/border substitution without implementing dark mode. The optimized production build passes; the human-review package truthfully marks its existing captures as pre-correction until the in-app browser URL-policy block can be cleared and the corrected production route recaptured. R4E remains intentionally deferred.
+The R4C authority transfer is implemented in canonical `/workspace`. The focused R4D correction keeps neutral charcoal/black chrome, neutral selection, blue focus, compact production typography/density, and the distinction between explicit read-only fixture preview and authoritative Human Decision recording. R4E adds bounded investigation, provenance-labelled traversal, deterministic next inspection, exact-anchor/file-only code context, selectable real-history comparison, command navigation, Focus mode continuity, and responsive selected-record sequencing. It received manual human acceptance on 29 July 2026 after the core production investigation flow was exercised locally with no implementation defect observed. The R4E review package truthfully records that the Codex browser could not produce refreshed automated captures, no stale capture is current evidence, and all 20 images remain uncaptured. Full adversarial responsive, 200% zoom, reduced-motion, large-collection, performance, and cross-route validation remains assigned to R4G; this tooling limitation does not invalidate R4E implementation or acceptance. R4F is the next milestone.

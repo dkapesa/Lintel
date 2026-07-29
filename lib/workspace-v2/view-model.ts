@@ -218,6 +218,16 @@ export type ChangedFileView = {
   additions: number | null;
   deletions: number | null;
   risk: RiskLevel | null;
+  /* Exact line locations are projected only from a stored finding location
+     whose repository-relative path and numeric line suffix resolve to this
+     changed file. No source text or surrounding diff is reconstructed. */
+  focusedRegions: Array<{
+    startLine: number;
+    endLine: number;
+    sourceFindingId: string;
+    sourceLabel: string;
+    provenance: "exact-recorded-location";
+  }>;
   /* Observations (findings) whose recorded location resolves to this file. */
   observations: RelationshipState;
   /* Evidence that canonically identifies this changed file / source path. When
@@ -344,6 +354,13 @@ export type HistoryChangeView = {
   currentState: string | null;
 };
 
+export type RunComparisonView = {
+  target: RunView;
+  readiness: ReadinessView;
+  changes: HistoryChangeView[];
+  limitation: string | null;
+};
+
 export type HistoryProjection =
   | {
       status: "comparison";
@@ -352,6 +369,9 @@ export type HistoryProjection =
       readiness: ReadinessView;
       changes: HistoryChangeView[];
       limitation: string | null;
+      /* Additional valid stored comparisons, newest first. The existing
+         previous run remains the deterministic default. */
+      comparisons?: RunComparisonView[];
     }
   | { status: "initial"; current: RunView; reason: string }
   | { status: "unavailable"; current: RunView | null; reason: string };
@@ -584,6 +604,9 @@ export type CaseDetail = {
      not any single artifact. */
   reviewStateMutation: ReviewStateMutationCapability;
   executiveSummary: string;
+  /* Stored Report metadata only. Explicit fixtures omit this when they do not
+     author language/framework truth. */
+  technicalContext?: { language: string; framework: string };
   changedFiles: ChangedFileView[];
   findings: FindingView[];
   evidence: EvidenceView[];

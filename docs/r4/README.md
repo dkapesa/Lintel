@@ -1,15 +1,15 @@
 # R4 — Workspace Product Experience Rebuild
 
-> **Milestone:** R4E — Deep Review Interaction (accepted)
-> **Status:** R4E received manual human acceptance on 29 July 2026 after the core production `/workspace` investigation flow was exercised locally with no implementation defect observed.
-> **Scope:** Index for the accepted R4A/R4B contracts, accepted R4C laboratory authority, R4D production transfer, and the contained R4E investigation layer.
-> **Authoritative inputs:** The accepted R4A and R4B contracts under `docs/r4/`, the accepted R4C laboratory, `R4D_CORE_WORKSPACE_PRODUCTION_UPGRADE.md`, and `R4E_DEEP_REVIEW_INTERACTION.md`.
-> **Excluded scope:** General acknowledgement/waiver schemas, `/integrations`, app-wide R4 propagation, supporting-route redesign, dependencies, new storage keys, and R4F/R4G work.
-> **Next owning milestone:** R4F — route-family and integration experience propagation.
+> **Milestone:** R4F.1 — Shared Logged-in Product System (accepted)
+> **Status:** R4F.1 is accepted. The specialist `/workspace` remains intact; all eight production supporting routes use an explicit operational or administrative shell, with validated context-preserving return to Reviews.
+> **Scope:** Index for accepted R4A–R4E authority and the contained R4F.1 route-family, shell, route-identity and navigation-context foundation.
+> **Authoritative inputs:** The accepted R4A and R4B contracts under `docs/r4/`, accepted R4C laboratory, R4D production transfer, R4E deep interaction, and `R4F1_SHARED_LOGGED_IN_PRODUCT_SYSTEM.md`.
+> **Excluded scope:** Route-content redesign owned by R4F.2–R4F.5, a new `/integrations` route, dark mode, dependencies, authentication/organisation/collaboration claims, and R4G adversarial freeze.
+> **Next owning milestone:** R4F.2 — New Review and Case File.
 
 ## Contract status
 
-R4 is selected. R4A remains the accepted authoritative foundation, R4B remains the binding information and interaction architecture, and the accepted R4C laboratory remains the visual and core-interaction authority. R4D transferred that authority into canonical `/workspace` using real production adapters and mutation contracts. Accepted R4E deepens that production route with investigation traversal, focused context, comparison targets, keyboard operation, and continuity. R4F is the next milestone. R4E does not reopen strategy, the light application direction, visual references, the master shell, or product authority.
+R4 is selected. R4A remains the accepted authoritative foundation, R4B remains the binding information and interaction architecture, and the accepted R4C laboratory remains the visual and core-interaction authority. R4D transferred that authority into canonical `/workspace` using real production adapters and mutation contracts. Accepted R4E deepens that production route with investigation traversal, focused context, comparison targets, keyboard operation, and continuity. R4F.1 now propagates the accepted identity, semantic roles and quality bar through route-family-specific shells without wrapping or redesigning the Workspace. It does not reopen strategy, the light application direction, visual references or product authority.
 
 The governing evidence model is:
 
@@ -101,6 +101,29 @@ The R4C laboratory remains intact at `/visual-lab/workspace-r4` as the accepted 
 
 R4E does not create a second route, a graph canvas, source reconstruction, a general requirement-resolution system, or new persistence. Exact code anchors come only from exact stored finding locations. The immediately previous compatible run remains the comparison default; up to nine compatible browser-local targets may be selected where canonical history exists.
 
+### R4F.1 shared logged-in product system
+
+| Document or route family | Responsibility |
+| --- | --- |
+| `R4F1_SHARED_LOGGED_IN_PRODUCT_SYSTEM.md` | Actual route-family matrix, shared-shell architecture, context-restoration boundary, semantic roles, accessibility/responsive behaviour, validation and R4F.2–R4F.5 handoff. |
+| Verification Workspace | `/workspace` remains the accepted specialist four-region workstation and is not wrapped in the generic product shell. |
+| Operational shell | `/new`, `/report`, `/review-operations`, `/github-action` and `/slack-handoff` share the 52px neutral Rail, compact identity header and route-owned working surface. |
+| Administrative shell | `/team`, `/review-policies` and `/settings` share explicit Back to Reviews, truthful browser-local scope, real section destinations and a quiet responsive content shell. |
+| `R4F1_HUMAN_REVIEW_PACKAGE/` | Temporary untracked 16-PNG review package, screenshot manifest, validation notes and context-restoration record. |
+
+R4F.1 introduces the tab-scoped navigation-context key `lintel.r4f.workspaceReturnContext.v1`. It stores identifiers and presentation context only, validates them against the current Workspace snapshot, and is never durable review authority. The shared consequential-dialog anatomy is exercised only by Team's pre-existing browser-local workspace archive action.
+
+### Canonical R4F handoff
+
+| Milestone | Accepted ownership |
+| --- | --- |
+| **R4F.2 — New Review and Case File** | Mature the complete New Review intake and durable Case File; add a compact read-only Review Map derived only from canonical relationships; no free-form graph canvas. The StackAI-derived fixed relationship orientation belongs to the R4F.2 Case File. |
+| **R4F.3 — Operational Home and Review Operations** | Operational orientation, real saved work views, bounded recent review context and dense cross-review engineering records; no duplicated Workspace Queue. The Tembo-derived operational navigation principles belong to R4F.3. |
+| **R4F.4 — Integrations, System and Settings** | GitHub App, GitHub Action Blueprint, Slack Export-only, provider capability truth, quiet System/settings, truthful usage only where instrumented, and explicit configuration scope. |
+| **R4F.5 — Governance, Policies and Team Boundaries** | Policy browsing, impact preview, provenance and applicability, consequential policy changes, and truthful team/collaboration boundaries. |
+
+R4F.1 established the shared shell and navigation foundations only. It did not implement any of the R4F.2–R4F.5 route-content features above.
+
 ## Locked interaction architecture
 
 - Queue groups are `Needs attention`, `In review`, `Ready`, and `Reviewed`, with deterministic priority and stable identity through filters, collapse, regrouping, and 50+ records.
@@ -120,15 +143,14 @@ Core work is keyboard-complete through visible controls. R4E implements `J/K`, `
 
 ## Route-family ownership
 
-| Area | R4 primary destination | Supporting context |
+| Family | Production routes | Shell responsibility |
 | --- | --- | --- |
-| Reviews | `/workspace` | `/new`, contextual `/report`. |
-| Operations | `/review-operations` | `/team`. |
-| Governance | `/review-policies` | Route-local policy/profile context. |
-| Integrations | Planned `/integrations` in R4F | Configured GitHub App, `/github-action` Blueprint, `/slack-handoff` Export-only, provider link to System. |
-| System | `/settings` | System/model/provider configuration truth. |
+| Verification Workspace | `/workspace` | Specialist Rail, Review Queue, five-mode Workspace and contextual Inspector; authoritative production verification surface. |
+| Operational product | `/new`, `/report`, `/review-operations`, `/github-action`, `/slack-handoff` | Shared neutral Rail, compact route identity and route-owned workflow/record surface. |
+| Administrative product | `/team`, `/review-policies`, `/settings` | Explicit Back to Reviews, truthful browser-local scope, actual section navigation and quiet management surface. |
+| Preserved/excluded | `/workspace-v2`, `/workspace-legacy`, `/visual-lab/workspace-r4` and other proof/lab routes | Compatibility, rollback or visual authority; no new production chrome. |
 
-R4B creates no route. The future Integrations primary destination remains planned and explicitly non-current until its owning milestone.
+The future Integrations primary destination remains planned and explicitly non-current until an owning milestone creates it. GitHub Action remains Blueprint and Slack remains Export-only.
 
 ## Product-truth lock
 
@@ -144,4 +166,4 @@ R4B creates no route. The future Integrations primary destination remains planne
 
 R4B is acceptable only when every region has one primary responsibility; every canonical transition defines state, focus, announcement, scroll, responsive survival, and recovery; persistent and contextual information remain distinct; one selection produces one Inspector response; unsupported actions remain truthful; failures preserve context and input; route families are coherent; and R4C can implement the laboratory without repeating reference analysis or inventing interaction rules.
 
-The R4C authority transfer is implemented in canonical `/workspace`. The focused R4D correction keeps neutral charcoal/black chrome, neutral selection, blue focus, compact production typography/density, and the distinction between explicit read-only fixture preview and authoritative Human Decision recording. R4E adds bounded investigation, provenance-labelled traversal, deterministic next inspection, exact-anchor/file-only code context, selectable real-history comparison, command navigation, Focus mode continuity, and responsive selected-record sequencing. It received manual human acceptance on 29 July 2026 after the core production investigation flow was exercised locally with no implementation defect observed. The R4E review package truthfully records that the Codex browser could not produce refreshed automated captures, no stale capture is current evidence, and all 20 images remain uncaptured. Full adversarial responsive, 200% zoom, reduced-motion, large-collection, performance, and cross-route validation remains assigned to R4G; this tooling limitation does not invalidate R4E implementation or acceptance. R4F is the next milestone.
+The R4C authority transfer is implemented in canonical `/workspace`. The focused R4D correction keeps neutral charcoal/black chrome, neutral selection, blue focus, compact production typography/density, and the distinction between explicit read-only fixture preview and authoritative Human Decision recording. R4E adds bounded investigation, provenance-labelled traversal, deterministic next inspection, exact-anchor/file-only code context, selectable real-history comparison, command navigation, Focus mode continuity, and responsive selected-record sequencing. It received manual human acceptance on 29 July 2026 after the core production investigation flow was exercised locally with no implementation defect observed. The R4E review package truthfully records that the Codex browser could not produce refreshed automated captures, no stale capture is current evidence, and all 20 images remain uncaptured. R4F.1 now supplies coherent specialist, operational and administrative route families, validated context-preserving return to Reviews, stable route identity and scoped light-system roles. Its actual browser package is current evidence for the R4F.1 shell boundary. Actual 200% browser zoom and emulated reduced motion remain explicit human-review checks, and full adversarial product freeze remains assigned to R4G. R4F.2–R4F.5 own route-content maturity.

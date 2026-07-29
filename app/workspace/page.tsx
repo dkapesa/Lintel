@@ -17,6 +17,7 @@ type SearchParams = {
   scenario?: string | string[];
   source?: string | string[];
   reportId?: string | string[];
+  restore?: string | string[];
 };
 
 function first(value: string | string[] | undefined) {
@@ -33,11 +34,12 @@ export default async function WorkspacePage({
 }) {
   const params = await searchParams;
   const source = resolveWorkspaceSource(first(params.source), "real");
+  const restoreNavigationContext = first(params.restore) === "1" || !first(params.reportId);
   if (source === "real") {
-    return <RealWorkspaceR4Bootstrap reportId={first(params.reportId) ?? null} />;
+    return <RealWorkspaceR4Bootstrap reportId={first(params.reportId) ?? null} restoreNavigationContext={restoreNavigationContext} />;
   }
 
   const adapter = createFixtureWorkspaceAdapter();
   const snapshot = await adapter.loadSnapshot({ scenario: parseScenario(first(params.scenario)) });
-  return <WorkspaceR4Client snapshot={snapshot} />;
+  return <WorkspaceR4Client snapshot={snapshot} restoreNavigationContext={restoreNavigationContext} />;
 }

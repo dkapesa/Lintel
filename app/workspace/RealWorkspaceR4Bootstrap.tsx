@@ -32,7 +32,13 @@ function liveProvenance(scenario: WorkspaceProvenance["scenario"]): WorkspacePro
 /* The production R4 bootstrap is the only browser-storage boundary owned by
    /workspace. It uses the existing read adapter and existing mutation
    services, then re-reads through that adapter after every verified write. */
-export default function RealWorkspaceR4Bootstrap({ reportId }: { reportId: string | null }) {
+export default function RealWorkspaceR4Bootstrap({
+  reportId,
+  restoreNavigationContext,
+}: {
+  reportId: string | null;
+  restoreNavigationContext: boolean;
+}) {
   const [snapshot, setSnapshot] = useState<WorkspaceSnapshot>(() => ({
     status: "loading",
     identity: BOOTSTRAP_IDENTITY,
@@ -98,6 +104,7 @@ export default function RealWorkspaceR4Bootstrap({ reportId }: { reportId: strin
       persistence={persistence}
       decisionService={decisionService}
       reload={reload}
+      restoreNavigationContext={restoreNavigationContext}
     />
   );
 }

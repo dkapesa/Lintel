@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import AppShell from "../app-shell";
+import ConsequentialDialog from "../consequential-dialog";
 import styles from "../administrative-document.module.css";
 import { readReportHistory, type ReportHistoryEntry } from "../../lib/report-history";
 import { defaultReviewState, readReviewStates } from "../../lib/review-state";
@@ -71,6 +72,9 @@ export default function TeamWorkspacePage() {
   const [renameValue, setRenameValue] = useState("");
   const [newWorkspaceName, setNewWorkspaceName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [archiveDialogOpen, setArchiveDialogOpen] = useState(false);
+  const [archiveError, setArchiveError] = useState<string | null>(null);
+  const archiveButtonRef = useRef<HTMLButtonElement | null>(null);
 
   function load() {
     const allHistory = readReportHistory(readOnlyStorage(window.localStorage));
@@ -172,11 +176,14 @@ export default function TeamWorkspacePage() {
   }
 
   function archiveCurrentWorkspace() {
-    if (!workspace) return;
+    if (!workspace) return false;
     try {
       refreshAfter(archiveWorkspace(window.localStorage, workspace.workspaceId));
+      setArchiveError(null);
+      return true;
     } catch {
-      setError("Workspace could not be archived.");
+      setArchiveError("Workspace could not be archived. No local workspace state was changed.");
+      return false;
     }
   }
 
@@ -187,7 +194,7 @@ export default function TeamWorkspacePage() {
   const shellContext = workspace ? (sample ? "Sample workspace" : "Local workspace") : "Local workspace";
 
   return (
-    <AppShell title="Team" context={shellContext}>
+    <AppShell title="Team boundaries" context={shellContext}>
       <div className={styles.page}>
         <div className={styles.document}>
           <header className={styles.pageHeader}>
@@ -389,7 +396,17 @@ export default function TeamWorkspacePage() {
                   {workspace.workspaceId !== DEFAULT_WORKSPACE_ID && (
                     <div className={styles.destructiveBody}>
                       <p>Archiving removes this local workspace from the active set on this device.</p>
-                      <button className={styles.dangerAction} type="button" onClick={archiveCurrentWorkspace}>Archive this workspace</button>
+                      <button
+                        className={styles.dangerAction}
+                        type="button"
+                        ref={archiveButtonRef}
+                        onClick={() => {
+                          setArchiveError(null);
+                          setArchiveDialogOpen(true);
+                        }}
+                      >
+                        Archive this workspace
+                      </button>
                     </div>
                   )}
                 </div>
@@ -398,6 +415,25 @@ export default function TeamWorkspacePage() {
           )}
         </div>
       </div>
+      {workspace && (
+        <ConsequentialDialog
+          open={archiveDialogOpen}
+          title="Archive local workspace"
+          affectedObject={`${workspace.name} · ${workspace.workspaceId}`}
+          currentState="Active on this device"
+          proposedState="Archived on this device"
+          consequence="The workspace will be removed from the active workspace set in this browser. Existing Case Files and Human Decision records are not rewritten."
+          unresolvedConditions={[
+            "This action affects only the current browser.",
+            "Archiving does not delete stored Case Files or create an organisation-level audit event.",
+          ]}
+          confirmLabel="Archive workspace"
+          error={archiveError}
+          returnFocusRef={archiveButtonRef}
+          onConfirm={archiveCurrentWorkspace}
+          onCancel={() => setArchiveDialogOpen(false)}
+        />
+      )}
     </AppShell>
   );
 }

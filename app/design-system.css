@@ -383,7 +383,86 @@
 }
 
 /* The application shell shares the single semantic palette. */
-.app-shell,
+/* R4F.1 shared logged-in light roles. These deliberately override the older
+   AppShell palette above without changing the public landing or Workspace
+   module scopes. */
+.app-shell {
+  color-scheme: light;
+  --color-canvas: #f6f6f5;
+  --color-sidebar: #171717;
+  --color-surface: #ffffff;
+  --color-surface-raised: #fafaf9;
+  --color-surface-selected: #eeeeec;
+  --color-surface-hover: #f2f2f0;
+  --color-surface-inset: #fafaf9;
+  --color-border: #eaeae8;
+  --color-border-strong: #dededc;
+  --color-text-primary: #1c1c1c;
+  --color-text-secondary: #6f6f6f;
+  --color-text-muted: #757575;
+  --color-text-faint: #8a8a8a;
+  --color-text-inverse: #ffffff;
+  --color-accent: #2563eb;
+  --color-accent-strong: #1d4ed8;
+  --color-focus-ring: #2563eb;
+  --color-success: #2f855a;
+  --color-success-soft: rgb(47 133 90 / 10%);
+  --color-warning: #a16207;
+  --color-warning-strong: #a16207;
+  --color-warning-muted: #854d0e;
+  --color-warning-soft: rgb(161 98 7 / 10%);
+  --color-danger: #b42318;
+  --color-danger-strong: #b42318;
+  --color-danger-soft: rgb(180 35 24 / 9%);
+  --color-information: #2563eb;
+  --color-information-muted: #1d4ed8;
+  --color-information-soft: rgb(37 99 235 / 9%);
+  --color-provenance: #7c3aed;
+  --color-provenance-soft: rgb(124 58 237 / 9%);
+  --color-code-background: #fafaf9;
+  --color-control-background: #ffffff;
+  --color-overlay-surface: #ffffff;
+  --color-overlay-backdrop: rgb(28 28 28 / 36%);
+  --color-selection: rgb(37 99 235 / 18%);
+  --color-autofill: #eef3ff;
+  --color-selected-edge: #3f3f3f;
+  --color-fixture: #7c3aed;
+  --color-fixture-soft: rgb(124 58 237 / 9%);
+  --color-model: #7c3aed;
+  --color-model-soft: rgb(124 58 237 / 9%);
+  --color-unavailable: #6f6f6f;
+  --color-unavailable-soft: rgb(111 111 111 / 8%);
+  --shadow-card: none;
+  --shadow-panel: 0 8px 24px rgb(28 28 28 / 10%);
+  --shadow-overlay: 0 16px 42px rgb(28 28 28 / 16%);
+  --shadow-selected: inset 0 0 0 1px rgb(28 28 28 / 16%);
+}
+
+/* `/workspace-legacy` keeps the prior shell palette under its explicit
+   rollback contract. No other migrated route receives this override. */
+.app-shell.legacy-app-shell {
+  color-scheme: dark;
+  --color-canvas: #0c0b0a;
+  --color-sidebar: #141210;
+  --color-surface-inset: #100f0d;
+  --color-surface: #191713;
+  --color-surface-hover: #201d18;
+  --color-surface-raised: #211e19;
+  --color-surface-selected: #241f18;
+  --color-border: #2b2823;
+  --color-border-strong: #3b362e;
+  --color-text-primary: #edece7;
+  --color-text-secondary: #b2aca0;
+  --color-text-muted: #969084;
+  --color-text-faint: #928c80;
+  --color-text-inverse: #0c0b0a;
+  --color-code-background: #100f0d;
+  --color-control-background: #100f0d;
+  --color-overlay-surface: #211e19;
+  --color-autofill: #241f18;
+  --color-selected-edge: var(--color-accent);
+}
+
 .workspace-shell {
   color-scheme: inherit;
 }

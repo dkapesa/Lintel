@@ -66,8 +66,12 @@ export type ShellCommandActionConfig = {
 export type ShellRouteContext = {
   pathname: string;
   area: ShellGlobalAreaId;
+  family: "specialist" | "operational" | "administrative";
   currentItemPathname: string;
   contextLabel: string;
+  routeDescription: string;
+  scopeLabel: string;
+  documentTitle: string;
   accessiblePageName: string;
   primaryAction: ShellCommandLink | null;
   secondaryActions: ShellCommandLink[];
@@ -82,7 +86,7 @@ const NO_COMMAND_ACTIONS: ShellCommandActionConfig = {
 };
 
 export const SHELL_GLOBAL_AREAS: ShellGlobalArea[] = [
-  { id: "review", label: "Review", href: "/new", icon: "review" },
+  { id: "review", label: "Reviews", href: "/workspace", icon: "review" },
   { id: "operations", label: "Operations", href: "/review-operations", icon: "operations" },
   { id: "governance", label: "Governance", href: "/review-policies", icon: "governance" },
   { id: "integrations", label: "Integrations", href: "/github-action", icon: "integrations" },
@@ -91,23 +95,23 @@ export const SHELL_GLOBAL_AREAS: ShellGlobalArea[] = [
 
 export const SHELL_CONTEXT_DESTINATIONS: Record<ShellGlobalAreaId, ShellContextDestination[]> = {
   review: [
-    { id: "workspace", label: "Workspace", href: "/workspace", pathname: "/workspace", icon: "workspace" },
-    { id: "new-review", label: "New Review", href: "/new", pathname: "/new", icon: "new-review" },
+    { id: "workspace", label: "Verification Workspace", href: "/workspace", pathname: "/workspace", icon: "workspace" },
+    { id: "new-review", label: "New review", href: "/new", pathname: "/new", icon: "new-review" },
     { id: "case-file", label: "Case File", href: "/report", pathname: "/report", icon: "case-file", contextual: true },
   ],
   operations: [
     { id: "review-operations", label: "Review Operations", href: "/review-operations", pathname: "/review-operations", icon: "review-operations" },
-    { id: "team", label: "Team", href: "/team", pathname: "/team", icon: "team" },
+    { id: "team", label: "Team boundaries", href: "/team", pathname: "/team", icon: "team" },
   ],
   governance: [
-    { id: "review-policies", label: "Review Policies", href: "/review-policies", pathname: "/review-policies", icon: "review-policies" },
+    { id: "review-policies", label: "Review policies", href: "/review-policies", pathname: "/review-policies", icon: "review-policies" },
   ],
   integrations: [
-    { id: "github", label: "GitHub", href: "/github-action", pathname: "/github-action", icon: "github" },
-    { id: "slack-handoff", label: "Slack handoff", href: "/slack-handoff", pathname: "/slack-handoff", icon: "slack-handoff" },
+    { id: "github", label: "GitHub Action blueprint", href: "/github-action", pathname: "/github-action", icon: "github" },
+    { id: "slack-handoff", label: "Slack handoff export", href: "/slack-handoff", pathname: "/slack-handoff", icon: "slack-handoff" },
   ],
   system: [
-    { id: "system", label: "System", href: "/settings", pathname: "/settings", icon: "system" },
+    { id: "system", label: "System settings", href: "/settings", pathname: "/settings", icon: "system" },
   ],
 };
 
@@ -119,8 +123,12 @@ export const SHELL_ROUTE_CONTEXTS: ShellRouteContext[] = [
        AppShell fallback used by /workspace-legacy. */
     pathname: "/workspace",
     area: "review",
+    family: "specialist",
     currentItemPathname: "/workspace",
-    contextLabel: "Workspace",
+    contextLabel: "Verification Workspace",
+    routeDescription: "Investigate one review through change, evidence, requirements and accountable Human Decision.",
+    scopeLabel: "Selected review",
+    documentTitle: "Verification Workspace",
     accessiblePageName: "Workspace",
     primaryAction: { label: "Check a pull request", href: "/new" },
     secondaryActions: [],
@@ -134,8 +142,12 @@ export const SHELL_ROUTE_CONTEXTS: ShellRouteContext[] = [
   {
     pathname: "/new",
     area: "review",
+    family: "operational",
     currentItemPathname: "/new",
-    contextLabel: "New Review",
+    contextLabel: "New review",
+    routeDescription: "Prepare one change and create a truthful browser-local Case File.",
+    scopeLabel: "Review intake",
+    documentTitle: "New review",
     accessiblePageName: "New Review",
     primaryAction: null,
     secondaryActions: [],
@@ -144,8 +156,12 @@ export const SHELL_ROUTE_CONTEXTS: ShellRouteContext[] = [
   {
     pathname: "/report",
     area: "review",
+    family: "operational",
     currentItemPathname: "/report",
     contextLabel: "Case File",
+    routeDescription: "Inspect one review record, its provenance and Human Decision lineage.",
+    scopeLabel: "Review record",
+    documentTitle: "Case File",
     accessiblePageName: "Report Case File",
     primaryAction: null,
     secondaryActions: [],
@@ -159,8 +175,12 @@ export const SHELL_ROUTE_CONTEXTS: ShellRouteContext[] = [
   {
     pathname: "/review-operations",
     area: "operations",
+    family: "operational",
     currentItemPathname: "/review-operations",
     contextLabel: "Review Operations",
+    routeDescription: "Filter and inspect operational records stored in this browser.",
+    scopeLabel: "Browser-local records",
+    documentTitle: "Review Operations",
     accessiblePageName: "Review Operations",
     primaryAction: null,
     secondaryActions: [],
@@ -169,9 +189,13 @@ export const SHELL_ROUTE_CONTEXTS: ShellRouteContext[] = [
   {
     pathname: "/team",
     area: "operations",
+    family: "administrative",
     currentItemPathname: "/team",
-    contextLabel: "Team",
-    accessiblePageName: "Team",
+    contextLabel: "Team boundaries",
+    routeDescription: "Manage browser-local workspaces, reviewer metadata and responsibility boundaries.",
+    scopeLabel: "Current browser",
+    documentTitle: "Team boundaries",
+    accessiblePageName: "Team boundaries",
     primaryAction: null,
     secondaryActions: [],
     commandActions: NO_COMMAND_ACTIONS,
@@ -179,9 +203,13 @@ export const SHELL_ROUTE_CONTEXTS: ShellRouteContext[] = [
   {
     pathname: "/review-policies",
     area: "governance",
+    family: "administrative",
     currentItemPathname: "/review-policies",
-    contextLabel: "Review Policies",
-    accessiblePageName: "Review Policies",
+    contextLabel: "Review policies",
+    routeDescription: "Inspect local policy profiles and their current non-enforcement boundary.",
+    scopeLabel: "Local prototype",
+    documentTitle: "Review policies",
+    accessiblePageName: "Review policies",
     primaryAction: null,
     secondaryActions: [],
     commandActions: NO_COMMAND_ACTIONS,
@@ -189,9 +217,13 @@ export const SHELL_ROUTE_CONTEXTS: ShellRouteContext[] = [
   {
     pathname: "/github-action",
     area: "integrations",
+    family: "operational",
     currentItemPathname: "/github-action",
-    contextLabel: "GitHub",
-    accessiblePageName: "GitHub",
+    contextLabel: "GitHub Action blueprint",
+    routeDescription: "Read and copy a blueprint that does not install, execute, connect or post.",
+    scopeLabel: "Blueprint",
+    documentTitle: "GitHub Action blueprint",
+    accessiblePageName: "GitHub Action blueprint",
     primaryAction: null,
     secondaryActions: [],
     commandActions: NO_COMMAND_ACTIONS,
@@ -199,9 +231,13 @@ export const SHELL_ROUTE_CONTEXTS: ShellRouteContext[] = [
   {
     pathname: "/slack-handoff",
     area: "integrations",
+    family: "operational",
     currentItemPathname: "/slack-handoff",
-    contextLabel: "Slack handoff",
-    accessiblePageName: "Slack handoff",
+    contextLabel: "Slack handoff export",
+    routeDescription: "Prepare and copy a local handoff artifact without external delivery.",
+    scopeLabel: "Export-only",
+    documentTitle: "Slack handoff export",
+    accessiblePageName: "Slack handoff export",
     primaryAction: null,
     secondaryActions: [],
     commandActions: NO_COMMAND_ACTIONS,
@@ -209,9 +245,13 @@ export const SHELL_ROUTE_CONTEXTS: ShellRouteContext[] = [
   {
     pathname: "/settings",
     area: "system",
+    family: "administrative",
     currentItemPathname: "/settings",
-    contextLabel: "System",
-    accessiblePageName: "System",
+    contextLabel: "System settings",
+    routeDescription: "Inspect analysis, provider and local-data configuration truth.",
+    scopeLabel: "Read-only prototype",
+    documentTitle: "System settings",
+    accessiblePageName: "System settings",
     primaryAction: null,
     secondaryActions: [],
     commandActions: NO_COMMAND_ACTIONS,

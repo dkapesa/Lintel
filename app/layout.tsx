@@ -38,6 +38,7 @@ export const metadata: Metadata = {
    The public preference is never read as product authority or overwritten. */
 const PRODUCT_LIGHT_PATHS = [
   "/workspace",
+  "/home",
   "/new",
   "/report",
   "/review-operations",

@@ -611,26 +611,22 @@ function SharedProductShell({
       subtree: true,
       characterData: true,
     });
-    let focusedHeading: HTMLElement | null = null;
-    const focusRouteHeading = (force = false) => {
-      const heading = mainRef.current?.querySelector<HTMLElement>("h1");
-      if (!heading) return;
-      heading.tabIndex = -1;
-      heading.dataset.routeHeading = "true";
-      const priorHeadingWasReplaced = focusedHeading !== null && !focusedHeading.isConnected;
-      if (force || focusedHeading === null || priorHeadingWasReplaced) {
-        heading.focus({ preventScroll: true });
-        focusedHeading = heading;
-      }
+    let focusedRouteContent = false;
+    const focusRouteContent = (force = false) => {
+      const main = mainRef.current;
+      if (!main || (!force && !main.querySelector("h1"))) return;
+      if (focusedRouteContent && document.activeElement !== document.body) return;
+      main.focus({ preventScroll: true });
+      focusedRouteContent = true;
     };
-    const headingObserver = new MutationObserver(() => focusRouteHeading());
+    const headingObserver = new MutationObserver(() => focusRouteContent());
     if (mainRef.current) {
       headingObserver.observe(mainRef.current, { childList: true, subtree: true });
     }
     const headingObserverTimeout = window.setTimeout(() => headingObserver.disconnect(), 10_000);
     const frame = window.requestAnimationFrame(() => {
       applyDocumentTitle();
-      focusRouteHeading(true);
+      focusRouteContent(true);
     });
     return () => {
       titleObserver.disconnect();
@@ -643,6 +639,8 @@ function SharedProductShell({
   useEffect(() => {
     if (!adminNavigationOpen) return;
     const drawer = adminDrawerRef.current;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     const frame = window.requestAnimationFrame(() => drawer?.focus());
     function onKeyDown(event: KeyboardEvent) {
       if (!drawer) return;
@@ -668,9 +666,16 @@ function SharedProductShell({
     return () => {
       window.cancelAnimationFrame(frame);
       document.removeEventListener("keydown", onKeyDown, true);
+      document.body.style.overflow = previousOverflow;
       adminMenuButtonRef.current?.focus();
     };
   }, [adminNavigationOpen]);
+
+  function focusRouteMain(event: React.MouseEvent<HTMLAnchorElement>) {
+    event.preventDefault();
+    const main = mainRef.current;
+    window.requestAnimationFrame(() => main?.focus());
+  }
 
   const routeTitle = title ?? route.contextLabel;
   const routeActions = (
@@ -689,7 +694,7 @@ function SharedProductShell({
     return (
       <div className="app-shell r4-product-shell r4-administrative-shell">
         <title>{`${route.documentTitle} — Lintel`}</title>
-        <a className="r4-skip-link" href="#r4-route-main">Skip to administrative content</a>
+        <a className="r4-skip-link" href="#r4-route-main" onClick={focusRouteMain} inert={adminNavigationOpen ? true : undefined} aria-hidden={adminNavigationOpen ? true : undefined}>Skip to administrative content</a>
         <div className="r4-admin-frame" inert={adminNavigationOpen ? true : undefined} aria-hidden={adminNavigationOpen ? true : undefined}>
           <aside className="r4-admin-sidebar" aria-label="Administrative navigation">
             <AdministrativeNavigation route={route} returnContext={returnContext} />
@@ -718,7 +723,7 @@ function SharedProductShell({
               {context && <span className={`r4-route-context r4-route-context--${contextTone}`}>{context}</span>}
               <div className="r4-admin-mobile-return"><WorkspaceReturnLink context={returnContext} compact /></div>
             </header>
-            <main className="r4-route-main" id="r4-route-main" aria-label={route.accessiblePageName} ref={mainRef}>{children}</main>
+            <main className="r4-route-main" id="r4-route-main" aria-label={route.accessiblePageName} ref={mainRef} tabIndex={-1}>{children}</main>
           </div>
         </div>
         {adminNavigationOpen && (
@@ -740,7 +745,7 @@ function SharedProductShell({
   return (
     <div className="app-shell r4-product-shell r4-operational-shell">
       <title>{`${route.documentTitle} — Lintel`}</title>
-      <a className="r4-skip-link" href="#r4-route-main">Skip to route content</a>
+      <a className="r4-skip-link" href="#r4-route-main" onClick={focusRouteMain}>Skip to route content</a>
       <div className="r4-operational-frame">
         <R4GlobalRail route={route} />
         <div className="r4-product-body">
@@ -753,7 +758,7 @@ function SharedProductShell({
             {context && <span className={`r4-route-context r4-route-context--${contextTone}`}>{context}</span>}
             {routeActions}
           </header>
-          <main className="r4-route-main" id="r4-route-main" aria-label={route.accessiblePageName} ref={mainRef}>{children}</main>
+          <main className="r4-route-main" id="r4-route-main" aria-label={route.accessiblePageName} ref={mainRef} tabIndex={-1}>{children}</main>
         </div>
       </div>
     </div>

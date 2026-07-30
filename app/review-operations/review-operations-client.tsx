@@ -108,6 +108,27 @@ function useCompactFilters() {
   return compact;
 }
 
+function isolateDialogBackground(dialog: HTMLElement) {
+  const changed: Array<{ element: HTMLElement; inert: boolean }> = [];
+  let current: HTMLElement | null = dialog;
+  while (current?.parentElement) {
+    const parentElement: HTMLElement = current.parentElement;
+    for (const sibling of Array.from(parentElement.children)) {
+      if (!(sibling instanceof HTMLElement) || sibling === current || sibling.hasAttribute("data-modal-scrim")) continue;
+      changed.push({ element: sibling, inert: sibling.inert });
+      sibling.inert = true;
+    }
+    current = parentElement;
+    if (parentElement === document.body) break;
+  }
+  const previousOverflow = document.body.style.overflow;
+  document.body.style.overflow = "hidden";
+  return () => {
+    for (const { element, inert } of changed) element.inert = inert;
+    document.body.style.overflow = previousOverflow;
+  };
+}
+
 function useFilterDialog(
   open: boolean,
   compact: boolean,
@@ -119,6 +140,7 @@ function useFilterDialog(
     if (!open || !compact) return;
     const dialog = dialogRef.current;
     if (!dialog) return;
+    const restoreBackground = isolateDialogBackground(dialog);
     const focusableSelector =
       'button:not([disabled]), input:not([disabled]), select:not([disabled]), [href], [tabindex]:not([tabindex="-1"])';
     const frame = window.requestAnimationFrame(() => {
@@ -148,6 +170,7 @@ function useFilterDialog(
     return () => {
       window.cancelAnimationFrame(frame);
       document.removeEventListener("keydown", onKeyDown, true);
+      restoreBackground();
       triggerRef.current?.focus();
     };
   }, [compact, dialogRef, onClose, open, triggerRef]);
@@ -396,10 +419,11 @@ export default function ReviewOperationsClient() {
 
             <section className={styles.toolRegion} aria-label="Search, filters and sort">
               <div className={styles.searchRow}>
-                <label className={styles.searchField}>
-                  <span>Search review records</span>
+                <div className={styles.searchField}>
+                  <label htmlFor="review-operations-search">Search review records</label>
                   <div>
                     <input
+                      id="review-operations-search"
                       ref={searchInputRef}
                       type="search"
                       value={query}
@@ -412,7 +436,7 @@ export default function ReviewOperationsClient() {
                       </button>
                     )}
                   </div>
-                </label>
+                </div>
                 <label className={styles.sortField}>
                   <span>Sort</span>
                   <select value={sort} onChange={(event) => updateQuery({ sort: event.target.value })}>
@@ -439,6 +463,7 @@ export default function ReviewOperationsClient() {
                   className={styles.filterScrim}
                   aria-label="Close filters"
                   tabIndex={-1}
+                  data-modal-scrim
                   onClick={closeFilters}
                 />
               )}

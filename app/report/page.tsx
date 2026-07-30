@@ -78,7 +78,7 @@ type RelationshipDisplay = {
   targets: RelatedArtifact[];
 };
 
-type GitHubAppState = "checking" | "connected" | "not-configured" | "unavailable";
+type GitHubAppState = "checking" | "configured" | "not-configured" | "unavailable";
 
 const SECTION_LINKS: Array<{ id: SectionId; label: string }> = [
   { id: "identity", label: "Case identity" },
@@ -579,8 +579,8 @@ export default function CaseFilePage() {
         const payload: unknown = await response.json();
         if (!active || !isRecord(payload)) return;
         if (payload.authenticated === true) {
-          setGithubAppState("connected");
-          setGithubAppDetail(`Verified for this environment${typeof payload.name === "string" ? ` as ${payload.name}` : ""}. This Case File does not publish a comment.`);
+          setGithubAppState("configured");
+          setGithubAppDetail(`Configuration authenticated for this environment${typeof payload.name === "string" ? ` as ${payload.name}` : ""}. Installation or repository connection is not inferred. This Case File does not publish a comment.`);
         } else if (payload.configured === false) {
           setGithubAppState("not-configured");
           setGithubAppDetail("Implemented but not configured for this environment. No external write is available from this Case File.");
@@ -878,7 +878,7 @@ export default function CaseFilePage() {
                   <div className={styles.sectionHeading}><div><span>LOCAL CAPABILITY</span><h2 id="export-heading">Export and handoff</h2></div><p>No action below silently performs an external write</p></div>
                   <ul className={styles.capabilities}>
                     <li><div><strong>Case File text export</strong><StatusPill tone="success">Available</StatusPill></div><p>Contains identity, run/head, current recommendation, findings, evidence, requirements and the current Human Decision state. Raw diff is excluded.</p><dl><div><dt>Boundary</dt><dd>Local copy or download</dd></div><div><dt>External write</dt><dd>None</dd></div><div><dt>Human Decision</dt><dd>Included</dd></div><div><dt>Head applicability</dt><dd>{decision.status === "recorded" ? APPLICABILITY_LABEL[decision.applicability] : "No decision recorded"}</dd></div></dl><div><button type="button" onClick={copyCaseFile}>{copyState === "copied" ? "Copied" : copyState === "failed" ? "Copy failed" : "Copy Case File"}</button><button type="button" onClick={downloadCaseFile}>{downloadState === "downloaded" ? "Downloaded" : downloadState === "failed" ? "Download failed" : "Download .txt"}</button></div></li>
-                    <li><div><strong>GitHub App</strong><StatusPill tone={githubAppState === "connected" ? "success" : githubAppState === "unavailable" ? "warning" : "neutral"}>{humanLabel(githubAppState)}</StatusPill></div><p>{githubAppDetail}</p><dl><div><dt>Boundary</dt><dd>Environment-gated capability status only</dd></div><div><dt>External write</dt><dd>None from Case File</dd></div><div><dt>Human Decision</dt><dd>Not published</dd></div><div><dt>Head applicability</dt><dd>{caseDetail.github.headSha ? `Current recorded head ${shortId(caseDetail.github.headSha)}` : "Unavailable"}</dd></div></dl></li>
+                    <li><div><strong>GitHub App</strong><StatusPill tone={githubAppState === "configured" ? "success" : githubAppState === "unavailable" ? "warning" : "neutral"}>{humanLabel(githubAppState)}</StatusPill></div><p>{githubAppDetail}</p><dl><div><dt>Boundary</dt><dd>Environment-gated capability status only</dd></div><div><dt>External write</dt><dd>None from Case File</dd></div><div><dt>Human Decision</dt><dd>Not published</dd></div><div><dt>Head applicability</dt><dd>{caseDetail.github.headSha ? `Current recorded head ${shortId(caseDetail.github.headSha)}` : "Unavailable"}</dd></div></dl></li>
                     <li><div><strong>GitHub Action</strong><StatusPill>Blueprint</StatusPill></div><p>Architecture and copyable setup material only. It does not install, execute, connect, analyse, comment or post.</p><dl><div><dt>Boundary</dt><dd>Blueprint document</dd></div><div><dt>External write</dt><dd>None</dd></div><div><dt>Human Decision</dt><dd>Not included as a publication</dd></div><div><dt>Head applicability</dt><dd>Not an execution record</dd></div></dl><a href="/github-action">Open Blueprint</a></li>
                     <li><div><strong>Slack handoff</strong><StatusPill>Export-only</StatusPill></div><p>The existing route supplies fixed local export examples. It does not ingest this Case File, connect to Slack or send a message.</p><dl><div><dt>Boundary</dt><dd>Local copy/export</dd></div><div><dt>External write</dt><dd>None</dd></div><div><dt>Human Decision</dt><dd>Case File export above includes it; fixed Slack examples may not</dd></div><div><dt>Head applicability</dt><dd>Confirm in copied content</dd></div></dl><a href="/slack-handoff">Open Export-only route</a></li>
                   </ul>

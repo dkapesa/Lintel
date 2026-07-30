@@ -90,7 +90,7 @@ export const SHELL_GLOBAL_AREAS: ShellGlobalArea[] = [
   { id: "review", label: "Reviews", href: "/workspace", icon: "review" },
   { id: "operations", label: "Operations", href: "/home", icon: "operations" },
   { id: "governance", label: "Governance", href: "/review-policies", icon: "governance" },
-  { id: "integrations", label: "Integrations", href: "/github-action", icon: "integrations" },
+  { id: "integrations", label: "Integrations", href: "/integrations", icon: "integrations" },
   { id: "system", label: "System", href: "/settings", icon: "system" },
 ];
 
@@ -109,6 +109,7 @@ export const SHELL_CONTEXT_DESTINATIONS: Record<ShellGlobalAreaId, ShellContextD
     { id: "review-policies", label: "Review policies", href: "/review-policies", pathname: "/review-policies", icon: "review-policies" },
   ],
   integrations: [
+    { id: "integrations", label: "Capability overview", href: "/integrations", pathname: "/integrations", icon: "integrations" },
     { id: "github", label: "GitHub Action blueprint", href: "/github-action", pathname: "/github-action", icon: "github" },
     { id: "slack-handoff", label: "Slack handoff export", href: "/slack-handoff", pathname: "/slack-handoff", icon: "slack-handoff" },
   ],
@@ -231,6 +232,20 @@ export const SHELL_ROUTE_CONTEXTS: ShellRouteContext[] = [
     commandActions: NO_COMMAND_ACTIONS,
   },
   {
+    pathname: "/integrations",
+    area: "integrations",
+    family: "administrative",
+    currentItemPathname: "/integrations",
+    contextLabel: "Integrations",
+    routeDescription: "Inspect capability state, configuration scope and every local or external data boundary.",
+    scopeLabel: "Current environment",
+    documentTitle: "Integrations",
+    accessiblePageName: "Integrations",
+    primaryAction: null,
+    secondaryActions: [],
+    commandActions: NO_COMMAND_ACTIONS,
+  },
+  {
     pathname: "/github-action",
     area: "integrations",
     family: "operational",
@@ -265,7 +280,7 @@ export const SHELL_ROUTE_CONTEXTS: ShellRouteContext[] = [
     currentItemPathname: "/settings",
     contextLabel: "System settings",
     routeDescription: "Inspect analysis, provider and local-data configuration truth.",
-    scopeLabel: "Read-only prototype",
+    scopeLabel: "Current browser · environment",
     documentTitle: "System settings",
     accessiblePageName: "System settings",
     primaryAction: null,

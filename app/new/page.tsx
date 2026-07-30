@@ -34,6 +34,7 @@ type RunPhase = "idle" | "analysis" | "normalising" | "persisting" | "complete" 
 type ProviderCapability = {
   checked: boolean;
   configured: boolean;
+  status: "checking" | "configured" | "not-configured" | "unavailable";
   provider: string;
   model?: string;
 };
@@ -210,7 +211,8 @@ function persistCanonicalReview(payload: GeneratedPayload): { reportId: string |
 function sourceStatus(source: SourceKind, github: GitHubWorkspaceStatus | null) {
   if (source !== "connected-github") return SOURCE_COPY[source].state;
   if (github === null) return "Checking configuration";
-  return github.connected ? "Available · configured" : "Unavailable · not configured";
+  if (github.connected) return "Connected";
+  return github.error?.startsWith("Set GITHUB_TOKEN") ? "Not configured" : "Unavailable";
 }
 
 export default function NewReviewPage() {
@@ -227,7 +229,12 @@ export default function NewReviewPage() {
   const [reviewProfile, setReviewProfile] = useState<ReviewProfile>("standard");
   const [analysisMode, setAnalysisMode] = useState<AnalysisMode>("deterministic-only");
   const [analysisModeTouched, setAnalysisModeTouched] = useState(false);
-  const [provider, setProvider] = useState<ProviderCapability>({ checked: false, configured: false, provider: "openai" });
+  const [provider, setProvider] = useState<ProviderCapability>({
+    checked: false,
+    configured: false,
+    status: "checking",
+    provider: "openai",
+  });
   const [githubStatus, setGithubStatus] = useState<GitHubWorkspaceStatus | null>(null);
   const [repositories, setRepositories] = useState<GitHubRepository[]>([]);
   const [selectedRepositoryKey, setSelectedRepositoryKey] = useState("");
@@ -276,8 +283,8 @@ export default function NewReviewPage() {
           fetch("/api/generate-report", { cache: "no-store" }),
           fetch("/api/github-workspace?action=status", { cache: "no-store" }),
         ]);
-        const analysisPayload: unknown = await analysisResponse.json();
-        const githubPayload: unknown = await githubResponse.json();
+        const analysisPayload: unknown = analysisResponse.ok ? await analysisResponse.json() : null;
+        const githubPayload: unknown = githubResponse.ok ? await githubResponse.json() : null;
         if (!active) return;
 
         const modelRecord = isRecord(analysisPayload) && isRecord(analysisPayload.modelAssisted)
@@ -287,6 +294,7 @@ export default function NewReviewPage() {
         setProvider({
           checked: true,
           configured,
+          status: modelRecord === null ? "unavailable" : configured ? "configured" : "not-configured",
           provider: typeof modelRecord?.provider === "string" ? modelRecord.provider : "openai",
           model: typeof modelRecord?.model === "string" ? modelRecord.model : undefined,
         });
@@ -304,7 +312,7 @@ export default function NewReviewPage() {
         }
       } catch {
         if (!active) return;
-        setProvider({ checked: true, configured: false, provider: "openai" });
+        setProvider({ checked: true, configured: false, status: "unavailable", provider: "openai" });
         setGithubStatus({ connected: false, error: "GitHub workspace capability could not be established." });
       }
     }
@@ -787,7 +795,7 @@ export default function NewReviewPage() {
                       <p className={styles.notice} role="status">Checking the server-side GitHub workspace configuration…</p>
                     ) : githubStatus.connected ? (
                       <>
-                        <p className={styles.notice}><strong>Available.</strong> Configured as <code>{githubStatus.identity ?? "server-side GitHub token"}</code>. Credentials remain server-side.</p>
+                        <p className={styles.notice}><strong>Connected.</strong> Authenticated as <code>{githubStatus.identity ?? "server-side GitHub token"}</code>. Credentials remain server-side.</p>
                         <div className={styles.twoFields}>
                           <label className={styles.field}>
                             <span>Repository <b>Required</b></span>
@@ -809,7 +817,7 @@ export default function NewReviewPage() {
                       </>
                     ) : (
                       <div className={styles.unavailable}>
-                        <strong>Connected GitHub is unavailable.</strong>
+                        <strong>Connected GitHub is {sourceStatus("connected-github", githubStatus).toLowerCase()}.</strong>
                         <p>{githubStatus.error ?? "A server-side GitHub token is not configured."}</p>
                         <span>Use a public pull-request URL, local pasted diff or explicit sample. Lintel will not substitute a sample automatically.</span>
                       </div>
@@ -900,14 +908,14 @@ export default function NewReviewPage() {
                   <label className={analysisMode === "model-assisted" ? styles.choiceSelected : provider.configured ? styles.choice : styles.choiceUnavailable}>
                     <input type="radio" name="analysis-mode" value="model-assisted" checked={analysisMode === "model-assisted"} disabled={!provider.configured} onChange={() => { setAnalysisMode("model-assisted"); setAnalysisModeTouched(true); }} />
                     <span>
-                      <strong>Baseline + model-assisted <i>{provider.checked ? provider.configured ? "Configured" : "Unavailable" : "Checking"}</i></strong>
+                      <strong>Baseline + model-assisted <i>{provider.checked ? provider.status === "not-configured" ? "Not configured" : provider.status === "configured" ? "Configured" : "Unavailable" : "Checking"}</i></strong>
                       <small>{provider.configured ? `${provider.provider}${provider.model ? ` / ${provider.model}` : ""}. The deterministic baseline runs first; the diff may be sent to the configured model with store:false. If synthesis fails, Lintel keeps a labelled deterministic fallback.` : "Selectable only when OPENAI_API_KEY and OPENAI_MODEL are configured server-side. No provider key is exposed to this page."}</small>
                     </span>
                   </label>
                   {errors.analysisMode && <em role="alert">{errors.analysisMode}</em>}
                   <div className={styles.executionNote}>
                     <strong>Current default</strong>
-                    <p>{provider.configured ? "Model-assisted when configured and not manually changed; deterministic otherwise." : "Deterministic-only because model assistance is unavailable."}</p>
+                    <p>{provider.configured ? "Model-assisted when configured and not manually changed; deterministic otherwise." : provider.status === "not-configured" ? "Deterministic-only because model assistance is not configured." : "Deterministic-only because model assistance is unavailable."}</p>
                     <span>Model assistance may enrich synthesis; it never replaces deterministic verification.</span>
                   </div>
                 </fieldset>

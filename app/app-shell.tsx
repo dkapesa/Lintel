@@ -688,7 +688,7 @@ function SharedProductShell({
   if (route.family === "administrative") {
     return (
       <div className="app-shell r4-product-shell r4-administrative-shell">
-        <title>{route.documentTitle} — Lintel</title>
+        <title>{`${route.documentTitle} — Lintel`}</title>
         <a className="r4-skip-link" href="#r4-route-main">Skip to administrative content</a>
         <div className="r4-admin-frame" inert={adminNavigationOpen ? true : undefined} aria-hidden={adminNavigationOpen ? true : undefined}>
           <aside className="r4-admin-sidebar" aria-label="Administrative navigation">
@@ -739,7 +739,7 @@ function SharedProductShell({
 
   return (
     <div className="app-shell r4-product-shell r4-operational-shell">
-      <title>{route.documentTitle} — Lintel</title>
+      <title>{`${route.documentTitle} — Lintel`}</title>
       <a className="r4-skip-link" href="#r4-route-main">Skip to route content</a>
       <div className="r4-operational-frame">
         <R4GlobalRail route={route} />

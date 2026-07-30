@@ -91,9 +91,9 @@ const MODES: Array<{ id: Mode; label: string; shortcut?: string }> = [
 
 const RAIL: Array<{ label: string; href: string; icon: IconName }> = [
   { label: "Reviews", href: "/workspace", icon: "reviews" },
-  { label: "Operations", href: "/review-operations", icon: "operations" },
+  { label: "Operations", href: "/home", icon: "operations" },
   { label: "Governance", href: "/review-policies", icon: "governance" },
-  { label: "Integrations", href: "/github-action", icon: "integrations" },
+  { label: "Integrations", href: "/integrations", icon: "integrations" },
   { label: "System", href: "/settings", icon: "system" },
 ];
 
@@ -244,7 +244,7 @@ function Rail({ onNavigate }: { onNavigate?: () => void }) {
             aria-current={index === 0 ? "page" : undefined}
             aria-label={item.label}
             onClick={onNavigate}
-            title={item.label === "Integrations" ? "Integrations · supporting routes; primary area arrives in R4F" : item.label}
+            title={item.label}
           >
             <Icon name={item.icon} size={18} />
             <span>{item.label}</span>
@@ -889,6 +889,10 @@ function ReadyWorkspace({
   const activeTitle = titles.get(activeCase.caseId) ?? "Stored review";
   const inspectorDrawerActive = (viewportWidth < 1360 || focusMode) && inspectorOpen;
   const nextInspection = useMemo(() => deriveNextInspection(activeCase), [activeCase]);
+  const restoreSavedContext = restoreNavigationContext || (
+    typeof window !== "undefined"
+    && (window.performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined)?.type === "reload"
+  );
 
   const scrollKey = useCallback((caseId: string, targetMode: Mode) => `${caseId}:${targetMode}`, []);
   const rememberScroll = useCallback(() => {
@@ -958,7 +962,7 @@ function ReadyWorkspace({
   }, []);
 
   useEffect(() => {
-    if (restorationAttempted.current || !restoreNavigationContext) return;
+    if (restorationAttempted.current || !restoreSavedContext) return;
     restorationAttempted.current = true;
 
     let context: WorkspaceReturnContext | null = null;
@@ -1014,7 +1018,7 @@ function ReadyWorkspace({
       : selectionValid
         ? `Restored ${restoredCase.github.repository}, PR ${restoredCase.github.pullRequestNumber}, ${context.mode} mode.`
         : `Restored ${restoredCase.github.repository}, PR ${restoredCase.github.pullRequestNumber}, and ${context.mode} mode. The prior selected object no longer resolves, so Inspector context was cleared.`);
-  }, [announce, cases, restoreNavigationContext, scrollKey, snapshot.groups, snapshot.provenance.isSample]);
+  }, [announce, cases, restoreSavedContext, scrollKey, snapshot.groups, snapshot.provenance.isSample]);
 
   useEffect(() => {
     const persistOnLeave = () => persistNavigationContext();
@@ -1108,8 +1112,14 @@ function ReadyWorkspace({
   function switchMode(next: Mode) {
     if (next === mode) return;
     rememberScroll();
-    setMode(next); setMobileView("review");
-    announce(`${MODES.find((item) => item.id === next)?.label ?? next} mode. ${selection ? `${selection.kind} selection retained.` : "No primary record selected."}`);
+    const retainSelection = selection !== null && selectionMode(selection) === next;
+    setMode(next);
+    setMobileView("review");
+    if (!retainSelection) {
+      setSelection(null);
+      setOrigin(null);
+    }
+    announce(`${MODES.find((item) => item.id === next)?.label ?? next} mode. ${retainSelection ? `${selection.kind} selection retained.` : selection ? "Incompatible selection cleared." : "No primary record selected."}`);
   }
 
   function returnToOrigin() {

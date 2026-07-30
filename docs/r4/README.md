@@ -7,6 +7,10 @@
 > **Excluded scope:** Hosted administration, policy deployment/enforcement, organisation analytics, authentication/organisation/collaboration capability, dark mode, dependencies, and R4G adversarial freeze.
 > **Next owning milestone:** R4G — Responsive, Accessibility, Performance and Final Acceptance.
 
+## R4G acceptance
+
+- [R4G.1 cross-route adversarial acceptance](./R4G1_CROSS_ROUTE_ADVERSARIAL_ACCEPTANCE.md) — production lifecycle, exact identity, actual reload restoration, shell ownership, authority withholding, destructive-history behavior, duplicate-action audit, genuine Integrations outage/Retry, and bounded corrections. Team storage-read denial and New Review persistence-failure retry remain blocked by the attached browser's key-scoped interception boundary; R4G.2, R4G.3, and R4G.4 remain.
+
 ## Contract status
 
 R4 is selected. R4A remains the accepted authoritative foundation, R4B remains the binding information and interaction architecture, and the accepted R4C laboratory remains the visual and core-interaction authority. R4D transferred that authority into canonical `/workspace` using real production adapters and mutation contracts. Accepted R4E deepens that production route with investigation traversal, focused context, comparison targets, keyboard operation, and continuity. R4F.1 now propagates the accepted identity, semantic roles and quality bar through route-family-specific shells without wrapping or redesigning the Workspace. It does not reopen strategy, the light application direction, visual references or product authority.

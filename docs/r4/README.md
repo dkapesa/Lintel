@@ -1,11 +1,11 @@
 # R4 — Workspace Product Experience Rebuild
 
-> **Milestone:** R4F.4 — Integrations and System (implemented)
-> **Status:** R4F.1–R4F.3 remain accepted. R4F.4 adds `/integrations` and matures `/settings` into a truthful browser-local System surface while preserving the accepted review lifecycle.
-> **Scope:** Index for accepted R4A–R4E authority, the accepted R4F.1 shared product system, accepted R4F.2–R4F.3 lifecycle and operational boundaries, and the contained R4F.4 administrative milestone.
-> **Authoritative inputs:** The accepted R4A and R4B contracts under `docs/r4/`, accepted R4C laboratory, R4D production transfer, R4E deep interaction, `R4F1_SHARED_LOGGED_IN_PRODUCT_SYSTEM.md`, `R4F2_NEW_REVIEW_AND_CASE_FILE.md`, `R4F3_OPERATIONAL_HOME_AND_REVIEW_OPERATIONS.md`, and `R4F4_INTEGRATIONS_AND_SYSTEM.md`.
-> **Excluded scope:** Governance/team maturity, hosted administration, monitoring/organisation analytics, dark mode, dependencies, authentication/organisation/collaboration claims, and R4G adversarial freeze.
-> **Next owning milestone:** R4F.5 — Governance, Policies and Team Boundaries.
+> **Milestone:** R4F.5 — Governance, Policies and Team Boundaries (implemented)
+> **Status:** R4F.1–R4F.4 remain accepted. R4F.5 matures `/review-policies` and `/team` into truthful governance-inspection and capability-boundary surfaces while preserving the accepted review lifecycle.
+> **Scope:** Index for accepted R4A–R4E authority and the completed R4F.1–R4F.5 logged-in product system.
+> **Authoritative inputs:** The accepted R4A and R4B contracts under `docs/r4/`, accepted R4C laboratory, R4D production transfer, R4E deep interaction, and `R4F1_SHARED_LOGGED_IN_PRODUCT_SYSTEM.md` through `R4F5_GOVERNANCE_POLICIES_AND_TEAM_BOUNDARIES.md`.
+> **Excluded scope:** Hosted administration, policy deployment/enforcement, organisation analytics, authentication/organisation/collaboration capability, dark mode, dependencies, and R4G adversarial freeze.
+> **Next owning milestone:** R4G — Responsive, Accessibility, Performance and Final Acceptance.
 
 ## Contract status
 
@@ -120,9 +120,9 @@ R4F.1 introduces the tab-scoped navigation-context key `lintel.r4f.workspaceRetu
 | **R4F.2 — New Review and Case File** | Implemented: complete New Review intake and exact read-only Case File with a compact Review Map derived only from canonical relationships; no free-form graph canvas. |
 | **R4F.3 — Operational Home and Review Operations** | Implemented: dedicated `/home` orientation, deterministic URL-owned Views, bounded recent/change context and dense cross-review engineering records from the canonical adapter; no duplicated Workspace Queue. |
 | **R4F.4 — Integrations and System** | Implemented: dedicated capability inspection, GitHub/provider status truth, Blueprint and Export-only boundaries, quiet System records, bounded local retention, truthful usage and one safe Report-history action. |
-| **R4F.5 — Governance, Policies and Team Boundaries** | Policy browsing, impact preview, provenance and applicability, consequential policy changes, and truthful team/collaboration boundaries. |
+| **R4F.5 — Governance, Policies and Team Boundaries** | Implemented: bounded policy browsing, impact preview, version/provenance and intake applicability, plus truthful local/team/collaboration boundaries without policy mutation or hosted authority. |
 
-R4F.1 established the shared shell and navigation foundations. R4F.2 owns the implemented New Review and Case File lifecycle. R4F.3 owns the implemented operational layer. R4F.4 now owns Integrations and System maturity. R4F.5 remains the future governance and team-boundary milestone.
+R4F.1 established the shared shell and navigation foundations. R4F.2 owns the implemented New Review and Case File lifecycle. R4F.3 owns the implemented operational layer. R4F.4 owns Integrations and System maturity. R4F.5 completes bounded governance and team-boundary maturity. R4G retains final adversarial acceptance and freeze.
 
 ### R4F.2 New Review and Case File
 
@@ -159,6 +159,17 @@ R4F.3 introduces no durable operational store. Real mode delegates to the same c
 
 R4F.4 retains GitHub App configuration distinct from installation, connected GitHub import distinct from mere availability, model assistance as configured environment capability rather than accountable authority, GitHub Action as Blueprint and Slack as Export-only. It introduces no credential store, hosted settings, usage estimates or external write.
 
+### R4F.5 Governance, Policies and Team Boundaries
+
+| Document or route | Responsibility |
+| --- | --- |
+| `R4F5_GOVERNANCE_POLICIES_AND_TEAM_BOUNDARIES.md` | Route ownership, governance vocabulary, bundled policy record model, browse/detail/impact semantics, intake and mutation boundaries, team truth, accessibility/responsive behaviour and R4G deferral. |
+| `/review-policies` | Search and filter bundled policy records, inspect exact version/provenance/gates, preview bounded impact, understand future-review applicability and follow only the genuine New Review intake action. |
+| `/team` | Inspect current browser/environment responsibility metadata, supported local authority, unavailable collaboration foundations and the policy/Human Decision boundary without member-like fixtures. |
+| `R4F5_HUMAN_REVIEW_PACKAGE/` | Temporary untracked screenshot manifest and validation records; never product authority. |
+
+R4F.5 extends the existing bundled `ReviewPolicyProfile` records instead of creating a second schema. Review profile selection remains owned by New Review; policy browsing creates no active/applied state. The Team route no longer calls the mutating default/sample workspace initializer and deliberately renders no people, roles, invitations, assignments or organisation analytics. Human Decision remains separate accountable-engineer authority.
+
 ## Locked interaction architecture
 
 - Queue groups are `Needs attention`, `In review`, `Ready`, and `Reviewed`, with deterministic priority and stable identity through filters, collapse, regrouping, and 50+ records.
@@ -194,11 +205,11 @@ Integrations now opens the implemented `/integrations` primary destination. GitH
 - A dedicated complete missing-proof object is planned where current data lacks one.
 - Human Decision ledger events are local, append-only, identity-bound where data permits, idempotent, stale-command guarded, and verified by read-back.
 - The configured GitHub App is a real environment-gated capability; GitHub Action remains Blueprint; Slack remains Export-only.
-- Team/ownership is local metadata, not authenticated collaboration. Policies remain conceptual; System records are read-only wherever persistence or enforcement is absent.
+- Team/ownership is local metadata, not authenticated collaboration. Bundled policies are inspectable and previewable; mapped review profiles are selectable only for future reviews at intake, while deployment, assignment and enforcement remain unavailable. System records are read-only wherever persistence or enforcement is absent.
 - No visual prominence upgrades a capability.
 
 ## R4B acceptance standard
 
 R4B is acceptable only when every region has one primary responsibility; every canonical transition defines state, focus, announcement, scroll, responsive survival, and recovery; persistent and contextual information remain distinct; one selection produces one Inspector response; unsupported actions remain truthful; failures preserve context and input; route families are coherent; and R4C can implement the laboratory without repeating reference analysis or inventing interaction rules.
 
-The R4C authority transfer is implemented in canonical `/workspace`. The focused R4D correction keeps neutral charcoal/black chrome, neutral selection, blue focus, compact production typography/density, and the distinction between explicit read-only fixture preview and authoritative Human Decision recording. R4E adds bounded investigation, provenance-labelled traversal, deterministic next inspection, exact-anchor/file-only code context, selectable real-history comparison, command navigation, Focus mode continuity, and responsive selected-record sequencing. It received manual human acceptance on 29 July 2026 after the core production investigation flow was exercised locally with no implementation defect observed. The R4E review package truthfully records that the Codex browser could not produce refreshed automated captures, no stale capture is current evidence, and all 20 images remain uncaptured. R4F.1 supplies coherent specialist, operational and administrative route families, validated context-preserving return to Reviews, stable route identity and scoped light-system roles. R4F.2 adds canonical intake, exact durable transition, a dense read-only Case File and a bounded provenance-aware Review Map. R4F.3 adds the dedicated `/home` operational orientation surface and the URL-owned dense `/review-operations` record layer over the same canonical projection. R4F.4 adds the bounded Integrations capability surface and System records without hosted-authority claims. R4F.5 retains governance and team-boundary maturity. Effective 200% zoom and reduced-motion results remain recorded per milestone package, and full adversarial product freeze remains assigned to R4G.
+The R4C authority transfer is implemented in canonical `/workspace`. The focused R4D correction keeps neutral charcoal/black chrome, neutral selection, blue focus, compact production typography/density, and the distinction between explicit read-only fixture preview and authoritative Human Decision recording. R4E adds bounded investigation, provenance-labelled traversal, deterministic next inspection, exact-anchor/file-only code context, selectable real-history comparison, command navigation, Focus mode continuity, and responsive selected-record sequencing. It received manual human acceptance on 29 July 2026 after the core production investigation flow was exercised locally with no implementation defect observed. The R4E review package truthfully records that the Codex browser could not produce refreshed automated captures, no stale capture is current evidence, and all 20 images remain uncaptured. R4F.1 supplies coherent specialist, operational and administrative route families, validated context-preserving return to Reviews, stable route identity and scoped light-system roles. R4F.2 adds canonical intake, exact durable transition, a dense read-only Case File and a bounded provenance-aware Review Map. R4F.3 adds the dedicated `/home` operational orientation surface and the URL-owned dense `/review-operations` record layer over the same canonical projection. R4F.4 adds the bounded Integrations capability surface and System records without hosted-authority claims. R4F.5 completes bounded policy inspection, impact preview, intake applicability and truthful team/collaboration boundaries without inventing enforcement or hosted authority. Effective 200% zoom and reduced-motion results remain recorded per milestone package, and full adversarial product freeze remains assigned to R4G.

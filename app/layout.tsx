@@ -44,6 +44,7 @@ const PRODUCT_LIGHT_PATHS = [
   "/review-operations",
   "/team",
   "/review-policies",
+  "/integrations",
   "/github-action",
   "/slack-handoff",
   "/settings",

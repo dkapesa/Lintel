@@ -528,7 +528,9 @@ function AdministrativeNavigation({
         <span className="r4-admin-nav-label">Administration</span>
         {ADMINISTRATIVE_ROUTES.map((destination) => {
           const active = destination.pathname === route.pathname;
-          const icon = destination.pathname === "/team"
+          const icon = destination.pathname === "/integrations"
+            ? "integrations"
+            : destination.pathname === "/team"
             ? "team"
             : destination.pathname === "/review-policies"
               ? "review-policies"
@@ -599,6 +601,7 @@ function SharedProductShell({
     setAdminNavigationOpen(false);
     const intendedTitle = `${route.documentTitle} — Lintel`;
     const applyDocumentTitle = () => {
+      if (window.location.pathname !== pathname) return;
       if (document.title !== intendedTitle) document.title = intendedTitle;
     };
     applyDocumentTitle();

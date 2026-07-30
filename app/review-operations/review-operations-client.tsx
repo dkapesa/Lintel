@@ -205,10 +205,12 @@ export default function ReviewOperationsClient() {
   const filterDialogRef = useRef<HTMLDivElement | null>(null);
   const filterTriggerRef = useRef<HTMLButtonElement | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const queryUpdateRef = useRef<number | null>(null);
 
   const view = parseView(searchParams.get("view"));
   const sort = parseSort(searchParams.get("sort"));
-  const query = searchParams.get("q") ?? "";
+  const queryParam = searchParams.get("q") ?? "";
+  const [query, setQuery] = useState(queryParam);
   const recommendation = searchParams.get("recommendation") ?? "all";
   const risk = searchParams.get("risk") ?? "all";
   const blockers = enumValue(searchParams.get("blockers"), BLOCKER_FILTERS, "all");
@@ -220,6 +222,14 @@ export default function ReviewOperationsClient() {
 
   const closeFilters = () => setFiltersOpen(false);
   useFilterDialog(filtersOpen, compactFilters, closeFilters, filterDialogRef, filterTriggerRef);
+
+  useEffect(() => {
+    setQuery(queryParam);
+  }, [queryParam]);
+
+  useEffect(() => () => {
+    if (queryUpdateRef.current) window.clearTimeout(queryUpdateRef.current);
+  }, []);
 
   const projection = state.kind === "resolved" ? state.projection : null;
   const records = projection?.status === "ready" ? projection.records : [];
@@ -277,6 +287,10 @@ export default function ReviewOperationsClient() {
     navigation: "push" | "replace" = "push",
   ) {
     const next = new URLSearchParams(searchParams.toString());
+    if (!Object.prototype.hasOwnProperty.call(updates, "q")) {
+      if (query.trim()) next.set("q", query);
+      else next.delete("q");
+    }
     for (const [key, value] of Object.entries(updates)) {
       if (!value || value === "all" || (key === "sort" && value === "recent")) {
         next.delete(key);
@@ -292,11 +306,25 @@ export default function ReviewOperationsClient() {
     }
   }
 
+  function updateSearchQuery(value: string) {
+    setQuery(value);
+    if (queryUpdateRef.current) window.clearTimeout(queryUpdateRef.current);
+    queryUpdateRef.current = window.setTimeout(() => {
+      queryUpdateRef.current = null;
+      updateQuery({ q: value || null, selected: null }, "replace");
+    }, 150);
+  }
+
   function clearSelection() {
     updateQuery({ selected: null }, "push");
   }
 
   function resetFilters() {
+    if (queryUpdateRef.current) {
+      window.clearTimeout(queryUpdateRef.current);
+      queryUpdateRef.current = null;
+    }
+    setQuery("");
     updateQuery({
       q: null,
       recommendation: null,
@@ -330,10 +358,12 @@ export default function ReviewOperationsClient() {
     if (!requestedId || !selected) return;
     if (filtered.some((record) => record.reportId === requestedId)) return;
     const next = new URLSearchParams(searchParams.toString());
+    if (query.trim()) next.set("q", query);
+    else next.delete("q");
     next.delete("selected");
     setSelectionAnnouncement("The selected record was cleared because it is outside the current view or filters.");
     router.replace(`${pathname}${next.size ? `?${next.toString()}` : ""}`, { scroll: false });
-  }, [filtered, pathname, requestedId, router, searchParams, selected]);
+  }, [filtered, pathname, query, requestedId, router, searchParams, selected]);
 
   function sortFromHeader(column: "title" | "repository" | "risk" | "blockers" | "decision" | "updated") {
     const next: OperationalSortId =
@@ -427,11 +457,11 @@ export default function ReviewOperationsClient() {
                       ref={searchInputRef}
                       type="search"
                       value={query}
-                      onChange={(event) => updateQuery({ q: event.target.value, selected: null }, "replace")}
+                      onChange={(event) => updateSearchQuery(event.target.value)}
                       placeholder="Title, repository, PR, report, run, head or decision"
                     />
                     {query && (
-                      <button type="button" onClick={() => updateQuery({ q: null, selected: null }, "replace")}>
+                      <button type="button" onClick={() => updateSearchQuery("")}>
                         Clear
                       </button>
                     )}

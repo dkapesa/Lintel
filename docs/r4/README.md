@@ -1,16 +1,17 @@
 # R4 — Workspace Product Experience Rebuild
 
-> **Milestone:** R4G.2 — Responsive, Keyboard and Accessibility Acceptance (bounded implementation and machine acceptance complete)
-> **Status:** R4G.1 remains accepted. R4G.2 corrects bounded focus, overlay-isolation and accessible-name defects; exact viewport, genuine 200% zoom, screen-reader, reduced-motion and touch acceptance remain manual.
+> **Milestone:** R4G.3 — Large-State, Performance and Stability Acceptance (bounded implementation and machine acceptance complete)
+> **Status:** R4G.1 and R4G.2 remain accepted. R4G.3 validates browser-local collection caps, sustained route/interaction stability and production performance boundaries, with bounded Review Operations search and Workspace inner-grid corrections. R4G.4 manual/final freeze remains.
 > **Scope:** Index for accepted R4A–R4F authority and R4G acceptance evidence.
-> **Authoritative inputs:** The accepted R4A and R4B contracts, accepted R4C laboratory, R4D production transfer, R4E deep interaction, R4F.1–R4F.5 product system, R4G.1 adversarial acceptance and `R4G2_RESPONSIVE_KEYBOARD_ACCESSIBILITY_ACCEPTANCE.md`.
-> **Excluded scope:** Hosted administration, policy deployment/enforcement, organisation analytics, authentication/organisation/collaboration capability, dark mode, dependencies, R4G.3 performance acceptance and R4G.4 final freeze.
-> **Next owning milestone:** R4G.3 — Performance Acceptance.
+> **Authoritative inputs:** The accepted R4A and R4B contracts, accepted R4C laboratory, R4D production transfer, R4E deep interaction, R4F.1–R4F.5 product system, R4G.1 adversarial acceptance, R4G.2 responsive/keyboard/accessibility acceptance and `R4G3_LARGE_STATE_PERFORMANCE_STABILITY_ACCEPTANCE.md`.
+> **Excluded scope:** Hosted administration, policy deployment/enforcement, organisation analytics, authentication/organisation/collaboration capability, dark mode, dependencies and R4G.4 final freeze.
+> **Next owning milestone:** R4G.4 — Manual acceptance and final product freeze.
 
 ## R4G acceptance
 
 - [R4G.1 cross-route adversarial acceptance](./R4G1_CROSS_ROUTE_ADVERSARIAL_ACCEPTANCE.md) — production lifecycle, exact identity, actual reload restoration, shell ownership, authority withholding, destructive-history behavior, duplicate-action audit, genuine Integrations outage/Retry, and bounded corrections. Team storage-read denial and New Review persistence-failure retry remain blocked by the attached browser's key-scoped interception boundary; R4G.3 and R4G.4 remain after R4G.2.
 - [R4G.2 responsive, keyboard and accessibility acceptance](./R4G2_RESPONSIVE_KEYBOARD_ACCESSIBILITY_ACCEPTANCE.md) — cross-route responsive responsibility, keyboard/focus/Escape, semantic structure, modal/drawer safety, text stress and bounded production corrections. The attached browser exposed only a ~951–958×794 CSS viewport and no genuine zoom, reduced-motion, touch or screen reader; those items remain explicit manual acceptance rather than fabricated passes. R4G.3 and R4G.4 remain.
+- [R4G.3 large-state, performance and stability acceptance](./R4G3_LARGE_STATE_PERFORMANCE_STABILITY_ACCEPTANCE.md) — production-build validation at the actual 10-Report and 80-entry Human Decision boundaries; max-state Home, Operations, Workspace and Case File behaviour; a 50-transition route soak; repeated panel, palette, filter and dialog use; exact cap+1 eviction; layout/network/storage measurement boundaries; and bounded stale-search and Workspace central-track corrections. R4G.4 manual/final freeze remains.
 
 ## Contract status
 

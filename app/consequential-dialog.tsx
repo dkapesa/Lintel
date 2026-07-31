@@ -54,6 +54,10 @@ export default function ConsequentialDialog({
     const shell = document.querySelector<HTMLElement>(".r4-product-shell");
     shell?.setAttribute("inert", "");
     shell?.setAttribute("aria-hidden", "true");
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    const previousBodyOverflow = document.body.style.overflow;
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
     const frame = window.requestAnimationFrame(() => cancelRef.current?.focus());
 
     function onKeyDown(event: KeyboardEvent) {
@@ -84,6 +88,8 @@ export default function ConsequentialDialog({
       document.removeEventListener("keydown", onKeyDown, true);
       shell?.removeAttribute("inert");
       shell?.removeAttribute("aria-hidden");
+      document.documentElement.style.overflow = previousHtmlOverflow;
+      document.body.style.overflow = previousBodyOverflow;
       window.requestAnimationFrame(() => returnFocusRef.current?.focus());
     };
   }, [open, returnFocusRef]);

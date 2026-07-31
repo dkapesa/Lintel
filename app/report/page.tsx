@@ -697,7 +697,6 @@ export default function CaseFilePage() {
                 <p><code>{caseDetail.github.repository}</code> · Pull request #{caseDetail.github.pullRequestNumber} · {caseDetail.github.branch}</p>
               </div>
               <div className={styles.headerActions}>
-                {reportId && <a className={styles.primaryLink} href={workspaceHref}>Open in Workspace</a>}
                 <a href="/new">New Review</a>
               </div>
               <section className={styles.provenanceNote} data-provenance={provenance}>

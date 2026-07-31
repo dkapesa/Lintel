@@ -81,6 +81,34 @@ type NextInspection = {
 const DRAWER_FOCUSABLE =
   'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [href], [tabindex]:not([tabindex="-1"])';
 
+function isolateDialogBackground(dialog: HTMLElement) {
+  const changed: Array<{ element: HTMLElement; inert: boolean }> = [];
+  let current: HTMLElement | null = dialog;
+  while (current?.parentElement) {
+    const parentElement: HTMLElement = current.parentElement;
+    for (const sibling of Array.from(parentElement.children)) {
+      if (!(sibling instanceof HTMLElement) || sibling === current || sibling.hasAttribute("data-modal-scrim")) continue;
+      if (sibling.inert) continue;
+      changed.push({ element: sibling, inert: sibling.inert });
+      sibling.inert = true;
+    }
+    current = parentElement;
+    if (parentElement === document.body) break;
+  }
+  const previousOverflow = document.body.style.overflow;
+  document.body.style.overflow = "hidden";
+  return () => {
+    for (const { element, inert } of changed) element.inert = inert;
+    document.body.style.overflow = previousOverflow;
+  };
+}
+
+function focusHashTarget(event: React.MouseEvent<HTMLAnchorElement>, id: string) {
+  event.preventDefault();
+  const target = document.getElementById(id);
+  window.requestAnimationFrame(() => target?.focus());
+}
+
 const MODES: Array<{ id: Mode; label: string; shortcut?: string }> = [
   { id: "overview", label: "Overview" },
   { id: "change", label: "Change" },
@@ -91,9 +119,9 @@ const MODES: Array<{ id: Mode; label: string; shortcut?: string }> = [
 
 const RAIL: Array<{ label: string; href: string; icon: IconName }> = [
   { label: "Reviews", href: "/workspace", icon: "reviews" },
-  { label: "Operations", href: "/review-operations", icon: "operations" },
+  { label: "Operations", href: "/home", icon: "operations" },
   { label: "Governance", href: "/review-policies", icon: "governance" },
-  { label: "Integrations", href: "/github-action", icon: "integrations" },
+  { label: "Integrations", href: "/integrations", icon: "integrations" },
   { label: "System", href: "/settings", icon: "system" },
 ];
 
@@ -244,7 +272,7 @@ function Rail({ onNavigate }: { onNavigate?: () => void }) {
             aria-current={index === 0 ? "page" : undefined}
             aria-label={item.label}
             onClick={onNavigate}
-            title={item.label === "Integrations" ? "Integrations · supporting routes; primary area arrives in R4F" : item.label}
+            title={item.label}
           >
             <Icon name={item.icon} size={18} />
             <span>{item.label}</span>
@@ -258,9 +286,16 @@ function Rail({ onNavigate }: { onNavigate?: () => void }) {
 
 function StatusShell({ snapshot }: { snapshot: Exclude<WorkspaceSnapshot, WorkspaceReadySnapshot> }) {
   const loading = snapshot.status === "loading";
+  const mainRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      if (document.activeElement === document.body) mainRef.current?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
   return (
     <div className={styles.page} data-status={snapshot.status}>
-      <a className={styles.skipLink} href="#workspace-primary">Skip to Workspace</a>
+      <a className={styles.skipLink} href="#workspace-primary" onClick={(event) => focusHashTarget(event, "workspace-primary")}>Skip to Workspace</a>
       <div className={styles.shell}>
         <Rail />
         <aside className={styles.queue} aria-label="Review queue">
@@ -273,7 +308,7 @@ function StatusShell({ snapshot }: { snapshot: Exclude<WorkspaceSnapshot, Worksp
             {snapshot.status === "unavailable" ? <><h3>Stored review unavailable</h3><p>{snapshot.reason}</p><Link href="/workspace" className={styles.secondaryButton}>Return to review list</Link></> : null}
           </div>
         </aside>
-        <main id="workspace-primary" className={styles.workspaceState} tabIndex={-1}>
+        <main id="workspace-primary" className={styles.workspaceState} tabIndex={-1} ref={mainRef}>
           <span className={styles.sourceBadge}>{snapshot.provenance.label}</span>
           {loading ? (
             <><span className={styles.eyebrow}>Selected review</span><h1>Loading selected review…</h1><p>Known source identity is retained. Recommendation, risk, blockers, readiness and Human Decision authority are withheld until the current projection verifies.</p><div className={styles.stateSkeleton}><span /><span /><span /></div></>
@@ -401,7 +436,7 @@ function ReviewQueue({
   );
 
   return (
-    <aside className={styles.queue} aria-label="Review queue" id="review-queue">
+    <aside className={styles.queue} aria-label="Review queue" id="review-queue" tabIndex={-1}>
       <div className={styles.queueHeader}>
         <div><span className={styles.eyebrow}>Reviews</span><h2>Review queue</h2></div>
         <button type="button" className={styles.drawerClose} onClick={onClose} aria-label="Close review queue"><Icon name="close" /></button>
@@ -761,7 +796,7 @@ function NextInspectionCard({ next, onOpen }: { next: NextInspection; onOpen: ()
 
 type PaletteCommand = { id: string; group: string; label: string; detail: string; keywords?: string; disabled?: boolean; action: () => void };
 
-function CommandPalette({ open, commands, onClose, returnFocusRef }: { open: boolean; commands: PaletteCommand[]; onClose: () => void; returnFocusRef: React.RefObject<HTMLButtonElement | null> }) {
+function CommandPalette({ open, commands, onClose, returnFocusRef }: { open: boolean; commands: PaletteCommand[]; onClose: () => void; returnFocusRef: React.RefObject<HTMLElement | null> }) {
   const [query, setQuery] = useState("");
   const [activeId, setActiveId] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -775,8 +810,13 @@ function CommandPalette({ open, commands, onClose, returnFocusRef }: { open: boo
     setQuery("");
     setActiveId(commands.find((command) => !command.disabled)?.id ?? null);
     const target = returnFocusRef.current;
+    const restoreBackground = panelRef.current ? isolateDialogBackground(panelRef.current) : null;
     const frame = window.requestAnimationFrame(() => inputRef.current?.focus());
-    return () => { window.cancelAnimationFrame(frame); if (target && document.contains(target)) target.focus(); };
+    return () => {
+      window.cancelAnimationFrame(frame);
+      restoreBackground?.();
+      if (target && document.contains(target)) target.focus();
+    };
   }, [open, returnFocusRef]);
 
   if (!open) return null;
@@ -805,7 +845,7 @@ function CommandPalette({ open, commands, onClose, returnFocusRef }: { open: boo
     else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
   }
   const groups = [...new Set(filtered.map((command) => command.group))];
-  return <div className={styles.paletteLayer} onKeyDown={onKeyDown}><button type="button" className={styles.paletteScrim} aria-label="Close command palette" onClick={onClose} /><div ref={panelRef} className={styles.commandPalette} role="dialog" aria-modal="true" aria-label="Workspace command palette"><header><span className={styles.eyebrow}>Workspace commands</span><strong>Go to a record or action</strong><kbd>Esc</kbd></header><label><Icon name="search" /><span className={styles.srOnly}>Search commands</span><input ref={inputRef} type="search" value={query} onChange={(event) => { setQuery(event.target.value); setActiveId(null); }} placeholder="Search reviews, modes and actions" /></label><div className={styles.commandResults}>{groups.map((group) => <section key={group}><h3>{group}</h3>{filtered.filter((command) => command.group === group).map((command) => <button key={command.id} type="button" data-command-id={command.id} className={active?.id === command.id ? styles.commandActive : styles.commandRow} aria-disabled={command.disabled || undefined} disabled={command.disabled} onFocus={() => !command.disabled && setActiveId(command.id)} onClick={() => execute(command)}><span>{command.label}</span><small>{command.detail}</small></button>)}</section>)}{!filtered.length ? <p>No matching command is available in the current review context.</p> : null}</div></div></div>;
+  return <div className={styles.paletteLayer} onKeyDown={onKeyDown}><button type="button" className={styles.paletteScrim} data-modal-scrim aria-label="Close command palette" onClick={onClose} /><div ref={panelRef} className={styles.commandPalette} role="dialog" aria-modal="true" aria-label="Workspace command palette"><header><span className={styles.eyebrow}>Workspace commands</span><strong>Go to a record or action</strong><kbd>Esc</kbd></header><label><Icon name="search" /><span className={styles.srOnly}>Search commands</span><input ref={inputRef} type="search" value={query} onChange={(event) => { setQuery(event.target.value); setActiveId(null); }} placeholder="Search reviews, modes and actions" /></label><div className={styles.commandResults}>{groups.map((group) => <section key={group}><h3>{group}</h3>{filtered.filter((command) => command.group === group).map((command) => <button key={command.id} type="button" data-command-id={command.id} className={active?.id === command.id ? styles.commandActive : styles.commandRow} aria-disabled={command.disabled || undefined} disabled={command.disabled} onFocus={() => !command.disabled && setActiveId(command.id)} onClick={() => execute(command)}><span>{command.label}</span><small>{command.detail}</small></button>)}</section>)}{!filtered.length ? <p>No matching command is available in the current review context.</p> : null}</div></div></div>;
 }
 
 export default function WorkspaceR4Client({
@@ -867,11 +907,17 @@ function ReadyWorkspace({
   const [assertive, setAssertive] = useState("");
   const decisionTriggerRef = useRef<HTMLElement | null>(null);
   const paletteTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const paletteReturnFocusRef = useRef<HTMLElement | null>(null);
   const queueTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const queueReturnFocusRef = useRef<HTMLElement | null>(null);
   const inspectorTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const inspectorReturnFocusRef = useRef<HTMLElement | null>(null);
   const queueDrawerRef = useRef<HTMLDivElement | null>(null);
   const inspectorDrawerRef = useRef<HTMLDivElement | null>(null);
   const workspaceRootRef = useRef<HTMLDivElement | null>(null);
+  const workspaceMainRef = useRef<HTMLElement | null>(null);
+  const mobileRecordBackRef = useRef<HTMLButtonElement | null>(null);
+  const mobileRecordReturnFocusRef = useRef<HTMLElement | null>(null);
   const workspaceScrollRef = useRef<HTMLDivElement | null>(null);
   const modeScrollPositions = useRef(new Map<string, number>());
   const preFocusPanels = useRef({ queueCollapsed: false, inspectorOpen: true });
@@ -889,6 +935,51 @@ function ReadyWorkspace({
   const activeTitle = titles.get(activeCase.caseId) ?? "Stored review";
   const inspectorDrawerActive = (viewportWidth < 1360 || focusMode) && inspectorOpen;
   const nextInspection = useMemo(() => deriveNextInspection(activeCase), [activeCase]);
+  const restoreSavedContext = restoreNavigationContext || (
+    typeof window !== "undefined"
+    && (window.performance.getEntriesByType("navigation")[0] as PerformanceNavigationTiming | undefined)?.type === "reload"
+  );
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      if (document.activeElement === document.body) workspaceMainRef.current?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
+
+  function currentInvoker(explicit?: HTMLElement | null) {
+    if (explicit) return explicit;
+    return document.activeElement instanceof HTMLElement && document.activeElement !== document.body
+      ? document.activeElement
+      : null;
+  }
+
+  function restoreInvoker(target: HTMLElement | null, fallback: HTMLElement | null) {
+    window.requestAnimationFrame(() => {
+      if (target?.isConnected && !target.closest("[inert]")) target.focus();
+      else fallback?.focus();
+    });
+  }
+
+  function openQueueDrawer(invoker?: HTMLElement | null) {
+    queueReturnFocusRef.current = currentInvoker(invoker) ?? queueTriggerRef.current;
+    setQueueDrawerOpen(true);
+  }
+
+  function closeQueueDrawer() {
+    setQueueDrawerOpen(false);
+    if (viewportWidth < 640 && mobileView === "list") {
+      setMobileView("review");
+      window.requestAnimationFrame(() => workspaceMainRef.current?.focus({ preventScroll: true }));
+      return;
+    }
+    restoreInvoker(queueReturnFocusRef.current, queueTriggerRef.current);
+  }
+
+  function openPalette(invoker?: HTMLElement | null) {
+    paletteReturnFocusRef.current = currentInvoker(invoker) ?? paletteTriggerRef.current;
+    setPaletteOpen(true);
+  }
 
   const scrollKey = useCallback((caseId: string, targetMode: Mode) => `${caseId}:${targetMode}`, []);
   const rememberScroll = useCallback(() => {
@@ -958,7 +1049,13 @@ function ReadyWorkspace({
   }, []);
 
   useEffect(() => {
-    if (restorationAttempted.current || !restoreNavigationContext) return;
+    if (viewportWidth >= 640 || mobileView !== "list" || queueDrawerOpen) return;
+    const frame = window.requestAnimationFrame(() => document.getElementById("review-queue")?.focus({ preventScroll: true }));
+    return () => window.cancelAnimationFrame(frame);
+  }, [mobileView, queueDrawerOpen, viewportWidth]);
+
+  useEffect(() => {
+    if (restorationAttempted.current || !restoreSavedContext) return;
     restorationAttempted.current = true;
 
     let context: WorkspaceReturnContext | null = null;
@@ -997,6 +1094,12 @@ function ReadyWorkspace({
     setInspectorOpen(restoredFocusMode ? false : context.inspectorOpen);
     setFocusMode(restoredFocusMode);
     setMobileView(window.innerWidth < 640 && selectionValid && restoredSelection ? "record" : "review");
+    if (window.innerWidth < 640) {
+      window.requestAnimationFrame(() => {
+        if (selectionValid && restoredSelection) mobileRecordBackRef.current?.focus({ preventScroll: true });
+        else workspaceMainRef.current?.focus({ preventScroll: true });
+      });
+    }
 
     try {
       writeWorkspaceReturnContext(window.sessionStorage, {
@@ -1014,7 +1117,7 @@ function ReadyWorkspace({
       : selectionValid
         ? `Restored ${restoredCase.github.repository}, PR ${restoredCase.github.pullRequestNumber}, ${context.mode} mode.`
         : `Restored ${restoredCase.github.repository}, PR ${restoredCase.github.pullRequestNumber}, and ${context.mode} mode. The prior selected object no longer resolves, so Inspector context was cleared.`);
-  }, [announce, cases, restoreNavigationContext, scrollKey, snapshot.groups, snapshot.provenance.isSample]);
+  }, [announce, cases, restoreSavedContext, scrollKey, snapshot.groups, snapshot.provenance.isSample]);
 
   useEffect(() => {
     const persistOnLeave = () => persistNavigationContext();
@@ -1025,6 +1128,7 @@ function ReadyWorkspace({
   useEffect(() => {
     const container = queueDrawerOpen ? queueDrawerRef.current : inspectorDrawerActive ? inspectorDrawerRef.current : null;
     if (!container) return;
+    const restoreBackground = isolateDialogBackground(container);
     const focusable = () => Array.from(container.querySelectorAll<HTMLElement>(DRAWER_FOCUSABLE)).filter((item) => item.offsetParent !== null);
     const frame = window.requestAnimationFrame(() => focusable()[0]?.focus());
     function containDrawerFocus(event: KeyboardEvent) {
@@ -1032,11 +1136,10 @@ function ReadyWorkspace({
         event.preventDefault();
         event.stopPropagation();
         if (queueDrawerOpen) {
-          setQueueDrawerOpen(false);
-          window.requestAnimationFrame(() => queueTriggerRef.current?.focus());
+          closeQueueDrawer();
         } else {
           setInspectorOpen(false);
-          window.requestAnimationFrame(() => inspectorTriggerRef.current?.focus());
+          restoreInvoker(inspectorReturnFocusRef.current, inspectorTriggerRef.current);
         }
         return;
       }
@@ -1057,6 +1160,7 @@ function ReadyWorkspace({
     return () => {
       window.cancelAnimationFrame(frame);
       container.removeEventListener("keydown", containDrawerFocus);
+      restoreBackground();
     };
   }, [inspectorDrawerActive, queueDrawerOpen]);
 
@@ -1082,6 +1186,7 @@ function ReadyWorkspace({
     rememberScroll();
     const rememberedMode = modeScrollPositions.current.has(scrollKey(id, mode)) ? mode : "overview";
     setSelectedCaseId(id); setMode(rememberedMode); setSelection(null); setOrigin(null); setComparisonRunId(next.history?.status === "comparison" ? next.history.previous.runId : null); setMutationResult(null); setDecisionResult(null); setQueueDrawerOpen(false); setMobileView("review");
+    if (viewportWidth < 640) window.requestAnimationFrame(() => workspaceMainRef.current?.focus({ preventScroll: true }));
     announce(`${next.github.repository}, PR ${next.github.pullRequestNumber}, ${titles.get(id) ?? "stored review"}, ${RECOMMENDATION_LABEL[next.recommendation]}.`);
   }
 
@@ -1097,7 +1202,11 @@ function ReadyWorkspace({
     setMode(targetMode);
     setSelection(next);
     setInspectorOpen(viewportWidth >= 640);
-    if (viewportWidth < 640 && next) setMobileView("record");
+    if (viewportWidth < 640 && next) {
+      mobileRecordReturnFocusRef.current = currentInvoker();
+      setMobileView("record");
+      window.requestAnimationFrame(() => mobileRecordBackRef.current?.focus({ preventScroll: true }));
+    }
     announce(`${next.kind}, ${selectionLabel(activeCase, next)}, selected in ${MODES.find((item) => item.id === targetMode)?.label ?? targetMode}.`);
   }
 
@@ -1108,8 +1217,14 @@ function ReadyWorkspace({
   function switchMode(next: Mode) {
     if (next === mode) return;
     rememberScroll();
-    setMode(next); setMobileView("review");
-    announce(`${MODES.find((item) => item.id === next)?.label ?? next} mode. ${selection ? `${selection.kind} selection retained.` : "No primary record selected."}`);
+    const retainSelection = selection !== null && selectionMode(selection) === next;
+    setMode(next);
+    setMobileView("review");
+    if (!retainSelection) {
+      setSelection(null);
+      setOrigin(null);
+    }
+    announce(`${MODES.find((item) => item.id === next)?.label ?? next} mode. ${retainSelection ? `${selection.kind} selection retained.` : selection ? "Incompatible selection cleared." : "No primary record selected."}`);
   }
 
   function returnToOrigin() {
@@ -1152,22 +1267,28 @@ function ReadyWorkspace({
     announce("Focus mode exited. Prior Queue and Inspector preferences restored.");
   }
 
-  function showInspectorContext() {
+  function showInspectorContext(invoker?: HTMLElement | null) {
     if (viewportWidth < 640) {
       if (selection) setMobileView("record");
       else selectObject({ kind: "decision-readiness", id: "decision-readiness" });
       return;
     }
+    if (viewportWidth < 1360 || focusMode) inspectorReturnFocusRef.current = currentInvoker(invoker) ?? inspectorTriggerRef.current;
     setInspectorOpen(true);
   }
 
-  function toggleInspectorContext() {
+  function toggleInspectorContext(invoker?: HTMLElement | null) {
     if (viewportWidth < 640) {
       if (mobileView === "record") setMobileView("review");
-      else showInspectorContext();
+      else showInspectorContext(invoker);
       return;
     }
-    setInspectorOpen((value) => !value);
+    if (inspectorOpen) {
+      setInspectorOpen(false);
+      if (viewportWidth < 1360 || focusMode) restoreInvoker(inspectorReturnFocusRef.current, inspectorTriggerRef.current);
+    } else {
+      showInspectorContext(invoker);
+    }
   }
 
   function copyTechnicalIdentifier() {
@@ -1261,7 +1382,7 @@ function ReadyWorkspace({
   const currentRequirement = selection?.kind === "requirement" ? activeCase.requirements.find((item) => item.requirementId === selection.id) : blockers[0];
   const paletteCommands: PaletteCommand[] = [
     ...MODES.map((item) => ({ id: `mode-${item.id}`, group: "Workspace modes", label: `Open ${item.label}`, detail: item.shortcut ? `Shortcut ${item.shortcut}` : "Switch mode", action: () => switchMode(item.id) })),
-    { id: "panel-queue", group: "Workspace layout", label: queueDrawerOpen ? "Close Review Queue" : "Open Review Queue", detail: focusMode ? "Opens above Focus mode" : "Preserves Workspace position", action: () => setQueueDrawerOpen((value) => !value) },
+    { id: "panel-queue", group: "Workspace layout", label: queueDrawerOpen ? "Close Review Queue" : "Open Review Queue", detail: focusMode ? "Opens above Focus mode" : "Preserves Workspace position", action: () => queueDrawerOpen ? closeQueueDrawer() : openQueueDrawer() },
     { id: "panel-inspector", group: "Workspace layout", label: inspectorVisible ? "Hide Inspector" : "Show Inspector", detail: selection ? `Current ${selection.kind} context is retained` : "Decision-readiness context", action: toggleInspectorContext },
     { id: "layout-focus", group: "Workspace layout", label: focusMode ? "Exit Focus mode" : "Enter Focus mode", detail: focusMode ? "Restore prior Queue and Inspector preferences" : "Keep the selected review, mode and record", action: () => focusMode ? exitFocusMode() : enterFocusMode() },
     ...snapshot.groups.flatMap((group) => group.cases.map((item) => ({ id: `review-${item.caseId}`, group: "Reviews", label: `${item.repository} · PR #${item.pullRequestNumber}`, detail: item.title, keywords: `${group.label} ${item.caseId}`, action: () => selectReview(item.caseId) }))),
@@ -1287,13 +1408,13 @@ function ReadyWorkspace({
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
         if (typing || !inside) return;
         event.preventDefault();
-        setPaletteOpen(true);
+        openPalette();
         return;
       }
       if (typing || !inside) return;
       if (event.key === "Escape") {
-        if (queueDrawerOpen) { event.preventDefault(); setQueueDrawerOpen(false); queueTriggerRef.current?.focus(); return; }
-        if (inspectorDrawerActive) { event.preventDefault(); setInspectorOpen(false); inspectorTriggerRef.current?.focus(); return; }
+        if (queueDrawerOpen) { event.preventDefault(); closeQueueDrawer(); return; }
+        if (inspectorDrawerActive) { event.preventDefault(); setInspectorOpen(false); restoreInvoker(inspectorReturnFocusRef.current, inspectorTriggerRef.current); return; }
         if (origin) { event.preventDefault(); returnToOrigin(); return; }
         if (selection) { event.preventDefault(); setSelection(null); setMobileView("review"); announce("Primary record selection cleared."); return; }
         if (focusMode) { event.preventDefault(); exitFocusMode(); }
@@ -1303,7 +1424,7 @@ function ReadyWorkspace({
       const key = event.key.toLowerCase();
       if (["e", "r", "h"].includes(key)) { event.preventDefault(); switchMode(key === "e" ? "evidence" : key === "r" ? "requirements" : "history"); }
       else if (key === "d") { event.preventDefault(); selectObject({ kind: "decision-readiness", id: "decision-readiness" }); }
-      else if (event.key === "[") { event.preventDefault(); if (viewportWidth < 1280 || focusMode) setQueueDrawerOpen((value) => !value); else setQueueCollapsed((value) => !value); }
+      else if (event.key === "[") { event.preventDefault(); if (viewportWidth < 1280 || focusMode) queueDrawerOpen ? closeQueueDrawer() : openQueueDrawer(); else setQueueCollapsed((value) => !value); }
       else if (event.key === "]") { event.preventDefault(); toggleInspectorContext(); }
     }
     window.addEventListener("keydown", handleWorkspaceKey);
@@ -1311,18 +1432,18 @@ function ReadyWorkspace({
   }, [activeCase.caseId, announce, dialogOpen, focusMode, inspectorDrawerActive, mobileView, mode, origin, paletteOpen, queueDrawerOpen, selection, viewportWidth]);
   return (
     <div ref={workspaceRootRef} className={styles.page} data-queue-collapsed={queueCollapsed ? "true" : "false"} data-queue-drawer={queueDrawerOpen ? "open" : "closed"} data-inspector-open={inspectorOpen ? "true" : "false"} data-inspector-drawer={inspectorDrawerActive ? "open" : "closed"} data-focus-mode={focusMode ? "true" : "false"} data-mobile-view={mobileView}>
-      <a className={styles.skipLink} href="#workspace-primary">Skip to Workspace</a><a className={styles.skipQueue} href="#review-queue">Skip to review queue</a>
-      <div className={styles.mobileBar}><button type="button" className={styles.iconButton} onClick={() => setQueueDrawerOpen(true)} aria-label="Open review list"><Icon name="queue" /></button><strong>Reviews</strong><span>{activeCase.github.repository} · #{activeCase.github.pullRequestNumber}</span></div>
+      <a className={styles.skipLink} href="#workspace-primary" onClick={(event) => focusHashTarget(event, "workspace-primary")}>Skip to Workspace</a><a className={styles.skipQueue} href="#review-queue" onClick={(event) => { event.preventDefault(); if (viewportWidth < 1280 || focusMode) openQueueDrawer(event.currentTarget); else document.getElementById("review-queue")?.focus(); }}>Skip to review queue</a>
+      <div className={styles.mobileBar}><button type="button" className={styles.iconButton} onClick={(event) => openQueueDrawer(event.currentTarget)} aria-label="Open review list"><Icon name="queue" /></button><strong>Reviews</strong><span>{activeCase.github.repository} · #{activeCase.github.pullRequestNumber}</span></div>
       <div className={styles.shell} inert={dialogOpen || paletteOpen ? true : undefined} aria-hidden={dialogOpen || paletteOpen ? true : undefined}>
         <Rail onNavigate={persistNavigationContext} />
-        <div className={styles.queueStrip}><button ref={queueTriggerRef} type="button" onClick={() => setQueueDrawerOpen(true)} aria-label="Open review queue"><Icon name="queue" /><strong>{activeCase.github.pullRequestNumber}</strong><span>{blockers.length}B</span></button></div>
-        <div ref={queueDrawerRef} className={styles.queueAnchor}><ReviewQueue snapshot={snapshot} selectedId={activeCase.caseId} collapsedGroups={collapsedGroups} onToggleGroup={(id) => setCollapsedGroups((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next; })} onSelect={selectReview} onClose={() => { setQueueDrawerOpen(false); queueTriggerRef.current?.focus(); }} /></div>
-        <main className={styles.workspace} id="workspace-primary" tabIndex={-1}>
+        <div className={styles.queueStrip}><button ref={queueTriggerRef} type="button" onClick={(event) => openQueueDrawer(event.currentTarget)} aria-label="Open review queue"><Icon name="queue" /><strong>{activeCase.github.pullRequestNumber}</strong><span>{blockers.length}B</span></button></div>
+        <div ref={queueDrawerRef} className={styles.queueAnchor} role={queueDrawerOpen ? "dialog" : undefined} aria-modal={queueDrawerOpen ? true : undefined} aria-label={queueDrawerOpen ? "Review queue" : undefined}><ReviewQueue snapshot={snapshot} selectedId={activeCase.caseId} collapsedGroups={collapsedGroups} onToggleGroup={(id) => setCollapsedGroups((current) => { const next = new Set(current); if (next.has(id)) next.delete(id); else next.add(id); return next; })} onSelect={selectReview} onClose={closeQueueDrawer} /></div>
+        <main className={styles.workspace} id="workspace-primary" tabIndex={-1} ref={workspaceMainRef}>
           <header className={styles.workspaceHeader}>
-            <div className={styles.workspaceIdentity}><div><span className={styles.eyebrow}>Selected review · {snapshot.provenance.isSample ? "read-only sample" : "browser-local report"}</span><span className={styles.repoLine}>{activeCase.github.repository} · PR #{activeCase.github.pullRequestNumber}</span><h1 title={activeTitle}>{activeTitle}</h1></div><div className={styles.workspaceControls}><button ref={paletteTriggerRef} type="button" className={styles.commandTrigger} onClick={() => setPaletteOpen(true)} aria-label="Open Workspace command palette"><Icon name="search" /><span>Commands</span><kbd>Ctrl K</kbd></button><button type="button" className={styles.iconButton} onClick={() => { if (viewportWidth < 1280 || focusMode) setQueueDrawerOpen(true); else setQueueCollapsed((value) => !value); }} aria-label={queueDrawerOpen ? "Close review queue" : "Open review queue"} title="Review queue"><Icon name="queue" /></button><button ref={inspectorTriggerRef} type="button" className={styles.iconButton} onClick={toggleInspectorContext} aria-label={viewportWidth < 640 ? mobileView === "record" ? "Close Contextual Inspector" : "Open Contextual Inspector" : inspectorOpen ? "Collapse Contextual Inspector" : "Open Contextual Inspector"} title="Contextual Inspector"><Icon name="inspector" /></button><button type="button" className={styles.iconButton} onClick={() => focusMode ? exitFocusMode() : enterFocusMode()} aria-label={focusMode ? "Exit focus mode" : "Enter focus mode"} title="Focus mode"><Icon name="focus" /></button></div></div>
+            <div className={styles.workspaceIdentity}><div><span className={styles.eyebrow}>Selected review · {snapshot.provenance.isSample ? "read-only sample" : "browser-local report"}</span><span className={styles.repoLine}>{activeCase.github.repository} · PR #{activeCase.github.pullRequestNumber}</span><h1 title={activeTitle}>{activeTitle}</h1></div><div className={styles.workspaceControls}><button ref={paletteTriggerRef} type="button" className={styles.commandTrigger} onClick={(event) => openPalette(event.currentTarget)} aria-label="Open Workspace command palette"><Icon name="search" /><span>Commands</span><kbd>Ctrl K</kbd></button><button type="button" className={styles.iconButton} onClick={(event) => { if (viewportWidth < 1280 || focusMode) openQueueDrawer(event.currentTarget); else setQueueCollapsed((value) => !value); }} aria-label={queueDrawerOpen ? "Close review queue" : "Open review queue"} title="Review queue"><Icon name="queue" /></button><button ref={inspectorTriggerRef} type="button" className={styles.iconButton} onClick={(event) => toggleInspectorContext(event.currentTarget)} aria-label={viewportWidth < 640 ? mobileView === "record" ? "Close Contextual Inspector" : "Open Contextual Inspector" : inspectorOpen ? "Collapse Contextual Inspector" : "Open Contextual Inspector"} title="Contextual Inspector"><Icon name="inspector" /></button><button type="button" className={styles.iconButton} onClick={() => focusMode ? exitFocusMode() : enterFocusMode()} aria-label={focusMode ? "Exit focus mode" : "Enter focus mode"} title="Focus mode"><Icon name="focus" /></button></div></div>
             <div className={styles.verdictBand}><Meta label="Lintel recommendation"><span className={recommendationClass(activeCase.recommendation)}>{RECOMMENDATION_LABEL[activeCase.recommendation]}</span></Meta><Meta label="Risk"><span className={riskClass(activeCase.riskLevel)}>{activeCase.riskScore}/100 {activeCase.riskLevel}</span></Meta><Meta label="Requirements"><span className={blockers.length ? styles.toneBlocking : styles.toneCleared}>{openRequirements(activeCase).length} open · {blockers.length} blocking</span></Meta><Meta label="Human Decision">{decisionText}</Meta></div>
             <div className={styles.technicalLine}><span className={styles.sourceBadge}>{snapshot.provenance.label}{snapshot.provenance.isSample ? " · explicit fixture" : " · stored on this device"}</span><span className={styles.mono} title={activeCase.run?.runId ?? "Run not recorded"}>Run {short(activeCase.run?.runId, 20)}</span><span className={styles.mono} title={activeCase.github.headSha ?? "Head not recorded"}>Head {short(activeCase.github.headSha, 14)}</span><span className={styles.mono} title={activeCase.github.branch}>Branch {activeCase.github.branch}</span></div>
-            {focusMode ? <div className={styles.focusBar}><span>Focus mode</span><strong>{activeCase.github.repository} · #{activeCase.github.pullRequestNumber}</strong><span>{MODES.find((item) => item.id === mode)?.label} · {selection ? selectionLabel(activeCase, selection) : "No record selected"} · {decisionText}</span><div><button type="button" onClick={() => setQueueDrawerOpen(true)}>Show Queue</button><button type="button" onClick={showInspectorContext}>Show Inspector</button><button type="button" onClick={() => setPaletteOpen(true)}>Commands</button><button type="button" onClick={exitFocusMode}>Exit focus mode</button></div></div> : null}
+            {focusMode ? <div className={styles.focusBar}><span>Focus mode</span><strong>{activeCase.github.repository} · #{activeCase.github.pullRequestNumber}</strong><span>{MODES.find((item) => item.id === mode)?.label} · {selection ? selectionLabel(activeCase, selection) : "No record selected"} · {decisionText}</span><div><button type="button" onClick={(event) => openQueueDrawer(event.currentTarget)}>Show Queue</button><button type="button" onClick={(event) => showInspectorContext(event.currentTarget)}>Show Inspector</button><button type="button" onClick={(event) => openPalette(event.currentTarget)}>Commands</button><button type="button" onClick={exitFocusMode}>Exit focus mode</button></div></div> : null}
             <nav className={styles.modeNav} aria-label="Workspace modes" role="tablist">{MODES.map((item) => <button key={item.id} type="button" role="tab" data-mode-id={item.id} className={mode === item.id ? styles.modeActive : styles.modeButton} aria-selected={mode === item.id} tabIndex={mode === item.id ? 0 : -1} onKeyDown={handleModeKeyDown} onClick={() => switchMode(item.id)}>{item.label}{item.shortcut ? <kbd>{item.shortcut}</kbd> : null}</button>)}</nav>
           </header>
           <div className={styles.workspaceScroll} ref={workspaceScrollRef}>
@@ -1336,11 +1457,11 @@ function ReadyWorkspace({
           </div>
           <div className={styles.readinessBar}><div><span className={blockers.length ? styles.readinessDotBlocking : styles.readinessDotReady} /><strong>{blockers.length || gaps.length ? "Merge readiness blocked" : "Merge recommendation ready for assessment"}</strong></div><span>{blockers.length} blockers · {gaps.length} missing/unverified · {activeCase.evidence.filter((item) => item.stale).length} stale</span><button type="button" className={styles.readinessContextButton} onClick={() => selectObject({ kind: "decision-readiness", id: "decision-readiness" })}>Review decision context · {decisionText}</button><button type="button" className={styles.primaryButton} onClick={openDecision}>{snapshot.provenance.isSample ? "Preview decision flow" : "Record Human Decision"}</button></div>
         </main>
-        <div ref={inspectorDrawerRef} className={styles.inspectorAnchor}><Inspector detail={activeCase} selection={selection} origin={origin} comparisonRunId={comparisonRunId} nextInspection={nextInspection} open={inspectorOpen} githubState={githubState} mutationPending={mutationPending} mutationResult={mutationResult} onClose={() => { setInspectorOpen(false); window.requestAnimationFrame(() => inspectorTriggerRef.current?.focus()); }} onSelect={selectRelated} onReturn={returnToOrigin} onOpenNext={openNextInspection} onCondition={applyCondition} /></div>
-        {mobileView === "record" && selection ? <div className={styles.mobileRecord}><button type="button" className={styles.backButton} onClick={() => { setMobileView("review"); setInspectorOpen(false); }}><Icon name="back" /> Back to {mode}</button><Inspector detail={activeCase} selection={selection} origin={origin} comparisonRunId={comparisonRunId} nextInspection={nextInspection} open githubState={githubState} mutationPending={mutationPending} mutationResult={mutationResult} onClose={() => setMobileView("review")} onSelect={selectRelated} onReturn={returnToOrigin} onOpenNext={openNextInspection} onCondition={applyCondition} /></div> : null}
-        {queueDrawerOpen || inspectorDrawerActive ? <button type="button" className={styles.drawerScrim} aria-label={queueDrawerOpen ? "Close review queue" : "Close Contextual Inspector"} onClick={() => { if (queueDrawerOpen) { setQueueDrawerOpen(false); queueTriggerRef.current?.focus(); } else { setInspectorOpen(false); inspectorTriggerRef.current?.focus(); } }} /> : null}
+        <div ref={inspectorDrawerRef} className={styles.inspectorAnchor} role={inspectorDrawerActive ? "dialog" : undefined} aria-modal={inspectorDrawerActive ? true : undefined} aria-label={inspectorDrawerActive ? "Contextual Inspector" : undefined}><Inspector detail={activeCase} selection={selection} origin={origin} comparisonRunId={comparisonRunId} nextInspection={nextInspection} open={inspectorOpen} githubState={githubState} mutationPending={mutationPending} mutationResult={mutationResult} onClose={() => { setInspectorOpen(false); restoreInvoker(inspectorReturnFocusRef.current, inspectorTriggerRef.current); }} onSelect={selectRelated} onReturn={returnToOrigin} onOpenNext={openNextInspection} onCondition={applyCondition} /></div>
+        {mobileView === "record" && selection ? <div className={styles.mobileRecord}><button ref={mobileRecordBackRef} type="button" className={styles.backButton} onClick={() => { setMobileView("review"); setInspectorOpen(false); restoreInvoker(mobileRecordReturnFocusRef.current, workspaceMainRef.current); }}><Icon name="back" /> Back to {mode}</button><Inspector detail={activeCase} selection={selection} origin={origin} comparisonRunId={comparisonRunId} nextInspection={nextInspection} open githubState={githubState} mutationPending={mutationPending} mutationResult={mutationResult} onClose={() => setMobileView("review")} onSelect={selectRelated} onReturn={returnToOrigin} onOpenNext={openNextInspection} onCondition={applyCondition} /></div> : null}
+        {queueDrawerOpen || inspectorDrawerActive ? <button type="button" className={styles.drawerScrim} data-modal-scrim aria-label={queueDrawerOpen ? "Close review queue" : "Close Contextual Inspector"} onClick={() => { if (queueDrawerOpen) closeQueueDrawer(); else { setInspectorOpen(false); restoreInvoker(inspectorReturnFocusRef.current, inspectorTriggerRef.current); } }} /> : null}
       </div>
-      <CommandPalette open={paletteOpen} commands={paletteCommands} onClose={() => setPaletteOpen(false)} returnFocusRef={paletteTriggerRef} />
+      <CommandPalette open={paletteOpen} commands={paletteCommands} onClose={() => setPaletteOpen(false)} returnFocusRef={paletteReturnFocusRef} />
       <HumanDecisionDialog open={dialogOpen} detail={activeCase} title={activeTitle} pending={decisionPending} result={decisionResult} onSubmit={submitDecision} onClose={() => setDialogOpen(false)} onReload={reloadContext} returnFocusRef={decisionTriggerRef} readOnlyReason={snapshot.provenance.isSample ? "The explicit fixture source is read-only. Use a real browser-local report to record an authoritative Human Decision." : null} />
       <div className={styles.livePolite} aria-live="polite" aria-atomic="true">{polite}</div><div className={styles.liveAssertive} role="alert" aria-atomic="true">{assertive}</div>
     </div>

@@ -1,28 +1,14 @@
 import type { Metadata } from "next";
-import styles from "./public-r5.module.css";
-import { PublicR5Header } from "./components/PublicR5Header";
-import { PublicR5Footer } from "./components/PublicR5Footer";
-import {
-  Section1Hero,
-  Section2Problem,
-  Section3Model,
-  Section4Workspace,
-  Section5Evidence,
-  Section6Readiness,
-  Section7Trust,
-  Section8Final,
-} from "./sections";
+import { PublicR5Page } from "../../_public-r5/PublicR5Page";
 
-/* R5C — private public visual laboratory.
+/* R5D — private visual laboratory route.
 
-   Isolated, unlinked internal surface following the app/visual-lab
-   precedent (see app/visual-lab/landing-v3, app/visual-lab/workspace-r4): a
-   server component that emits noindex metadata, renders no AppShell, is not
-   registered in app/nav-config.tsx, and is not imported by app/page.tsx or
-   any production route. Fully server-rendered; no client component exists
-   in this route, because R5C's static motion states (§9 of the R5C brief)
-   require no observer, no hydration boundary and no JavaScript to be
-   completely readable. */
+   Thin route wrapper around the shared app/_public-r5/PublicR5Page
+   implementation (see docs/r5/R5D_PRODUCTION_HOMEPAGE_TRANSFER.md). This
+   route stays private and unlinked, following the existing precedent set by
+   app/visual-lab/landing-v3 and app/visual-lab/workspace-r4: noindex,
+   nofollow metadata, no AppShell, not registered in app/nav-config.tsx, not
+   imported by any production route, and never added to a sitemap. */
 
 export const metadata: Metadata = {
   title: "Public R5 visual lab — Lintel",
@@ -31,23 +17,5 @@ export const metadata: Metadata = {
 };
 
 export default function PublicR5LabPage() {
-  return (
-    <div className={styles.page}>
-      <a className={styles.skip} href="#main">
-        Skip to content
-      </a>
-      <PublicR5Header />
-      <main id="main">
-        <Section1Hero />
-        <Section2Problem />
-        <Section3Model />
-        <Section4Workspace />
-        <Section5Evidence />
-        <Section6Readiness />
-        <Section7Trust />
-        <Section8Final />
-      </main>
-      <PublicR5Footer />
-    </div>
-  );
+  return <PublicR5Page />;
 }

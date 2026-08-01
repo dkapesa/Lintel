@@ -17,11 +17,15 @@ the Lintel public homepage direction.
    accepted Scene C crop boundary. Where its product-scene detail differs
    from R5B's working copy, this addendum is authoritative.
 4. [`R5C_PRIVATE_PUBLIC_VISUAL_LABORATORY.md`](./R5C_PRIVATE_PUBLIC_VISUAL_LABORATORY.md) —
-   this milestone: the implementation of the accepted direction at the
-   private `/visual-lab/public-r5` route.
+   the implementation of the accepted direction at the private
+   `/visual-lab/public-r5` route.
+5. [`R5D_PRODUCTION_HOMEPAGE_TRANSFER.md`](./R5D_PRODUCTION_HOMEPAGE_TRANSFER.md) —
+   this milestone: transferring the accepted R5C implementation onto the
+   production homepage (`/`) without redesign, via a shared implementation
+   at `app/_public-r5/`.
 
-None of the three prior documents (R5A, R5B, R5B.1) were edited to produce
-R5C. They remain the decision of record.
+None of the four prior documents (R5A, R5B, R5B.1, R5C) were edited to
+produce R5D. They remain the decision of record.
 
 ## Authority order for product-scene detail
 
@@ -41,10 +45,13 @@ milestone to reopen the accepted visual direction or page architecture.
 - R5C — private public visual laboratory: implemented at
   `/visual-lab/public-r5`, described in
   [`R5C_PRIVATE_PUBLIC_VISUAL_LABORATORY.md`](./R5C_PRIVATE_PUBLIC_VISUAL_LABORATORY.md).
-- R5D — transfer the accepted private laboratory to the production homepage
-  without redesign: not started.
+- R5D — production homepage transfer: implemented. The accepted R5C
+  implementation now renders at `/` (indexable) via a shared
+  `app/_public-r5/` implementation also used by the now-thin
+  `/visual-lab/public-r5` (noindex) route. Described in
+  [`R5D_PRODUCTION_HOMEPAGE_TRANSFER.md`](./R5D_PRODUCTION_HOMEPAGE_TRANSFER.md).
 - R5E — implement the accepted product-scene transitions and restrained
   motion system: not started.
 
-See `R5C_PRIVATE_PUBLIC_VISUAL_LABORATORY.md`'s deferred-work section for the
-detail of each.
+See `R5D_PRODUCTION_HOMEPAGE_TRANSFER.md`'s deferred-work section for R5E's
+scope.

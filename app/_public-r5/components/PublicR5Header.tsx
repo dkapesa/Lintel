@@ -10,7 +10,7 @@ export function PublicR5Header() {
   return (
     <header className={styles.header}>
       <div className={styles.headerInner}>
-        <Link href="/visual-lab/public-r5" className={styles.brand}>
+        <Link href="/" className={styles.brand}>
           <span className={styles.brandMark} aria-hidden="true" />
           <span>Lintel</span>
         </Link>

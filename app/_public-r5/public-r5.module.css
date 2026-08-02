@@ -19,6 +19,13 @@
   --r5-charcoal-ink-2: #a6a196;
   --r5-focus: #1c1a16;
 
+  /* R5E — one coherent easing family for all three motion moments. A
+     restrained deceleration curve, no overshoot, no spring. Durations sit
+     per-moment (200–240ms) inside the 180–260ms range set by
+     R5A_DIRECTION_LOCK.md §11 / R5B §18; see
+     docs/r5/R5E_PUBLIC_MOTION_SYSTEM.md for the exact table. */
+  --r5-motion-ease: cubic-bezier(0.16, 1, 0.3, 1);
+
   background: var(--r5-ground);
   color: var(--r5-ink);
   font-family: var(--font-geist), -apple-system, sans-serif;
@@ -748,4 +755,117 @@
   color: var(--r5-ink-3);
   border-top: 1px solid var(--r5-border);
   padding-top: 20px;
+}
+
+/* ------------------------------------------------------------------------
+   R5E — Public Motion System.
+
+   .motionSlot / .motionPart are local CSS-modules classes carrying no
+   styles of their own outside these rules; they exist so every selector
+   below stays a "pure" CSS-modules selector. The actual targeting is done
+   by data-motion-slot / data-motion-part, plain attributes MotionController
+   sets directly by their stable, unhashed names — the two work together on
+   the same elements (see PublicR5Page's sections.tsx and CropFrame.tsx).
+
+   Every rule below is gated on a `[data-motion-state]` attribute that only
+   ever exists once client JavaScript has run, checked
+   prefers-reduced-motion itself, and confirmed IntersectionObserver
+   support. Absent that attribute — no JS, slow JS, no IntersectionObserver
+   — every slot and part renders exactly as the surrounding layout already
+   places it: fully visible, no opacity or transform applied. That absence
+   is each moment's true default state, not a fallback bolted on afterward.
+
+   See docs/r5/R5E_PUBLIC_MOTION_SYSTEM.md for the full contract, the
+   duration/easing table and the trigger threshold used by the controller
+   (threshold 0.3, rootMargin "0px 0px -10% 0px", shared by all three
+   moments). ------------------------------------------------------------ */
+
+/* Moment one (queue-entry) and moment three (decision-surface-open): the
+   whole scene wrapper is a single genuine screenshot, so it settles as one
+   coherent unit — opacity plus a small translateY, never a scale, never a
+   layout-affecting property. */
+.motionSlot[data-motion-slot="queue-entry"][data-motion-state],
+.motionSlot[data-motion-slot="decision-surface-open"][data-motion-state] {
+  transition: opacity 220ms var(--r5-motion-ease), transform 220ms var(--r5-motion-ease);
+}
+
+.motionSlot[data-motion-slot="queue-entry"][data-motion-state="armed"],
+.motionSlot[data-motion-slot="decision-surface-open"][data-motion-state="armed"] {
+  will-change: opacity, transform;
+}
+
+.motionSlot[data-motion-slot="queue-entry"][data-motion-state="armed"] {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.motionSlot[data-motion-slot="decision-surface-open"][data-motion-state] {
+  transition-duration: 240ms;
+}
+
+.motionSlot[data-motion-slot="decision-surface-open"][data-motion-state="armed"] {
+  opacity: 0;
+  transform: translateY(14px);
+}
+
+.motionSlot[data-motion-slot="queue-entry"][data-motion-state="revealed"],
+.motionSlot[data-motion-slot="decision-surface-open"][data-motion-state="revealed"] {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Moment two (evidence-to-requirement): the parent [data-motion-slot]
+   itself is never animated — it also holds the caption and the mobile
+   scene. Only the two genuine sequential scenes animate independently, the
+   requirement scene staggered 140ms behind the evidence scene so the two
+   distinct product states read as primary-then-secondary, matching their
+   existing stacked composition. */
+.motionPart[data-motion-part][data-motion-state] {
+  transition: opacity 220ms var(--r5-motion-ease), transform 220ms var(--r5-motion-ease);
+}
+
+.motionPart[data-motion-part="requirement"][data-motion-state] {
+  transition-delay: 140ms;
+}
+
+.motionPart[data-motion-part][data-motion-state="armed"] {
+  opacity: 0;
+  transform: translateY(8px);
+  will-change: opacity, transform;
+}
+
+.motionPart[data-motion-part][data-motion-state="revealed"] {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Mobile simplification (R5E §9): motion is a desktop/tablet enhancement
+   only. Below the 768px product-scene breakpoint every slot and part is
+   forced to its final visible state regardless of data-motion-state, so
+   resizing, orientation change or a late-arming controller can never
+   produce delayed mobile visibility or a mobile animation that reads
+   slower than desktop. This is a simplification, not a fallback: no
+   mobile-only rectangle exists to animate the way the desktop pair does. */
+@media (max-width: 767px) {
+  .motionSlot[data-motion-slot][data-motion-state],
+  .motionPart[data-motion-part][data-motion-state] {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
+/* Reduced motion is the primary contract, not a courtesy pass. Even if the
+   controller's own matchMedia check were ever bypassed, no motion-governed
+   element may be hidden or displaced when the user has requested reduced
+   motion. Combined with the existing page-wide transition/animation
+   collapse above, this guarantees the complete resting state is what
+   paints. */
+@media (prefers-reduced-motion: reduce) {
+  .motionSlot[data-motion-slot][data-motion-state],
+  .motionPart[data-motion-part][data-motion-state] {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
 }

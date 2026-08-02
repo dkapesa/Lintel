@@ -1,5 +1,6 @@
 import Image from "next/image";
 import type { CSSProperties } from "react";
+import styles from "../public-r5.module.css";
 
 /* Non-destructive CSS crop, in the spirit of the accepted Scene C crop
    (R5B1_SCENE_RESOLUTION_ADDENDUM.md): the source file is never edited,
@@ -20,6 +21,7 @@ export function CropFrame({
   rect,
   className,
   priority,
+  motionPart,
 }: {
   src: string;
   alt: string;
@@ -28,6 +30,11 @@ export function CropFrame({
   rect: CropRect;
   className?: string;
   priority?: boolean;
+  /* R5E — optional motion-moment-two part id ("evidence" | "requirement"),
+     rendered as data-motion-part on this frame's own wrapper so the motion
+     controller and stylesheet can address each genuine scene independently
+     without an extra wrapping element. See docs/r5/R5E_PUBLIC_MOTION_SYSTEM.md. */
+  motionPart?: string;
 }) {
   const cropWidth = rect.right - rect.left;
   const cropHeight = rect.bottom - rect.top;
@@ -45,7 +52,11 @@ export function CropFrame({
   };
 
   return (
-    <div className={className} style={{ aspectRatio: `${cropWidth} / ${cropHeight}` }}>
+    <div
+      className={motionPart ? `${className ?? ""} ${styles.motionPart}` : className}
+      style={{ aspectRatio: `${cropWidth} / ${cropHeight}` }}
+      data-motion-part={motionPart}
+    >
       <Image src={src} alt={alt} width={fullWidth} height={fullHeight} style={imgStyle} priority={priority} />
     </div>
   );

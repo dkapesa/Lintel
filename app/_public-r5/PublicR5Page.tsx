@@ -1,6 +1,7 @@
 import styles from "./public-r5.module.css";
 import { PublicR5Header } from "./components/PublicR5Header";
 import { PublicR5Footer } from "./components/PublicR5Footer";
+import { MotionController } from "./components/MotionController";
 import {
   Section1Hero,
   Section2Problem,
@@ -23,8 +24,13 @@ import {
    (a Next.js private folder, excluded from routing by its leading
    underscore) keeps it out of the route tree entirely.
 
-   Fully server-rendered; no client component and no JavaScript is required
-   in this tree, unchanged from R5C. See
+   R5D: fully server-rendered, no client component, no JavaScript required.
+
+   R5E adds exactly one client boundary, <MotionController />, which owns
+   the three accepted motion moments (queue-entry, evidence-to-requirement,
+   decision-surface-open). It renders no markup of its own and never gates
+   this tree's server-rendered visibility; see
+   docs/r5/R5E_PUBLIC_MOTION_SYSTEM.md and
    docs/r5/R5D_PRODUCTION_HOMEPAGE_TRANSFER.md. */
 
 export function PublicR5Page() {
@@ -45,6 +51,7 @@ export function PublicR5Page() {
         <Section8Final />
       </main>
       <PublicR5Footer />
+      <MotionController />
     </div>
   );
 }

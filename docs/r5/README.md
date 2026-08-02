@@ -69,6 +69,14 @@ R5E.1A is documentation only. Its five documents are read in this order:
     canvas, navigation, left-aligned hero, the stable live Rail/Queue/
     Workspace/Inspector shell, PR #482 selection, Workspace overview, first
     finding focus, and the initial verification-spine treatment.
+13. [`R5E1C_VERIFICATION_JOURNEY_PROTOTYPE.md`](./R5E1C_VERIFICATION_JOURNEY_PROTOTYPE.md) —
+    the second R5E.1 implementation slice, extending R5E.1B's private
+    prototype: Evidence, Missing proof, Requirement, Affected context and
+    Readiness states; guided `IntersectionObserver` scroll advancement with
+    manual-intent precedence; the complete eight-stage verification spine;
+    the `Resume guided tour` affordance; the full keyboard model; two-layer
+    reduced motion; movements two and three of the five-movement page
+    composition.
 
 No earlier R5 or R4 document was edited to produce R5E.1A. Where R5E.1A
 deliberately changes an earlier public visual decision, the change is
@@ -124,10 +132,17 @@ Frozen R4 product truth always outranks public visual preference.
   asset or dependency was created or modified.
 - R5E.1B — navigation, hero and live shell prototype: implemented at the
   private route `/visual-lab/public-r5-recalibrated`
-  (`app/_public-r5-recalibrated/`), pending human visual review. Described
-  in
+  (`app/_public-r5-recalibrated/`), human visual acceptance recorded
+  2 August 2026. Described in
   [`R5E1B_NAVIGATION_HERO_LIVE_SHELL_PROTOTYPE.md`](./R5E1B_NAVIGATION_HERO_LIVE_SHELL_PROTOTYPE.md).
-- R5E.1C–F — not started. Scope, boundaries and acceptance gates are in
+- R5E.1C — verification journey prototype: implemented at the same private
+  route, extending R5E.1B's shell with the Evidence, Missing proof,
+  Requirement, Affected context and Readiness states, guided/manual
+  scroll coordination, the complete verification spine and movements two
+  and three of the page composition, pending human visual review.
+  Described in
+  [`R5E1C_VERIFICATION_JOURNEY_PROTOTYPE.md`](./R5E1C_VERIFICATION_JOURNEY_PROTOTYPE.md).
+- R5E.1D–F — not started. Scope, boundaries and acceptance gates are in
   [`R5E1A_IMPLEMENTATION_HANDOFF.md`](./R5E1A_IMPLEMENTATION_HANDOFF.md).
   The production homepage at `/` and the private laboratory at
   `/visual-lab/public-r5` continue to render the accepted R5E experience

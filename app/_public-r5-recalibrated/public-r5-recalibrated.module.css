@@ -353,11 +353,111 @@
   margin: 0;
 }
 
-/* ------------------------------------------------------------- live stage */
+/* ---------------------------------------------------- verification journey
 
-.stageSection {
+   .journeyColumn holds the sticky shell and the narrative that follows it
+   as SIBLINGS in one shared parent. CSS `position: sticky` stays pinned for
+   the full height of its parent's box, which here includes both the shell
+   itself and every narrative block after it — so the shell remains pinned
+   near the top of the viewport while the narrative scrolls into view
+   beneath it, releasing naturally once the narrative ends. This keeps the
+   shell at its full, already-accepted width (no narrow-sidebar squeeze on
+   its own four-region grid) and needs no second copy of the shell's DOM. */
+
+.journeyColumn {
   scroll-margin-top: var(--header-h);
 }
+
+.stageSticky {
+  position: static;
+}
+
+@media (min-width: 1024px) {
+  .stageSticky {
+    position: sticky;
+    top: calc(var(--header-h) + 16px);
+    z-index: 5;
+  }
+}
+
+.journeyNarrative {
+  padding-top: 40px;
+  max-width: 640px;
+}
+
+.movementBlock {
+  min-height: 40vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 28px 0;
+  border-top: 1px solid var(--pub-border-subtle);
+  scroll-margin-top: var(--header-h);
+}
+
+.stageNarrative {
+  min-height: 52vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 28px 0;
+  border-top: 1px solid var(--pub-border-subtle);
+  scroll-margin-top: var(--header-h);
+}
+
+@media (max-width: 767px) {
+  .movementBlock,
+  .stageNarrative {
+    min-height: 0;
+    padding: 22px 0;
+  }
+}
+
+.stageNarrativeEyebrow {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 11px;
+  color: var(--pub-text-2);
+  margin: 0 0 10px;
+}
+
+.stageNarrativeHeading {
+  font-size: 21px;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  font-weight: 620;
+  color: var(--pub-text);
+  margin: 0 0 12px;
+}
+
+.stageNarrativeBody {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--pub-text-2);
+  margin: 0 0 10px;
+}
+
+.stageNarrativeBody strong {
+  color: var(--pub-text);
+}
+
+.stageNarrativeMeta {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--pub-text-3);
+  margin: 8px 0 0;
+}
+
+.stageNarrativeList {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--pub-text-2);
+}
+
+/* ------------------------------------------------------------- live stage */
 
 .stageWrap {
   border: 1px solid var(--prod-border);
@@ -370,7 +470,13 @@
   display: grid;
   grid-template-columns: 48px 240px 1fr 320px;
   grid-template-areas: "rail queue workspace inspector";
-  min-height: 520px;
+  height: 560px;
+}
+
+@media (max-width: 767px) {
+  .stageGrid {
+    height: auto;
+  }
 }
 
 @media (max-width: 1279px) {
@@ -536,6 +642,228 @@
   background: var(--prod-surface);
   padding: 18px 20px;
   min-width: 0;
+  overflow-y: auto;
+}
+
+/* Panel entrance: content change only, no layout-dimension animation, no
+   whole-shell fade. Plays once per stage per session (gated in
+   LiveReviewStage.tsx, not by CSS alone) and is skipped entirely under
+   reduced motion by both the global media-query rule above and the
+   data-reduced-motion attribute the controller sets as its second,
+   independent layer (docs/r5/R5E1A_LIVE_DEMO_AND_STATE_MODEL_CONTRACT.md
+   §8c.7). */
+@keyframes panelEnter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.panelEnter {
+  animation: panelEnter 200ms var(--ease);
+}
+
+.stageWrap[data-reduced-motion="true"] .panelEnter {
+  animation: none;
+}
+
+.panelNote {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--prod-text-2);
+  margin: 10px 0 14px;
+}
+
+.panelSubheading {
+  display: block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--prod-text-2);
+  margin-bottom: 8px;
+}
+
+/* -------------------------------------------------------- record panels */
+
+.recordList {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.recordCard {
+  border: 1px solid var(--prod-border-subtle);
+  border-radius: 8px;
+  padding: 12px 14px;
+}
+
+.recordCardWarning {
+  border-color: #ead5a4;
+  background: var(--prod-warning-soft);
+}
+
+.recordCardBlocking {
+  border-color: #f2c6bd;
+  background: var(--prod-blocking-soft);
+}
+
+.recordCardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.recordCardProvenance {
+  font-size: 9px;
+  color: var(--prod-text-2);
+}
+
+.recordCardTitle {
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--prod-text);
+  margin: 0 0 6px;
+}
+
+.recordCardStatement {
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--prod-text-important);
+  margin: 0 0 6px;
+}
+
+.recordCardRelation {
+  font-size: 10px;
+  color: var(--prod-text-important);
+  margin: 4px 0 0;
+}
+
+.evidenceStatusWarning {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--prod-warning);
+  flex-shrink: 0;
+}
+
+.evidenceStatusStale {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--prod-text-2);
+  flex-shrink: 0;
+}
+
+.derivedTag {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--prod-warning);
+  border: 1px solid #ead5a4;
+  border-radius: 4px;
+  padding: 2px 6px;
+  flex-shrink: 0;
+}
+
+.availableEvidenceNote {
+  border-top: 1px solid var(--prod-border-subtle);
+  padding-top: 10px;
+  margin-bottom: 12px;
+}
+
+.inlineRecordList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--prod-text-important);
+}
+
+.requirementBadge {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--prod-blocking);
+}
+
+.affectedFileList {
+  list-style: none;
+  margin: 0 0 14px;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.affectedFileRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border: 1px solid var(--prod-border-subtle);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
+.affectedFileMeta {
+  font-size: 10px;
+  color: var(--prod-text-2);
+  flex-shrink: 0;
+}
+
+.concernList {
+  margin: 0;
+  padding-left: 16px;
+  display: grid;
+  gap: 6px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--prod-text-important);
+}
+
+.readinessCard {
+  border: 1px solid var(--prod-border-subtle);
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.readinessHeadline {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--prod-text);
+  margin: 0 0 6px;
+}
+
+.readinessStats {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--prod-text-important);
+  margin: 0 0 8px;
+}
+
+.humanDecisionOrientation {
+  font-size: 11px;
+  color: var(--prod-text-2);
+  border-top: 1px solid var(--prod-border-subtle);
+  padding-top: 12px;
+  margin-top: 4px;
+}
+
+.humanDecisionOrientation strong {
+  color: var(--prod-text-important);
 }
 
 .workspaceHeader {
@@ -840,6 +1168,20 @@
   color: var(--prod-text);
 }
 
+.spineItemPending {
+  color: var(--prod-text-3);
+}
+
+.spinePendingTag {
+  display: block;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--prod-text-3);
+  margin-top: 2px;
+}
+
 .spineNo {
   display: block;
   font-family: var(--font-geist-mono), monospace;
@@ -866,22 +1208,78 @@
   width: 100%;
 }
 
-.spineCompact {
+.spineCompactBar {
   display: none;
-  font-size: 11px;
-  color: var(--prod-text-important);
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
 }
 
 @media (max-width: 767px) {
-  .spineCompact {
-    display: block;
+  .spineCompactBar {
+    display: flex;
   }
 }
 
+.spineCompact {
+  font-size: 11px;
+  color: var(--prod-text-important);
+  text-align: center;
+}
+
 .spineCompact strong {
+  display: block;
   color: var(--prod-text);
   font-family: var(--font-geist-mono), monospace;
-  margin-right: 6px;
+}
+
+.spineCompactNav {
+  background: transparent;
+  border: 1px solid var(--prod-border-subtle);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--prod-text);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.spineCompactNav:disabled {
+  color: var(--prod-text-3);
+  cursor: default;
+}
+
+.resumeGuidedRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--prod-border-subtle);
+}
+
+.resumeGuidedNote {
+  font-size: 10px;
+  color: var(--prod-text-2);
+  margin: 0;
+}
+
+.resumeGuidedButton {
+  background: var(--prod-surface);
+  border: 1px solid var(--prod-border);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--prod-text);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.resumeGuidedButton:hover {
+  border-color: var(--prod-text);
 }
 
 .stageFooter {

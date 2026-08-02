@@ -1,11 +1,11 @@
 import styles from "./public-r5-recalibrated.module.css";
 import { PublicPrototypeHeader } from "./components/PublicPrototypeHeader";
 import { LiveReviewStage } from "./components/LiveReviewStage";
+import { VerificationJourneyNarrative } from "./components/VerificationJourneyNarrative";
 import {
   ACTIONS,
   CLOSEOUT,
   HERO,
-  HOW_IT_WORKS,
   NAV_LINKS,
   NEW_REVIEW_HREF,
   PROTOTYPE_LABEL,
@@ -14,20 +14,34 @@ import {
   TRUST_NOTE,
 } from "./prototype-content";
 
-/* R5E.1B — Navigation, Hero and Live Shell Prototype.
+/* R5E.1B/C — Navigation, Hero, Live Shell and Verification Journey
+   Prototype.
 
    Private, thin implementation for the recalibrated public direction locked
-   by the five R5E.1A documents under docs/r5/. This component owns page
+   by the five R5E1A documents under docs/r5/. This component owns page
    composition; the route wrapper at
    app/visual-lab/public-r5-recalibrated/page.tsx owns only metadata.
 
    Fully server-rendered except for <LiveReviewStage/>, the one small
    client-owned product stage
    (docs/r5/R5E1A_SYSTEM_AND_INTERACTION_LOCK.md §13). Everything else here
-   — navigation destinations, hero copy, the "How it works" and "Trust"
-   anchor sections, the closeout actions — is real content with no
-   JavaScript dependency, satisfying the no-JavaScript resting state
-   required by docs/r5/R5E1A_LIVE_DEMO_AND_STATE_MODEL_CONTRACT.md §8b. */
+   — navigation destinations, hero copy, the movement-two/movement-three
+   verification-journey narrative, the "Trust" section, the closeout
+   actions — is real content with no JavaScript dependency, satisfying the
+   no-JavaScript resting state required by
+   docs/r5/R5E1A_LIVE_DEMO_AND_STATE_MODEL_CONTRACT.md §8b.
+
+   R5E.1C layout: hero copy, then the shell (position: sticky at
+   1024px+, static below it — see §15/§19 of
+   docs/r5/R5E1C_VERIFICATION_JOURNEY_PROTOTYPE.md), then the narrative.
+   Shell and narrative share one parent (`.journeyColumn`) so the sticky
+   shell remains pinned near the top of the viewport for the full height of
+   the narrative that follows it in the same column, releasing naturally
+   once the narrative ends — one persistent shell, no duplicated DOM, no
+   narrow sidebar squeeze on the shell's own four-region grid
+   (docs/r5/R5E1A_SYSTEM_AND_INTERACTION_LOCK.md §10, movement three: "One
+   persistent shell follows Finding → Evidence → Missing proof →
+   Requirement → Affected context → Readiness"). */
 export function R5RecalibratedPrototype() {
   return (
     <div className={styles.page}>
@@ -53,17 +67,11 @@ export function R5RecalibratedPrototype() {
               <p className={styles.trustLine}>{TRUST_LINE}</p>
             </div>
 
-            <div className={styles.stageSection}>
-              <LiveReviewStage />
-            </div>
-          </div>
-        </section>
-
-        <section className={styles.section} id="how-it-works">
-          <div className={styles.wrap}>
-            <div className={styles.sectionCopy}>
-              <h2 className={styles.sectionHeadline}>{HOW_IT_WORKS.headline}</h2>
-              <p className={styles.sectionSupporting}>{HOW_IT_WORKS.supporting}</p>
+            <div className={styles.journeyColumn}>
+              <div className={styles.stageSticky}>
+                <LiveReviewStage />
+              </div>
+              <VerificationJourneyNarrative />
             </div>
           </div>
         </section>

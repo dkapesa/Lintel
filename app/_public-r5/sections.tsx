@@ -66,7 +66,7 @@ export function Section1Hero() {
           <p className={styles.trustLine}>{TRUST_LINE}</p>
         </div>
       </div>
-      <div className={styles.heroScene} data-motion-slot="queue-entry">
+      <div className={`${styles.heroScene} ${styles.motionSlot}`} data-motion-slot="queue-entry">
         <FullScene
           src="/r5/scenes/hero-workspace.jpg"
           alt={HERO.sceneAlt}
@@ -226,7 +226,7 @@ export function Section5Evidence() {
               {EVIDENCE.supporting}
             </p>
           </div>
-          <div className={styles.evidenceScenes} data-motion-slot="evidence-to-requirement">
+          <div className={`${styles.evidenceScenes} ${styles.motionSlot}`} data-motion-slot="evidence-to-requirement">
             <CropFrame
               src="/r5/scenes/evidence-missing-proof.jpg"
               alt={EVIDENCE.evidenceSceneAlt}
@@ -234,6 +234,7 @@ export function Section5Evidence() {
               fullHeight={1000}
               rect={CROP.evidenceState}
               className={`${styles.sceneFrame} ${styles.desktopOnly} ${styles.evidencePrimaryFrame}`}
+              motionPart="evidence"
             />
             <CropFrame
               src="/r5/scenes/requirement-continuation.jpg"
@@ -242,6 +243,7 @@ export function Section5Evidence() {
               fullHeight={1000}
               rect={CROP.requirementState}
               className={`${styles.sceneFrame} ${styles.desktopOnly} ${styles.evidenceSecondaryFrame}`}
+              motionPart="requirement"
             />
             <p className={`${styles.caption} ${styles.desktopOnly}`}>{EVIDENCE.requirementCaption}</p>
             <FullScene
@@ -269,7 +271,7 @@ export function Section6Readiness() {
         </h2>
         <p className={styles.supporting}>{READINESS.supporting}</p>
       </div>
-      <div className={styles.readinessSceneWrap} data-motion-slot="decision-surface-open">
+      <div className={`${styles.readinessSceneWrap} ${styles.motionSlot}`} data-motion-slot="decision-surface-open">
         <CropFrame
           src="/r5/scenes/human-decision-preview.jpg"
           alt={READINESS.sceneAlt}

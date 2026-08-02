@@ -64,6 +64,11 @@ R5E.1A is documentation only. Its five documents are read in this order:
 11. [`R5E1A_IMPLEMENTATION_HANDOFF.md`](./R5E1A_IMPLEMENTATION_HANDOFF.md) —
     R5E.1B–F scope, deliverables, boundaries, validation duties and
     acceptance gates.
+12. [`R5E1B_NAVIGATION_HERO_LIVE_SHELL_PROTOTYPE.md`](./R5E1B_NAVIGATION_HERO_LIVE_SHELL_PROTOTYPE.md) —
+    the first R5E.1 implementation slice: private prototype route, white
+    canvas, navigation, left-aligned hero, the stable live Rail/Queue/
+    Workspace/Inspector shell, PR #482 selection, Workspace overview, first
+    finding focus, and the initial verification-spine treatment.
 
 No earlier R5 or R4 document was edited to produce R5E.1A. Where R5E.1A
 deliberately changes an earlier public visual decision, the change is
@@ -117,7 +122,12 @@ Frozen R4 product truth always outranks public visual preference.
   five documents listed above freeze the system and interaction contract
   governing all later R5E.1 implementation. No component, style, route,
   asset or dependency was created or modified.
-- R5E.1B–F — not started. Scope, boundaries and acceptance gates are in
+- R5E.1B — navigation, hero and live shell prototype: implemented at the
+  private route `/visual-lab/public-r5-recalibrated`
+  (`app/_public-r5-recalibrated/`), pending human visual review. Described
+  in
+  [`R5E1B_NAVIGATION_HERO_LIVE_SHELL_PROTOTYPE.md`](./R5E1B_NAVIGATION_HERO_LIVE_SHELL_PROTOTYPE.md).
+- R5E.1C–F — not started. Scope, boundaries and acceptance gates are in
   [`R5E1A_IMPLEMENTATION_HANDOFF.md`](./R5E1A_IMPLEMENTATION_HANDOFF.md).
   The production homepage at `/` and the private laboratory at
   `/visual-lab/public-r5` continue to render the accepted R5E experience

@@ -9,19 +9,19 @@ import {
   HERO,
   NAV_LINKS,
   NEW_REVIEW_HREF,
-  PROTOTYPE_LABEL,
   SAMPLE_REVIEW_HREF,
   TRUST_BOUNDARY,
   TRUST_LINE,
   UNRESOLVED_HANDOFF,
 } from "./prototype-content";
 
-/* R5E.1B/C/D — Navigation, Hero, Live Shell, Verification Journey, Human
-   Decision, Trust and Handoff Prototype.
+/* R5E.1E — Full Private Public Experience Assembly.
 
-   Private, thin implementation for the recalibrated public direction locked
-   by the five R5E1A documents under docs/r5/. This component owns page
-   composition; the route wrapper at
+   Assembles the five accepted movements (R5E.1B navigation/hero/shell,
+   R5E.1C verification journey, R5E.1D readiness/Human Decision/trust/
+   handoff) into one page composition. Private, thin implementation for the
+   recalibrated public direction locked by the five R5E1A documents under
+   docs/r5/. This component owns page composition; the route wrapper at
    app/visual-lab/public-r5-recalibrated/page.tsx owns only metadata.
 
    Fully server-rendered except for <LiveReviewStage/>, the one small
@@ -56,7 +56,6 @@ export function R5RecalibratedPrototype() {
         <section className={styles.hero} id="product">
           <div className={styles.wrap}>
             <div className={styles.heroCopy}>
-              <span className={styles.prototypeLabel}>{PROTOTYPE_LABEL}</span>
               <h1 className={styles.heroHeadline}>{HERO.headline}</h1>
               <p className={styles.heroSupporting}>{HERO.supporting}</p>
               <div className={styles.heroActions}>

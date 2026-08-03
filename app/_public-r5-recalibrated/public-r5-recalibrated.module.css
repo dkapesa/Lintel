@@ -284,16 +284,6 @@
   margin-bottom: 32px;
 }
 
-.prototypeLabel {
-  display: inline-block;
-  font-size: 10px;
-  font-weight: 650;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--pub-text-2);
-  margin-bottom: 14px;
-}
-
 .heroHeadline {
   font-size: clamp(32px, 4vw, 46px);
   line-height: 1.08;

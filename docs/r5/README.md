@@ -84,6 +84,13 @@ R5E.1A is documentation only. Its five documents are read in this order:
     frozen product's own seven outcomes, decision-readiness content, the
     compact trust boundary and the unresolved-case handoff, completing
     movements four and five of the five-movement page composition.
+15. [`R5E1E_FULL_PRIVATE_PUBLIC_ASSEMBLY.md`](./R5E1E_FULL_PRIVATE_PUBLIC_ASSEMBLY.md) —
+    the assembly milestone: removes remaining public-facing milestone
+    scaffolding language from R5E.1B–D's incrementally built implementation,
+    reviews all five movements' copy for repetition, and re-validates the
+    complete assembled page (responsive, accessibility, motion,
+    progressive-enhancement, product truth, the five originality tests) as
+    one continuous whole rather than as three separate slices.
 
 No earlier R5 or R4 document was edited to produce R5E.1A. Where R5E.1A
 deliberately changes an earlier public visual decision, the change is
@@ -154,9 +161,14 @@ Frozen R4 product truth always outranks public visual preference.
   verification stage (Human Decision), the guided non-modal preview and the
   manually activated dialog, the compact trust boundary and the
   unresolved-case handoff, completing movements four and five of the page
-  composition, pending human review. Described in
+  composition, human visual acceptance recorded 3 August 2026. Described in
   [`R5E1D_HUMAN_DECISION_TRUST_AND_HANDOFF.md`](./R5E1D_HUMAN_DECISION_TRUST_AND_HANDOFF.md).
-- R5E.1E–F — not started. Scope, boundaries and acceptance gates are in
+- R5E.1E — full private public experience assembly: assembles the five
+  movements built across R5E.1B–D into one coherent private page, removes
+  remaining public-facing milestone scaffolding language, and re-validates
+  the complete page as one continuous whole, pending human review. Described
+  in [`R5E1E_FULL_PRIVATE_PUBLIC_ASSEMBLY.md`](./R5E1E_FULL_PRIVATE_PUBLIC_ASSEMBLY.md).
+- R5E.1F — not started. Scope, boundaries and acceptance gates are in
   [`R5E1A_IMPLEMENTATION_HANDOFF.md`](./R5E1A_IMPLEMENTATION_HANDOFF.md).
   The production homepage at `/` and the private laboratory at
   `/visual-lab/public-r5` continue to render the accepted R5E experience

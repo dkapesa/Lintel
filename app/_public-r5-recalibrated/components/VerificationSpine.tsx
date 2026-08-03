@@ -11,12 +11,13 @@ interface VerificationSpineProps {
 }
 
 /* Maps the product's own stage numbers to this prototype's working stages.
-   "08 Human Decision" maps to null: it stays a meaningful, visible,
-   non-interactive orientation item, per
-   docs/r5/R5E1A_IMPLEMENTATION_HANDOFF.md §3 ("Does not build: the Human
-   Decision surface in either form") — never a disabled button, never
-   removed from the accessibility tree. */
-const STAGE_TARGET: Record<string, WorkingStage | null> = {
+   "08 Human Decision" is now the eighth working control
+   (docs/r5/R5E1D task brief §10: "All eight stages are now genuine
+   controls"). It stays visibly, permanently pending — Human Decision never
+   completes for this canonical case — so its button additionally carries a
+   non-colour "Pending" tag alongside its ordinary active/inactive state,
+   never a completion tick and never green. */
+const STAGE_TARGET: Record<string, WorkingStage> = {
   "01": "overview",
   "02": "finding",
   "03": "evidence",
@@ -24,15 +25,15 @@ const STAGE_TARGET: Record<string, WorkingStage | null> = {
   "05": "requirement",
   "06": "affected-context",
   "07": "readiness",
-  "08": null,
+  "08": "human-decision",
 };
 
-/* R5E.1C — the complete verification spine. All eight product stages
+/* R5E.1C/D — the complete verification spine. All eight product stages
    render with their genuine names and numbers
-   (docs/r5/R5E1A_SYSTEM_AND_INTERACTION_LOCK.md §7). Stages 01–07 are
-   semantic <button>s, each an independent tab stop with aria-pressed
-   reflecting the active stage — the same simple-native-button pattern
-   R5E.1B used for 01–02, deliberately not a roving-focus composite, per
+   (docs/r5/R5E1A_SYSTEM_AND_INTERACTION_LOCK.md §7) as semantic <button>s,
+   each an independent tab stop with aria-pressed reflecting the active
+   stage — the same simple-native-button pattern R5E.1B used for 01–02,
+   deliberately not a roving-focus composite, per
    docs/r5/R5E1A_LIVE_DEMO_AND_STATE_MODEL_CONTRACT.md §6a.2's preference
    for simple buttons unless a composite gives a clear accessibility
    benefit. No completion tick, no green, no checkout-stepper affordance:
@@ -52,16 +53,6 @@ export function VerificationSpine({ stage, mode, onNavigate, onResumeGuided }: V
           const target = STAGE_TARGET[item.no];
           const isActive = item.no === activeNo;
 
-          if (!target) {
-            return (
-              <li key={item.no} className={`${styles.spineItem} ${styles.spineItemPending}`}>
-                <span className={styles.spineNo}>{item.no}</span>
-                <span className={styles.spineName}>{item.name}</span>
-                <span className={styles.spinePendingTag}>Pending</span>
-              </li>
-            );
-          }
-
           return (
             <li key={item.no} className={`${styles.spineItem} ${isActive ? styles.spineItemActive : ""}`}>
               <button
@@ -72,6 +63,7 @@ export function VerificationSpine({ stage, mode, onNavigate, onResumeGuided }: V
               >
                 <span className={styles.spineNo}>{item.no}</span>
                 <span className={styles.spineName}>{item.name}</span>
+                {item.no === "08" ? <span className={styles.spinePendingTag}>Pending</span> : null}
               </button>
             </li>
           );

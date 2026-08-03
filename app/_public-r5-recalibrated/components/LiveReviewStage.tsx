@@ -15,6 +15,7 @@ import { ReviewQueue } from "./ReviewQueue";
 import { VerificationWorkspace } from "./VerificationWorkspace";
 import { ContextualInspector } from "./ContextualInspector";
 import { VerificationSpine } from "./VerificationSpine";
+import { HumanDecisionPreview, HumanDecisionDialog } from "./HumanDecisionSurface";
 
 const STAGE_ANNOUNCEMENT: Record<WorkingStage, string> = {
   overview: "Overview shown",
@@ -24,6 +25,7 @@ const STAGE_ANNOUNCEMENT: Record<WorkingStage, string> = {
   requirement: "Requirement opened",
   "affected-context": "Affected context opened",
   readiness: "Readiness shown",
+  "human-decision": "Human Decision opened",
 };
 
 /* R5E.1C — the one small client-owned product stage
@@ -39,10 +41,25 @@ export function LiveReviewStage() {
   const [state, dispatch] = useReducer(demoReducer, INITIAL_DEMO_STATE);
   const seenStagesRef = useRef<Set<WorkingStage>>(new Set());
   const [reducedMotion, setReducedMotion] = useState(false);
+  /* The element that manually opened the Human Decision dialog, so closing
+     it can restore focus there — the same returnFocusRef pattern
+     app/workspace/HumanDecisionDialog.tsx already uses. Captured from
+     document.activeElement at the moment of a manual "human-decision"
+     navigation: every trigger (the spine's "08" button, the Readiness and
+     Human Decision panels' own "Open Human Decision" buttons) is a native
+     <button>, so by the time its onClick fires the browser has already
+     focused it. */
+  const decisionTriggerRef = useRef<HTMLElement | null>(null);
 
   const navigateManual = useCallback((target: WorkingStage) => {
+    if (target === "human-decision") {
+      decisionTriggerRef.current = typeof document !== "undefined" ? (document.activeElement as HTMLElement | null) : null;
+    }
     dispatch(eventForWorkingStage(target, "manual"));
   }, []);
+
+  const openDecisionManual = useCallback(() => navigateManual("human-decision"), [navigateManual]);
+  const closeDecision = useCallback(() => dispatch({ type: "CLOSE_DECISION", source: "manual" }), []);
 
   const selectReview = useCallback(() => dispatch({ type: "SELECT_REVIEW", source: "manual" }), []);
   const resumeGuided = useCallback(() => dispatch({ type: "RESUME_GUIDED" }), []);
@@ -118,14 +135,23 @@ export function LiveReviewStage() {
   const animateEntrance = isFirstVisit && !reducedMotion;
   const announcement = state.mode === "manual" && activeWorkingStage ? STAGE_ANNOUNCEMENT[activeWorkingStage] : null;
 
+  const showGuidedPreview = state.decisionSurface === "open" && state.decisionSurfaceOrigin === "guided";
+  const showManualDialog = state.decisionSurface === "open" && state.decisionSurfaceOrigin === "manual";
+
   return (
     <div className={styles.stageWrap} data-reduced-motion={reducedMotion ? "true" : undefined}>
       <div className={styles.stageGrid}>
         <GlobalRail />
         <ReviewQueue onSelectReview={selectReview} />
-        <VerificationWorkspace stage={state.stage} onNavigate={navigateManual} animateEntrance={animateEntrance} />
+        <VerificationWorkspace
+          stage={state.stage}
+          onNavigate={navigateManual}
+          onOpenDecision={openDecisionManual}
+          animateEntrance={animateEntrance}
+        />
         <ContextualInspector stage={state.stage} animateEntrance={animateEntrance} />
       </div>
+      {showGuidedPreview ? <HumanDecisionPreview onOpenDialog={openDecisionManual} /> : null}
       <VerificationSpine
         stage={state.stage}
         mode={state.mode}
@@ -143,6 +169,7 @@ export function LiveReviewStage() {
       <p aria-live="polite" className={styles.visuallyHidden}>
         {announcement}
       </p>
+      {showManualDialog ? <HumanDecisionDialog onClose={closeDecision} triggerRef={decisionTriggerRef} /> : null}
     </div>
   );
 }

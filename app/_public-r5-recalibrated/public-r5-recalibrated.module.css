@@ -465,16 +465,41 @@
   position: static;
 }
 
+/* R5E.1E.1 correction pass — sticky-shell guard band. The recording showed
+   small fragments of narrative headings/copy peeking above or below the
+   sticky shell during stage transitions. `padding` + a matching negative
+   `margin` extends the sticky element's own box (the one that participates
+   in `position: sticky` and paints at z-index 5, above the narrative's
+   default stacking) by a few pixels above and below its visible content,
+   filled with the same opaque page-canvas colour — a white, non-interactive
+   guard region that belongs to the sticky stage itself and moves with it,
+   so nothing from the narrative behind/adjacent to it can show through at
+   the boundary. The negative margin cancels the padding's layout impact, so
+   the shell's visible position and the page's total height are unchanged —
+   this is a paint-layer fix, not a spacing change (that was already
+   addressed by `.journeyNarrative`'s padding below). */
 @media (min-width: 1024px) {
   .stageSticky {
     position: sticky;
-    top: calc(var(--header-h) + 16px);
+    top: calc(var(--header-h) + 12px);
     z-index: 5;
+    background: var(--pub-canvas);
+    padding: 8px 0;
+    margin: -8px 0;
   }
 }
 
+/* R5E.1E.1 — guided narrative pacing. The R5E.1E review recorded that
+   narrative headings could enter "beneath or too close to" the sticky live
+   stage. padding-top gives the first heading clear breathing room below the
+   shell's bottom edge instead of starting flush against it; padding-bottom
+   gives the final (Human Decision) narrative block room to settle before
+   the sticky shell releases into the next, non-sticky section, so the
+   release reads as a deliberate stop rather than an abrupt one
+   (docs/r5/R5E1E1 task brief §7). */
 .journeyNarrative {
-  padding-top: 40px;
+  padding-top: 64px;
+  padding-bottom: 32px;
   max-width: 640px;
 }
 
@@ -564,7 +589,7 @@
   display: grid;
   grid-template-columns: 48px 240px 1fr 320px;
   grid-template-areas: "rail queue workspace inspector";
-  height: 560px;
+  height: 580px;
 }
 
 @media (max-width: 767px) {
@@ -594,6 +619,43 @@
     flex-direction: column;
     min-height: 0;
   }
+}
+
+/* R5E.1E.1 — nested-scroll and scrollbar polish. The Workspace is the
+   region most likely to need its own scroll: the fixed shell height above
+   is sized for the common case, but the longer states (Missing proof,
+   Readiness) can still exceed it. Queue and Inspector keep overflow: auto
+   too — needed so genuinely overflowing content (long text at high zoom)
+   is never concealed (docs/r5/R5E1E1 task brief §6 forbids hiding
+   scrollable content) — but every internal scrollbar in the shell shares
+   this same thin, low-contrast treatment so none of them visually competes
+   with the page's own scrollbar or with each other. This is restraint, not
+   removal: ordinary page scrolling stays the dominant, obvious scrollbar;
+   these are quiet by comparison. */
+.queue,
+.workspace,
+.inspector {
+  scrollbar-width: thin;
+  scrollbar-color: var(--prod-border) transparent;
+}
+
+.queue::-webkit-scrollbar,
+.workspace::-webkit-scrollbar,
+.inspector::-webkit-scrollbar {
+  width: 6px;
+}
+
+.queue::-webkit-scrollbar-track,
+.workspace::-webkit-scrollbar-track,
+.inspector::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.queue::-webkit-scrollbar-thumb,
+.workspace::-webkit-scrollbar-thumb,
+.inspector::-webkit-scrollbar-thumb {
+  background: var(--prod-border);
+  border-radius: 3px;
 }
 
 .rail {
@@ -1048,6 +1110,13 @@
   margin-bottom: 12px;
 }
 
+/* R5E.1E.1 — live-shell density and hierarchy. .findingMeta previously
+   coloured every tag inside it (severity, category, provenance) with the
+   same alarm red, so genuinely neutral metadata like "Reliability" and
+   "Rule detected" read as alarming. Only the severity tag now carries
+   semantic colour (.findingSeverityTag, red for HIGH); category and
+   provenance stay neutral secondary text, quieting the secondary
+   information relative to the one fact that is actually severity-level. */
 .findingMeta {
   display: flex;
   gap: 8px;
@@ -1056,8 +1125,12 @@
   font-weight: 700;
   letter-spacing: 0.03em;
   text-transform: uppercase;
-  color: var(--prod-blocking);
+  color: var(--prod-text-2);
   margin-bottom: 6px;
+}
+
+.findingSeverityTag {
+  color: var(--prod-blocking);
 }
 
 .findingTitle {
@@ -1239,7 +1312,7 @@
   margin: 0;
   padding: 0;
   display: flex;
-  gap: 2px;
+  gap: 4px;
   overflow-x: auto;
 }
 
@@ -1249,17 +1322,29 @@
   }
 }
 
+/* R5E.1E.1 — verification-spine legibility. Inactive stage numbers moved
+   from --prod-text-3 (~3.5:1, fails AA and is reserved for non-essential
+   content per docs/r5/R5E1A_VISUAL_SYSTEM_REFERENCE_AND_IMAGE_LOCK.md §2c)
+   to --prod-text-2 (~4.5:1) — the stage number is structural wayfinding a
+   visitor reads while scanning the spine, not decorative. The active item
+   gains a quiet fill (the same --prod-selected token the Queue's own
+   selected-row pattern already uses) plus a bolder label, on top of the
+   existing border-top colour step, so the active stage has a clear,
+   non-colour-only hierarchy over its neighbours rather than relying on the
+   2px border alone. */
 .spineItem {
   flex: 1 0 auto;
   min-width: 96px;
-  padding: 8px 10px;
+  padding: 10px 12px;
   border-top: 2px solid var(--prod-border-subtle);
   color: var(--prod-text-2);
+  border-radius: 0 0 4px 4px;
 }
 
 .spineItemActive {
   border-top-color: var(--prod-text);
   color: var(--prod-text);
+  background: var(--prod-selected);
 }
 
 .spinePendingTag {
@@ -1268,16 +1353,16 @@
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: var(--prod-text-3);
-  margin-top: 2px;
+  color: var(--prod-text-2);
+  margin-top: 3px;
 }
 
 .spineNo {
   display: block;
   font-family: var(--font-geist-mono), monospace;
   font-size: 9px;
-  color: var(--prod-text-3);
-  margin-bottom: 2px;
+  color: var(--prod-text-2);
+  margin-bottom: 3px;
 }
 
 .spineItemActive .spineNo {
@@ -1287,6 +1372,10 @@
 .spineName {
   font-size: 10px;
   font-weight: 600;
+}
+
+.spineItemActive .spineName {
+  font-weight: 700;
 }
 
 .spineButton {
@@ -1389,12 +1478,14 @@
 
 /* ------------------------------------------------- human decision content
 
-   Shared between the guided preview (non-modal) and the manual dialog
-   (role="dialog"). Motion: 220-280ms range, --ease, restrained — a small
-   opacity/translateY entrance on .decisionCard / .decisionDialogPanel only,
-   never a whole-page fade, never a bounce/spring, never implying an outcome
-   was recorded. Reduced motion strips both via the existing global rule and
-   the .stageWrap[data-reduced-motion="true"] layer. */
+   Shared between the embedded Workspace panel (guided/manual reach, see
+   VerificationWorkspace.tsx's HumanDecisionPanel — R5E.1E.1: no longer a
+   separate floating layer, just another Workspace panel using the
+   Workspace's own .panelEnter entrance like every other stage) and the
+   manual dialog (role="dialog"). The one motion moment left in this content
+   is the dialog's own entrance (220-280ms range, --ease) on
+   .decisionDialogPanel; reduced motion strips it via the existing global
+   rule and the @media query below. */
 
 .decisionContent {
   display: grid;
@@ -1542,47 +1633,25 @@
   margin: 0;
 }
 
-/* ------------------------------------------------------- guided preview
+/* ------------------------------------------------- embedded panel label
 
-   A non-modal visual layer above the live stage, per
-   docs/r5/R5E1A_LIVE_DEMO_AND_STATE_MODEL_CONTRACT.md §7: no role, no
-   aria-modal, no focus trap. .decisionScrim is aria-hidden and
-   pointer-events: none so it dims without blocking scroll, pointer
-   interaction or keyboard focus anywhere beneath it. */
+   R5E.1E.1 correction: Human Decision reached by guided scroll or manual
+   navigation to the working stage no longer renders as a separate floating
+   layer (there is no more ".decisionLayer"/".decisionCard" — see
+   VerificationWorkspace.tsx's HumanDecisionPanel, which now renders this
+   label directly inside the ordinary Workspace panel flow, exactly like
+   every other stage). ".decisionPreviewLabel" is the one remaining shared
+   overline style, reused by both that embedded panel and the manual
+   dialog's body — a plain block label with its own bottom margin, since
+   neither render site is a CSS grid that would otherwise supply the gap. */
 
-.decisionLayer {
-  position: absolute;
-  inset: 0;
-  z-index: 6;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 24px 16px;
-  overflow-y: auto;
-}
-
-.decisionScrim {
-  position: absolute;
-  inset: 0;
-  background: rgba(28, 28, 28, 0.28);
-  pointer-events: none;
-}
-
-.decisionCard {
-  position: relative;
-  width: min(560px, 100%);
-  background: var(--prod-surface);
-  border: 1px solid var(--prod-border);
-  border-radius: 10px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
-  padding: 18px;
-  display: grid;
-  gap: 12px;
-  animation: decisionEnter 240ms var(--ease);
-}
-
-.stageWrap[data-reduced-motion="true"] .decisionCard {
-  animation: none;
+.decisionPreviewLabel {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--prod-text-2);
+  margin: 0 0 12px;
 }
 
 @keyframes decisionEnter {
@@ -1596,37 +1665,19 @@
   }
 }
 
-.decisionPreviewLabel {
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: var(--prod-text-2);
-  margin: 0;
-}
-
-/* R5E.1D human-review correction: .decisionCard is a CSS grid with its own
-   gap, so .decisionPreviewLabel needs no margin there. .decisionDialogBody
-   is not a grid, so the same label reused inside the manual dialog needs
-   its own spacing before the shared content that follows it — scoped here
-   so the guided preview's existing spacing is unaffected. */
-.decisionDialogBody > .decisionPreviewLabel {
-  margin-bottom: 14px;
-}
-
-@media (max-width: 767px) {
-  .decisionLayer {
-    position: fixed;
-    padding: 16px;
-  }
-}
-
 /* ------------------------------------------------------------ manual dialog
 
    Full dialog semantics live on the element carrying role="dialog"
    (HumanDecisionSurface.tsx), not here; this is presentation only. Same
    fixed-centred-scrim pattern as app/workspace/workspace-r4.module.css's
-   own .dialogLayer/.decisionDialog, using this prototype's own tokens. */
+   own .dialogLayer/.decisionDialog, using this prototype's own tokens.
+
+   R5E.1E.1: this dialog is now the page's only genuinely elevated,
+   scrimmed overlay — the embedded Workspace panel above carries no scrim
+   and no floating shadow at all, so there is no lighter surface left to
+   compare against; this remains the one deliberately weighty layer,
+   reserved for an explicit visitor request (docs/r5/R5E1E1 correction-pass
+   task brief §1, §4). */
 
 .dialogLayer {
   position: fixed;
@@ -1642,7 +1693,7 @@
   inset: 0;
   width: 100%;
   border: 0;
-  background: rgba(0, 0, 0, 0.56);
+  background: rgba(0, 0, 0, 0.6);
   cursor: pointer;
 }
 
@@ -1654,7 +1705,7 @@
   background: var(--prod-surface);
   border: 1px solid var(--prod-border);
   border-radius: 10px;
-  box-shadow: 0 18px 56px rgba(0, 0, 0, 0.28);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.32);
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   overflow: hidden;
@@ -1662,8 +1713,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .decisionDialogPanel,
-  .decisionCard {
+  .decisionDialogPanel {
     animation: none;
   }
 }

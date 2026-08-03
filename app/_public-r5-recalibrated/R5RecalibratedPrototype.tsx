@@ -44,7 +44,14 @@ import {
    narrow sidebar squeeze on the shell's own four-region grid
    (docs/r5/R5E1A_SYSTEM_AND_INTERACTION_LOCK.md §10, movement three: "One
    persistent shell follows Finding → Evidence → Missing proof →
-   Requirement → Affected context → Readiness"). */
+   Requirement → Affected context → Readiness").
+
+   R5E.1E.1 — Public Identity, Composition and Interaction Polish. Bounded
+   complete-page polish over this same assembly: the footer no longer repeats
+   the handoff's primary/secondary actions or its unresolved-case explanation
+   (docs/r5/R5E1E1_PUBLIC_IDENTITY_COMPOSITION_INTERACTION_POLISH.md §12),
+   and CLOSEOUT.supporting was reworded to a concise, non-repeating purpose
+   line. No movement, section, canonical value or architecture changed. */
 export function R5RecalibratedPrototype() {
   return (
     <div className={styles.page}>
@@ -134,14 +141,6 @@ export function R5RecalibratedPrototype() {
                 <span>Lintel</span>
               </span>
               <p className={styles.footerBrandLine}>{CLOSEOUT.supporting}</p>
-              <div className={styles.heroActions}>
-                <a className={`${styles.btn} ${styles.btnPrimary} ${styles.btnCompact}`} href={SAMPLE_REVIEW_HREF}>
-                  {ACTIONS.primary}
-                </a>
-                <a className={`${styles.btn} ${styles.btnSecondary} ${styles.btnCompact}`} href={NEW_REVIEW_HREF}>
-                  {ACTIONS.secondary}
-                </a>
-              </div>
             </div>
             <ul className={styles.footerLinks}>
               {NAV_LINKS.map((link) => (

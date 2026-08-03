@@ -91,6 +91,16 @@ R5E.1A is documentation only. Its five documents are read in this order:
     complete assembled page (responsive, accessibility, motion,
     progressive-enhancement, product truth, the five originality tests) as
     one continuous whole rather than as three separate slices.
+16. [`R5E1E1_PUBLIC_IDENTITY_COMPOSITION_INTERACTION_POLISH.md`](./R5E1E1_PUBLIC_IDENTITY_COMPOSITION_INTERACTION_POLISH.md) —
+    a bounded complete-page polish milestone addressing the nine findings
+    R5E.1E's own human acceptance named: nested-scroll and scrollbar
+    refinement, guided narrative pacing and sticky-shell release,
+    verification-spine legibility, live-shell density, stronger separation
+    between the guided Human Decision preview and the manual dialog, removal
+    of internal-roadmap language from Trust copy, handoff/footer
+    deduplication, final vertical-rhythm refinement, and evidence-supported
+    navigation polish. No redesign, no architecture change, no canonical
+    value change, no production transfer.
 
 No earlier R5 or R4 document was edited to produce R5E.1A. Where R5E.1A
 deliberately changes an earlier public visual decision, the change is
@@ -166,8 +176,17 @@ Frozen R4 product truth always outranks public visual preference.
 - R5E.1E — full private public experience assembly: assembles the five
   movements built across R5E.1B–D into one coherent private page, removes
   remaining public-facing milestone scaffolding language, and re-validates
-  the complete page as one continuous whole, pending human review. Described
-  in [`R5E1E_FULL_PRIVATE_PUBLIC_ASSEMBLY.md`](./R5E1E_FULL_PRIVATE_PUBLIC_ASSEMBLY.md).
+  the complete page as one continuous whole. Human visual acceptance recorded
+  3 August 2026, naming a bounded set of complete-page polish items assigned
+  to R5E.1E.1. Described in
+  [`R5E1E_FULL_PRIVATE_PUBLIC_ASSEMBLY.md`](./R5E1E_FULL_PRIVATE_PUBLIC_ASSEMBLY.md).
+- R5E.1E.1 — public identity, composition and interaction polish: a bounded
+  complete-page polish pass over the accepted R5E.1E assembly, addressing
+  nested-scroll and scrollbar refinement, guided narrative pacing and
+  sticky-shell release, verification-spine legibility, live-shell density,
+  guided-preview/manual-dialog visual differentiation, Trust copy, and
+  handoff/footer deduplication, pending human review. Described in
+  [`R5E1E1_PUBLIC_IDENTITY_COMPOSITION_INTERACTION_POLISH.md`](./R5E1E1_PUBLIC_IDENTITY_COMPOSITION_INTERACTION_POLISH.md).
 - R5E.1F — not started. Scope, boundaries and acceptance gates are in
   [`R5E1A_IMPLEMENTATION_HANDOFF.md`](./R5E1A_IMPLEMENTATION_HANDOFF.md).
   The production homepage at `/` and the private laboratory at

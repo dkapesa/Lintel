@@ -32,21 +32,15 @@ export const ACTIONS = {
   secondary: "Start a review",
 } as const;
 
-export const TRUST_NOTE = {
-  headline: "A read-only sample, honestly labelled.",
-  supporting:
-    "This is an interactive sample built from one real, unresolved review. Nothing you do here calls a model, creates a review, records a Human Decision or writes anywhere outside this page. Deterministic analysis provides the baseline; model assistance is optional and never selects or records the Human Decision.",
-};
-
 export const CLOSEOUT = {
   headline: "Inspect the review for yourself.",
   supporting:
     "The case remains unresolved. Open the read-only sample to follow its evidence, or start a review with your own change.",
   legal: "© Lintel",
-  boundary: "Private prototype — R5E.1C. Not linked from the production site.",
+  boundary: "Private prototype — R5E.1D. Not linked from the production site.",
 };
 
-export const PROTOTYPE_LABEL = "Prototype — R5E.1C verification journey";
+export const PROTOTYPE_LABEL = "Prototype — R5E.1D Human Decision and handoff";
 
 /* R5E.1C additions. Movement two uses the accepted problem statement
    verbatim (docs/r5/R5E1A_SYSTEM_AND_INTERACTION_LOCK.md §10, "Movement
@@ -64,4 +58,61 @@ export const JOURNEY_INTRO = {
   headline: "Follow the verification record.",
   supporting:
     "A change can produce findings. Canonical evidence supports or weakens them. Missing or unverified evidence is shown as missing proof. Blocking gaps surface requirements. Requirements and affected context inform readiness. The accountable engineer retains the Human Decision. The shell above follows this sequence as you scroll — choosing a stage directly, here or in the shell's own verification spine, works the same way and pauses the guided sequence until you resume it.",
+};
+
+/* R5E.1D — movement four ("Accountable decision"). Frames the transition
+   from Readiness into Human Decision per the task brief §6: the record
+   above is complete enough to inspect, unresolved requirements remain,
+   readiness stays advisory, the engineer retains authority, and nothing
+   here implies an outcome is inevitable or that the surface below submits
+   anything. */
+export const ACCOUNTABLE_DECISION = {
+  headline: "Readiness is advisory. The decision is not automatic.",
+  supporting:
+    "The record above is complete enough to inspect: the finding, its evidence, what remains missing, the blocking requirement and where it reaches. Two requirements are still open. Lintel has not finished this review on the engineer's behalf — it has assembled the record the engineer decides from. What follows is that decision surface, exactly as it stands in this sample: every outcome unselected, nothing submitted.",
+};
+
+/* R5E.1D — movement five, part one: the compact trust boundary. Genuine
+   product truths only, per docs/r5/R5E1D task brief §12: deterministic
+   analysis is the baseline, model assistance is optional and identified in
+   provenance when used, the sample performs no external write and does not
+   create or modify a review, and Human Decision belongs to the engineer.
+   No compliance claim, no deployment option, no customer logo — detailed
+   security/architecture pages remain future R5F work. */
+export const TRUST_BOUNDARY = {
+  headline: "What this sample does and does not do.",
+  supporting:
+    "A compact, honest boundary — not a security page. Detailed architecture and data-boundary documentation remain separate, future work.",
+  records: [
+    {
+      label: "Baseline",
+      detail: "Deterministic analysis provides the recommendation, risk and requirements shown throughout.",
+    },
+    {
+      label: "Model assistance",
+      detail: "Optional, and identified in provenance when used — the inferred error-contract evidence above, for example.",
+    },
+    {
+      label: "External writes",
+      detail: "None. This sample never calls a model, creates a review, or writes anywhere outside this page.",
+    },
+    {
+      label: "This review",
+      detail: "Never created or modified by anything here. PR #482 stays exactly as shown, in every state.",
+    },
+    {
+      label: "Human Decision",
+      detail: "Belongs to the accountable engineer. No outcome is recorded in this demonstration.",
+    },
+  ],
+} as const;
+
+/* R5E.1D — movement five, part two: the unresolved-case handoff. The next
+   operation in the same case, not a repeated hero CTA — a compact canonical
+   record plus the same two genuine destinations already used in the hero. */
+export const UNRESOLVED_HANDOFF = {
+  eyebrow: "Still unresolved",
+  headline: "This case remains open.",
+  supporting:
+    "Nothing on this page changed PR #482. Inspect the complete sample for yourself, or begin a separate review with your own change.",
 };

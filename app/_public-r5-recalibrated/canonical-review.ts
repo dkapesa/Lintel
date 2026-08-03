@@ -283,3 +283,79 @@ export const READINESS = {
     "Two blocking requirements cleared since the previous head. One latency requirement became stale because the load test has not been re-run.",
   decisionContext: "Review decision context · Human Decision pending",
 } as const;
+
+/* R5E.1D additions below. Same discipline as above: one typed, read-only
+   source, cross-checked against the frozen product on 2026-08-02, no value
+   the frozen product does not itself carry.
+
+   The seven outcomes, their labels and their meanings are transcribed
+   verbatim from lib/workspace-v2/view-model.ts (DECISION_OUTCOMES,
+   OUTCOME_LABEL, OUTCOME_MEANING) — the same typed constants
+   app/workspace/HumanDecisionDialog.tsx renders as its own outcome grid.
+   No outcome is renamed, reworded, simplified or reordered. */
+export const DECISION_OUTCOMES = [
+  { recordKey: "approve", label: "Approve", meaning: "Engineer approves merge." },
+  {
+    recordKey: "approve-with-accepted-risk",
+    label: "Approve with accepted risk",
+    meaning: "Approve, and the engineer — not Lintel — explicitly accepts named residual risks.",
+  },
+  { recordKey: "tests-required", label: "Tests required", meaning: "Test evidence is missing." },
+  {
+    recordKey: "review-required",
+    label: "Review required",
+    meaning: "Further specialist or accountable-human review is required.",
+  },
+  { recordKey: "request-changes", label: "Request changes", meaning: "Implementation changes are required." },
+  { recordKey: "blocked", label: "Blocked", meaning: "Stop: a critical unresolved issue prevents progress." },
+  {
+    recordKey: "defer",
+    label: "Defer decision",
+    meaning: "The engineer cannot responsibly decide yet — this is not approval.",
+  },
+] as const;
+
+/* Decision-readiness synthesis for the surface that opens over Readiness.
+   Recommendation, risk and requirement counts are never restated as new
+   values — they remain the same CANONICAL_REVIEW fields rendered throughout
+   every other state. "No Human Decision has been recorded" reflects
+   case482.decision.status === "empty" in the frozen fixture (State A: read
+   succeeded, no engineer decision recorded — confirmed in
+   lib/workspace-v2/fixture-adapter.ts). appliesTo mirrors
+   CANONICAL_REVIEW.headSha/branch, the only head this sample could ever
+   apply a decision to. */
+export const DECISION_READINESS = {
+  headline: "The outcome this review is waiting on.",
+  priorDecision: "No Human Decision has been recorded for this review.",
+  appliesTo: `Head ${CANONICAL_REVIEW.headSha} · ${CANONICAL_REVIEW.branch}`,
+  outcomeSelected: "No outcome is selected from Lintel's recommendation.",
+} as const;
+
+/* Genuine copy transcribed verbatim from app/workspace/HumanDecisionDialog.tsx:
+   the eyebrow, the read-only heading it renders when passed a readOnlyReason,
+   the description paragraph, the "Read-only sample" notice label and its own
+   read-only body copy. Nothing here is paraphrased. */
+export const DECISION_DIALOG_COPY = {
+  eyebrow: "Accountable engineer action",
+  heading: "Preview decision flow",
+  statement: "Lintel recommends. The accountable engineer decides.",
+  readOnlyLabel: "Read-only sample",
+  readOnlyBody:
+    "This preview does not write to the browser-local Human Decision ledger or publish through any integration.",
+} as const;
+
+/* R5E.1D human-review correction — one small overline label, positioned
+   identically above the shared HumanDecisionContent in both surfaces, whose
+   wording is driven entirely by which surface is rendering it. The guided
+   preview is reached passively by scroll, so its label still invites
+   further action ("scroll to continue, or open it directly"). The manually
+   activated dialog is reached only because the visitor already opened it
+   directly, so it states the surface's nature instead of inviting an
+   action that has already happened. Neither component reads this object
+   conditionally — HumanDecisionPreview and HumanDecisionDialog are already
+   two distinct components (one per origin), so each simply renders its own
+   field; no new state or mode prop was introduced. */
+export const DECISION_SURFACE_LABEL = {
+  guided: "Guided preview — scroll to continue, or open it directly",
+  manual: "Read-only Human Decision",
+} as const;

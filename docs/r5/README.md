@@ -77,6 +77,13 @@ R5E.1A is documentation only. Its five documents are read in this order:
     the `Resume guided tour` affordance; the full keyboard model; two-layer
     reduced motion; movements two and three of the five-movement page
     composition.
+14. [`R5E1D_HUMAN_DECISION_TRUST_AND_HANDOFF.md`](./R5E1D_HUMAN_DECISION_TRUST_AND_HANDOFF.md) —
+    the third R5E.1 implementation slice, extending R5E.1C's private
+    prototype: the eighth working verification stage (Human Decision), the
+    guided non-modal preview and the manually activated dialog with the
+    frozen product's own seven outcomes, decision-readiness content, the
+    compact trust boundary and the unresolved-case handoff, completing
+    movements four and five of the five-movement page composition.
 
 No earlier R5 or R4 document was edited to produce R5E.1A. Where R5E.1A
 deliberately changes an earlier public visual decision, the change is
@@ -139,10 +146,17 @@ Frozen R4 product truth always outranks public visual preference.
   route, extending R5E.1B's shell with the Evidence, Missing proof,
   Requirement, Affected context and Readiness states, guided/manual
   scroll coordination, the complete verification spine and movements two
-  and three of the page composition, pending human visual review.
-  Described in
+  and three of the page composition. Human visual acceptance recorded
+  2 August 2026. Described in
   [`R5E1C_VERIFICATION_JOURNEY_PROTOTYPE.md`](./R5E1C_VERIFICATION_JOURNEY_PROTOTYPE.md).
-- R5E.1D–F — not started. Scope, boundaries and acceptance gates are in
+- R5E.1D — readiness, Human Decision, trust and handoff: implemented at the
+  same private route, extending R5E.1C's shell with the eighth working
+  verification stage (Human Decision), the guided non-modal preview and the
+  manually activated dialog, the compact trust boundary and the
+  unresolved-case handoff, completing movements four and five of the page
+  composition, pending human review. Described in
+  [`R5E1D_HUMAN_DECISION_TRUST_AND_HANDOFF.md`](./R5E1D_HUMAN_DECISION_TRUST_AND_HANDOFF.md).
+- R5E.1E–F — not started. Scope, boundaries and acceptance gates are in
   [`R5E1A_IMPLEMENTATION_HANDOFF.md`](./R5E1A_IMPLEMENTATION_HANDOFF.md).
   The production homepage at `/` and the private laboratory at
   `/visual-lab/public-r5` continue to render the accepted R5E experience

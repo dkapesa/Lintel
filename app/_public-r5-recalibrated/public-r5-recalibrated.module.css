@@ -353,6 +353,109 @@
   margin: 0;
 }
 
+/* ------------------------------------------------------- trust boundary
+
+   Movement five, part one: a compact structured record list, not another
+   documentation section. Public tokens throughout — this sits outside the
+   live demonstration. */
+
+.trustRecordList {
+  list-style: none;
+  margin: 24px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 1px;
+  background: var(--pub-border-subtle);
+  border: 1px solid var(--pub-border-subtle);
+  border-radius: 8px;
+  overflow: hidden;
+  max-width: 720px;
+}
+
+.trustRecordRow {
+  background: var(--pub-surface);
+  padding: 12px 16px;
+  display: grid;
+  grid-template-columns: 168px 1fr;
+  gap: 4px 16px;
+  align-items: baseline;
+}
+
+@media (max-width: 599px) {
+  .trustRecordRow {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}
+
+.trustRecordLabel {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--pub-text-2);
+}
+
+.trustRecordDetail {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--pub-text);
+}
+
+/* --------------------------------------------------- unresolved handoff
+
+   Movement five, part two: the next operation in the same case, not a
+   repeated hero. A compact record row, not a second centred hero block. */
+
+.handoffCard {
+  border: 1px solid var(--pub-border);
+  border-radius: 10px;
+  padding: 28px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+@media (max-width: 767px) {
+  .handoffCard {
+    padding: 20px;
+    align-items: flex-start;
+  }
+}
+
+.handoffContext {
+  max-width: 560px;
+}
+
+.handoffEyebrow {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--pub-text-2);
+  margin-bottom: 10px;
+}
+
+.handoffRepoLine {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 11px;
+  color: var(--pub-text-2);
+  margin: 0 0 8px;
+}
+
+.handoffRecordRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--pub-text);
+}
+
 /* ---------------------------------------------------- verification journey
 
    .journeyColumn holds the sticky shell and the narrative that follows it
@@ -460,6 +563,7 @@
 /* ------------------------------------------------------------- live stage */
 
 .stageWrap {
+  position: relative;
   border: 1px solid var(--prod-border);
   border-radius: 10px;
   overflow: hidden;
@@ -1168,10 +1272,6 @@
   color: var(--prod-text);
 }
 
-.spineItemPending {
-  color: var(--prod-text-3);
-}
-
 .spinePendingTag {
   display: block;
   font-size: 8px;
@@ -1295,6 +1395,358 @@
 .stageFooterNote {
   font-size: 10px;
   color: var(--prod-text-2);
+}
+
+/* ------------------------------------------------- human decision content
+
+   Shared between the guided preview (non-modal) and the manual dialog
+   (role="dialog"). Motion: 220-280ms range, --ease, restrained — a small
+   opacity/translateY entrance on .decisionCard / .decisionDialogPanel only,
+   never a whole-page fade, never a bounce/spring, never implying an outcome
+   was recorded. Reduced motion strips both via the existing global rule and
+   the .stageWrap[data-reduced-motion="true"] layer. */
+
+.decisionContent {
+  display: grid;
+  gap: 14px;
+}
+
+.decisionEyebrow {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--prod-text-2);
+  margin: 0;
+}
+
+.decisionStatement {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--prod-text);
+  margin: 0;
+}
+
+.decisionContextCard {
+  border: 1px solid var(--prod-border-subtle);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: grid;
+  gap: 6px;
+}
+
+.decisionContextRepo {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10px;
+  color: var(--prod-text-2);
+  margin: 0;
+}
+
+.decisionContextTitle {
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--prod-text);
+  margin: 0;
+}
+
+.decisionReadinessRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  font-size: 11px;
+  color: var(--prod-text-important);
+}
+
+.decisionReadinessRow strong {
+  color: var(--prod-text);
+}
+
+.decisionPriorNote,
+.decisionAppliesTo {
+  font-size: 10px;
+  color: var(--prod-text-2);
+  margin: 0;
+}
+
+.decisionOutcomeIntro {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--prod-text-important);
+  margin: 0;
+}
+
+.decisionOutcomeList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.decisionOutcomeRow {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: start;
+  gap: 8px;
+  border: 1px solid var(--prod-border-subtle);
+  border-radius: 7px;
+  padding: 9px 10px;
+}
+
+.decisionOutcomeMarker {
+  width: 9px;
+  height: 9px;
+  margin-top: 3px;
+  border-radius: 50%;
+  border: 1.5px solid var(--prod-text-3);
+  flex-shrink: 0;
+}
+
+.decisionOutcomeText {
+  display: grid;
+  gap: 2px;
+}
+
+.decisionOutcomeText strong {
+  font-size: 11px;
+  color: var(--prod-text);
+}
+
+.decisionOutcomeText small {
+  font-size: 9px;
+  line-height: 1.4;
+  color: var(--prod-text-2);
+}
+
+.decisionOutcomeTag {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--prod-text-3);
+  white-space: nowrap;
+  align-self: center;
+}
+
+.decisionWarning {
+  border: 1px solid #ead5a4;
+  background: var(--prod-warning-soft);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.decisionWarning strong {
+  display: block;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--prod-warning);
+  margin-bottom: 3px;
+}
+
+.decisionWarning p {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--prod-warning);
+  margin: 0;
+}
+
+/* ------------------------------------------------------- guided preview
+
+   A non-modal visual layer above the live stage, per
+   docs/r5/R5E1A_LIVE_DEMO_AND_STATE_MODEL_CONTRACT.md §7: no role, no
+   aria-modal, no focus trap. .decisionScrim is aria-hidden and
+   pointer-events: none so it dims without blocking scroll, pointer
+   interaction or keyboard focus anywhere beneath it. */
+
+.decisionLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 24px 16px;
+  overflow-y: auto;
+}
+
+.decisionScrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(28, 28, 28, 0.28);
+  pointer-events: none;
+}
+
+.decisionCard {
+  position: relative;
+  width: min(560px, 100%);
+  background: var(--prod-surface);
+  border: 1px solid var(--prod-border);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+  padding: 18px;
+  display: grid;
+  gap: 12px;
+  animation: decisionEnter 240ms var(--ease);
+}
+
+.stageWrap[data-reduced-motion="true"] .decisionCard {
+  animation: none;
+}
+
+@keyframes decisionEnter {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.decisionPreviewLabel {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--prod-text-2);
+  margin: 0;
+}
+
+/* R5E.1D human-review correction: .decisionCard is a CSS grid with its own
+   gap, so .decisionPreviewLabel needs no margin there. .decisionDialogBody
+   is not a grid, so the same label reused inside the manual dialog needs
+   its own spacing before the shared content that follows it — scoped here
+   so the guided preview's existing spacing is unaffected. */
+.decisionDialogBody > .decisionPreviewLabel {
+  margin-bottom: 14px;
+}
+
+@media (max-width: 767px) {
+  .decisionLayer {
+    position: fixed;
+    padding: 16px;
+  }
+}
+
+/* ------------------------------------------------------------ manual dialog
+
+   Full dialog semantics live on the element carrying role="dialog"
+   (HumanDecisionSurface.tsx), not here; this is presentation only. Same
+   fixed-centred-scrim pattern as app/workspace/workspace-r4.module.css's
+   own .dialogLayer/.decisionDialog, using this prototype's own tokens. */
+
+.dialogLayer {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.dialogScrimButton {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  border: 0;
+  background: rgba(0, 0, 0, 0.56);
+  cursor: pointer;
+}
+
+.decisionDialogPanel {
+  position: relative;
+  z-index: 1;
+  width: min(600px, calc(100vw - 32px));
+  max-height: min(720px, calc(100dvh - 48px));
+  background: var(--prod-surface);
+  border: 1px solid var(--prod-border);
+  border-radius: 10px;
+  box-shadow: 0 18px 56px rgba(0, 0, 0, 0.28);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  animation: decisionEnter 240ms var(--ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .decisionDialogPanel,
+  .decisionCard {
+    animation: none;
+  }
+}
+
+.decisionDialogHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--prod-border-subtle);
+}
+
+.decisionDialogHeading {
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--prod-text);
+  margin: 4px 0 6px;
+}
+
+.decisionDialogHeading:focus-visible {
+  outline: 2px solid var(--prod-focus);
+  outline-offset: 2px;
+}
+
+.decisionDialogDescription {
+  font-size: 11px;
+  color: var(--prod-text-2);
+  margin: 0;
+}
+
+.iconCloseButton {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--prod-border-subtle);
+  background: var(--prod-surface);
+  color: var(--prod-text);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.iconCloseButton:hover {
+  border-color: var(--prod-text);
+}
+
+.decisionDialogBody {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px 18px;
+}
+
+.decisionDialogFooter {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 18px;
+  border-top: 1px solid var(--prod-border-subtle);
+}
+
+@media (max-width: 767px) {
+  .dialogLayer {
+    padding: 0;
+    align-items: stretch;
+  }
+
+  .decisionDialogPanel {
+    width: 100%;
+    max-height: 100dvh;
+    border-radius: 0;
+  }
 }
 
 /* --------------------------------------------------------------- footer */

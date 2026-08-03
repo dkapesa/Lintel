@@ -4,6 +4,8 @@ import {
   AFFECTED_FILES,
   BLOCKING_REQUIREMENT,
   CANONICAL_REVIEW,
+  DECISION_DIALOG_COPY,
+  DECISION_READINESS,
   MISSING_PROOF_RECORDS,
   PRIMARY_EVIDENCE,
   PRIMARY_FINDING,
@@ -17,6 +19,7 @@ import type { WorkingStage } from "../demo-reducer";
 interface VerificationWorkspaceProps {
   stage: DemoStage;
   onNavigate: (stage: WorkingStage) => void;
+  onOpenDecision: () => void;
   animateEntrance: boolean;
 }
 
@@ -30,7 +33,7 @@ interface VerificationWorkspaceProps {
    re-keyed by stage so its entrance transition (public-r5-recalibrated
    .module.css `.panelEnter`, 200ms, the locked easing) plays once per
    activation without animating layout dimensions. */
-export function VerificationWorkspace({ stage, onNavigate, animateEntrance }: VerificationWorkspaceProps) {
+export function VerificationWorkspace({ stage, onNavigate, onOpenDecision, animateEntrance }: VerificationWorkspaceProps) {
   return (
     <div className={styles.workspace}>
       <div className={styles.workspaceHeader}>
@@ -72,7 +75,9 @@ export function VerificationWorkspace({ stage, onNavigate, animateEntrance }: Ve
         ) : stage === "affected-context" ? (
           <AffectedContextPanel onNavigate={onNavigate} />
         ) : stage === "readiness" ? (
-          <ReadinessPanel />
+          <ReadinessPanel onOpenDecision={onOpenDecision} />
+        ) : stage === "human-decision" ? (
+          <HumanDecisionPanel onNavigate={onNavigate} onOpenDecision={onOpenDecision} />
         ) : (
           <OverviewPanel onNavigate={onNavigate} />
         )}
@@ -320,7 +325,7 @@ function AffectedContextPanel({ onNavigate }: PanelProps) {
   );
 }
 
-function ReadinessPanel() {
+function ReadinessPanel({ onOpenDecision }: { onOpenDecision: () => void }) {
   return (
     <div>
       <p className={styles.panelHeading}>Readiness</p>
@@ -341,9 +346,46 @@ function ReadinessPanel() {
       <p className={styles.panelNote}>{READINESS.decisionContext}</p>
 
       <p className={styles.humanDecisionOrientation}>
-        Next: <strong>08 Human Decision</strong> — reserved for the accountable engineer. Not yet open in this
-        sample.
+        The analysis and evidence record above are complete enough to inspect. Unresolved requirements remain, so
+        readiness stays advisory — the accountable engineer retains <strong>08 Human Decision</strong>. Opening it
+        selects nothing and submits nothing.
       </p>
+
+      <div className={styles.workspaceActions}>
+        <button type="button" className={styles.workspaceActionBtn} onClick={onOpenDecision}>
+          Open Human Decision
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function HumanDecisionPanel({ onNavigate, onOpenDecision }: PanelProps & { onOpenDecision: () => void }) {
+  return (
+    <div>
+      <button type="button" className={styles.backButton} onClick={() => onNavigate("readiness")}>
+        ← Back to readiness
+      </button>
+
+      <p className={`${styles.panelHeading} ${styles.panelHeadingSpaced}`}>Human Decision</p>
+
+      <div className={styles.readinessCard}>
+        <p className={styles.recordCardStatement}>{DECISION_DIALOG_COPY.statement}</p>
+        <p className={styles.panelNote}>
+          {DECISION_READINESS.priorDecision} {READINESS.decisionContext}.
+        </p>
+      </div>
+
+      <p className={styles.panelNote}>
+        Every outcome remains unselected below. This sample cannot record, submit or change the Human Decision
+        status shown throughout — it stays {CANONICAL_REVIEW.humanDecision}.
+      </p>
+
+      <div className={styles.workspaceActions}>
+        <button type="button" className={styles.workspaceActionBtn} onClick={onOpenDecision}>
+          Open Human Decision
+        </button>
+      </div>
     </div>
   );
 }

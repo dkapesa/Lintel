@@ -3,6 +3,8 @@ import {
   AFFECTED_FILES,
   BLOCKING_REQUIREMENT,
   CANONICAL_REVIEW,
+  DECISION_DIALOG_COPY,
+  DECISION_READINESS,
   MISSING_PROOF_RECORDS,
   PRIMARY_EVIDENCE,
   PRIMARY_FINDING,
@@ -172,6 +174,30 @@ export function ContextualInspector({ stage, animateEntrance }: ContextualInspec
         <div className={styles.inspectorRow}>
           <span className={styles.inspectorLabel}>Explicitly not a decision</span>
           <span className={styles.inspectorValue}>{READINESS.decisionContext}</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (stage === "human-decision") {
+    return (
+      <div key={stage} className={inspectorClass}>
+        <p className={styles.inspectorHeading}>Decision authority</p>
+        <div className={styles.inspectorRow}>
+          <span className={styles.inspectorLabel}>Recorded decision</span>
+          <span className={styles.inspectorValue}>{DECISION_READINESS.priorDecision}</span>
+        </div>
+        <div className={styles.inspectorRow}>
+          <span className={styles.inspectorLabel}>Would apply to</span>
+          <span className={`${styles.inspectorValue} ${styles.inspectorMono}`}>{DECISION_READINESS.appliesTo}</span>
+        </div>
+        <div className={styles.inspectorRow}>
+          <span className={styles.inspectorLabel}>Authority</span>
+          <span className={styles.inspectorValue}>{DECISION_DIALOG_COPY.statement}</span>
+        </div>
+        <div className={styles.inspectorRow}>
+          <span className={styles.inspectorLabel}>Sample boundary</span>
+          <span className={styles.inspectorValue}>{DECISION_DIALOG_COPY.readOnlyBody}</span>
         </div>
       </div>
     );

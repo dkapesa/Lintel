@@ -2,6 +2,7 @@ import styles from "./public-r5-recalibrated.module.css";
 import { PublicPrototypeHeader } from "./components/PublicPrototypeHeader";
 import { LiveReviewStage } from "./components/LiveReviewStage";
 import { VerificationJourneyNarrative } from "./components/VerificationJourneyNarrative";
+import { CANONICAL_REVIEW } from "./canonical-review";
 import {
   ACTIONS,
   CLOSEOUT,
@@ -10,12 +11,13 @@ import {
   NEW_REVIEW_HREF,
   PROTOTYPE_LABEL,
   SAMPLE_REVIEW_HREF,
+  TRUST_BOUNDARY,
   TRUST_LINE,
-  TRUST_NOTE,
+  UNRESOLVED_HANDOFF,
 } from "./prototype-content";
 
-/* R5E.1B/C — Navigation, Hero, Live Shell and Verification Journey
-   Prototype.
+/* R5E.1B/C/D — Navigation, Hero, Live Shell, Verification Journey, Human
+   Decision, Trust and Handoff Prototype.
 
    Private, thin implementation for the recalibrated public direction locked
    by the five R5E1A documents under docs/r5/. This component owns page
@@ -25,10 +27,11 @@ import {
    Fully server-rendered except for <LiveReviewStage/>, the one small
    client-owned product stage
    (docs/r5/R5E1A_SYSTEM_AND_INTERACTION_LOCK.md §13). Everything else here
-   — navigation destinations, hero copy, the movement-two/movement-three
-   verification-journey narrative, the "Trust" section, the closeout
-   actions — is real content with no JavaScript dependency, satisfying the
-   no-JavaScript resting state required by
+   — navigation destinations, hero copy, the movement-two through
+   movement-five narrative (verification journey, accountable decision,
+   trust boundary, unresolved-case handoff), the closeout actions — is real
+   content with no JavaScript dependency, satisfying the no-JavaScript
+   resting state required by
    docs/r5/R5E1A_LIVE_DEMO_AND_STATE_MODEL_CONTRACT.md §8b.
 
    R5E.1C layout: hero copy, then the shell (position: sticky at
@@ -79,8 +82,45 @@ export function R5RecalibratedPrototype() {
         <section className={styles.section} id="trust">
           <div className={styles.wrap}>
             <div className={styles.sectionCopy}>
-              <h2 className={styles.sectionHeadline}>{TRUST_NOTE.headline}</h2>
-              <p className={styles.sectionSupporting}>{TRUST_NOTE.supporting}</p>
+              <h2 className={styles.sectionHeadline}>{TRUST_BOUNDARY.headline}</h2>
+              <p className={styles.sectionSupporting}>{TRUST_BOUNDARY.supporting}</p>
+            </div>
+            <ul className={styles.trustRecordList}>
+              {TRUST_BOUNDARY.records.map((record) => (
+                <li key={record.label} className={styles.trustRecordRow}>
+                  <span className={styles.trustRecordLabel}>{record.label}</span>
+                  <span className={styles.trustRecordDetail}>{record.detail}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+
+        <section className={styles.section} id="unresolved-case">
+          <div className={styles.wrap}>
+            <div className={styles.handoffCard}>
+              <div className={styles.handoffContext}>
+                <span className={styles.handoffEyebrow}>{UNRESOLVED_HANDOFF.eyebrow}</span>
+                <p className={styles.handoffRepoLine}>
+                  {CANONICAL_REVIEW.repository} · {CANONICAL_REVIEW.pullRequestLabel}
+                </p>
+                <h2 className={styles.sectionHeadline}>{UNRESOLVED_HANDOFF.headline}</h2>
+                <p className={styles.sectionSupporting}>{UNRESOLVED_HANDOFF.supporting}</p>
+                <div className={styles.handoffRecordRow}>
+                  <span>{CANONICAL_REVIEW.recommendation}</span>
+                  <span>{CANONICAL_REVIEW.riskLabel}</span>
+                  <span>{CANONICAL_REVIEW.requirementsSummary}</span>
+                  <span>Human Decision {CANONICAL_REVIEW.humanDecision}</span>
+                </div>
+              </div>
+              <div className={styles.heroActions}>
+                <a className={`${styles.btn} ${styles.btnPrimary} ${styles.btnRegular}`} href={SAMPLE_REVIEW_HREF}>
+                  {ACTIONS.primary}
+                </a>
+                <a className={`${styles.btn} ${styles.btnSecondary} ${styles.btnRegular}`} href={NEW_REVIEW_HREF}>
+                  {ACTIONS.secondary}
+                </a>
+              </div>
             </div>
           </div>
         </section>

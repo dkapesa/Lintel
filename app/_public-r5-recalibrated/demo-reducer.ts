@@ -1,22 +1,22 @@
-/* R5E.1B/C — prototype state model.
+/* R5E.1B/C/D — prototype state model.
 
    One explicit reducer for the recalibrated public prototype, matching the
    state shape and event set frozen in
    docs/r5/R5E1A_LIVE_DEMO_AND_STATE_MODEL_CONTRACT.md §4. R5E.1B wired
-   "queue", "overview" and "finding" only, all sourced "manual". R5E.1C wires
-   the full working stage set — "evidence" through "readiness" — and the
-   guided/manual precedence rule (§4c, §6): guided events are discarded
-   outright while mode is "manual"; manual events set mode to "manual" and
-   record lastManualStage; RESUME_GUIDED restores guided mode.
-
-   "human-decision" remains part of the typed stage shape so R5E.1D can
-   extend this reducer without rebuilding it, but no event in this file can
-   reach it — per docs/r5/R5E1A_IMPLEMENTATION_HANDOFF.md §3 ("Does not
-   build": the Human Decision surface in either form).
+   "queue", "overview" and "finding" only, all sourced "manual". R5E.1C wired
+   "evidence" through "readiness" and the guided/manual precedence rule (§4c,
+   §6): guided events are discarded outright while mode is "manual"; manual
+   events set mode to "manual" and record lastManualStage; RESUME_GUIDED
+   restores guided mode. R5E.1D wires the final working stage,
+   "human-decision", and the two decision-surface events, OPEN_DECISION and
+   CLOSE_DECISION, exactly as typed in the frozen contract's §4a/§4b.
 
    No event here writes to storage, network, or any surface outside the
    demonstration (invariant 7, contract §4d). The canonical values are never
-   derived from `stage` and never change (invariant 1). */
+   derived from `stage` and never change (invariant 1). No event in this file
+   can set, clear or record a Human Decision outcome — OPEN_DECISION only
+   ever moves `decisionSurface` between "closed" and "open"; there is no
+   event capable of writing an outcome into state (invariant 6). */
 
 import {
   CANONICAL_REVIEW,
@@ -68,6 +68,8 @@ export type DemoEvent =
   | { type: "OPEN_REQUIREMENT"; source: EventSource; recordId: string }
   | { type: "OPEN_AFFECTED_CONTEXT"; source: EventSource }
   | { type: "SHOW_READINESS"; source: EventSource }
+  | { type: "OPEN_DECISION"; source: EventSource }
+  | { type: "CLOSE_DECISION"; source: EventSource }
   | { type: "RESUME_GUIDED" }
   | { type: "RESET_DEMO" };
 
@@ -82,26 +84,57 @@ export const INITIAL_DEMO_STATE: DemoState = {
 
 type StageEvent = Exclude<DemoEvent, { type: "RESUME_GUIDED" } | { type: "RESET_DEMO" }>;
 
+/* Every stage-moving event other than OPEN_DECISION/CLOSE_DECISION leaves
+   the human-decision surface behind as it moves the active stage elsewhere.
+   A guided decision surface is ordinary in-page content tied to the
+   human-decision anchor (contract §7): once guided scrolling has moved on to
+   a different anchor, that content is no longer the active stage, so its
+   surface closes with it. This case is reached only for guided-sourced
+   events, because a manually opened dialog (mode === "manual") already
+   discards every guided event outright before applyStageEvent ever runs —
+   the manual dialog can only be closed by its own CLOSE_DECISION or by
+   RESUME_GUIDED (§6a below), never by an unrelated stage move. */
+function closeStaleGuidedDecisionSurface(state: DemoState, event: StageEvent): DemoState {
+  if (event.type === "OPEN_DECISION" || event.type === "CLOSE_DECISION") return state;
+  if (state.decisionSurfaceOrigin !== "guided") return state;
+  return { ...state, decisionSurface: "closed", decisionSurfaceOrigin: null };
+}
+
 function applyStageEvent(state: DemoState, event: StageEvent): DemoState {
+  const base = closeStaleGuidedDecisionSurface(state, event);
+
   switch (event.type) {
     case "SELECT_REVIEW":
-      return { ...state, stage: "queue", activeRecordId: CANONICAL_REVIEW.reviewKey };
+      return { ...base, stage: "queue", activeRecordId: CANONICAL_REVIEW.reviewKey };
     case "SHOW_OVERVIEW":
-      return { ...state, stage: "overview", activeRecordId: CANONICAL_REVIEW.reviewKey };
+      return { ...base, stage: "overview", activeRecordId: CANONICAL_REVIEW.reviewKey };
     case "FOCUS_FINDING":
-      return { ...state, stage: "finding", activeRecordId: event.recordId };
+      return { ...base, stage: "finding", activeRecordId: event.recordId };
     case "OPEN_EVIDENCE":
-      return { ...state, stage: "evidence", activeRecordId: event.recordId };
+      return { ...base, stage: "evidence", activeRecordId: event.recordId };
     case "OPEN_MISSING_PROOF":
-      return { ...state, stage: "missing-proof", activeRecordId: event.recordId };
+      return { ...base, stage: "missing-proof", activeRecordId: event.recordId };
     case "OPEN_REQUIREMENT":
-      return { ...state, stage: "requirement", activeRecordId: event.recordId };
+      return { ...base, stage: "requirement", activeRecordId: event.recordId };
     case "OPEN_AFFECTED_CONTEXT":
-      return { ...state, stage: "affected-context", activeRecordId: null };
+      return { ...base, stage: "affected-context", activeRecordId: null };
     case "SHOW_READINESS":
-      return { ...state, stage: "readiness", activeRecordId: null };
+      return { ...base, stage: "readiness", activeRecordId: null };
+    /* docs/r5/R5E1A_LIVE_DEMO_AND_STATE_MODEL_CONTRACT.md §4c: `stage` moves
+       to "human-decision" and `decisionSurfaceOrigin` records how it opened,
+       so components can tell a guided preview (ordinary in-page content,
+       §7) from a manually activated dialog (full dialog semantics, §7,
+       §12a) apart. No event here sets, clears or records an outcome. */
+    case "OPEN_DECISION":
+      return { ...base, stage: "human-decision", decisionSurface: "open", decisionSurfaceOrigin: event.source };
+    /* CLOSE_DECISION only ever originates from the manual dialog's own close
+       control, scrim or Escape handling — all manual. The stage itself is
+       left "unchanged" per the frozen transition table: closing the dialog
+       does not navigate the demonstration anywhere. */
+    case "CLOSE_DECISION":
+      return { ...base, decisionSurface: "closed", decisionSurfaceOrigin: null };
     default:
-      return state;
+      return base;
   }
 }
 
@@ -112,7 +145,18 @@ function applyStageEvent(state: DemoState, event: StageEvent): DemoState {
         are not queued, not deferred, and not applied later. */
 export function demoReducer(state: DemoState, event: DemoEvent): DemoState {
   if (event.type === "RESUME_GUIDED") {
-    return { ...state, mode: "guided", lastManualStage: null };
+    /* "a manually opened decision surface is closed first" — frozen
+       transition table, RESUME_GUIDED row. A guided-origin surface needs no
+       special handling here: it is content tied to whichever stage is
+       active, and RESUME_GUIDED does not itself change `stage`. */
+    const closingManualDialog = state.decisionSurfaceOrigin === "manual";
+    return {
+      ...state,
+      mode: "guided",
+      lastManualStage: null,
+      decisionSurface: closingManualDialog ? "closed" : state.decisionSurface,
+      decisionSurfaceOrigin: closingManualDialog ? null : state.decisionSurfaceOrigin,
+    };
   }
 
   if (event.type === "RESET_DEMO") {
@@ -132,12 +176,12 @@ export function demoReducer(state: DemoState, event: DemoEvent): DemoState {
   return next;
 }
 
-/* The seven working stages this phase builds interaction for, in the
+/* The eight working stages this phase builds interaction for, in the
    canonical investigation order
    (docs/r5/R5E1A_LIVE_DEMO_AND_STATE_MODEL_CONTRACT.md §5). "queue" is the
    PR-selection resting state reached via SELECT_REVIEW/RESET_DEMO, not a
    guided-scroll destination in its own right, so it is not part of this
-   list. "human-decision" is out of scope for R5E.1C. */
+   list. R5E.1D adds "human-decision" as the eighth and final entry. */
 export const WORKING_STAGE_ORDER = [
   "overview",
   "finding",
@@ -146,6 +190,7 @@ export const WORKING_STAGE_ORDER = [
   "requirement",
   "affected-context",
   "readiness",
+  "human-decision",
 ] as const;
 
 export type WorkingStage = (typeof WORKING_STAGE_ORDER)[number];
@@ -173,6 +218,15 @@ export function eventForWorkingStage(stage: WorkingStage, source: EventSource): 
       return { type: "OPEN_AFFECTED_CONTEXT", source };
     case "readiness":
       return { type: "SHOW_READINESS", source };
+    /* The only WorkingStage whose event does not carry a recordId — Human
+       Decision has no single canonical record, it opens a surface over the
+       whole review (docs/r5/R5E1A_LIVE_DEMO_AND_STATE_MODEL_CONTRACT.md
+       §4b). Guided and manual origins reach the same event constructor here,
+       exactly as every other working stage does, satisfying §6a.5
+       ("activation by keyboard and by pointer produce identical state"),
+       extended to guided scroll as R5E.1C's own helper already documents. */
+    case "human-decision":
+      return { type: "OPEN_DECISION", source };
     default: {
       const _exhaustive: never = stage;
       return _exhaustive;

@@ -4,6 +4,9 @@ import {
   AFFECTED_FILES,
   BLOCKING_REQUIREMENT,
   CANONICAL_REVIEW,
+  DECISION_DIALOG_COPY,
+  DECISION_OUTCOMES,
+  DECISION_READINESS,
   MISSING_PROOF_RECORDS,
   PRIMARY_EVIDENCE,
   PRIMARY_FINDING,
@@ -12,7 +15,7 @@ import {
   STALE_EVIDENCE,
   VERIFICATION_STAGES,
 } from "../canonical-review";
-import { JOURNEY_INTRO, VERIFICATION_GAP } from "../prototype-content";
+import { ACCOUNTABLE_DECISION, JOURNEY_INTRO, VERIFICATION_GAP } from "../prototype-content";
 
 function stageMeta(name: string) {
   return VERIFICATION_STAGES.find((item) => item.name === name);
@@ -41,6 +44,7 @@ export function VerificationJourneyNarrative() {
   const requirementStage = stageMeta("Requirement");
   const affectedContextStage = stageMeta("Affected context");
   const readinessStage = stageMeta("Readiness");
+  const humanDecisionStage = stageMeta("Human Decision");
 
   return (
     <div className={styles.journeyNarrative}>
@@ -136,6 +140,32 @@ export function VerificationJourneyNarrative() {
           {READINESS.decisionContext}. Recommendation, risk and requirement counts stay{" "}
           {CANONICAL_REVIEW.recommendation}, {CANONICAL_REVIEW.riskLabel} and {CANONICAL_REVIEW.requirementsSummary}{" "}
           throughout — nothing here recalculates them.
+        </p>
+      </article>
+
+      <div className={styles.movementBlock}>
+        <h2 className={styles.sectionHeadline}>{ACCOUNTABLE_DECISION.headline}</h2>
+        <p className={styles.sectionSupporting}>{ACCOUNTABLE_DECISION.supporting}</p>
+      </div>
+
+      <article className={styles.stageNarrative} data-verification-stage="human-decision">
+        <p className={styles.stageNarrativeEyebrow}>
+          {humanDecisionStage?.no} {humanDecisionStage?.name}
+        </p>
+        <h3 className={styles.stageNarrativeHeading}>{DECISION_READINESS.headline}</h3>
+        <p className={styles.stageNarrativeBody}>
+          {DECISION_DIALOG_COPY.statement} {DECISION_READINESS.priorDecision}{" "}
+          {DECISION_READINESS.outcomeSelected}
+        </p>
+        <ul className={styles.stageNarrativeList}>
+          {DECISION_OUTCOMES.map((item) => (
+            <li key={item.recordKey}>
+              <strong>{item.label}</strong> — {item.meaning} · not selected
+            </li>
+          ))}
+        </ul>
+        <p className={styles.stageNarrativeMeta}>
+          {DECISION_DIALOG_COPY.readOnlyLabel} · {DECISION_DIALOG_COPY.readOnlyBody} {DECISION_READINESS.appliesTo}.
         </p>
       </article>
     </div>

@@ -4,8 +4,7 @@ import {
   AFFECTED_FILES,
   BLOCKING_REQUIREMENT,
   CANONICAL_REVIEW,
-  DECISION_DIALOG_COPY,
-  DECISION_READINESS,
+  DECISION_SURFACE_LABEL,
   MISSING_PROOF_RECORDS,
   PRIMARY_EVIDENCE,
   PRIMARY_FINDING,
@@ -15,6 +14,7 @@ import {
 } from "../canonical-review";
 import type { DemoStage } from "../demo-reducer";
 import type { WorkingStage } from "../demo-reducer";
+import { HumanDecisionContent } from "./HumanDecisionSurface";
 
 interface VerificationWorkspaceProps {
   stage: DemoStage;
@@ -104,7 +104,7 @@ function OverviewPanel({ onNavigate }: PanelProps) {
 
       <div className={styles.findingCard}>
         <div className={styles.findingMeta}>
-          <span>{PRIMARY_FINDING.severity}</span>
+          <span className={styles.findingSeverityTag}>{PRIMARY_FINDING.severity}</span>
           <span>{PRIMARY_FINDING.category}</span>
         </div>
         <p className={styles.findingTitle}>{PRIMARY_FINDING.title}</p>
@@ -131,7 +131,7 @@ function FindingPanel({ onNavigate }: PanelProps) {
 
       <div className={styles.findingCard}>
         <div className={styles.findingMeta}>
-          <span>{PRIMARY_FINDING.severity}</span>
+          <span className={styles.findingSeverityTag}>{PRIMARY_FINDING.severity}</span>
           <span>{PRIMARY_FINDING.category}</span>
           <span>{PRIMARY_FINDING.provenance}</span>
         </div>
@@ -360,6 +360,21 @@ function ReadinessPanel({ onOpenDecision }: { onOpenDecision: () => void }) {
   );
 }
 
+/* R5E.1E.1 correction — Human Decision is now the eighth embedded state of
+   this same Workspace, exactly like Finding, Evidence, Missing proof,
+   Requirement, Affected context and Readiness before it: reached whether by
+   guided scroll or manual activation, it renders inline inside the
+   Workspace's own content area — the same central boundaries, the same
+   `.wrap`/`.panelEnter` treatment every other panel gets from the parent —
+   never as a floating card over a dimmed shell. There is no separate
+   "guided preview" component or layer any more; this panel and the manual
+   dialog (HumanDecisionSurface.tsx) both render the one shared
+   `HumanDecisionContent`, so nothing here duplicates or reinvents that
+   content ("Preserve one shared Human Decision content model. Do not create
+   two unrelated implementations."). The manual dialog remains the only
+   genuinely elevated, scrimmed overlay — reached only by explicitly
+   activating `onOpenDecision` below (or the spine's "08" button, or the
+   Readiness panel's own button), never automatically. */
 function HumanDecisionPanel({ onNavigate, onOpenDecision }: PanelProps & { onOpenDecision: () => void }) {
   return (
     <div>
@@ -368,18 +383,9 @@ function HumanDecisionPanel({ onNavigate, onOpenDecision }: PanelProps & { onOpe
       </button>
 
       <p className={`${styles.panelHeading} ${styles.panelHeadingSpaced}`}>Human Decision</p>
+      <p className={styles.decisionPreviewLabel}>{DECISION_SURFACE_LABEL.guided}</p>
 
-      <div className={styles.readinessCard}>
-        <p className={styles.recordCardStatement}>{DECISION_DIALOG_COPY.statement}</p>
-        <p className={styles.panelNote}>
-          {DECISION_READINESS.priorDecision} {READINESS.decisionContext}.
-        </p>
-      </div>
-
-      <p className={styles.panelNote}>
-        Every outcome remains unselected below. This sample cannot record, submit or change the Human Decision
-        status shown throughout — it stays {CANONICAL_REVIEW.humanDecision}.
-      </p>
+      <HumanDecisionContent />
 
       <div className={styles.workspaceActions}>
         <button type="button" className={styles.workspaceActionBtn} onClick={onOpenDecision}>

@@ -91,6 +91,57 @@ R5E.1A is documentation only. Its five documents are read in this order:
     complete assembled page (responsive, accessibility, motion,
     progressive-enhancement, product truth, the five originality tests) as
     one continuous whole rather than as three separate slices.
+16. [`R5E1E1_PUBLIC_IDENTITY_COMPOSITION_INTERACTION_POLISH.md`](./R5E1E1_PUBLIC_IDENTITY_COMPOSITION_INTERACTION_POLISH.md) —
+    a bounded complete-page polish milestone addressing the nine findings
+    R5E.1E's own human acceptance named: nested-scroll and scrollbar
+    refinement, guided narrative pacing and sticky-shell release,
+    verification-spine legibility, live-shell density, stronger separation
+    between the guided Human Decision preview and the manual dialog, removal
+    of internal-roadmap language from Trust copy, handoff/footer
+    deduplication, final vertical-rhythm refinement, and evidence-supported
+    navigation polish. No redesign, no architecture change, no canonical
+    value change, no production transfer.
+17. [`R5E1E2A_REFERENCE_RECONSTRUCTION_LOCK.md`](./R5E1E2A_REFERENCE_RECONSTRUCTION_LOCK.md) —
+    the reference reconstruction contract. Converts direct frame-by-frame study
+    of the Cursor and Skybase recordings into binding composition values: the
+    normal-flow architecture, the public grid, product-scene proportion and
+    dimensions, the alternating section system, whitespace rhythm, local scene
+    motion, the rejected Lintel patterns, retained product truth, originality
+    boundaries and acceptance criteria. Governs composition only; where the
+    R5E.1A locks speak, they win.
+18. [`R5E1E2A_REFERENCE_RECONSTRUCTION_FIRST_GATE.md`](./R5E1E2A_REFERENCE_RECONSTRUCTION_FIRST_GATE.md) —
+    the first-gate implementation record: reference-access gate result, video
+    metadata, timestamped findings, the rejected architecture measured from the
+    current recording, route architecture, navigation, hero, the three product
+    scenes, motion, responsive design, accessibility, progressive enhancement,
+    product truth, browser validation, known limitations, the explicit stopping
+    point and the later completion plan.
+19. [`R5E1E2B_REFERENCE_RECONSTRUCTION_COMPLETION.md`](./R5E1E2B_REFERENCE_RECONSTRUCTION_COMPLETION.md) —
+    completes the reference-led reconstruction after first-gate acceptance:
+    the two carried refinements (hero scene proportion, Missing Proof scene
+    simplified to its blocking relationship), the Readiness and Human Decision
+    section, verified genuine outcome-label presentation, the Trust boundary,
+    the unresolved-case handoff, the footer, the fourth local-motion step, full
+    responsive/accessibility/progressive-enhancement/performance validation,
+    and cross-route design continuity guidance for future public pages.
+20. [`R5E1E2C_REFERENCE_FIDELITY_EVALUATION.md`](./R5E1E2C_REFERENCE_FIDELITY_EVALUATION.md) —
+    a no-code visual evaluation measuring the remaining gap between Cursor,
+    Skybase and the completed reference reconstruction from a new Lintel
+    recording plus the R5E.1E.2A reference frames. Corrects a device-pixel-ratio
+    measurement error in the R5E.1E.2A lock; proves the local scene motion
+    fires and stages correctly but its trigger fires while a scene is still
+    largely off-screen; measures the missing scene-presentation plate as the
+    largest single fidelity gap; classifies every finding as Freeze / Bounded
+    correction / Defer / Reject; and produces the bounded R5E.1E.2D
+    implementation brief.
+21. [`R5E1E2D_REFERENCE_FIDELITY_IMPLEMENTATION.md`](./R5E1E2D_REFERENCE_FIDELITY_IMPLEMENTATION.md) —
+    implements exactly the nine bounded corrections R5E.1E.2C classified:
+    gutter, alternating-section split proportion, a shared neutral
+    scene-presentation plate, one step of product-scene typography, Readiness
+    density and copy-column centring, Trust's full-band composition, the
+    handoff's structured record, and the scene-motion trigger timing. No
+    section, route or canonical value changed; fourteen frozen findings were
+    left untouched.
 
 No earlier R5 or R4 document was edited to produce R5E.1A. Where R5E.1A
 deliberately changes an earlier public visual decision, the change is
@@ -166,8 +217,77 @@ Frozen R4 product truth always outranks public visual preference.
 - R5E.1E — full private public experience assembly: assembles the five
   movements built across R5E.1B–D into one coherent private page, removes
   remaining public-facing milestone scaffolding language, and re-validates
-  the complete page as one continuous whole, pending human review. Described
-  in [`R5E1E_FULL_PRIVATE_PUBLIC_ASSEMBLY.md`](./R5E1E_FULL_PRIVATE_PUBLIC_ASSEMBLY.md).
+  the complete page as one continuous whole. Human visual acceptance recorded
+  3 August 2026, naming a bounded set of complete-page polish items assigned
+  to R5E.1E.1. Described in
+  [`R5E1E_FULL_PRIVATE_PUBLIC_ASSEMBLY.md`](./R5E1E_FULL_PRIVATE_PUBLIC_ASSEMBLY.md).
+- R5E.1E.1 — public identity, composition and interaction polish: a bounded
+  complete-page polish pass over the accepted R5E.1E assembly, addressing
+  nested-scroll and scrollbar refinement, guided narrative pacing and
+  sticky-shell release, verification-spine legibility, live-shell density,
+  guided-preview/manual-dialog visual differentiation, Trust copy, and
+  handoff/footer deduplication, pending human review. Described in
+  [`R5E1E1_PUBLIC_IDENTITY_COMPOSITION_INTERACTION_POLISH.md`](./R5E1E1_PUBLIC_IDENTITY_COMPOSITION_INTERACTION_POLISH.md).
+- R5E.1E.2A — reference-led public reconstruction, first composition gate:
+  implemented at the new private route
+  `/visual-lab/public-r5-reference-reconstruction`
+  (`app/_public-r5-reference-reconstruction/`), pending human visual review.
+  The R5E.1B–E.1 public architecture — one persistent sticky Workspace, narrative
+  moving underneath it, an eight-stage scroll-driven page progression, nested
+  application scrolling — is **rejected as the final direction** and replaced,
+  not corrected. The new route rebuilds navigation, hero, hero product scene,
+  Finding and Evidence, and Missing Proof and Requirement in normal document
+  flow, from direct frame-by-frame study of the Cursor and Skybase recordings,
+  and stops there so the central composition can be judged before the rest of
+  the page is built. `/visual-lab/public-r5-recalibrated` is untouched and
+  remains available for comparison. Described in
+  [`R5E1E2A_REFERENCE_RECONSTRUCTION_LOCK.md`](./R5E1E2A_REFERENCE_RECONSTRUCTION_LOCK.md)
+  and
+  [`R5E1E2A_REFERENCE_RECONSTRUCTION_FIRST_GATE.md`](./R5E1E2A_REFERENCE_RECONSTRUCTION_FIRST_GATE.md).
+- R5E.1E.2B — reference-led public reconstruction, completion: extends the
+  accepted R5E.1E.2A first gate at the same private route into a complete
+  page, following human acceptance of that gate. Preserves every accepted
+  first-gate element unchanged; carries two evidence-supported refinements
+  (increased hero working-area dominance, the Missing Proof scene simplified
+  to its one blocking relationship, with the second record kept in canonical
+  data and simply not shown here); adds Readiness and Human Decision (an
+  authority-boundary demonstration, not the interactive decision surface,
+  which remains in the sample Workspace), Trust, the unresolved-case handoff
+  and a restrained footer; extends local scene motion with a fourth step; and
+  completes the page's responsive, accessibility, progressive-enhancement and
+  performance validation end to end. Pending human visual review. Described in
+  [`R5E1E2B_REFERENCE_RECONSTRUCTION_COMPLETION.md`](./R5E1E2B_REFERENCE_RECONSTRUCTION_COMPLETION.md).
+- R5E.1E.2C — Cursor and Skybase reference-fidelity evaluation: a no-code
+  visual measurement pass over the completed R5E.1E.2B page against a new
+  ~12s Lintel recording and the R5E.1E.2A reference frames. No application
+  code, CSS or route was touched. Corrects a device-pixel-ratio arithmetic
+  error carried in the R5E.1E.2A lock (Cursor's and Skybase's content bands
+  are ~1296/1278 CSS px, not the "~1620/1598" video-pixel figures previously
+  recorded — both already close to Lintel's 1300px envelope); proves with a
+  full-resolution frame pair that the local scene motion fires and stages
+  correctly, and separately proves the reveal trigger fires while a scene is
+  still ~82% below the fold; measures the absent scene-presentation plate as
+  the single largest fidelity gap; and classifies every finding (14 freeze /
+  9 bounded correction / 6 defer / 5 reject) into the bounded R5E.1E.2D
+  implementation brief. Described in
+  [`R5E1E2C_REFERENCE_FIDELITY_EVALUATION.md`](./R5E1E2C_REFERENCE_FIDELITY_EVALUATION.md).
+- R5E.1E.2D — reference fidelity implementation pass: implements exactly the
+  nine bounded corrections R5E.1E.2C classified, at the same private route.
+  Gutter reduced 40→32px (envelope unchanged); alternating-section split
+  corrected from 400/64px to 360/56px, bringing scene proportion to ~65.8% of
+  band (matching the 65.7–66.7% both references occupy); a new shared
+  `.scenePlate` wraps all four product scenes, closing the largest measured
+  gap without any imagery, gradient or shadow; product-scene typography raised
+  one step; the Readiness scene's copy-column dead space resolved by
+  vertically centring `.splitGrid`, and its seven outcome chips lightened
+  without removing any; Trust widened from a 69%-band 2-column layout to a
+  full-band 4-column row; the unresolved-case handoff's single caption line
+  replaced by a structured bordered record reusing the hero scene's own fact
+  primitives; and the scene-motion `rootMargin` corrected so sequences begin
+  once a scene is meaningfully in view rather than while still mostly
+  off-screen. Fourteen frozen findings were left untouched; no section, route
+  or canonical value changed. Pending human visual review. Described in
+  [`R5E1E2D_REFERENCE_FIDELITY_IMPLEMENTATION.md`](./R5E1E2D_REFERENCE_FIDELITY_IMPLEMENTATION.md).
 - R5E.1F — not started. Scope, boundaries and acceptance gates are in
   [`R5E1A_IMPLEMENTATION_HANDOFF.md`](./R5E1A_IMPLEMENTATION_HANDOFF.md).
   The production homepage at `/` and the private laboratory at

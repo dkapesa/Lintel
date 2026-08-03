@@ -15,7 +15,7 @@ import { ReviewQueue } from "./ReviewQueue";
 import { VerificationWorkspace } from "./VerificationWorkspace";
 import { ContextualInspector } from "./ContextualInspector";
 import { VerificationSpine } from "./VerificationSpine";
-import { HumanDecisionPreview, HumanDecisionDialog } from "./HumanDecisionSurface";
+import { HumanDecisionDialog } from "./HumanDecisionSurface";
 
 const STAGE_ANNOUNCEMENT: Record<WorkingStage, string> = {
   overview: "Overview shown",
@@ -111,13 +111,19 @@ export function LiveReviewStage() {
         if (!target) return;
         dispatch(eventForWorkingStage(target, "guided"));
       },
-      /* Trigger band: roughly the vertical middle of the viewport, offset
-         for the sticky header. A narrative block "arrives" once it crosses
-         into this band, which keeps the observer from firing on brief
-         edge-of-viewport intersections while scrolling past quickly, and
-         lets scrolling back up move back through the same states rather
-         than resetting (§5.1). */
-      { rootMargin: "-35% 0px -55% 0px", threshold: [0, 0.25, 0.5, 0.75, 1] },
+      /* Trigger band, offset for the sticky header and the sticky live
+         stage above the narrative. At >=1024px the shell itself occupies
+         roughly the top half of the viewport while it is pinned
+         (docs/r5/R5E1A_SYSTEM_AND_INTERACTION_LOCK.md §10, movement three),
+         so the band is shifted down and narrowed to sit inside the space
+         that is actually visible below the shell, rather than assuming the
+         full viewport height is available for the narrative — this was the
+         mismatch behind headings "arriving" too close to the shell's own
+         bottom edge (R5E.1E review finding, R5E.1E.1 task brief §7). A
+         narrative block "arrives" once it crosses into this band; scrolling
+         back up moves back through the same states rather than resetting
+         (§5.1). */
+      { rootMargin: "-45% 0px -35% 0px", threshold: [0, 0.25, 0.5, 0.75, 1] },
     );
 
     anchors.forEach((anchor) => observer.observe(anchor));
@@ -135,7 +141,14 @@ export function LiveReviewStage() {
   const animateEntrance = isFirstVisit && !reducedMotion;
   const announcement = state.mode === "manual" && activeWorkingStage ? STAGE_ANNOUNCEMENT[activeWorkingStage] : null;
 
-  const showGuidedPreview = state.decisionSurface === "open" && state.decisionSurfaceOrigin === "guided";
+  /* R5E.1E.1 correction: Human Decision is reached the same way every other
+     working stage is — `state.stage === "human-decision"` drives
+     VerificationWorkspace's own panel switch, whether that stage was
+     reached by guided scroll or manual activation (docs/r5/R5E1E1
+     correction-pass task brief §1: "render as the eighth embedded state of
+     the existing live Workspace"). Only the manual dialog remains a
+     genuinely separate, elevated layer — gated strictly on
+     `decisionSurfaceOrigin === "manual"`, unchanged from R5E.1D. */
   const showManualDialog = state.decisionSurface === "open" && state.decisionSurfaceOrigin === "manual";
 
   return (
@@ -151,7 +164,6 @@ export function LiveReviewStage() {
         />
         <ContextualInspector stage={state.stage} animateEntrance={animateEntrance} />
       </div>
-      {showGuidedPreview ? <HumanDecisionPreview onOpenDialog={openDecisionManual} /> : null}
       <VerificationSpine
         stage={state.stage}
         mode={state.mode}

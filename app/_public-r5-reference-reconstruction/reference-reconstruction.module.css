@@ -1,0 +1,1255 @@
+/* R5E.1E.2A–D — reference-led public reconstruction.
+
+   R5E.1E.2D (docs/r5/R5E1E2D_REFERENCE_FIDELITY_IMPLEMENTATION.md) is a
+   bounded correction pass over the R5E.1E.2A/B architecture, closing the
+   gaps R5E.1E.2C measured against Cursor and Skybase: the gutter, the
+   alternating-section split proportion, a shared neutral scene-presentation
+   plate, one step of product-scene type, Trust's band usage, the handoff's
+   record, and outcome-chip weight. No section, route or canonical value
+   changed.
+
+   Self-contained stylesheet. No class or custom property here is shared with
+   app/_public-r5 or app/_public-r5-recalibrated; deleting this directory
+   leaves every other route byte-identical.
+
+   Two token families, per
+   docs/r5/R5E1A_VISUAL_SYSTEM_REFERENCE_AND_IMAGE_LOCK.md §2:
+     --pub-*   public chrome outside the demonstration
+     --prod-*  the frozen product's own values, copied verbatim from
+               app/workspace/workspace-r4.module.css, used wherever a product
+               surface is rendered so the demonstration is not a near-miss.
+
+   Grid, rhythm, proportion and motion values are fixed by
+   docs/r5/R5E1E2A_REFERENCE_RECONSTRUCTION_LOCK.md §16–§19, which derives them
+   from measured frames of the Cursor and Skybase recordings.
+
+   position: sticky appears exactly once in this file, on .header.
+   position: fixed appears nowhere. */
+
+.page {
+  --pub-canvas: #ffffff;
+  --pub-surface: #ffffff;
+  --pub-surface-2: #fafaf9;
+  --pub-selected: #f3f3f1;
+  --pub-border: #e1e1de;
+  --pub-border-subtle: #ececea;
+  --pub-text: #181818;
+  --pub-text-2: #6e6e6a;
+  --pub-text-3: #8a8a85;
+  --pub-focus: #2563eb;
+
+  /* Frozen product tokens — app/workspace/workspace-r4.module.css. */
+  --prod-surface: #ffffff;
+  --prod-surface-2: #fafaf9;
+  --prod-selected: #eeeeec;
+  --prod-border: #dededc;
+  --prod-border-subtle: #eaeae8;
+  --prod-text: #1c1c1c;
+  --prod-text-important: #656565;
+  --prod-text-2: #767676;
+  --prod-warning: #94600a;
+  --prod-warning-soft: #fff7e3;
+  --prod-blocking: #b42318;
+  --prod-blocking-soft: #fff0ed;
+  --prod-observed: #2563eb;
+  --prod-model: #7040c7;
+
+  /* Lock §16 — public grid. R5E.1E.2D (task brief §5): gutter reduced from
+     40px. The R5E.1E.2C device-pixel-ratio analysis proved Lintel's band was
+     only 60–78 CSS px narrower than the references, not the ~20% the raw
+     video-pixel figures implied — so --pub-max stays at its accepted 1300px
+     and only the gutter moves. */
+  --pub-max: 1300px;
+  --pub-gutter: 32px;
+  --section-pad: 88px;
+  --split-gap: 56px;
+  --header-h: 62px;
+  /* R5E.1E.2D (task brief §7) — the shared scene-presentation plate inset.
+     Reduced per breakpoint below; see the responsive section. */
+  --scene-plate-inset: 26px;
+
+  /* Lock §19 — motion. */
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --dur: 420ms;
+
+  background: var(--pub-canvas);
+  color: var(--pub-text);
+  font-family: var(--font-geist), -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.page :global(*) {
+  box-sizing: border-box;
+}
+
+.page :where(a) {
+  color: inherit;
+}
+
+.page :global(a:focus-visible),
+.page :global(button:focus-visible) {
+  outline: 2px solid var(--pub-focus);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.skip {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  background: var(--pub-text);
+  color: var(--pub-canvas);
+  padding: 12px 18px;
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.skip:focus {
+  left: 16px;
+  top: 16px;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.wrap {
+  max-width: var(--pub-max);
+  margin: 0 auto;
+  padding: 0 var(--pub-gutter);
+}
+
+/* R5E.1E.2D (task brief §8): product-scene type raised one controlled step —
+   mono 12→12.5, micro labels 11→12 — measured short against both references
+   in R5E1E2C_HUMAN_REVIEW_PACKAGE/TYPOGRAPHY_AND_DENSITY.md. Record titles,
+   the hero scene title and the authority statement were already comparable
+   and are left unchanged. */
+.mono {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 12.5px;
+  letter-spacing: -0.01em;
+}
+
+.microLabel {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--prod-text-important);
+  margin: 0;
+}
+
+/* ------------------------------------------------------------------ header */
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  height: var(--header-h);
+  background: var(--pub-canvas);
+  border-bottom: 1px solid transparent;
+}
+
+.headerScrolled {
+  border-bottom-color: var(--pub-border);
+}
+
+.headerInner {
+  max-width: var(--pub-max);
+  height: var(--header-h);
+  margin: 0 auto;
+  padding: 0 var(--pub-gutter);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-decoration: none;
+  color: var(--pub-text);
+}
+
+.brandMark {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  background: var(--pub-text);
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.navLink {
+  font-size: 13px;
+  color: var(--pub-text-2);
+  text-decoration: none;
+  padding: 4px 0;
+  border-bottom: 1px solid transparent;
+}
+
+.navLink:hover {
+  color: var(--pub-text);
+}
+
+.navLink[aria-current="true"] {
+  color: var(--pub-text);
+  border-bottom-color: var(--pub-text);
+}
+
+.navShortLabel {
+  display: none;
+}
+
+/* ----------------------------------------------------------------- buttons */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background var(--dur) var(--ease),
+    border-color var(--dur) var(--ease);
+}
+
+.btnPrimary {
+  background: var(--pub-text);
+  color: var(--pub-canvas);
+}
+
+.btnPrimary:hover {
+  background: #000000;
+}
+
+.btnSecondary {
+  background: transparent;
+  color: var(--pub-text);
+  border-color: var(--pub-border);
+}
+
+.btnSecondary:hover {
+  border-color: var(--pub-text);
+}
+
+.btnCompact {
+  padding: 8px 14px;
+}
+
+.btnRegular {
+  padding: 11px 18px;
+}
+
+/* -------------------------------------------------------------------- hero */
+
+.main {
+  display: block;
+}
+
+.hero {
+  padding: 72px 0 0;
+}
+
+.heroCopy {
+  max-width: 780px;
+}
+
+.heroHeadline {
+  margin: 0 0 18px;
+  font-size: clamp(34px, 4.2vw, 52px);
+  line-height: 1.06;
+  letter-spacing: -0.02em;
+  font-weight: 620;
+  color: var(--pub-text);
+}
+
+.heroSupporting {
+  margin: 0 0 26px;
+  max-width: 62ch;
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--pub-text-2);
+}
+
+.heroActions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin: 0;
+}
+
+.heroSceneSection {
+  padding: 40px 0 var(--section-pad);
+  scroll-margin-top: var(--header-h);
+}
+
+.sceneCaption {
+  margin: 18px 0 0;
+  max-width: 62ch;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--pub-text-2);
+}
+
+/* --------------------------------------------------- alternating sections */
+
+.split {
+  padding: var(--section-pad) 0;
+  border-top: 1px solid var(--pub-border-subtle);
+  scroll-margin-top: var(--header-h);
+}
+
+/* R5E.1E.2D (task brief §6): copy column 400→360px, gap 64→56px (the gap
+   itself now comes from --split-gap, also reduced above), giving the scene
+   ~65.8% of the band instead of ~61.9% — measured against Cursor's 65.7% and
+   Skybase's 66.7% in R5E1E2C_HUMAN_REVIEW_PACKAGE/THREE_SITE_GEOMETRY_MATRIX.md.
+
+   align-items: center corrects the ≈416px of empty copy column measured
+   beside the Readiness scene (R5E1E2C READINESS_DECISION_EVALUATION.md) by
+   centring the shorter copy block against its scene. This only has a visual
+   effect once the two tracks sit side by side (≥1024px); below that the grid
+   collapses to one column, where a row's own content still determines its
+   height and centring is a no-op. */
+.splitGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 360px) minmax(0, 1fr);
+  gap: var(--split-gap);
+  align-items: center;
+}
+
+/* Reversed composition places the scene in column 1 and the copy in column 2
+   without touching the DOM: source order stays copy-then-scene, which is what
+   assistive technology and the mobile stack both need. */
+.splitReversed .splitGrid {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 360px);
+}
+
+.splitReversed .splitCopy {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.splitReversed .splitScene {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+/* No top padding: .splitGrid now centres this column against its scene, so a
+   fixed top offset would just push the centred block off-centre. */
+.splitCopy {
+  padding-top: 0;
+}
+
+.splitScene {
+  min-width: 0;
+}
+
+.sectionHeadline {
+  margin: 0 0 16px;
+  font-size: clamp(26px, 2.4vw, 34px);
+  line-height: 1.14;
+  letter-spacing: -0.018em;
+  font-weight: 620;
+  color: var(--pub-text);
+}
+
+.sectionSupporting {
+  margin: 0;
+  max-width: 46ch;
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--pub-text-2);
+}
+
+/* ------------------------------------------------------------ scene shell */
+
+.scene {
+  min-width: 0;
+}
+
+/* R5E.1E.2D (task brief §7) — the shared presentation plate.
+   R5E1E2C_HUMAN_REVIEW_PACKAGE/PRODUCT_SCENE_FRAMING.md measured that both
+   Cursor and Skybase inset their product card inside an outer plate (Skybase:
+   a uniform 72 video px / ~58 CSS px inset on every side), and that Lintel had
+   no equivalent — a white card directly on the white page with only a
+   hairline border. That is the single largest measured fidelity gap.
+
+   The references achieve the plate with photography, which
+   R5E1A_VISUAL_SYSTEM_REFERENCE_AND_IMAGE_LOCK.md §5 prohibits outright. The
+   *structural* device — a neutral outer container with padding, holding an
+   inset white card — is not imagery and transfers cleanly: flat fill, one
+   hairline border, no shadow, no gradient, no glass. The inset itself is
+   deliberately shallower than Skybase's (26px desktop against Skybase's
+   ~58px): at Lintel's narrower band a 58px inset would cost the card more
+   width than the split-geometry gain above it recovers. */
+.scenePlate {
+  background: var(--pub-surface-2);
+  border: 1px solid var(--pub-border);
+  border-radius: 20px;
+  padding: var(--scene-plate-inset);
+}
+
+/* Flat neutral, never a photographic or atmospheric field:
+   R5E1A_VISUAL_SYSTEM_REFERENCE_AND_IMAGE_LOCK.md §5 prohibits copied
+   environmental imagery, so the reference's photographic plate becomes a
+   surface token here. overflow: hidden is a paint boundary for the radius
+   only — scene content is composed to fit, so nothing is clipped and no
+   scrollbar can appear. */
+.sceneFrame {
+  background: var(--prod-surface);
+  border: 1px solid var(--prod-border);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.sceneChrome {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px;
+  background: var(--prod-surface-2);
+  border-bottom: 1px solid var(--prod-border-subtle);
+  color: var(--prod-text-important);
+}
+
+.sceneChromeDot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--prod-text-2);
+}
+
+.sceneChromeTail {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--prod-text-2);
+}
+
+/* ------------------------------------------------------------- hero scene */
+
+/* R5E.1E.2B (task brief §4): the aside is narrowed from 268px to 232px and
+   the main working area's own padding increased, so the selected review
+   carries more visual weight without adding any new hero information. */
+.heroSceneBody {
+  display: grid;
+  grid-template-columns: minmax(0, 232px) minmax(0, 1fr);
+  min-height: 480px;
+}
+
+.heroSceneAside {
+  padding: 22px 20px;
+  background: var(--prod-surface-2);
+  border-right: 1px solid var(--prod-border-subtle);
+}
+
+.contextCardSelected,
+.contextCard {
+  padding: 12px 14px;
+  border: 1px solid var(--prod-border-subtle);
+  border-radius: 8px;
+  background: var(--prod-surface);
+}
+
+.contextCardSelected {
+  margin-top: 14px;
+  background: var(--prod-selected);
+  border-color: var(--prod-border);
+}
+
+.contextCardSelected .mono,
+.contextCard .mono {
+  display: block;
+  margin: 0;
+  color: var(--prod-text-2);
+}
+
+.contextCardTitle {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 600;
+  color: var(--prod-text);
+}
+
+.contextCardMeta {
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--prod-text-important);
+}
+
+/* Selection carries a text state as well as the quiet fill —
+   R5E1A_VISUAL_SYSTEM_REFERENCE_AND_IMAGE_LOCK.md §2c.2. */
+.contextCardState {
+  margin: 8px 0 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--prod-text);
+}
+
+.asideNote {
+  margin: 18px 0 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--prod-text-important);
+}
+
+.contextList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.heroSceneMain {
+  padding: 30px 32px;
+  min-width: 0;
+}
+
+.sceneTitle {
+  margin: 0;
+  font-size: 20px;
+  line-height: 1.28;
+  letter-spacing: -0.012em;
+  font-weight: 620;
+  color: var(--prod-text);
+}
+
+.sceneSub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 0;
+  color: var(--prod-text-2);
+}
+
+.factRow {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  margin: 22px 0 0;
+  background: var(--prod-border-subtle);
+  border: 1px solid var(--prod-border-subtle);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* The readiness scene's fact row has three cells, not four — without this,
+   the grid's fourth track renders as an empty cell showing the row's own
+   background, a visible grey gap. */
+.factRowThree {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.fact {
+  padding: 12px 14px;
+  background: var(--prod-surface);
+}
+
+.factValue {
+  margin: 6px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--prod-text);
+}
+
+.factPending {
+  color: var(--prod-warning);
+}
+
+.attentionRecord {
+  margin: 20px 0 0;
+  padding: 16px 18px;
+  border: 1px solid var(--prod-border-subtle);
+  border-left: 3px solid var(--prod-border);
+  border-radius: 8px;
+  background: var(--prod-surface);
+}
+
+.sceneFootnote {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 20px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--prod-border-subtle);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--prod-text-important);
+}
+
+/* ------------------------------------------------------- record primitives */
+
+.relationBody {
+  padding: 24px 26px;
+  min-height: 480px;
+}
+
+/* R5E.1E.2B (task brief §4): the Missing Proof scene now carries one
+   relationship instead of two, so its minimum height is reduced for section
+   balance against a copy column that did not shrink. */
+.relationBodyCompact {
+  min-height: 360px;
+}
+
+.relationHead {
+  padding-bottom: 4px;
+}
+
+.recordTags {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0 0 10px;
+}
+
+.tagSeverity,
+.tagPlain,
+.tagStatus,
+.tagProvenance,
+.tagState {
+  display: inline-block;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid var(--prod-border-subtle);
+  color: var(--prod-text-important);
+  background: var(--prod-surface-2);
+}
+
+.tagSeverity {
+  color: var(--prod-blocking);
+  background: var(--prod-blocking-soft);
+  border-color: var(--prod-blocking-soft);
+}
+
+/* Status words are the fixture's own. Amber marks missing or unverified
+   proof; blue marks observed evidence. Green is never used — this case does
+   not resolve (R5E1A_VISUAL_SYSTEM_REFERENCE_AND_IMAGE_LOCK.md §3.2). */
+.tagStatus[data-status="missing"],
+.tagStatus[data-status="unverified"] {
+  color: var(--prod-warning);
+  background: var(--prod-warning-soft);
+  border-color: var(--prod-warning-soft);
+}
+
+.tagStatus[data-status="confirmed"],
+.tagStatus[data-status="present"] {
+  color: var(--prod-observed);
+  background: var(--prod-surface-2);
+  border-color: var(--prod-border-subtle);
+}
+
+.tagProvenance[data-provenance="Model assisted"] {
+  color: var(--prod-model);
+}
+
+.tagState[data-blocking="true"] {
+  color: var(--prod-blocking);
+  background: var(--prod-blocking-soft);
+  border-color: var(--prod-blocking-soft);
+}
+
+.recordTitle {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.32;
+  letter-spacing: -0.01em;
+  font-weight: 620;
+  color: var(--prod-text);
+}
+
+.recordSubtitle {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.38;
+  font-weight: 620;
+  color: var(--prod-text);
+}
+
+.recordStatement {
+  margin: 8px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--prod-text-important);
+}
+
+.recordSource {
+  margin: 10px 0 0;
+}
+
+.recordSource code {
+  color: var(--prod-text-2);
+}
+
+.recordList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.recordCard {
+  padding: 14px 16px;
+  border: 1px solid var(--prod-border-subtle);
+  border-radius: 8px;
+  background: var(--prod-surface);
+}
+
+.requirementCard {
+  padding: 12px 16px;
+  border: 1px solid var(--prod-border-subtle);
+  border-radius: 8px;
+  background: var(--prod-surface-2);
+}
+
+.relationEdge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.relationEdgeRule {
+  flex: 0 0 28px;
+  height: 1px;
+  background: var(--prod-border);
+}
+
+.relationEdgeLabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--prod-text-important);
+}
+
+.proofPair {
+  padding: 0;
+}
+
+.proofPair[data-blocking="true"] .requirementCard {
+  border-color: var(--prod-blocking);
+  background: var(--prod-blocking-soft);
+}
+
+.unresolvedBar {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  margin: 22px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid var(--prod-border-subtle);
+}
+
+.unresolvedHeadline {
+  font-size: 14px;
+  font-weight: 620;
+  color: var(--prod-blocking);
+}
+
+.unresolvedDetail {
+  font-size: 14px;
+  color: var(--prod-text-important);
+}
+
+/* ------------------------------------------------------- readiness scene */
+
+.readinessNote {
+  margin: 8px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--prod-text-important);
+}
+
+/* Amber left border, matching the semantic meaning of "tests, missing proof
+   and unresolved requirements" (R5E1A_VISUAL_SYSTEM_REFERENCE_AND_IMAGE_LOCK.md
+   §3) — the same meaning PENDING already carries elsewhere on this route. */
+.decisionPendingBlock {
+  margin: 20px 0 0;
+  padding: 16px 18px;
+  border: 1px solid var(--prod-warning-soft);
+  border-left: 3px solid var(--prod-warning);
+  border-radius: 8px;
+  background: var(--prod-warning-soft);
+}
+
+.decisionPendingValue {
+  margin: 6px 0 0;
+  font-size: 20px;
+  font-weight: 620;
+  letter-spacing: -0.01em;
+  color: var(--prod-warning);
+}
+
+.decisionPendingBlock .recordStatement {
+  margin-top: 10px;
+  color: var(--prod-text-important);
+}
+
+.decisionPendingBlock .recordSource {
+  margin-top: 8px;
+}
+
+.authorityStatement {
+  margin: 22px 0 0;
+  padding-top: 18px;
+  border-top: 1px solid var(--prod-border-subtle);
+  font-size: 15px;
+  font-weight: 620;
+  letter-spacing: -0.008em;
+  color: var(--prod-text);
+}
+
+/* R5E.1E.2D (task brief §9): all seven outcomes stay — truthfulness outranks
+   density — but their visual weight is reduced so PENDING and the authority
+   statement above them keep the scene's hierarchy, per
+   R5E1E2C_HUMAN_REVIEW_PACKAGE/READINESS_DECISION_EVALUATION.md. */
+.outcomeChipList {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Deliberately not a button, radio or checkbox: no hover state, no border
+   change, no selected variant exists anywhere in this stylesheet. Every
+   outcome renders identically because none is ever selected. */
+.outcomeChip {
+  padding: 4px 10px;
+  border: 1px solid var(--prod-border-subtle);
+  border-radius: 999px;
+  background: var(--prod-surface-2);
+  font-size: 12px;
+  color: var(--prod-text-important);
+}
+
+.outcomeNote {
+  margin: 14px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--prod-text-2);
+}
+
+/* ------------------------------------------------------------- plain sections */
+
+/* Shared by Trust and the unresolved-case handoff: single-column, hairline
+   top, standard section padding — never a product scene. */
+.plainSection {
+  padding: var(--section-pad) 0;
+  border-top: 1px solid var(--pub-border-subtle);
+  scroll-margin-top: var(--header-h);
+}
+
+/* R5E.1E.2D (task brief §10): four equal columns spanning the full band,
+   replacing the previous 2-column grid capped at 900px, which measured at
+   only 69% of band width with an empty right-hand third
+   (R5E1E2C_HUMAN_REVIEW_PACKAGE/TRUST_COMPOSITION.md). A fine top rule per
+   record is the structural cue — no fill, no card, no illustration. */
+.trustGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 32px;
+  margin: 36px 0 0;
+}
+
+.trustRecord {
+  margin: 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--pub-border-subtle);
+}
+
+.trustDetail {
+  margin: 6px 0 0;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--pub-text-2);
+}
+
+/* R5E.1E.2D (task brief §11): the unresolved-case record. Reuses the same
+   .fact / .factValue / .microLabel primitives the hero scene's fact row
+   already establishes, so the handoff reads as the same product grammar
+   rather than inventing a new one. The first column is wider — it carries the
+   review's identity (repository, PR, title) — and the remaining four mirror
+   the hero scene's fact row exactly (Recommendation, Risk, Requirements,
+   Human Decision). Replaces the previous single line of 13px grey caption
+   text (R5E1E2C_HUMAN_REVIEW_PACKAGE/HANDOFF_AND_FOOTER.md). */
+.handoffGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) repeat(4, minmax(0, 1fr));
+  gap: 1px;
+  margin: 24px 0 28px;
+  background: var(--prod-border-subtle);
+  border: 1px solid var(--prod-border-subtle);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.handoffGridTitle {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--prod-text-important);
+}
+
+/* ------------------------------------------------------------------ footer */
+
+.footer {
+  padding: 48px 0 40px;
+  border-top: 1px solid var(--pub-border-subtle);
+}
+
+.footerTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 40px;
+  flex-wrap: wrap;
+}
+
+.footerBrand {
+  max-width: 380px;
+}
+
+.footerPurpose {
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--pub-text-2);
+}
+
+.footerNav {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.footerNav a {
+  font-size: 13px;
+  color: var(--pub-text-2);
+  text-decoration: none;
+}
+
+.footerNav a:hover {
+  color: var(--pub-text);
+}
+
+.footerBottom {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px 16px;
+  flex-wrap: wrap;
+  margin-top: 32px;
+  padding-top: 20px;
+  border-top: 1px solid var(--pub-border-subtle);
+  font-size: 12px;
+  color: var(--pub-text-2);
+}
+
+/* ------------------------------------------------------------------ motion */
+
+/* Lock §19. Default — no data-motion attribute — is the final state, so the
+   scene is complete and truthful without JavaScript. The pre-state applies
+   only while SceneMotion has armed it, and only opacity and an 8px translate
+   move, on boxes that are already laid out, so no sequence can shift layout. */
+
+.scene[data-motion="armed"] [data-step] {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.scene[data-motion="armed"] .relationEdgeRule {
+  transform: scaleX(0);
+}
+
+.scene[data-motion] [data-step] {
+  transition:
+    opacity var(--dur) var(--ease),
+    transform var(--dur) var(--ease);
+}
+
+.scene[data-motion] .relationEdgeRule {
+  transform-origin: left center;
+  transition: transform var(--dur) var(--ease);
+}
+
+.scene[data-motion="revealed"] [data-step] {
+  opacity: 1;
+  transform: none;
+}
+
+.scene[data-motion="revealed"] .relationEdgeRule {
+  transform: none;
+}
+
+.scene[data-motion] [data-step="2"] {
+  transition-delay: 180ms;
+}
+
+.scene[data-motion] [data-step="3"] {
+  transition-delay: 360ms;
+}
+
+/* Step 4 exists only in the Readiness/Human Decision scene — the authority
+   statement and the outcome preview, per task brief §11. */
+.scene[data-motion] [data-step="4"] {
+  transition-delay: 540ms;
+}
+
+.scene[data-motion] [data-step="2"] .relationEdgeRule {
+  transition-delay: 180ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page :global(*) {
+    transition-duration: 0.001ms !important;
+    animation-duration: 0.001ms !important;
+  }
+
+  /* Belt and braces: SceneMotion never arms under reduced motion, but if the
+     preference changes after mount the final state still wins. */
+  .scene[data-motion] [data-step],
+  .scene[data-motion] .relationEdgeRule {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* -------------------------------------------------------------- responsive */
+
+@media (max-width: 1279px) {
+  .page {
+    --section-pad: 72px;
+    --split-gap: 44px;
+    --scene-plate-inset: 20px;
+  }
+
+  .splitGrid {
+    grid-template-columns: minmax(0, 340px) minmax(0, 1fr);
+  }
+
+  .splitReversed .splitGrid {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 340px);
+  }
+
+  .heroSceneBody {
+    grid-template-columns: minmax(0, 200px) minmax(0, 1fr);
+  }
+}
+
+/* Below 1024px the split collapses. Copy always precedes its scene, which is
+   already the DOM order, so no reordering is needed in either direction. */
+@media (max-width: 1023px) {
+  .page {
+    /* Stepped down from the 32px desktop gutter, not clamped to it — a
+       narrower viewport gets its own value rather than reusing the desktop
+       one at every size (task brief §5). */
+    --pub-gutter: 24px;
+    --section-pad: 56px;
+    --scene-plate-inset: 16px;
+  }
+
+  .splitGrid,
+  .splitReversed .splitGrid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px;
+    align-items: stretch;
+  }
+
+  .splitReversed .splitCopy,
+  .splitReversed .splitScene {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .sectionSupporting {
+    max-width: 62ch;
+  }
+
+  .factRow {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* Three cells in a two-column grid would otherwise leave one empty cell in
+     the second row, showing the row's grey background through the gap — the
+     same class of bug fixed above for the four-cell row. Three equal columns
+     avoid the wrap entirely. */
+  .factRowThree {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .trustGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  /* The identity cell spans both columns as its own row; the four fact cells
+     settle into a 2x2 grid beneath it. */
+  .handoffGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .handoffGrid > :first-child {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Below 768px every scene drops its side-by-side internals and stacks. The
+   aside becomes a leading band rather than a squeezed column, so no scene ever
+   renders as a shrunken desktop dashboard. */
+@media (max-width: 767px) {
+  .page {
+    --pub-gutter: 20px;
+    --section-pad: 40px;
+    --scene-plate-inset: 12px;
+  }
+
+  .nav {
+    display: none;
+  }
+
+  .navFullLabel {
+    display: none;
+  }
+
+  .navShortLabel {
+    display: inline;
+  }
+
+  .hero {
+    padding-top: 40px;
+  }
+
+  .heroActions {
+    gap: 10px;
+  }
+
+  .heroActions .btn {
+    flex: 1 1 auto;
+    min-width: 156px;
+  }
+
+  .heroSceneSection {
+    padding-top: 28px;
+  }
+
+  .heroSceneBody {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+  }
+
+  .heroSceneAside {
+    border-right: 0;
+    border-bottom: 1px solid var(--prod-border-subtle);
+    padding: 18px 16px;
+  }
+
+  /* The chrome bar carries three labels that will not sit on one 390px line.
+     Stacking them keeps every value readable rather than letting the repository
+     path and the read-only label collide. */
+  .sceneChrome {
+    flex-wrap: wrap;
+    padding: 12px 16px;
+  }
+
+  .sceneChromeTail {
+    flex-basis: 100%;
+    margin-left: 0;
+    margin-top: 6px;
+  }
+
+  .heroSceneMain {
+    padding: 20px 16px;
+  }
+
+  .factRow {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .relationBody {
+    padding: 18px 16px;
+    min-height: 0;
+  }
+
+  .sceneTitle {
+    font-size: 18px;
+  }
+
+  .recordTitle {
+    font-size: 16px;
+  }
+
+  .trustGrid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 22px;
+  }
+
+  .handoffGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .handoffGrid > :first-child {
+    grid-column: 1;
+  }
+
+  .footerTop {
+    gap: 24px;
+  }
+
+  .footerNav {
+    gap: 16px 20px;
+  }
+}
+
+/* At 320px only spacing is tightened. Nothing the scene asserts is hidden at
+   any viewport — task brief §17 forbids concealing essential information on
+   mobile. */
+@media (max-width: 359px) {
+  .recordTags {
+    gap: 6px;
+  }
+
+  .heroActions .btn {
+    min-width: 0;
+    width: 100%;
+  }
+}

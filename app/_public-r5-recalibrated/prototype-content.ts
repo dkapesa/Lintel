@@ -33,9 +33,7 @@ export const ACTIONS = {
 } as const;
 
 export const CLOSEOUT = {
-  headline: "Inspect the review for yourself.",
-  supporting:
-    "The case remains unresolved. Open the read-only sample to follow its evidence, or start a review with your own change.",
+  supporting: "Deterministic verification for pull requests, with optional model assistance.",
   legal: "© Lintel",
   boundary: "Private visual laboratory — not linked from production.",
 };
@@ -75,12 +73,17 @@ export const ACCOUNTABLE_DECISION = {
    analysis is the baseline, model assistance is optional and identified in
    provenance when used, the sample performs no external write and does not
    create or modify a review, and Human Decision belongs to the engineer.
-   No compliance claim, no deployment option, no customer logo — detailed
-   security/architecture pages remain future R5F work. */
+   No compliance claim, no deployment option, no customer logo.
+
+   R5E.1E.1 correction: the previous supporting line ("not a security page...
+   remain separate, future work") named an internal roadmap phase in
+   public-facing copy, which docs/r5/R5E1E1 task brief §11 prohibits. Replaced
+   with a concise public-facing statement of what the sample itself does and
+   does not do — no reference to future phases or milestone planning. */
 export const TRUST_BOUNDARY = {
   headline: "What this sample does and does not do.",
   supporting:
-    "A compact, honest boundary — not a security page. Detailed architecture and data-boundary documentation remain separate, future work.",
+    "The sample keeps its boundaries explicit. Deterministic analysis provides the baseline, model assistance remains optional, and nothing here creates, modifies or publishes a review.",
   records: [
     {
       label: "Baseline",

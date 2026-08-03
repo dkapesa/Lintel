@@ -37,10 +37,8 @@ export const CLOSEOUT = {
   supporting:
     "The case remains unresolved. Open the read-only sample to follow its evidence, or start a review with your own change.",
   legal: "© Lintel",
-  boundary: "Private prototype — R5E.1D. Not linked from the production site.",
+  boundary: "Private visual laboratory — not linked from production.",
 };
-
-export const PROTOTYPE_LABEL = "Prototype — R5E.1D Human Decision and handoff";
 
 /* R5E.1C additions. Movement two uses the accepted problem statement
    verbatim (docs/r5/R5E1A_SYSTEM_AND_INTERACTION_LOCK.md §10, "Movement

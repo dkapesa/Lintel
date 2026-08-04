@@ -316,6 +316,64 @@ Frozen R4 product truth always outranks public visual preference.
   re-verified pixel-identical; no section, route, canonical value or
   dependency changed. Described in
   [`R5E1E3_RESPONSIVE_VISUAL_REVIEW.md`](./R5E1E3_RESPONSIVE_VISUAL_REVIEW.md).
+- R5E.1E.4A — premium interaction architecture contract: documentation only.
+  Decides, before any interaction is written, which parts of the accepted
+  reconstruction become manually inspectable. Locks exactly three interactive
+  scenes (Hero selected review — Overview/Finding/Readiness; Finding and
+  Evidence — the two genuine supporting records `ev_retry_path` and
+  `ev_no_idempotency_key`; Readiness and Human Decision —
+  Readiness/Decision boundary), keeps Missing Proof and Requirement
+  choreography-only with no manual control at all, and fixes one shared control
+  grammar (tabs and tab panels, two orientations, automatic activation, roving
+  tabindex, no live region anywhere). Every canonical PR #482 value is promoted
+  to persistent scene chrome outside every panel, so no interaction can hide
+  one; all seven Human Decision outcomes stay visible, unselected and
+  non-focusable even without JavaScript. Progressive enhancement is
+  server-static-first — the server emits a plain panel label in a fixed-height
+  control row and no control at all, and every panel of a scene shares one CSS
+  grid cell so scene height cannot change on selection or at hydration. Manual
+  intent always wins within a scene and terminates a running introduction
+  immediately; manual state persists for the page lifetime and resets only on
+  reload or a new route visit, with no URL, storage, cookie or backend
+  persistence. Three primitives are locked and five candidates rejected. Derived
+  from a 139s Cursor recording inspected frame by frame before any repository
+  file was read — whose decisive finding is that Cursor makes *nothing* in its
+  product scenes operable, which is why the cap is three scenes and not every
+  section. No application code, CSS, route, canonical value or dependency was
+  created or modified. Described in
+  [`R5E1E4A_PREMIUM_INTERACTION_ARCHITECTURE_CONTRACT.md`](./R5E1E4A_PREMIUM_INTERACTION_ARCHITECTURE_CONTRACT.md).
+- R5E.1E.4A.2 — premium motion and scene choreography contract: documentation
+  only. Converts the interaction contract's deliberately open motion boundary
+  into exact values. Locks an eight-item motion vocabulary; six durations
+  (90/140/260/300/380/420ms), three reading pauses (760/980/1220ms) and three
+  easings (`cubic-bezier(0.2,0.8,0.2,1)` standard, `(0.4,0,0.2,1)` panel,
+  `(0,0,0.2,1)` selection), none of which overshoot; movement capped at 8px
+  vertical (4px mobile) with nothing moving horizontally; and element-level
+  sequences for all four scenes — Hero 4,300ms in 3 steps, Finding and Evidence
+  4,860ms in 4, Missing Proof 4,820ms in 4, Readiness 5,420ms in 4, each
+  ≈0.82× on mobile. Introduces a three-class baseline-visibility policy in which
+  canonical and supporting text remains fully readable throughout the complete
+  scene lifecycle — meaningful text is never faded, choreography works through
+  container background, border, rule and a restrained 8px settle, and only an
+  `aria-hidden` decorative rule may begin absent. This replaces the accepted
+  implementation's `opacity: 0` pre-state, which had started the Readiness
+  scene's blocking tags, Human Decision block and outcome list from invisible.
+  (Amendment 1, applied 4 August 2026, corrected an interim 0.72 opacity
+  baseline that would have taken secondary text to ≈2.94:1 during choreography;
+  the superseded reasoning is preserved in the contract's §13d. No duration,
+  delay, easing value, sequence or total changed.) Human Decision PENDING and
+  the seven outcomes receive emphasis
+  through their *container's* border and surface only, so the values themselves
+  never move or fade. The whole introduction is driven by CSS `transition-delay`
+  with one timer per scene, so sequences complete offscreen and in hidden tabs
+  with no pause/resume machinery, and a manual interruption cancels everything
+  through a single `data-motion="settled"` attribute change. Controls never
+  participate in choreography. No live region; no dependency; no `will-change`.
+  Reuses the existing Cursor evidence rather than re-extracting it, adding five
+  new motion-specific frame observations. No motion or interaction was
+  implemented and no application code, CSS or canonical data changed. Described
+  in
+  [`R5E1E4A2_MOTION_CHOREOGRAPHY_CONTRACT.md`](./R5E1E4A2_MOTION_CHOREOGRAPHY_CONTRACT.md).
 - R5E.1F — not started. Scope, boundaries and acceptance gates are in
   [`R5E1A_IMPLEMENTATION_HANDOFF.md`](./R5E1A_IMPLEMENTATION_HANDOFF.md).
   The production homepage at `/` and the private laboratory at

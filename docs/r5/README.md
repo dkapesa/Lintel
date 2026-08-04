@@ -142,6 +142,21 @@ R5E.1A is documentation only. Its five documents are read in this order:
     handoff's structured record, and the scene-motion trigger timing. No
     section, route or canonical value changed; fourteen frozen findings were
     left untouched.
+22. [`R5E1E3_RESPONSIVE_VISUAL_REVIEW.md`](./R5E1E3_RESPONSIVE_VISUAL_REVIEW.md) —
+    a bounded responsive-visual-review and adaptive-composition phase over the
+    accepted R5E.1E.2A–D reconstruction, following its 3 August 2026 human
+    acceptance. Captures genuine pixel evidence (production build, headless
+    Chrome via a scratchpad-only `puppeteer-core` install) at all six required
+    viewports plus 200% zoom, reduced motion and JavaScript-disabled states.
+    Finds and corrects one genuine defect: the tablet/mobile split-collapse
+    breakpoint was `max-width: 1023px`, so the explicitly-required 1024×768
+    viewport fell into the desktop-adjacent tier instead of the established
+    tablet pattern, producing a compressed scene track and several hundred
+    CSS px of dead space beside the copy column. Corrected to
+    `max-width: 1024px`, and the tablet scene-plate inset raised from 16px to
+    18px to match this phase's own stated 18–22px target band. No other
+    section, route, canonical value or dependency changed; the desktop
+    architecture (≥1280px) is untouched and re-verified pixel-identical.
 
 No earlier R5 or R4 document was edited to produce R5E.1A. Where R5E.1A
 deliberately changes an earlier public visual decision, the change is
@@ -286,8 +301,21 @@ Frozen R4 product truth always outranks public visual preference.
   primitives; and the scene-motion `rootMargin` corrected so sequences begin
   once a scene is meaningfully in view rather than while still mostly
   off-screen. Fourteen frozen findings were left untouched; no section, route
-  or canonical value changed. Pending human visual review. Described in
+  or canonical value changed. Human visual acceptance recorded 3 August 2026,
+  closing R5E.1E.2A–D as the completed reference-led public reconstruction and
+  freezing its direction for subsequent responsive review. Described in
   [`R5E1E2D_REFERENCE_FIDELITY_IMPLEMENTATION.md`](./R5E1E2D_REFERENCE_FIDELITY_IMPLEMENTATION.md).
+- R5E.1E.3 — responsive visual review and adaptive composition: a bounded
+  review of the accepted reconstruction at every major viewport, using
+  genuine pixel evidence from a production build rather than DOM-dimension
+  inference. Finds and corrects one defect — the tablet/mobile split-collapse
+  breakpoint excluded the explicitly-required 1024×768 viewport, producing a
+  compressed scene track and substantial dead space there — and one small
+  alignment (tablet scene-plate inset 16px → 18px, matching this phase's own
+  stated target band). The desktop architecture (≥1280px) is unchanged and
+  re-verified pixel-identical; no section, route, canonical value or
+  dependency changed. Described in
+  [`R5E1E3_RESPONSIVE_VISUAL_REVIEW.md`](./R5E1E3_RESPONSIVE_VISUAL_REVIEW.md).
 - R5E.1F — not started. Scope, boundaries and acceptance gates are in
   [`R5E1A_IMPLEMENTATION_HANDOFF.md`](./R5E1A_IMPLEMENTATION_HANDOFF.md).
   The production homepage at `/` and the private laboratory at

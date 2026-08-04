@@ -333,9 +333,10 @@
    align-items: center corrects the ≈416px of empty copy column measured
    beside the Readiness scene (R5E1E2C READINESS_DECISION_EVALUATION.md) by
    centring the shorter copy block against its scene. This only has a visual
-   effect once the two tracks sit side by side (≥1024px); below that the grid
-   collapses to one column, where a row's own content still determines its
-   height and centring is a no-op. */
+   effect once the two tracks sit side by side (≥1025px, per the R5E.1E.3
+   breakpoint correction below); at ≤1024px the grid collapses to one column,
+   where a row's own content still determines its height and centring is a
+   no-op. */
 .splitGrid {
   display: grid;
   grid-template-columns: minmax(0, 360px) minmax(0, 1fr);
@@ -1077,16 +1078,37 @@
   }
 }
 
-/* Below 1024px the split collapses. Copy always precedes its scene, which is
-   already the DOM order, so no reordering is needed in either direction. */
-@media (max-width: 1023px) {
+/* At and below 1024px the split collapses. Copy always precedes its scene,
+   which is already the DOM order, so no reordering is needed in either
+   direction.
+
+   R5E.1E.3 responsive correction: this boundary was previously 1023px, so a
+   1024px-wide viewport fell into the 1024–1279px "laptop" tier above and kept
+   the two-column split with a 340/576 CSS px division. Genuine screenshot
+   evidence at 1024×768 (R5E1E3_RESPONSIVE_EVIDENCE/screenshots/1024x768/)
+   showed exactly what docs/r5 §7's tablet review warns against: a compressed
+   576px scene track and, in the Finding/Evidence and Readiness sections,
+   several hundred CSS px of dead space beside a short copy column vertically
+   centred against a much taller scene. 834px and 768px — both already inside
+   the old ≤1023px tier — show none of this: the same content stacks cleanly,
+   full width, matching this file's own established tablet pattern. Moving the
+   boundary to 1024px brings the one inconsistent width into that already-good
+   pattern instead of inventing a new one, and simultaneously satisfies the
+   tablet requirements that Trust becomes a 2-column layout and the handoff
+   record wraps into coherent groups at exactly this width. Nothing above
+   1024px (the accepted 1024–1279px and ≥1280px tiers) is touched. */
+@media (max-width: 1024px) {
   .page {
     /* Stepped down from the 32px desktop gutter, not clamped to it — a
        narrower viewport gets its own value rather than reusing the desktop
        one at every size (task brief §5). */
     --pub-gutter: 24px;
     --section-pad: 56px;
-    --scene-plate-inset: 16px;
+    /* R5E.1E.3: 16px measured 2px short of this route's own stated tablet
+       target of "approximately 18–22px" (docs/r5/R5E1E3_RESPONSIVE_VISUAL_REVIEW.md
+       §12). Raised to 18px, the bottom of that band — a small, evidence-aligned
+       step, not a new value invented for this pass. */
+    --scene-plate-inset: 18px;
   }
 
   .splitGrid,

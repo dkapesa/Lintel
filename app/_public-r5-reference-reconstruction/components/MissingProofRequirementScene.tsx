@@ -34,7 +34,7 @@ export function MissingProofRequirementScene() {
   const blocking = PRIMARY_MISSING_PROOF.affectsRequirement.state.startsWith("blocking");
 
   return (
-    <SceneMotion className={styles.scene}>
+    <SceneMotion className={`${styles.scene} ${styles.missingProofScene}`}>
       <div className={styles.scenePlate}>
         <div className={styles.sceneFrame}>
           <div className={styles.sceneChrome}>
@@ -45,7 +45,7 @@ export function MissingProofRequirementScene() {
           <div className={`${styles.relationBody} ${styles.relationBodyCompact}`}>
             {/* Step 1: missing proof is established — visible at rest. */}
             <div className={styles.proofPair} data-blocking={blocking ? "true" : undefined}>
-              <div className={styles.recordCard}>
+              <div className={`${styles.recordCard} ${styles.missingProofRecord}`} data-missing-step="m1">
                 <p className={styles.recordTags}>
                   <span className={styles.tagStatus} data-status={PRIMARY_MISSING_PROOF.status}>
                     {PRIMARY_MISSING_PROOF.status}
@@ -65,12 +65,12 @@ export function MissingProofRequirementScene() {
               </div>
 
               {/* Step 2: the requirement becomes visibly connected. */}
-              <p className={styles.relationEdge} data-step="2">
+              <p className={styles.relationEdge} data-missing-step="m2">
                 <span className={styles.relationEdgeRule} aria-hidden="true" />
                 <span className={styles.relationEdgeLabel}>Leaves open</span>
               </p>
 
-              <div className={styles.requirementCard} data-step="2">
+              <div className={styles.requirementCard} data-missing-step="m3">
                 <p className={styles.recordTags}>
                   <span className={styles.tagState} data-blocking={blocking ? "true" : undefined}>
                     {PRIMARY_MISSING_PROOF.affectsRequirement.state}
@@ -83,7 +83,7 @@ export function MissingProofRequirementScene() {
             </div>
 
             {/* Step 3: unresolved status remains visible. */}
-            <p className={styles.unresolvedBar} data-step="3">
+            <p className={`${styles.unresolvedBar} ${styles.missingProofConsequence}`} data-missing-step="m4">
               <span className={styles.unresolvedHeadline}>{READINESS.headline}</span>
               <span className={styles.unresolvedDetail}>
                 {CANONICAL_REVIEW.requirementsSummary} · Human Decision{" "}

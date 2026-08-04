@@ -87,6 +87,7 @@ export function FindingEvidenceScene() {
       groupLabel="Supporting evidence records"
       introductionDuration={FINDING_EVIDENCE_SEQUENCE_DURATION}
       orientation="vertical"
+      staticControlPresentation="views"
       staticPanelLabel="Provenance and source"
       chrome={
         <div className={styles.sceneChrome}>

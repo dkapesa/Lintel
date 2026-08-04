@@ -24,8 +24,9 @@ import type { ReactNode } from "react";
                            browser paints (so there is no flash of the final
                            state), then the observer reveals it.
 
-   Only opacity and a small translate animate, on elements whose boxes are
-   already laid out, so no sequence can produce layout shift. */
+   Only bounded container, border, decorative-rule and local-transform
+   treatments animate, on elements whose boxes are already laid out, so no
+   sequence can produce layout shift and meaningful text never fades. */
 
 /* threshold 0, not a ratio. A ratio would make the reveal depend on how much
    of the scene fits on screen: at 320px a scene is ~1270px tall in a 568px

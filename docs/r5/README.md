@@ -158,6 +158,15 @@ R5E.1A is documentation only. Its five documents are read in this order:
     section, route, canonical value or dependency changed; the desktop
     architecture (≥1280px) is untouched and re-verified pixel-identical.
 
+24. [`R5E1E4B_FINDING_EVIDENCE_INTERACTION_GATE.md`](./R5E1E4B_FINDING_EVIDENCE_INTERACTION_GATE.md) —
+    the first bounded Phase 7 implementation gate. Adds the accepted vertical
+    tab semantics, the two genuine evidence records, focused provenance/source
+    inspection, E1–E4 choreography, manual-authority interruption, progressive
+    enhancement, reduced-motion and no-JavaScript truthfulness to Finding and
+    Evidence only at the private reference reconstruction. Hero, Readiness,
+    Missing Proof interaction, atmospheric work and production transfer remain
+    out of scope.
+
 No earlier R5 or R4 document was edited to produce R5E.1A. Where R5E.1A
 deliberately changes an earlier public visual decision, the change is
 recorded as a numbered supersession in
@@ -374,6 +383,14 @@ Frozen R4 product truth always outranks public visual preference.
   implemented and no application code, CSS or canonical data changed. Described
   in
   [`R5E1E4A2_MOTION_CHOREOGRAPHY_CONTRACT.md`](./R5E1E4A2_MOTION_CHOREOGRAPHY_CONTRACT.md).
+- R5E.1E.4B — Finding and Evidence interaction gate: implemented at the private
+  reference reconstruction with the smallest accepted public scene primitives,
+  exact two-record vertical tabs, focused provenance/source panels, E1–E4
+  choreography and manual-authority interruption. Production, Hero, Readiness
+  and Missing Proof remain unchanged. Technical evidence is assembled; human
+  meaningful-value review and the deliberate interaction recording remain
+  required before acceptance. Described in
+  [`R5E1E4B_FINDING_EVIDENCE_INTERACTION_GATE.md`](./R5E1E4B_FINDING_EVIDENCE_INTERACTION_GATE.md).
 - R5E.1F — not started. Scope, boundaries and acceptance gates are in
   [`R5E1A_IMPLEMENTATION_HANDOFF.md`](./R5E1A_IMPLEMENTATION_HANDOFF.md).
   The production homepage at `/` and the private laboratory at

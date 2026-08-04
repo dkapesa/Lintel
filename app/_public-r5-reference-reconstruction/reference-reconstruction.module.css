@@ -72,6 +72,23 @@
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
   --dur: 420ms;
 
+  /* R5E.1E.4A.2 accepted public interaction and choreography tokens. */
+  --motion-duration-immediate: 90ms;
+  --motion-duration-selection: 140ms;
+  --motion-duration-panel: 260ms;
+  --motion-duration-reveal: 300ms;
+  --motion-duration-relationship: 380ms;
+  --motion-duration-scene-ready: 420ms;
+  --motion-delay-reading-short: 760ms;
+  --motion-delay-reading-standard: 980ms;
+  --motion-delay-reading-long: 1220ms;
+  --motion-ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --motion-ease-panel: cubic-bezier(0.4, 0, 0.2, 1);
+  --motion-ease-selection: cubic-bezier(0, 0, 0.2, 1);
+  --motion-distance-enter: 8px;
+  --motion-distance-panel: 4px;
+  --motion-opacity-decorative-quiet: 0;
+
   background: var(--pub-canvas);
   color: var(--pub-text);
   font-family: var(--font-geist), -apple-system, sans-serif;
@@ -734,6 +751,149 @@
   background: var(--prod-surface);
 }
 
+/* R5E.1E.4B shared public scene controls and the Finding/Evidence record
+   variant. The static div and enhanced button deliberately share one box
+   model, so client enhancement cannot move the page. */
+.publicSceneInteraction {
+  min-width: 0;
+}
+
+.evidenceRecordList {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+
+.evidenceRecordTab {
+  position: relative;
+  display: block;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  margin: 0;
+  padding: 14px 16px 14px 18px;
+  appearance: none;
+  border: 1px solid var(--prod-border);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--prod-text);
+  font: inherit;
+  text-align: left;
+}
+
+.evidenceRecordTab::before {
+  content: "";
+  position: absolute;
+  inset: 8px auto 8px -1px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--prod-text);
+  transform: scaleY(0);
+  transform-origin: center top;
+}
+
+button.evidenceRecordTab {
+  cursor: pointer;
+}
+
+button.evidenceRecordTab:hover:not([data-selected="true"]) {
+  background: var(--pub-surface-2);
+}
+
+.evidenceRecordTab[data-selected="true"] {
+  border-color: var(--pub-border);
+  background: var(--pub-selected);
+}
+
+.evidenceRecordTab[data-selected="true"]::before {
+  transform: scaleY(1);
+}
+
+.evidenceRecordContent,
+.evidenceRecordContent > .recordSubtitle,
+.evidenceRecordContent > .recordStatement,
+.evidenceRecordContent > .recordSource {
+  display: block;
+}
+
+.evidenceRecordContent > .recordSubtitle {
+  font-weight: 450;
+  color: var(--prod-text-important);
+}
+
+.evidenceRecordTab[data-selected="true"] .recordSubtitle {
+  font-weight: 550;
+  color: var(--prod-text);
+}
+
+.evidenceRecordContent .recordSource code,
+.evidenceTraceFacts code {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.publicScenePanelStack {
+  display: grid;
+  min-width: 0;
+  margin-top: 16px;
+}
+
+.publicScenePanel {
+  grid-area: 1 / 1;
+  min-width: 0;
+  visibility: hidden;
+  transform: translateY(var(--motion-distance-panel));
+  transition: transform var(--motion-duration-panel) var(--motion-ease-panel);
+}
+
+.publicScenePanel[data-active="true"] {
+  visibility: visible;
+  transform: none;
+}
+
+.evidenceTraceSurface {
+  min-height: 196px;
+  padding: 16px 18px;
+  border: 1px solid var(--pub-border);
+  border-radius: 8px;
+  background: var(--pub-surface-2);
+}
+
+.evidenceTraceTitle {
+  margin: 7px 0 0;
+  font-size: 14px;
+  line-height: 1.45;
+  font-weight: 620;
+  color: var(--prod-text);
+}
+
+.evidenceTraceFacts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 20px;
+  margin: 14px 0 0;
+}
+
+.evidenceTraceFacts > div {
+  min-width: 0;
+}
+
+.evidenceTraceFacts dt {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--prod-text-important);
+}
+
+.evidenceTraceFacts dd {
+  margin: 5px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--prod-text);
+}
+
 .requirementCard {
   padding: 12px 16px;
   border: 1px solid var(--prod-border-subtle);
@@ -994,6 +1154,129 @@
    only while SceneMotion has armed it, and only opacity and an 8px translate
    move, on boxes that are already laid out, so no sequence can shift layout. */
 
+/* R5E.1E.4B applies the accepted E1-E4 narrative only to the Finding and
+   Evidence scene. Meaningful text remains at opacity 1 throughout; emphasis
+   is carried by local translation, surface, border, rule and weight. */
+.findingEvidenceScene[data-motion="armed"] .evidenceRelationEdge .relationEdgeLabel {
+  transform: translateY(var(--motion-distance-enter));
+}
+
+.findingEvidenceScene[data-motion="armed"] .evidenceRelationEdge .relationEdgeRule {
+  transform: scaleX(0);
+  transition: none;
+}
+
+.findingEvidenceScene[data-motion="armed"] .evidenceRecordList {
+  transform: translateY(var(--motion-distance-enter));
+}
+
+.findingEvidenceScene[data-motion="armed"] .evidenceRecordTab {
+  border-color: var(--pub-border-subtle);
+  background: transparent;
+}
+
+.findingEvidenceScene[data-motion="armed"] .evidenceRecordTab::before {
+  transform: scaleY(0);
+}
+
+.findingEvidenceScene[data-motion="armed"]
+  .evidenceRecordTab[data-selected="true"]
+  .recordSubtitle {
+  font-weight: 450;
+}
+
+.findingEvidenceScene[data-motion="armed"] .evidenceTraceSurface {
+  border-color: var(--pub-border-subtle);
+  background: transparent;
+  transform: translateY(var(--motion-distance-enter));
+}
+
+.findingEvidenceScene[data-motion="revealed"] .evidenceRelationEdge .relationEdgeLabel {
+  transition: transform var(--motion-duration-relationship) var(--motion-ease-standard);
+  transition-delay: 760ms;
+}
+
+.findingEvidenceScene[data-motion="revealed"] .evidenceRelationEdge .relationEdgeRule {
+  transform-origin: left center;
+  transition: transform var(--motion-duration-relationship) var(--motion-ease-standard);
+  transition-delay: 760ms;
+}
+
+.findingEvidenceScene[data-motion="revealed"] .evidenceRecordList {
+  transition: transform var(--motion-duration-reveal) var(--motion-ease-standard);
+  transition-delay: 1900ms;
+}
+
+.findingEvidenceScene[data-motion="revealed"] .evidenceRecordTab {
+  transition:
+    background-color var(--motion-duration-relationship) var(--motion-ease-standard),
+    border-color var(--motion-duration-relationship) var(--motion-ease-standard);
+  transition-delay: 3420ms;
+}
+
+.findingEvidenceScene[data-motion="revealed"] .evidenceRecordTab::before {
+  transition: transform var(--motion-duration-relationship) var(--motion-ease-standard);
+  transition-delay: 3420ms;
+}
+
+.findingEvidenceScene[data-motion="revealed"] .evidenceRecordTab .recordSubtitle {
+  transition: font-weight 0ms linear;
+  transition-delay: 3420ms;
+}
+
+.findingEvidenceScene[data-motion="revealed"] .evidenceTraceSurface {
+  transition:
+    background-color var(--motion-duration-reveal) var(--motion-ease-standard),
+    border-color var(--motion-duration-reveal) var(--motion-ease-standard),
+    transform var(--motion-duration-reveal) var(--motion-ease-standard);
+  transition-delay: 4560ms;
+}
+
+.findingEvidenceScene[data-motion="settled"] .evidenceRelationEdge .relationEdgeLabel,
+.findingEvidenceScene[data-motion="settled"] .evidenceRelationEdge .relationEdgeRule,
+.findingEvidenceScene[data-motion="settled"] .evidenceRecordList,
+.findingEvidenceScene[data-motion="settled"] .evidenceTraceSurface {
+  transition-delay: 0ms;
+  transition-duration: var(--motion-duration-reveal);
+}
+
+.findingEvidenceScene[data-motion="settled"]
+  [data-interaction-authority="manual"]
+  .evidenceRecordTab {
+  background-image: linear-gradient(var(--prod-surface), var(--prod-surface));
+  border-color: var(--prod-border);
+  box-shadow: none;
+  transition: none;
+}
+
+.findingEvidenceScene[data-motion="settled"]
+  [data-interaction-authority="manual"]
+  .evidenceRecordTab::before {
+  visibility: hidden;
+  transition: none;
+}
+
+.findingEvidenceScene[data-motion="settled"]
+  [data-interaction-authority="manual"]
+  .evidenceRecordTab .recordSubtitle {
+  transition: none;
+}
+
+.findingEvidenceScene[data-motion="settled"]
+  [data-interaction-authority="manual"]
+  .evidenceRecordTab[data-selected="true"] {
+  background-image: linear-gradient(var(--pub-selected), var(--pub-selected));
+  border-color: var(--pub-border);
+  box-shadow: inset 3px 0 0 var(--prod-text);
+  transition: box-shadow var(--motion-duration-selection) var(--motion-ease-selection);
+}
+
+.findingEvidenceScene[data-motion="settled"]
+  [data-interaction-authority="manual"]
+  button.evidenceRecordTab:hover:not([data-selected="true"]) {
+  background-image: linear-gradient(var(--pub-surface-2), var(--pub-surface-2));
+}
+
 .scene[data-motion="armed"] [data-step] {
   opacity: 0;
   transform: translateY(8px);
@@ -1163,6 +1446,8 @@
     --pub-gutter: 20px;
     --section-pad: 40px;
     --scene-plate-inset: 12px;
+    --motion-distance-enter: 4px;
+    --motion-distance-panel: 2px;
   }
 
   .nav {
@@ -1238,6 +1523,39 @@
 
   .recordTitle {
     font-size: 16px;
+  }
+
+  .evidenceTraceFacts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .findingEvidenceScene[data-motion="revealed"] .evidenceRelationEdge .relationEdgeLabel,
+  .findingEvidenceScene[data-motion="revealed"] .evidenceRelationEdge .relationEdgeRule {
+    transition-delay: 570ms;
+  }
+
+  .findingEvidenceScene[data-motion="revealed"] .evidenceRecordList {
+    transition-delay: 1520ms;
+  }
+
+  .findingEvidenceScene[data-motion="revealed"] .evidenceRecordTab,
+  .findingEvidenceScene[data-motion="revealed"] .evidenceRecordTab::before,
+  .findingEvidenceScene[data-motion="revealed"] .evidenceRecordTab .recordSubtitle {
+    transition-delay: 2735ms;
+  }
+
+  .findingEvidenceScene[data-motion="revealed"] .evidenceTraceSurface {
+    transition-delay: 3685ms;
+  }
+
+  .findingEvidenceScene[data-motion="settled"] .evidenceRelationEdge .relationEdgeLabel,
+  .findingEvidenceScene[data-motion="settled"] .evidenceRelationEdge .relationEdgeRule,
+  .findingEvidenceScene[data-motion="settled"] .evidenceRecordList,
+  .findingEvidenceScene[data-motion="settled"] .evidenceRecordTab,
+  .findingEvidenceScene[data-motion="settled"] .evidenceRecordTab::before,
+  .findingEvidenceScene[data-motion="settled"] .evidenceRecordTab .recordSubtitle,
+  .findingEvidenceScene[data-motion="settled"] .evidenceTraceSurface {
+    transition-delay: 0ms;
   }
 
   .trustGrid {

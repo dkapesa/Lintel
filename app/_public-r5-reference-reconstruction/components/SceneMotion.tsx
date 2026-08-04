@@ -58,9 +58,13 @@ const useIsomorphicLayoutEffect = typeof window === "undefined" ? useEffect : us
 export function SceneMotion({
   children,
   className,
+  onEnteredViewport,
+  settled = false,
 }: {
   children: ReactNode;
   className?: string;
+  onEnteredViewport?: () => void;
+  settled?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<"static" | "armed" | "revealed">("static");
@@ -73,7 +77,7 @@ export function SceneMotion({
   }, []);
 
   useEffect(() => {
-    if (state !== "armed") return;
+    if (state !== "armed" || settled) return;
     const node = ref.current;
     if (!node) return;
 
@@ -82,6 +86,7 @@ export function SceneMotion({
         for (const entry of entries) {
           if (!entry.isIntersecting) continue;
           setState("revealed");
+          onEnteredViewport?.();
           observer.disconnect();
           return;
         }
@@ -91,10 +96,14 @@ export function SceneMotion({
 
     observer.observe(node);
     return () => observer.disconnect();
-  }, [state]);
+  }, [onEnteredViewport, settled, state]);
 
   return (
-    <div ref={ref} className={className} data-motion={state === "static" ? undefined : state}>
+    <div
+      ref={ref}
+      className={className}
+      data-motion={settled ? "settled" : state === "static" ? undefined : state}
+    >
       {children}
     </div>
   );

@@ -1,78 +1,123 @@
 import styles from "../reference-reconstruction.module.css";
-import { SceneMotion } from "./SceneMotion";
 import { PRIMARY_EVIDENCE, PRIMARY_FINDING } from "../../_public-r5-recalibrated/canonical-review";
+import { PublicSceneViews } from "./PublicSceneViews";
 
-/* R5E.1E.2A — Finding → Evidence → Provenance.
+const DEFAULT_EVIDENCE_KEY = "ev_retry_path" as const;
+const FINDING_EVIDENCE_SEQUENCE_DURATION = 4860;
 
-   One relationship only, per docs/r5/R5E1E2A_REFERENCE_RECONSTRUCTION_LOCK.md
-   §3 and §15. No requirements, no readiness, no queue, no Workspace: this
-   scene shows a finding and the two canonical records that support it, each
-   carrying its own provenance and source.
-
-   Records come verbatim from PRIMARY_FINDING and PRIMARY_EVIDENCE — the same
-   two case482 evidence records the frozen product renders. Status words
-   ("confirmed", "present") are the fixture's own; they are never upgraded to
-   an implied clearance, and green never appears in this canonical story
-   (R5E1A_VISUAL_SYSTEM_REFERENCE_AND_IMAGE_LOCK.md §3).
-
-   Both evidence records fit at author time, so the scene composes to fit with
-   no fixed height and no internal scrolling. */
-export function FindingEvidenceScene() {
+function EvidenceRecord({ evidence }: { evidence: (typeof PRIMARY_EVIDENCE)[number] }) {
   return (
-    <SceneMotion className={styles.scene}>
-      <div className={styles.scenePlate}>
-        <div className={styles.sceneFrame}>
-          <div className={styles.sceneChrome}>
-            <span className={styles.mono}>{PRIMARY_FINDING.recordKey}</span>
-            <span className={styles.sceneChromeTail}>Finding record</span>
-          </div>
+    <span className={styles.evidenceRecordContent}>
+      <span className={styles.recordTags}>
+        <span className={styles.tagStatus} data-status={evidence.status}>
+          {evidence.status}
+        </span>
+        <span className={styles.tagProvenance}>{evidence.provenance}</span>
+      </span>
+      <span className={styles.recordSubtitle}>{evidence.title}</span>
+      <span className={styles.recordStatement}>{evidence.statement}</span>
+      <span className={styles.recordSource}>
+        <code className={styles.mono}>{evidence.source}</code>
+      </span>
+    </span>
+  );
+}
 
-          <div className={styles.relationBody}>
-            {/* Step 1: the finding is established — visible at rest. */}
-            <article className={styles.relationHead}>
-              <p className={styles.recordTags}>
-                <span className={styles.tagSeverity}>{PRIMARY_FINDING.severity}</span>
-                <span className={styles.tagPlain}>{PRIMARY_FINDING.category}</span>
-                <span className={styles.tagPlain}>{PRIMARY_FINDING.provenance}</span>
-              </p>
-              <h3 className={styles.recordTitle}>{PRIMARY_FINDING.title}</h3>
-              <p className={styles.recordStatement}>{PRIMARY_FINDING.statement}</p>
-              <p className={styles.recordSource}>
-                <code className={styles.mono}>{PRIMARY_FINDING.file}</code>
-              </p>
-            </article>
-
-            {/* Step 2: the evidence relationship becomes visible. */}
-            <p className={styles.relationEdge} data-step="2">
-              <span className={styles.relationEdgeRule} aria-hidden="true" />
-              <span className={styles.relationEdgeLabel}>
-                Supported by {PRIMARY_EVIDENCE.length} canonical evidence records
-              </span>
-            </p>
-
-            <ul className={styles.recordList} data-step="2">
-              {PRIMARY_EVIDENCE.map((evidence) => (
-                <li key={evidence.recordKey} className={styles.recordCard}>
-                  <p className={styles.recordTags}>
-                    <span className={styles.tagStatus} data-status={evidence.status}>
-                      {evidence.status}
-                    </span>
-                    {/* Step 3: provenance receives restrained emphasis. */}
-                    <span className={styles.tagProvenance} data-step="3">
-                      {evidence.provenance}
-                    </span>
-                  </p>
-                  <h4 className={styles.recordSubtitle}>{evidence.title}</h4>
-                  <p className={styles.recordStatement}>{evidence.statement}</p>
-                  <p className={styles.recordSource} data-step="3">
-                    <code className={styles.mono}>{evidence.source}</code>
-                  </p>
-                </li>
-              ))}
-            </ul>
-          </div>
+function EvidenceTrace({ evidence }: { evidence: (typeof PRIMARY_EVIDENCE)[number] }) {
+  return (
+    <div className={styles.evidenceTraceSurface}>
+      <p className={styles.microLabel}>Provenance and source</p>
+      <p className={styles.evidenceTraceTitle}>{evidence.title}</p>
+      <dl className={styles.evidenceTraceFacts}>
+        <div>
+          <dt>Provenance</dt>
+          <dd>{evidence.provenance}</dd>
         </div>
-      </div>
-    </SceneMotion>
+        <div>
+          <dt>Source</dt>
+          <dd>
+            <code className={styles.mono}>{evidence.source}</code>
+          </dd>
+        </div>
+        <div>
+          <dt>Supports</dt>
+          <dd>{evidence.supports}</dd>
+        </div>
+        <div>
+          <dt>Inspection implication</dt>
+          <dd>{evidence.statement}</dd>
+        </div>
+      </dl>
+    </div>
+  );
+}
+
+/* R5E.1E.4B â€” the first bounded interaction gate.
+
+   The finding is persistent and fixed. The two selectable records are exactly
+   PRIMARY_FINDING.supportingEvidence, verified against case482 in the frozen
+   fixture. Selection changes inspection focus only; it never changes a product
+   value or performs work. PublicSceneViews adds the accepted vertical-tab
+   semantics after hydration while preserving this complete server-rendered
+   default. */
+export function FindingEvidenceScene() {
+  const views = PRIMARY_EVIDENCE.map((evidence) => ({
+    key: evidence.recordKey,
+    label: evidence.title,
+    control: <EvidenceRecord evidence={evidence} />,
+    panel: <EvidenceTrace evidence={evidence} />,
+  }));
+
+  return (
+    <PublicSceneViews
+      idPrefix="finding-evidence"
+      classNames={{
+        scene: `${styles.scene} ${styles.findingEvidenceScene}`,
+        interaction: styles.publicSceneInteraction,
+        plate: styles.scenePlate,
+        frame: styles.sceneFrame,
+        body: styles.relationBody,
+        controls: styles.evidenceRecordList,
+        staticControls: styles.evidenceRecordList,
+        tab: styles.evidenceRecordTab,
+        panelStack: styles.publicScenePanelStack,
+        panel: styles.publicScenePanel,
+      }}
+      defaultKey={DEFAULT_EVIDENCE_KEY}
+      groupLabel="Supporting evidence records"
+      introductionDuration={FINDING_EVIDENCE_SEQUENCE_DURATION}
+      orientation="vertical"
+      staticPanelLabel="Provenance and source"
+      chrome={
+        <div className={styles.sceneChrome}>
+          <span className={styles.mono}>{PRIMARY_FINDING.recordKey}</span>
+          <span className={styles.sceneChromeTail}>Finding record</span>
+        </div>
+      }
+      persistent={
+        <>
+          <article className={styles.relationHead}>
+            <p className={styles.recordTags}>
+              <span className={styles.tagSeverity}>{PRIMARY_FINDING.severity}</span>
+              <span className={styles.tagPlain}>{PRIMARY_FINDING.category}</span>
+              <span className={styles.tagPlain}>{PRIMARY_FINDING.provenance}</span>
+            </p>
+            <h3 className={styles.recordTitle}>{PRIMARY_FINDING.title}</h3>
+            <p className={styles.recordStatement}>{PRIMARY_FINDING.statement}</p>
+            <p className={styles.recordSource}>
+              <code className={styles.mono}>{PRIMARY_FINDING.file}</code>
+            </p>
+          </article>
+
+          <p className={`${styles.relationEdge} ${styles.evidenceRelationEdge}`}>
+            <span className={styles.relationEdgeRule} aria-hidden="true" />
+            <span className={styles.relationEdgeLabel}>
+              Supported by {PRIMARY_EVIDENCE.length} canonical evidence records
+            </span>
+          </p>
+        </>
+      }
+      views={views}
+    />
   );
 }

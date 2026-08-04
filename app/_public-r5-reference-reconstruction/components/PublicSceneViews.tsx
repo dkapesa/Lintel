@@ -42,7 +42,9 @@ export function PublicSceneViews<TStateKey extends string>({
   introductionDuration,
   orientation,
   persistent,
+  staticControlPresentation = "label",
   staticPanelLabel,
+  trailing,
   views,
 }: {
   chrome: ReactNode;
@@ -53,7 +55,9 @@ export function PublicSceneViews<TStateKey extends string>({
   introductionDuration: number;
   orientation: "horizontal" | "vertical";
   persistent: ReactNode;
+  staticControlPresentation?: "label" | "views";
   staticPanelLabel: string;
+  trailing?: ReactNode;
   views: readonly PublicSceneView<TStateKey>[];
 }) {
   const [state, setState] = useState<SceneInteractionState<TStateKey>>({
@@ -199,7 +203,7 @@ export function PublicSceneViews<TStateKey extends string>({
                     </PublicSceneTab>
                   ))}
                 </div>
-              ) : (
+              ) : staticControlPresentation === "views" ? (
                 <div className={classNames.staticControls} aria-label={groupLabel}>
                   {views.map((view) => (
                     <div
@@ -211,6 +215,8 @@ export function PublicSceneViews<TStateKey extends string>({
                     </div>
                   ))}
                 </div>
+              ) : (
+                <p className={classNames.staticControls}>{staticPanelLabel}</p>
               )}
 
               <div className={classNames.panelStack}>
@@ -228,6 +234,8 @@ export function PublicSceneViews<TStateKey extends string>({
                   </PublicScenePanel>
                 ))}
               </div>
+
+              {trailing}
             </div>
           </div>
         </div>

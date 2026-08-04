@@ -628,6 +628,166 @@
   color: var(--prod-text-important);
 }
 
+/* ------------------------------------------------ Phase 7C interactive hero */
+
+.heroInteractiveBody {
+  display: grid;
+  grid-template-columns: minmax(0, 232px) minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
+  min-height: 590px;
+}
+
+.heroInteractiveBody > .heroSceneAside {
+  grid-column: 1;
+  grid-row: 1 / 4;
+}
+
+.heroScenePersistent {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  padding: 30px 32px 0;
+}
+
+.heroViewControls {
+  grid-column: 2;
+  grid-row: 2;
+  margin-right: 32px;
+  margin-left: 32px;
+}
+
+.heroPanelStack {
+  grid-column: 2;
+  grid-row: 3;
+  min-height: 282px;
+  margin-top: 12px;
+  padding: 0 32px 30px;
+}
+
+.heroPanelStack > .publicScenePanel {
+  min-height: 252px;
+}
+
+.heroOverviewPanel {
+  display: grid;
+  gap: 12px;
+}
+
+.heroOverviewNext,
+.heroOverviewFocus,
+.heroEvidenceBoundary {
+  border: 1px solid var(--pub-border);
+  border-radius: 8px;
+  background: var(--pub-surface-2);
+}
+
+.heroOverviewNext,
+.heroOverviewFocus {
+  padding: 13px 15px;
+}
+
+.heroPanelLead {
+  margin: 7px 0 0;
+  font-size: 14px;
+  font-weight: 620;
+  line-height: 1.45;
+  color: var(--prod-text);
+}
+
+.heroFocusList {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 5px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--prod-text-important);
+}
+
+.heroEvidenceBoundary {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  margin: 0;
+  padding: 12px 15px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--prod-text-important);
+}
+
+.heroFindingPanel,
+.heroReadinessPanel {
+  min-height: 252px;
+  padding: 15px 17px;
+  border: 1px solid var(--prod-border);
+  border-radius: 8px;
+  background: var(--prod-surface);
+}
+
+.heroFindingFacts,
+.heroReadinessFacts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 14px 0 0;
+}
+
+.heroFindingFacts > div,
+.heroReadinessFacts > div {
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px solid var(--prod-border-subtle);
+  border-radius: 6px;
+  background: var(--prod-surface-2);
+}
+
+.heroFindingFacts dt,
+.heroReadinessFacts dt {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--prod-text-important);
+}
+
+.heroFindingFacts dd,
+.heroReadinessFacts dd {
+  margin: 5px 0 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--prod-text);
+}
+
+.heroAffectedFile {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 8px 14px;
+  align-items: center;
+  margin: 13px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--prod-border-subtle);
+  font-size: 12px;
+  color: var(--prod-text-important);
+}
+
+.heroAffectedFile code {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.heroReadinessPanel > .readinessNote {
+  margin-top: 0;
+}
+
+.heroPriorDecision {
+  margin: 16px 0 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--prod-text-important);
+}
+
 /* ------------------------------------------------------- record primitives */
 
 .relationBody {
@@ -734,6 +894,8 @@
 
 .recordSource code {
   color: var(--prod-text-2);
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .recordList {
@@ -751,11 +913,82 @@
   background: var(--prod-surface);
 }
 
+.missingProofRecord {
+  border-color: var(--pub-border);
+  background: var(--pub-surface-2);
+}
+
 /* R5E.1E.4B shared public scene controls and the Finding/Evidence record
    variant. The static div and enhanced button deliberately share one box
    model, so client enhancement cannot move the page. */
 .publicSceneInteraction {
   min-width: 0;
+}
+
+/* Phase 7C reuses the Phase 7B scene-view primitive for the two accepted
+   horizontal switches. The static label and enhanced tablist occupy the same
+   reserved row, so enhancement changes semantics without changing geometry. */
+.publicSceneSwitchControls,
+.publicSceneStaticLabel {
+  min-width: 0;
+  height: 44px;
+  margin: 0;
+}
+
+.publicSceneSwitchControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.publicSceneStaticLabel {
+  display: flex;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--prod-text-important);
+}
+
+.publicSceneSwitchTab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 36px;
+  margin: 0;
+  padding: 0 14px;
+  appearance: none;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  box-shadow: inset 0 0 0 transparent;
+  color: var(--pub-text-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 450;
+  line-height: 1.2;
+  text-align: center;
+  cursor: pointer;
+  transition:
+    background-color var(--motion-duration-selection) var(--motion-ease-selection),
+    border-color var(--motion-duration-selection) var(--motion-ease-selection),
+    box-shadow var(--motion-duration-selection) var(--motion-ease-selection),
+    color var(--motion-duration-selection) var(--motion-ease-selection);
+}
+
+.publicSceneSwitchTab:hover:not([data-selected="true"]) {
+  background: var(--pub-surface-2);
+}
+
+.publicSceneSwitchTab[data-selected="true"] {
+  border-color: var(--pub-border);
+  background: var(--pub-selected);
+  box-shadow: inset 0 -2px 0 var(--pub-text);
+  color: var(--pub-text);
+  font-weight: 550;
 }
 
 .evidenceRecordList {
@@ -952,11 +1185,89 @@ button.evidenceRecordTab:hover:not([data-selected="true"]) {
   color: var(--prod-text-important);
 }
 
+.missingProofConsequence {
+  padding: 14px 16px;
+  border: 1px solid var(--pub-border);
+  border-radius: 8px;
+  background: var(--pub-surface-2);
+}
+
 /* ------------------------------------------------------- readiness scene */
 
 .readinessNote {
   margin: 8px 0 0;
   font-size: 14px;
+  line-height: 1.5;
+  color: var(--prod-text-important);
+}
+
+.readinessInteractionScene .relationBody {
+  min-height: 610px;
+}
+
+.readinessInteractionScene .factRow {
+  margin-top: 0;
+}
+
+.readinessViewControls {
+  margin-top: 18px;
+}
+
+.readinessPanelStack {
+  min-height: 150px;
+  margin-top: 14px;
+}
+
+.readinessPanelStack > .publicScenePanel {
+  min-height: 150px;
+}
+
+.readinessPanel,
+.decisionBoundaryPanel {
+  min-height: 150px;
+}
+
+.readinessBreakdown,
+.readinessChangeNote {
+  border: 1px solid var(--pub-border);
+  border-radius: 8px;
+  background: var(--pub-surface-2);
+}
+
+.readinessBreakdown {
+  padding: 12px 14px;
+}
+
+.readinessBreakdown .recordTags {
+  margin-bottom: 0;
+}
+
+.readinessChangeNote {
+  margin-top: 10px;
+  padding: 12px 14px;
+}
+
+.decisionBoundaryPanel {
+  padding: 14px 16px;
+  border: 1px solid var(--prod-border);
+  border-radius: 8px;
+  background: var(--prod-surface);
+}
+
+.decisionBoundaryPanel > .heroPriorDecision {
+  margin-top: 0;
+  font-weight: 620;
+  color: var(--prod-text);
+}
+
+.decisionBoundaryPanel > .authorityStatement {
+  margin-top: 14px;
+  padding-top: 14px;
+}
+
+.decisionSelectionState {
+  margin: 11px 0 0;
+  font-size: 13px;
   line-height: 1.5;
   color: var(--prod-text-important);
 }
@@ -967,10 +1278,10 @@ button.evidenceRecordTab:hover:not([data-selected="true"]) {
 .decisionPendingBlock {
   margin: 20px 0 0;
   padding: 16px 18px;
-  border: 1px solid var(--prod-warning-soft);
+  border: 1px solid var(--pub-border);
   border-left: 3px solid var(--prod-warning);
   border-radius: 8px;
-  background: var(--prod-warning-soft);
+  background: var(--pub-surface-2);
 }
 
 .decisionPendingValue {
@@ -1030,6 +1341,18 @@ button.evidenceRecordTab:hover:not([data-selected="true"]) {
   font-size: 12px;
   line-height: 1.5;
   color: var(--prod-text-2);
+}
+
+.outcomeBoundary {
+  margin-top: 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--pub-border);
+  border-radius: 8px;
+  background: var(--pub-surface-2);
+}
+
+.outcomeBoundary .outcomeChipList {
+  margin-top: 0;
 }
 
 /* ------------------------------------------------------------- plain sections */
@@ -1277,51 +1600,160 @@ button.evidenceRecordTab:hover:not([data-selected="true"]) {
   background-image: linear-gradient(var(--pub-surface-2), var(--pub-surface-2));
 }
 
-.scene[data-motion="armed"] [data-step] {
-  opacity: 0;
-  transform: translateY(8px);
-}
-
-.scene[data-motion="armed"] .relationEdgeRule {
-  transform: scaleX(0);
-}
-
-.scene[data-motion] [data-step] {
-  transition:
-    opacity var(--dur) var(--ease),
-    transform var(--dur) var(--ease);
-}
-
-.scene[data-motion] .relationEdgeRule {
-  transform-origin: left center;
-  transition: transform var(--dur) var(--ease);
-}
-
-.scene[data-motion="revealed"] [data-step] {
-  opacity: 1;
-  transform: none;
-}
-
-.scene[data-motion="revealed"] .relationEdgeRule {
-  transform: none;
-}
-
-.scene[data-motion] [data-step="2"] {
-  transition-delay: 180ms;
-}
-
-.scene[data-motion] [data-step="3"] {
-  transition-delay: 360ms;
-}
 
 /* Step 4 exists only in the Readiness/Human Decision scene — the authority
    statement and the outcome preview, per task brief §11. */
-.scene[data-motion] [data-step="4"] {
-  transition-delay: 540ms;
+
+/* Phase 7C H1-H3. Meaningful Overview text is present at full opacity from
+   first paint; only the surrounding containers and local offset change. */
+.heroReviewScene[data-motion="armed"] [data-hero-step="h1"],
+.heroReviewScene[data-motion="armed"] [data-hero-step="h2"] {
+  border-color: var(--pub-border-subtle);
+  background: transparent;
+  transform: translateY(var(--motion-distance-enter));
 }
 
-.scene[data-motion] [data-step="2"] .relationEdgeRule {
-  transition-delay: 180ms;
+.heroReviewScene[data-motion="armed"] [data-hero-step="h3"] {
+  border-color: var(--pub-border-subtle);
+  background: transparent;
+}
+
+.heroReviewScene[data-motion="revealed"] [data-hero-step="h1"] {
+  transition:
+    background-color var(--motion-duration-scene-ready) var(--motion-ease-standard),
+    border-color var(--motion-duration-scene-ready) var(--motion-ease-standard),
+    transform var(--motion-duration-scene-ready) var(--motion-ease-standard);
+  transition-delay: 760ms;
+}
+
+.heroReviewScene[data-motion="revealed"] [data-hero-step="h2"] {
+  transition:
+    background-color var(--motion-duration-reveal) var(--motion-ease-standard),
+    border-color var(--motion-duration-reveal) var(--motion-ease-standard),
+    transform var(--motion-duration-reveal) var(--motion-ease-standard);
+  transition-delay: 2400ms;
+}
+
+.heroReviewScene[data-motion="revealed"] [data-hero-step="h3"] {
+  transition:
+    background-color var(--motion-duration-relationship) var(--motion-ease-standard),
+    border-color var(--motion-duration-relationship) var(--motion-ease-standard);
+  transition-delay: 3920ms;
+}
+
+.heroReviewScene[data-motion="settled"] [data-hero-step] {
+  transition:
+    background-color var(--motion-duration-reveal) var(--motion-ease-standard),
+    border-color var(--motion-duration-reveal) var(--motion-ease-standard),
+    transform var(--motion-duration-reveal) var(--motion-ease-standard);
+  transition-delay: 0ms;
+}
+
+/* Phase 7C M1-M4. The trace rule is the only element allowed to begin absent;
+   every record and consequence remains readable throughout. */
+.missingProofScene[data-motion="armed"] [data-missing-step="m1"] {
+  border-color: var(--pub-border-subtle);
+  background: transparent;
+  transform: translateY(var(--motion-distance-enter));
+}
+
+.missingProofScene[data-motion="armed"] [data-missing-step="m2"] .relationEdgeLabel {
+  transform: translateY(var(--motion-distance-enter));
+}
+
+.missingProofScene[data-motion="armed"] [data-missing-step="m2"] .relationEdgeRule {
+  transform: scaleX(0);
+}
+
+.missingProofScene[data-motion="armed"] [data-missing-step="m3"],
+.missingProofScene[data-motion="armed"] [data-missing-step="m4"] {
+  border-color: var(--pub-border-subtle);
+  background: transparent;
+}
+
+.missingProofScene[data-motion="revealed"] [data-missing-step="m1"] {
+  transition:
+    background-color var(--motion-duration-scene-ready) var(--motion-ease-standard),
+    border-color var(--motion-duration-scene-ready) var(--motion-ease-standard),
+    transform var(--motion-duration-scene-ready) var(--motion-ease-standard);
+  transition-delay: 760ms;
+}
+
+.missingProofScene[data-motion="revealed"] [data-missing-step="m2"] .relationEdgeLabel,
+.missingProofScene[data-motion="revealed"] [data-missing-step="m2"] .relationEdgeRule {
+  transition: transform var(--motion-duration-relationship) var(--motion-ease-standard);
+  transition-delay: 2160ms;
+}
+
+.missingProofScene[data-motion="revealed"] [data-missing-step="m3"] {
+  transition:
+    background-color var(--motion-duration-relationship) var(--motion-ease-standard),
+    border-color var(--motion-duration-relationship) var(--motion-ease-standard);
+  transition-delay: 3300ms;
+}
+
+.missingProofScene[data-motion="revealed"] [data-missing-step="m4"] {
+  transition:
+    background-color var(--motion-duration-relationship) var(--motion-ease-standard),
+    border-color var(--motion-duration-relationship) var(--motion-ease-standard);
+  transition-delay: 4440ms;
+}
+
+/* Phase 7C R1-R4. PENDING and every outcome label retain identical textual
+   style and position; R3/R4 animate their containers only. */
+.readinessInteractionScene[data-motion="armed"] [data-readiness-step="r1"],
+.readinessInteractionScene[data-motion="armed"] [data-readiness-step="r2"] {
+  border-color: var(--pub-border-subtle);
+  background: transparent;
+  transform: translateY(var(--motion-distance-enter));
+}
+
+.readinessInteractionScene[data-motion="armed"] [data-readiness-step="r3"],
+.readinessInteractionScene[data-motion="armed"] [data-readiness-step="r4"] {
+  border-color: var(--pub-border-subtle);
+  background: transparent;
+}
+
+.readinessInteractionScene[data-motion="armed"] [data-readiness-step="r3"] {
+  border-left-color: var(--prod-warning);
+}
+
+.readinessInteractionScene[data-motion="revealed"] [data-readiness-step="r1"] {
+  transition:
+    background-color var(--motion-duration-scene-ready) var(--motion-ease-standard),
+    border-color var(--motion-duration-scene-ready) var(--motion-ease-standard),
+    transform var(--motion-duration-scene-ready) var(--motion-ease-standard);
+  transition-delay: 760ms;
+}
+
+.readinessInteractionScene[data-motion="revealed"] [data-readiness-step="r2"] {
+  transition:
+    background-color var(--motion-duration-reveal) var(--motion-ease-standard),
+    border-color var(--motion-duration-reveal) var(--motion-ease-standard),
+    transform var(--motion-duration-reveal) var(--motion-ease-standard);
+  transition-delay: 2160ms;
+}
+
+.readinessInteractionScene[data-motion="revealed"] [data-readiness-step="r3"] {
+  transition:
+    background-color var(--motion-duration-relationship) var(--motion-ease-standard),
+    border-color var(--motion-duration-relationship) var(--motion-ease-standard);
+  transition-delay: 3680ms;
+}
+
+.readinessInteractionScene[data-motion="revealed"] [data-readiness-step="r4"] {
+  transition:
+    background-color var(--motion-duration-relationship) var(--motion-ease-standard),
+    border-color var(--motion-duration-relationship) var(--motion-ease-standard);
+  transition-delay: 5040ms;
+}
+
+.readinessInteractionScene[data-motion="settled"] [data-readiness-step] {
+  transition:
+    background-color var(--motion-duration-reveal) var(--motion-ease-standard),
+    border-color var(--motion-duration-reveal) var(--motion-ease-standard),
+    transform var(--motion-duration-reveal) var(--motion-ease-standard);
+  transition-delay: 0ms;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1332,10 +1764,37 @@ button.evidenceRecordTab:hover:not([data-selected="true"]) {
 
   /* Belt and braces: SceneMotion never arms under reduced motion, but if the
      preference changes after mount the final state still wins. */
-  .scene[data-motion] [data-step],
   .scene[data-motion] .relationEdgeRule {
     opacity: 1;
     transform: none;
+  }
+
+  .heroReviewScene[data-motion] [data-hero-step],
+  .readinessInteractionScene[data-motion] [data-readiness-step],
+  .missingProofScene[data-motion] [data-missing-step],
+  .missingProofScene[data-motion] [data-missing-step] .relationEdgeLabel {
+    transform: none !important;
+  }
+
+  .heroReviewScene[data-motion] [data-hero-step],
+  .readinessInteractionScene[data-motion] [data-readiness-step="r1"],
+  .readinessInteractionScene[data-motion] [data-readiness-step="r2"],
+  .readinessInteractionScene[data-motion] [data-readiness-step="r4"],
+  .missingProofScene[data-motion] [data-missing-step="m1"],
+  .missingProofScene[data-motion] [data-missing-step="m4"] {
+    border-color: var(--pub-border) !important;
+    background: var(--pub-surface-2) !important;
+  }
+
+  .readinessInteractionScene[data-motion] [data-readiness-step="r3"] {
+    border-color: var(--pub-border) !important;
+    border-left-color: var(--prod-warning) !important;
+    background: var(--pub-surface-2) !important;
+  }
+
+  .missingProofScene[data-motion] [data-missing-step="m3"] {
+    border-color: var(--prod-blocking) !important;
+    background: var(--prod-blocking-soft) !important;
   }
 }
 
@@ -1357,6 +1816,10 @@ button.evidenceRecordTab:hover:not([data-selected="true"]) {
   }
 
   .heroSceneBody {
+    grid-template-columns: minmax(0, 200px) minmax(0, 1fr);
+  }
+
+  .heroInteractiveBody {
     grid-template-columns: minmax(0, 200px) minmax(0, 1fr);
   }
 }
@@ -1436,6 +1899,26 @@ button.evidenceRecordTab:hover:not([data-selected="true"]) {
   .handoffGrid > :first-child {
     grid-column: 1 / -1;
   }
+
+  .missingProofScene .relationEdge {
+    align-items: center;
+  }
+
+  .missingProofScene .relationEdgeRule {
+    flex-basis: 24px;
+    width: 1px;
+    height: 24px;
+  }
+
+  .missingProofScene[data-motion="armed"] [data-missing-step="m2"] .relationEdgeRule {
+    transform: scaleY(0);
+    transform-origin: top center;
+  }
+
+  .missingProofScene[data-motion="revealed"] [data-missing-step="m2"] .relationEdgeRule {
+    transform: scaleY(1);
+    transform-origin: top center;
+  }
 }
 
 /* Below 768px every scene drops its side-by-side internals and stacks. The
@@ -1484,6 +1967,41 @@ button.evidenceRecordTab:hover:not([data-selected="true"]) {
     min-height: 0;
   }
 
+  .heroInteractiveBody {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto auto;
+    min-height: 0;
+  }
+
+  .heroInteractiveBody > .heroSceneAside {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .heroScenePersistent {
+    grid-column: 1;
+    grid-row: 2;
+    padding: 20px 16px 0;
+  }
+
+  .heroViewControls {
+    grid-column: 1;
+    grid-row: 3;
+    margin-right: 16px;
+    margin-left: 16px;
+  }
+
+  .heroPanelStack {
+    grid-column: 1;
+    grid-row: 4;
+    min-height: 0;
+    padding: 0 16px 20px;
+  }
+
+  .publicSceneSwitchTab {
+    min-height: 44px;
+  }
+
   .heroSceneAside {
     border-right: 0;
     border-bottom: 1px solid var(--prod-border-subtle);
@@ -1527,6 +2045,68 @@ button.evidenceRecordTab:hover:not([data-selected="true"]) {
 
   .evidenceTraceFacts {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .heroFindingFacts,
+  .heroReadinessFacts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .heroAffectedFile {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .heroAffectedFile > :last-child {
+    grid-column: 2;
+  }
+
+  .readinessInteractionScene .relationBody {
+    min-height: 0;
+  }
+
+  .heroReviewScene[data-motion="revealed"] [data-hero-step="h1"] {
+    transition-delay: 570ms;
+  }
+
+  .heroReviewScene[data-motion="revealed"] [data-hero-step="h2"] {
+    transition-delay: 1905ms;
+  }
+
+  .heroReviewScene[data-motion="revealed"] [data-hero-step="h3"] {
+    transition-delay: 3120ms;
+  }
+
+  .missingProofScene[data-motion="revealed"] [data-missing-step="m1"] {
+    transition-delay: 570ms;
+  }
+
+  .missingProofScene[data-motion="revealed"] [data-missing-step="m2"] .relationEdgeLabel,
+  .missingProofScene[data-motion="revealed"] [data-missing-step="m2"] .relationEdgeRule {
+    transition-delay: 1725ms;
+  }
+
+  .missingProofScene[data-motion="revealed"] [data-missing-step="m3"] {
+    transition-delay: 2675ms;
+  }
+
+  .missingProofScene[data-motion="revealed"] [data-missing-step="m4"] {
+    transition-delay: 3625ms;
+  }
+
+  .readinessInteractionScene[data-motion="revealed"] [data-readiness-step="r1"] {
+    transition-delay: 570ms;
+  }
+
+  .readinessInteractionScene[data-motion="revealed"] [data-readiness-step="r2"] {
+    transition-delay: 1725ms;
+  }
+
+  .readinessInteractionScene[data-motion="revealed"] [data-readiness-step="r3"] {
+    transition-delay: 2940ms;
+  }
+
+  .readinessInteractionScene[data-motion="revealed"] [data-readiness-step="r4"] {
+    transition-delay: 4055ms;
   }
 
   .findingEvidenceScene[data-motion="revealed"] .evidenceRelationEdge .relationEdgeLabel,
@@ -1584,6 +2164,23 @@ button.evidenceRecordTab:hover:not([data-selected="true"]) {
    any viewport — task brief §17 forbids concealing essential information on
    mobile. */
 @media (max-width: 359px) {
+  .publicSceneSwitchControls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .publicSceneSwitchTab {
+    width: 100%;
+  }
+
+  .heroViewControls {
+    height: 148px;
+  }
+
+  .readinessViewControls {
+    height: 96px;
+  }
+
   .recordTags {
     gap: 6px;
   }

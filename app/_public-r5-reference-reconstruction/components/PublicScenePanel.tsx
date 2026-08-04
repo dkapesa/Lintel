@@ -27,7 +27,7 @@ export function PublicScenePanel({
       aria-labelledby={enhanced ? labelledBy : undefined}
       data-active={active ? "true" : "false"}
       inert={active ? undefined : true}
-      tabIndex={enhanced && active ? 0 : -1}
+      tabIndex={-1}
     >
       {children}
     </section>

@@ -391,6 +391,19 @@ Frozen R4 product truth always outranks public visual preference.
   meaningful-value review and the deliberate interaction recording remain
   required before acceptance. Described in
   [`R5E1E4B_FINDING_EVIDENCE_INTERACTION_GATE.md`](./R5E1E4B_FINDING_EVIDENCE_INTERACTION_GATE.md).
+- R5E.1E.4C — Hero and Readiness interaction completion: reuses the accepted
+  Phase 7B scene primitives to add the locked Overview/Finding/Readiness Hero
+  views and Readiness/Decision boundary views, completes H1–H3 and R1–R4 with
+  manual-authority interruption, and adds the accepted M1–M4 choreography to
+  the still-non-interactive Missing Proof relationship. Persistent canonical
+  facts and all seven unselected decision outcomes remain outside changing
+  panels. Production-browser evidence proves semantics, the 17-stop keyboard
+  order, stable scene dimensions and the complete responsive matrix; the
+  no-JavaScript proof uses the exact production SSR markup with scripts
+  removed. Deliberate human Hero/Readiness recordings, human visual/motion
+  acceptance, and a genuine reduced-motion media-emulation capture remain
+  required. Described in
+  [`R5E1E4C_HERO_READINESS_INTERACTION_COMPLETION.md`](./R5E1E4C_HERO_READINESS_INTERACTION_COMPLETION.md).
 - R5E.1F — not started. Scope, boundaries and acceptance gates are in
   [`R5E1A_IMPLEMENTATION_HANDOFF.md`](./R5E1A_IMPLEMENTATION_HANDOFF.md).
   The production homepage at `/` and the private laboratory at

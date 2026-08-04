@@ -166,6 +166,16 @@ R5E.1A is documentation only. Its five documents are read in this order:
     Evidence only at the private reference reconstruction. Hero, Readiness,
     Missing Proof interaction, atmospheric work and production transfer remain
     out of scope.
+25. [`R5E1E4C_HERO_READINESS_INTERACTION_COMPLETION.md`](./R5E1E4C_HERO_READINESS_INTERACTION_COMPLETION.md) —
+    completes the bounded Phase 7 capability with the accepted Hero and
+    Readiness views plus choreography-only Missing Proof, reusing the Phase 7B
+    primitives and preserving the 17-stop desktop keyboard contract.
+26. [`R5E1E4D_FINAL_INTERACTION_REVIEW.md`](./R5E1E4D_FINAL_INTERACTION_REVIEW.md) —
+    the final Phase 7 technical and evidence gate: the full responsive,
+    keyboard, touch, reduced-motion, no-JavaScript, forced-colours,
+    accessibility-tree, interruption, persistence, layout-stability,
+    performance and regression review, with three evidence-supported CSS-only
+    corrections and a deliberately open human visual/screen-reader gate.
 
 No earlier R5 or R4 document was edited to produce R5E.1A. Where R5E.1A
 deliberately changes an earlier public visual decision, the change is
@@ -387,9 +397,9 @@ Frozen R4 product truth always outranks public visual preference.
   reference reconstruction with the smallest accepted public scene primitives,
   exact two-record vertical tabs, focused provenance/source panels, E1–E4
   choreography and manual-authority interruption. Production, Hero, Readiness
-  and Missing Proof remain unchanged. Technical evidence is assembled; human
-  meaningful-value review and the deliberate interaction recording remain
-  required before acceptance. Described in
+  and Missing Proof remain unchanged. Technical evidence, human
+  meaningful-value review and the deliberate interaction recording are
+  accepted and recorded in the Phase 7B package. Described in
   [`R5E1E4B_FINDING_EVIDENCE_INTERACTION_GATE.md`](./R5E1E4B_FINDING_EVIDENCE_INTERACTION_GATE.md).
 - R5E.1E.4C — Hero and Readiness interaction completion: reuses the accepted
   Phase 7B scene primitives to add the locked Overview/Finding/Readiness Hero
@@ -400,10 +410,20 @@ Frozen R4 product truth always outranks public visual preference.
   panels. Production-browser evidence proves semantics, the 17-stop keyboard
   order, stable scene dimensions and the complete responsive matrix; the
   no-JavaScript proof uses the exact production SSR markup with scripts
-  removed. Deliberate human Hero/Readiness recordings, human visual/motion
-  acceptance, and a genuine reduced-motion media-emulation capture remain
-  required. Described in
+  removed. Deliberate human Hero/Readiness recordings and human visual/motion
+  acceptance were subsequently recorded in the Phase 7C package. Genuine
+  reduced-motion media emulation is closed by Phase 7D. Described in
   [`R5E1E4C_HERO_READINESS_INTERACTION_COMPLETION.md`](./R5E1E4C_HERO_READINESS_INTERACTION_COMPLETION.md).
+- R5E.1E.4D — final responsive, accessibility and interaction-system review:
+  complete as a technical/evidence gate at the same private route. Genuine
+  production-browser captures cover every required viewport, 200% equivalent
+  reflow, reduced motion, JavaScript disabled, forced colours, the accessibility
+  tree, complete keyboard/touch matrices, interruption, persistence,
+  scroll-back, CLS, contrast, performance and route regression. Three bounded
+  CSS corrections restore 44px mobile actions, stable 320px evidence geometry,
+  and forced-colours selected rules. Final human visual/coherence recording and
+  manual NVDA acceptance remain open. Described in
+  [`R5E1E4D_FINAL_INTERACTION_REVIEW.md`](./R5E1E4D_FINAL_INTERACTION_REVIEW.md).
 - R5E.1F — not started. Scope, boundaries and acceptance gates are in
   [`R5E1A_IMPLEMENTATION_HANDOFF.md`](./R5E1A_IMPLEMENTATION_HANDOFF.md).
   The production homepage at `/` and the private laboratory at

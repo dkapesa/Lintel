@@ -1798,6 +1798,26 @@ button.evidenceRecordTab:hover:not([data-selected="true"]) {
   }
 }
 
+/* Phase 7D genuine forced-colours capture: Chromium correctly preserves the
+   native focus outline, but its automatic colour mapping collapses the
+   selected borders and the Finding/Evidence leading rail into the Canvas
+   colour. System Highlight restores the accepted non-colour-only selection
+   geometry without changing default-colour mode. */
+@media (forced-colors: active) {
+  .publicSceneSwitchTab[data-selected="true"],
+  .evidenceRecordTab[data-selected="true"] {
+    border-color: Highlight;
+  }
+
+  .publicSceneSwitchTab[data-selected="true"] {
+    box-shadow: inset 0 -2px 0 Highlight;
+  }
+
+  .evidenceRecordTab[data-selected="true"]::before {
+    background: Highlight;
+  }
+}
+
 /* -------------------------------------------------------------- responsive */
 
 @media (max-width: 1279px) {
@@ -1943,6 +1963,13 @@ button.evidenceRecordTab:hover:not([data-selected="true"]) {
 
   .navShortLabel {
     display: inline;
+  }
+
+  /* Phase 7D touch evidence measured the compact header action at 35px and
+     the regular page actions at 41px. Keep every public action at the locked
+     44px mobile target without changing its width or desktop density. */
+  .btn {
+    min-height: 44px;
   }
 
   .hero {
@@ -2179,6 +2206,14 @@ button.evidenceRecordTab:hover:not([data-selected="true"]) {
 
   .readinessViewControls {
     height: 96px;
+  }
+
+  /* At 320px the heavier selected label for the second canonical evidence
+     record wraps to three lines. Reserve those three lines in its neutral
+     state as well, preventing a 20px scene and document-height change while
+     preserving the selected type weight and all canonical copy. */
+  .evidenceRecordList > .evidenceRecordTab:nth-child(2) .recordSubtitle {
+    min-height: 58px;
   }
 
   .recordTags {

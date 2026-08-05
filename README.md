@@ -103,12 +103,6 @@ This keeps the demonstration stable, truthful and repeatable.
 
 ### Recorded walkthrough
 
-A concise product walkthrough follows the canonical pull request from the initial recommendation through evidence, requirements, readiness and the pending Human Decision.
-
-<!-- Replace this URL after the walkthrough is published. -->
-
-### Recorded walkthrough
-
 A concise product walkthrough is currently being prepared.
 
 ### Run the fixed sample locally

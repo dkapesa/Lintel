@@ -176,6 +176,16 @@ R5E.1A is documentation only. Its five documents are read in this order:
     accessibility-tree, interruption, persistence, layout-stability,
     performance and regression review, with three evidence-supported CSS-only
     corrections and a deliberately open human visual/screen-reader gate.
+27. [`R5E1E5A_SURFACE_HIERARCHY_VISUAL_DIRECTION_CONTRACT.md`](./R5E1E5A_SURFACE_HIERARCHY_VISUAL_DIRECTION_CONTRACT.md) —
+    the Phase 7.1 surface and visual-direction contract. Documentation only.
+    Locks the three-layer presentation grammar (white canvas → outer
+    presentation surface → inset opaque product surface), the definitive
+    per-section surface hierarchy, the candidate directions that enter the
+    private comparison laboratory, their exact generation briefs, the colour,
+    material, texture, contrast, crop, provenance and performance boundaries,
+    the laboratory and human-evaluation frameworks, the R5E.1E.5B–5F sequence
+    and early Phase 8 continuity. Governs presentation surface only; where the
+    R5E.1A locks speak, they win.
 
 No earlier R5 or R4 document was edited to produce R5E.1A. Where R5E.1A
 deliberately changes an earlier public visual decision, the change is
@@ -424,6 +434,62 @@ Frozen R4 product truth always outranks public visual preference.
   and forced-colours selected rules. Final human visual/coherence recording and
   manual NVDA acceptance remain open. Described in
   [`R5E1E4D_FINAL_INTERACTION_REVIEW.md`](./R5E1E4D_FINAL_INTERACTION_REVIEW.md).
+  Human visual, interaction, responsive and accessibility acceptance was
+  subsequently recorded on 5 August 2026 in that document's closeout section,
+  together with the four completed manual follow-up checks, closing Phase 7.
+- R5E.1E.5A — surface hierarchy and visual-direction contract: documentation
+  only, complete, pending human review. Reuses the existing Cursor, Skybase and
+  Lintel evidence rather than re-extracting any recording. Establishes that both
+  references create hierarchy by applying surface treatment **selectively** —
+  Cursor's flat neutral feature plate at 21.0s sits between painterly plates at
+  2.0s and 37.5s — and that, because the product surface is opaque and inset,
+  the only visible part of any surface is the band around the frame, so a
+  candidate must be composed as a margin rather than as a picture. Locks a
+  four-tier system (S0 editorial white, S1 neutral technical plate, S2 companion
+  presentation surface, S3 primary presentation surface) and a definitive
+  hierarchy: Hero S3, Readiness and Human Decision S2, Finding and Evidence and
+  Missing Proof and Requirement both S1 with no treatment at all, Trust, the
+  unresolved-case handoff and the footer S0. Missing Proof's CSS-only structural
+  option is refused, because its plate sits beside genuine blocking red and
+  amber and would be read as the surface asserting product status. Three
+  candidates enter the private laboratory — A neutral control, B Atmospheric
+  Horizon, C Structural Light — and Candidate D is rejected, its strongest idea
+  (span, threshold, transmitted light) folded into C. Measures the accepted 26px
+  plate inset against Cursor's ≈103px and Skybase's ≈75px and requires an
+  outward-extending Hero presentation band that leaves the product frame
+  byte-identical and CLS at 0. Requires two art-directed Hero sources, justified
+  by a measured 10× aspect change between the 1280px Hero plate (≈1.96:1) and
+  the 390px Hero plate (≈0.19:1). Sets numeric colour (L* 84–97, C* ≤ 5),
+  texture, contrast, responsive-crop, provenance and performance boundaries; a
+  stacked-plus-isolated comparison laboratory with no switch control; and a
+  sixteen-criterion weighted evaluation in which the neutral baseline wins by
+  default unless an alternative exceeds it by 15% with no invariant scoring
+  below 3. Discloses that Candidate B collides with
+  `R5E1A_VISUAL_SYSTEM_REFERENCE_AND_IMAGE_LOCK.md` §5.6, §6b.3–4 and §8.1, and
+  writes out the two amendments adoption would require rather than applying
+  them. No asset was generated, no surface implemented, and no application code,
+  CSS, route, interaction, choreography, dependency or lockfile changed.
+  **Addendum recorded 5 August 2026:** Amendment A1 is approved for Phase 7.1
+  in a bounded eight-condition form (surfaces must live in the outer plate,
+  stay decorative and static, preserve the opaque product surface and scene
+  dimensions, have a neutral fallback, and satisfy the accessibility,
+  provenance and performance contracts), making Candidate C fully eligible for
+  adoption. Amendment A2 is not approved at this stage, so the existing
+  prohibition against atmospheric sky imagery remains authoritative for any
+  accepted or production-facing direction; Candidate B may proceed only as a
+  private, non-shippable diagnostic inside the laboratory, requiring a separate
+  explicit approval if it later wins. The comparison laboratory now runs four
+  configurations rather than three — the accepted 26px band, an extended band
+  with no imagery, Candidate B at the extended band (experimental), and
+  Candidate C at the extended band — so the evaluation can separate the effect
+  of space from the effect of imagery. The presentation-band pixel values
+  remain laboratory starting values, frozen only at R5E.1E.5F. Readiness's
+  companion surface is now conditioned on an explicit materiality test in
+  addition to the Hero-family dependency. No earlier accepted lock document was
+  modified; the literal edit to
+  `R5E1A_VISUAL_SYSTEM_REFERENCE_AND_IMAGE_LOCK.md` is deferred to R5E.1E.5F.
+  Described in
+  [`R5E1E5A_SURFACE_HIERARCHY_VISUAL_DIRECTION_CONTRACT.md`](./R5E1E5A_SURFACE_HIERARCHY_VISUAL_DIRECTION_CONTRACT.md) §32.
 - R5E.1F — not started. Scope, boundaries and acceptance gates are in
   [`R5E1A_IMPLEMENTATION_HANDOFF.md`](./R5E1A_IMPLEMENTATION_HANDOFF.md).
   The production homepage at `/` and the private laboratory at

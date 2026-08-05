@@ -490,6 +490,17 @@ Frozen R4 product truth always outranks public visual preference.
   `R5E1A_VISUAL_SYSTEM_REFERENCE_AND_IMAGE_LOCK.md` is deferred to R5E.1E.5F.
   Described in
   [`R5E1E5A_SURFACE_HIERARCHY_VISUAL_DIRECTION_CONTRACT.md`](./R5E1E5A_SURFACE_HIERARCHY_VISUAL_DIRECTION_CONTRACT.md) §32.
+- R5E.1E.5B — candidate asset creation, Gate 1: **accepted and closed** after
+  completed Cowork and human visual review. Candidate A with the extended
+  neutral presentation band is the strongest result, establishing a valid
+  neutral outcome without forcing imagery into the accepted direction. B1,
+  C1, C3 and C4 are rejected; B2 remains **experimental, private and
+  non-shippable**; C2 remains a conditional diagnostic and does not outperform
+  extended neutral. No candidate earns responsive-family derivation, Readiness
+  remains neutral, and candidate generation is closed. Phase 7.1C is limited
+  to final live comparison of neutral 26 px, extended neutral, existing wide
+  B2 and existing wide C2. No surface is implemented. Described in
+  [`R5E1E5B_CANDIDATE_ASSET_CREATION.md`](./R5E1E5B_CANDIDATE_ASSET_CREATION.md).
 - R5E.1F — not started. Scope, boundaries and acceptance gates are in
   [`R5E1A_IMPLEMENTATION_HANDOFF.md`](./R5E1A_IMPLEMENTATION_HANDOFF.md).
   The production homepage at `/` and the private laboratory at

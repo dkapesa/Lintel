@@ -198,6 +198,17 @@ R5E.1A is documentation only. Its five documents are read in this order:
     unchanged. Accepted and complete; no bounded correction was required, the
     matrix carries unchanged into Phase 7.1F, and final dimensional freeze
     remains outstanding.
+29. [`R5E1E5F_FINAL_SURFACE_PUBLIC_VISUAL_FREEZE.md`](./R5E1E5F_FINAL_SURFACE_PUBLIC_VISUAL_FREEZE.md) —
+    the documentation-only Phase 7.1F final surface and public visual freeze.
+    Records Extended Neutral as the final frozen Hero treatment, the
+    exact presentation-band matrix, neutral colour/material rules, downstream
+    hierarchy, interaction, accessibility, fallback, performance and
+    product-truth boundaries, the image-lock reconciliation, future-revision
+    gates, and the bounded Phase 8 handoff. Accepted and complete; Phase 7.1 is
+    formally closed, Extended Neutral and the exact dimension matrix are
+    frozen, B2 and C2 are retired diagnostic evidence, and the zero-image Hero
+    policy is binding. Phase 8 — Cross-route Public Design-System Contract — is
+    next; no Phase 8 implementation has begun.
 
 No earlier R5 or R4 document was edited to produce R5E.1A. Where R5E.1A
 deliberately changes an earlier public visual decision, the change is
@@ -543,6 +554,14 @@ Frozen R4 product truth always outranks public visual preference.
   unchanged into Phase 7.1F; final dimensional freeze remains outstanding.
   Phase 7.1F is next. Described in
   [`R5E1E5E_ACCEPTED_SURFACE_HIERARCHY_PROPAGATION.md`](./R5E1E5E_ACCEPTED_SURFACE_HIERARCHY_PROPAGATION.md).
+- R5E.1E.5F — final surface and public visual freeze: **accepted and complete**.
+  Phase 7.1 is formally closed. Extended Neutral is the final frozen Hero
+  treatment; B2 and C2 are retired diagnostic evidence; no image candidate,
+  responsive image family or Readiness companion proceeds; the zero-image Hero
+  policy is frozen; and the exact 88/56/64 through 12/12/12 presentation-band
+  matrix is final. Phase 8 — Cross-route Public Design-System Contract — is
+  next, and no Phase 8 implementation has begun. Described in
+  [`R5E1E5F_FINAL_SURFACE_PUBLIC_VISUAL_FREEZE.md`](./R5E1E5F_FINAL_SURFACE_PUBLIC_VISUAL_FREEZE.md).
 - R5E.1F — not started. Scope, boundaries and acceptance gates are in
   [`R5E1A_IMPLEMENTATION_HANDOFF.md`](./R5E1A_IMPLEMENTATION_HANDOFF.md).
   The production homepage at `/` and the private laboratory at

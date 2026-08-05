@@ -331,3 +331,38 @@ before the phase is accepted.
 9. Nothing from the never-copy list appears; Cursor is the only primary
    visible reference; incident.io and Attio stay inside their bounds. ☐
 10. All five originality tests pass. ☐
+
+---
+
+## Phase 7.1F reconciliation addendum — final neutral decision
+
+**Status: DOCUMENTED — PENDING HUMAN FREEZE ACCEPTANCE**
+
+This bounded addendum preserves the historical image-policy record above while
+reconciling it with the completed, authorised Phase 7.1 evaluation. Earlier
+image exploration was intentionally conditional: it established what imagery
+could be tested, not a requirement that imagery must eventually ship.
+
+Phase 7.1B–D completed that evaluation. Neither the atmospheric treatment nor
+the structural treatment materially outperformed Extended Neutral. The human
+owner selected Extended Neutral at 72/75, and Phase 7.1E propagated and
+accepted it with zero bounded correction required. Subject to the Phase 7.1F
+human freeze gate, Extended Neutral is therefore the accepted and frozen Hero
+treatment and no Hero background image is authorised.
+
+The resulting policy is explicit:
+
+1. B2 remains private, experimental, non-shippable historical evidence.
+2. C2 remains retired conditional diagnostic evidence.
+3. No responsive image family proceeds.
+4. No Readiness companion proceeds.
+5. The accepted Cursor lesson is composition, scale, spacing, and product
+   staging—not literal scenic imagery.
+6. This addendum supersedes any earlier implication in this document that a
+   Hero image must eventually ship.
+7. Future imagery requires a new, explicit amendment and cannot be inferred
+   from the historical lock or the completed candidate exercise.
+
+The earlier reasoning remains part of the decision history. Image exploration
+did occur, under bounded authority, and its negative result is now itself an
+authoritative input to the zero-image Hero policy.

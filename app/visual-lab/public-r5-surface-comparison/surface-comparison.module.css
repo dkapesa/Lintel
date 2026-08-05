@@ -1,0 +1,421 @@
+.variantShell {
+  --lab-band-top-delta: 62px;
+  --lab-band-side-delta: 30px;
+  --lab-band-bottom-delta: 38px;
+  min-width: 0;
+  background: #ffffff;
+}
+
+.control,
+.extendedNeutral {
+  min-width: 0;
+}
+
+.statusStrip {
+  position: relative;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) auto;
+  align-items: center;
+  gap: 24px;
+  min-height: 92px;
+  padding: 16px 32px;
+  border-bottom: 1px solid #d8d8d5;
+  background: #f3f3f1;
+  color: #181818;
+  font-family: var(--font-geist), -apple-system, sans-serif;
+}
+
+.statusIdentity,
+.statusKicker,
+.statusCurrent {
+  margin: 0;
+}
+
+.statusKicker {
+  margin-bottom: 5px;
+  color: #656561;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.statusCurrent {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.statusCurrent > span {
+  font-weight: 650;
+}
+
+.statusCurrent > strong {
+  color: #565652;
+  font-size: 11px;
+  letter-spacing: 0.035em;
+}
+
+.statusNav {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.statusNav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: #5e5e5a;
+  font-size: 12px;
+  line-height: 1.2;
+  text-decoration: none;
+}
+
+.statusNav a:hover {
+  background: #ffffff;
+  color: #181818;
+}
+
+.statusNav a[aria-current="page"] {
+  border-color: #d1d1ce;
+  background: #ffffff;
+  color: #181818;
+  font-weight: 650;
+}
+
+.statusNav a:focus-visible,
+.indexCard:focus-visible,
+.indexBack:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+/* Every isolated route reserves the same laboratory clearance around the
+   accepted plate. The 26px control leaves that clearance white; the three
+   extended variants paint into it. Product-frame dimensions and placement
+   therefore remain identical between variants, and no candidate gets a
+   spacing adjustment. */
+.publicExperience :global(#product) {
+  padding-top: calc(40px + var(--lab-band-top-delta));
+}
+
+.publicExperience :global(#product) :global([data-active-view]) > div:first-child {
+  position: relative;
+}
+
+.publicExperience :global(#product) :global([data-active-view]) > div:first-child > div {
+  position: relative;
+  z-index: 1;
+}
+
+.publicExperience :global(#product) > div > p:last-child {
+  margin-top: calc(18px + var(--lab-band-bottom-delta));
+}
+
+/* The accepted CSS-module class name is deliberately not coupled here. The
+   stable accepted interaction wrapper owns exactly one direct plate child, so
+   this selector reaches only the Hero's outer presentation layer. */
+.extendedSurface
+  .publicExperience
+  :global(#product)
+  :global([data-active-view])
+  > div:first-child {
+  isolation: isolate;
+  background: transparent;
+  border-color: transparent;
+}
+
+.extendedSurface
+  .publicExperience
+  :global(#product)
+  :global([data-active-view])
+  > div:first-child::before {
+  position: absolute;
+  z-index: 0;
+  inset:
+    calc(-1 * var(--lab-band-top-delta))
+    calc(-1 * var(--lab-band-side-delta))
+    calc(-1 * var(--lab-band-bottom-delta));
+  border: 1px solid #e1e1de;
+  border-radius: 20px;
+  background-color: #fafaf9;
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  content: "";
+  pointer-events: none;
+}
+
+.b2Diagnostic
+  .publicExperience
+  :global(#product)
+  :global([data-active-view])
+  > div:first-child::before {
+  background-image: url("./assets/private-diagnostic-b2-diffuse-cool-threshold.svg");
+}
+
+.c2Diagnostic
+  .publicExperience
+  :global(#product)
+  :global([data-active-view])
+  > div:first-child::before {
+  background-image: url("./assets/private-diagnostic-c2-load-bearing-planes.svg");
+}
+
+.indexPage {
+  min-height: 100vh;
+  padding: 72px 28px;
+  background: #ffffff;
+  color: #181818;
+  font-family: var(--font-geist), -apple-system, sans-serif;
+}
+
+.indexContent {
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.indexEyebrow {
+  margin: 0 0 12px;
+  color: #656561;
+  font-size: 12px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.indexPage h1 {
+  margin: 0;
+  max-width: 760px;
+  font-size: clamp(34px, 5vw, 54px);
+  font-weight: 620;
+  letter-spacing: -0.025em;
+  line-height: 1.04;
+}
+
+.indexIntro {
+  max-width: 720px;
+  margin: 22px 0 0;
+  color: #5e5e5a;
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+.indexNotice {
+  margin: 28px 0 0;
+  padding: 16px 18px;
+  border: 1px solid #dededc;
+  border-radius: 8px;
+  background: #fafaf9;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.indexGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin: 36px 0 0;
+}
+
+.indexCard {
+  display: block;
+  min-height: 190px;
+  padding: 22px;
+  border: 1px solid #dededc;
+  border-radius: 10px;
+  background: #ffffff;
+  color: inherit;
+  text-decoration: none;
+}
+
+.indexCard:hover {
+  background: #fafaf9;
+}
+
+.indexCardName,
+.indexCardStatus,
+.indexCardSummary {
+  display: block;
+}
+
+.indexCardName {
+  margin-bottom: 10px;
+  font-size: 20px;
+  font-weight: 650;
+}
+
+.indexCardStatus {
+  margin-bottom: 16px;
+  color: #5e5e5a;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.045em;
+  line-height: 1.45;
+}
+
+.indexCardSummary {
+  color: #656561;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.reviewSteps {
+  max-width: 760px;
+  margin-top: 44px;
+  padding-top: 34px;
+  border-top: 1px solid #e1e1de;
+}
+
+.reviewSteps h2 {
+  margin: 0 0 14px;
+  font-size: 22px;
+}
+
+.reviewSteps ol {
+  margin: 0;
+  padding-left: 22px;
+  color: #5e5e5a;
+  font-size: 14px;
+  line-height: 1.75;
+}
+
+@media (max-width: 1439px) and (min-width: 1280px) {
+  .variantShell {
+    --lab-band-top-delta: 54px;
+    --lab-band-side-delta: 22px;
+    --lab-band-bottom-delta: 30px;
+  }
+}
+
+@media (max-width: 1279px) and (min-width: 1025px) {
+  .variantShell {
+    --lab-band-top-delta: 52px;
+    --lab-band-side-delta: 20px;
+    --lab-band-bottom-delta: 28px;
+  }
+}
+
+@media (max-width: 1024px) and (min-width: 768px) {
+  .variantShell {
+    --lab-band-top-delta: 46px;
+    --lab-band-side-delta: 14px;
+    --lab-band-bottom-delta: 22px;
+  }
+}
+
+@media (max-width: 900px) {
+  .statusStrip {
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: 10px;
+    min-height: 156px;
+    padding: 16px 24px;
+  }
+
+  .statusNav {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 767px) {
+  .variantShell {
+    --lab-band-top-delta: 44px;
+    --lab-band-side-delta: 8px;
+    --lab-band-bottom-delta: 28px;
+  }
+
+  .publicExperience :global(#product) {
+    padding-top: calc(28px + var(--lab-band-top-delta));
+  }
+
+  .statusStrip {
+    height: 212px;
+    padding: 14px 20px;
+  }
+
+  .statusNav a {
+    min-height: 44px;
+  }
+
+  .indexPage {
+    padding: 48px 20px;
+  }
+
+  .indexGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Phase 7.1A's accepted <360px tier falls back to the accepted S1 plate. No
+   diagnostic asset is painted, and all four routes share the accepted 12px
+   geometry at the required 320px viewport. */
+@media (max-width: 359px) {
+  .variantShell {
+    --lab-band-top-delta: 0px;
+    --lab-band-side-delta: 0px;
+    --lab-band-bottom-delta: 0px;
+  }
+
+  .extendedSurface
+    .publicExperience
+    :global(#product)
+    :global([data-active-view])
+    > div:first-child {
+    background: #fafaf9;
+    border-color: #e1e1de;
+  }
+
+  .extendedSurface
+    .publicExperience
+    :global(#product)
+    :global([data-active-view])
+    > div:first-child::before {
+    display: none;
+    background-image: none;
+  }
+
+  .statusStrip {
+    height: 278px;
+  }
+}
+
+@media (forced-colors: active) {
+  .extendedSurface
+    .publicExperience
+    :global(#product)
+    :global([data-active-view])
+    > div:first-child {
+    background: Canvas;
+    border-color: Canvas;
+  }
+
+  .extendedSurface
+    .publicExperience
+    :global(#product)
+    :global([data-active-view])
+    > div:first-child::before {
+    border-color: Canvas;
+    background: Canvas;
+    background-image: none;
+  }
+
+  .statusStrip,
+  .indexNotice,
+  .indexCard {
+    border-color: CanvasText;
+    background: Canvas;
+    color: CanvasText;
+  }
+}

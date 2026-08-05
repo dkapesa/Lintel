@@ -107,7 +107,9 @@ A concise product walkthrough follows the canonical pull request from the initia
 
 <!-- Replace this URL after the walkthrough is published. -->
 
-[Watch the Lintel product walkthrough](WALKTHROUGH_URL)
+### Recorded walkthrough
+
+A concise product walkthrough is currently being prepared.
 
 ### Run the fixed sample locally
 

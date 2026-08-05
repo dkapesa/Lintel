@@ -1,225 +1,309 @@
 # Lintel
 
-Lintel is a local-first merge-readiness workspace for pull requests.
+**Engineering verification for pull requests produced by engineers and coding agents.**
 
-It helps engineering teams decide whether a PR is safe, tested, operationally ready, maintainable, and ready to merge.
+Lintel helps engineering teams determine whether a change is genuinely ready to merge. It connects code changes, findings, evidence, missing proof, explicit requirements, readiness and an accountable Human Decision.
 
 > Agents create code. Lintel verifies what is ready.
 
-Lintel is not a generic AI code review chatbot. It creates a decision artifact for reviewers: recommendation, risk band, missing tests, merge conditions, operational readiness, reviewer focus, and shareable Markdown.
+Lintel is not a generic AI code review chatbot. It creates a structured verification record that helps reviewers understand what is known, what remains uncertain and what must be resolved before a pull request can merge.
 
-## Who it is for
+![Lintel Workspace showing the canonical pull request review](docs/assets/readme/lintel-workspace-overview.png)
 
-Lintel is designed for:
+## Product overview
 
-- senior engineers and tech leads reviewing more PRs than they can comfortably verify;
-- small teams using coding agents heavily;
-- agency technical leads shipping client work with assisted coding tools;
-- founders who need a second-pass merge-readiness check before shipping.
-
-The product principle is simple:
-
-> A checklist, not a lecture.
+|                    |                                                               |
+| ------------------ | ------------------------------------------------------------- |
+| Primary purpose    | Help engineers judge whether a pull request is ready to merge |
+| Main demonstration | `/workspace?source=fixture`                                   |
+| Canonical review   | Pull request `#482` in `example/b2b-redemption-api`           |
+| Core approach      | Deterministic analysis with optional model assisted review    |
+| Decision authority | Lintel recommends. The accountable engineer decides           |
+| Project status     | Actively developed portfolio product                          |
 
 ## Why Lintel exists
 
-Coding agents increase implementation speed. Review confidence does not automatically scale with that speed.
+Coding agents can increase implementation speed. Review confidence does not automatically increase with them.
 
-A PR can look plausible while still hiding:
+A pull request may look plausible while still containing missing tests, unsafe retry behaviour, provider failure gaps, unstable contracts, sensitive logging, weak observability or unclear recovery paths.
 
-- missing tests for new behavior;
-- retry paths that duplicate customer-facing side effects;
-- provider timeout or fallback gaps;
-- unstable API contracts;
-- sensitive logging;
-- database migration or data-write risk;
-- weak observability or unclear recovery paths.
+The central question is not simply whether the code looks correct.
 
-Lintel focuses on the merge decision: what needs to be true before this PR can safely merge?
+It is:
 
-## Current workflow
+> What needs to be true before this change is genuinely ready to merge?
 
-1. Open the local Risk inbox at `/workspace`.
-2. Start a new report from `/new`.
-3. Import a public GitHub PR, paste a diff, or load a built-in sample.
-4. Generate a merge-readiness report.
-5. Review the report working surface:
-   - recommendation and risk band;
-   - Conditions before merge;
-   - risk findings with provenance;
-   - missing coverage and suggested tests;
-   - operational readiness;
-   - reviewer focus;
-   - report quality checks.
-6. Copy conditions, copy a summary, or download Markdown.
-7. Track recent reports locally in the Risk inbox.
-8. Use the security model documentation to understand current privacy boundaries.
+Lintel turns that question into a structured verification workflow.
 
-## What it does today
+## How verification works
 
-- Public GitHub PR import.
-- Manual pasted diff analysis.
-- Built-in sample reports.
-- Deterministic report generation.
-- Optional model-assisted analysis through a server route.
-- Typed report normalization and guardrails.
-- Deterministic fallback when model-assisted analysis fails.
-- Stack/context inference.
-- Review modes for fast triage, standard readiness, deep review, security, tests, operations and generated-code review.
-- Structured recommendations: `APPROVE`, `REVIEW_REQUIRED`, `TESTS_REQUIRED`.
-- Risk band and score detail.
-- Missing tests and suggested tests.
-- Conditions before merge.
-- Copy conditions for PR-thread handoff.
-- Evidence-backed findings.
-- Provenance labels such as `Rule detected` and `Model assisted`.
-- Operational readiness checks.
-- Reviewer focus guidance.
-- Report quality checks.
-- Local workspace / Risk inbox.
-- Local-first report history.
-- Raw-diff-free local history.
-- Copy summary and Markdown download.
-- Security model documentation.
+Lintel organises review information through the following model:
 
-## Product surfaces
+**Change → Finding → Evidence → Missing proof → Requirement → Readiness → Human Decision**
 
-- `/` - positioning and product overview.
-- `/workspace` - local Risk inbox for recent reports and condition progress.
-- `/new` - new report working surface with sample PRs, public PR import, pasted diffs, and review modes.
-- `/report` - report working surface with a sticky decision panel, merge conditions, findings, test plan, operational readiness, reviewer focus, and export actions.
-- `/docs/security-model.md` - public security model summary.
-- `/docs/cli-github-action-blueprint.md` - planned CLI and GitHub Action workflow blueprint.
+### 1. Change
 
-## Trust and privacy model
+The reviewer begins with the pull request, affected files and relevant context.
 
-Lintel is intentionally local-first in this prototype.
+### 2. Finding
 
-- Generated reports are stored in browser storage on the user device.
-- Local report history stores reports and metadata, not raw diffs.
-- Condition progress and local statuses are stored locally.
-- Copied summaries, copied conditions, and downloaded Markdown are designed to avoid raw diff hunks and patch markers.
-- Public GitHub import supports public PRs only.
-- The current web app does not support private repository import.
+Lintel identifies a concrete risk, gap or review concern.
 
-When model-assisted analysis is enabled, the submitted diff is sent to the configured provider for analysis. Lintel does not claim that the provider does not retain submitted data.
+### 3. Evidence
 
-Do not submit secrets, private source code, credentials, or sensitive production data to this prototype.
+Each finding is connected to the information that supports it. Provenance remains visible so reviewers can distinguish rule detected evidence, model assisted evidence and supporting artefacts.
 
-Read more in the [security model](docs/security-model.md).
+### 4. Missing proof
 
-## Architecture overview
+Lintel separates evidence that exists from proof that is absent, stale or still unverified.
 
-Lintel is built with Next.js App Router, TypeScript, and plain CSS.
+### 5. Requirement
 
-```text
-/new
-  -> optional POST /api/fetch-pr-diff
-  -> POST /api/generate-report
-       -> deterministic baseline
-       -> optional model-assisted analysis
-       -> normalization and guardrails
-       -> report-quality assessment
-  -> sessionStorage stores the current { report, source }
-  -> localStorage stores raw-diff-free report history and local workflow state
-  -> /report renders the selected report
-  -> /workspace groups reports into a local Risk inbox
-```
+Important gaps become explicit requirements that can block readiness.
 
-There is currently no database, authentication layer, billing system, hosted GitHub App, private repository web import, team account system, or CI integration.
+### 6. Readiness
 
-The planned CI direction is CLI-first: a reusable Lintel CLI runs inside the user's CI environment, with a thin GitHub Action wrapper posting or updating one PR summary comment. See the [CLI and GitHub Action blueprint](docs/cli-github-action-blueprint.md).
+The Workspace presents the current recommendation, risk, open requirements and decision readiness.
 
-## Case study summary
+### 7. Human Decision
 
-Lintel started as a static merge-readiness report and evolved into a local workspace for reviewing PR risk.
+Lintel provides a recommendation. An accountable engineer retains authority over the final decision.
 
-The product direction changed as the artifact became clearer:
+## Canonical review example
 
-- the report should lead with the merge decision;
-- risky PRs should produce concrete Conditions before merge;
-- clean PRs should stay quiet;
-- reviewers should see missing tests, operational gaps, and reviewer focus without reading a long generic critique;
-- local history should help track what is blocked, ready, or waiting on review.
+The primary product demonstration uses a fixed sample review:
 
-The technical approach is deliberately small:
+| Field          | Value                                                    |
+| -------------- | -------------------------------------------------------- |
+| Repository     | `example/b2b-redemption-api`                             |
+| Pull request   | `#482`                                                   |
+| Title          | Add fallback handling for failed discount code retrieval |
+| Recommendation | `TESTS_REQUIRED`                                         |
+| Risk           | `46/100`, `MEDIUM`                                       |
+| Requirements   | `4 open`, `2 blocking`                                   |
+| Human Decision | `PENDING`                                                |
 
-- deterministic analysis provides a safety floor;
-- optional model-assisted analysis can improve synthesis;
-- normalization and report-quality checks prevent obvious internal inconsistencies;
-- local-first storage keeps the prototype useful without adding premature SaaS infrastructure.
+The review focuses on fallback handling for failed discount code retrieval. It includes a high severity concern about duplicate redemption risk, supporting evidence, missing proof and blocking requirements.
 
-Read the full [case study](docs/case-study.md).
+The case intentionally remains unresolved. Requirements do not clear and no Human Decision is recorded.
 
-## Screenshots and demo captures
+This keeps the demonstration stable, truthful and repeatable.
 
-Screenshots are not committed yet. Suggested placeholder paths:
+## Explore the product
 
-| Capture | Placeholder path |
-| --- | --- |
-| Homepage positioning | `outputs/screenshots/01-homepage.png` |
-| Risk inbox workspace | `outputs/screenshots/02-workspace-risk-inbox.png` |
-| New report working surface | `outputs/screenshots/03-new-report.png` |
-| Public GitHub PR import | `outputs/screenshots/04-github-import.png` |
-| Clean APPROVE report | `outputs/screenshots/05-approve-report.png` |
-| Risky TESTS_REQUIRED report | `outputs/screenshots/06-tests-required-report.png` |
-| Conditions before merge | `outputs/screenshots/07-conditions-before-merge.png` |
-| Security model documentation | `outputs/screenshots/08-security-model.png` |
+### Recorded walkthrough
 
-See the [screenshot checklist](docs/screenshot-checklist.md) for capture guidance.
+A concise product walkthrough follows the canonical pull request from the initial recommendation through evidence, requirements, readiness and the pending Human Decision.
 
-## Public pilot status
+<!-- Replace this URL after the walkthrough is published. -->
 
-Lintel is in public pilot preparation.
+[Watch the Lintel product walkthrough](WALKTHROUGH_URL)
 
-The current pilot is best suited for:
+### Run the fixed sample locally
 
-- tech leads and staff engineers at small AI-heavy startups;
-- agency technical directors shipping client work with coding agents;
-- technical founders using coding agents heavily;
-- senior engineers who are the review bottleneck.
+Install the project:
 
-Useful pilot docs:
-
-- [Evaluation results](docs/evaluation-results.md)
-- [Public pilot package](docs/public-pilot.md)
-- [Security model](docs/security-model.md)
-- [Distribution assets](docs/distribution-assets.md)
-- [GitHub Action plan](docs/github-action-plan.md)
-- [CLI and GitHub Action blueprint](docs/cli-github-action-blueprint.md)
-
-## Current limitations
-
-Lintel is still a prototype.
-
-- Heuristics and model-assisted output can miss or misclassify risk.
-- No private repository web import.
-- No GitHub App.
-- No CI integration.
-- No automatic PR comments.
-- No authentication.
-- No billing.
-- No database-backed team workspace.
-- No production team account system or database-backed shared workspace.
-- No line-level diff hunk evidence.
-- No test execution.
-- No static-analysis engine.
-- Frontend-specific reviewer routing still needs refinement.
-- Public GitHub imports are subject to unauthenticated GitHub rate limits.
-
-Reports support engineering judgment. They do not prove a PR is safe, catch every bug, or replace human review, CI, tests, or security review.
-
-## Run locally
-
-Install dependencies:
-
-```text
-npm install
+```bash
+npm ci
 ```
 
 Start the development server:
 
+```bash
+npm run dev
+```
+
+Open the canonical sample review:
+
 ```text
+http://localhost:3000/workspace?source=fixture
+```
+
+The fixture is read only sample data. It does not make network requests, clear requirements or record a Human Decision.
+
+## Core capabilities
+
+### Pull request analysis
+
+| Capability                          | Current status                                |
+| ----------------------------------- | --------------------------------------------- |
+| Deterministic report generation     | Implemented                                   |
+| Optional model assisted analysis    | Implemented through environment configuration |
+| Structured model output             | Implemented                                   |
+| Report normalisation and guardrails | Implemented                                   |
+| Deterministic fallback              | Implemented                                   |
+| Public GitHub pull request import   | Implemented                                   |
+| Manual diff analysis                | Implemented                                   |
+| Fixed sample reviews                | Implemented                                   |
+
+### Verification and evidence
+
+| Capability                           | Current status                                 |
+| ------------------------------------ | ---------------------------------------------- |
+| Findings with provenance             | Implemented                                    |
+| Missing and unverified proof states  | Implemented                                    |
+| Explicit uncertainty                 | Implemented                                    |
+| Suggested tests and missing coverage | Implemented                                    |
+| Merge requirements                   | Implemented                                    |
+| Recommendation and risk assessment   | Implemented                                    |
+| Readiness Delta                      | Implemented in the GitHub App persistence path |
+| Structured Review Diff               | Implemented in the GitHub App persistence path |
+
+### Decision support
+
+| Capability                        | Current status      |
+| --------------------------------- | ------------------- |
+| Human Decision authority          | Implemented         |
+| Local decision ledger             | Implemented         |
+| Review and decision history       | Implemented locally |
+| Read only canonical demonstration | Implemented         |
+| Markdown and summary handoff      | Implemented         |
+
+### GitHub integration
+
+| Capability                         | Current status                                |
+| ---------------------------------- | --------------------------------------------- |
+| GitHub App authentication          | Implemented through environment configuration |
+| Installation token exchange        | Implemented                                   |
+| HMAC SHA256 webhook verification   | Implemented                                   |
+| Delivery deduplication             | Implemented                                   |
+| Same commit analysis deduplication | Implemented                                   |
+| Pull request comment publishing    | Implemented as a prototype                    |
+| Hosted production deployment       | Not claimed                                   |
+| GitHub Action                      | Planned                                       |
+| Command line interface             | Planned                                       |
+
+## Product surfaces
+
+| Route                       | Purpose                                                           |
+| --------------------------- | ----------------------------------------------------------------- |
+| `/`                         | Public product overview                                           |
+| `/workspace`                | Main verification Workspace                                       |
+| `/workspace?source=fixture` | Canonical sample review                                           |
+| `/new`                      | Create a review from a sample, public pull request or pasted diff |
+| `/report`                   | Secondary Case File surface                                       |
+| `/home`                     | Operational overview                                              |
+| `/review-operations`        | Review record filtering and inspection                            |
+| `/review-policies`          | Policy and governance inspection                                  |
+| `/integrations`             | Integration capability and configuration status                   |
+| `/slack-handoff`            | Local handoff and export concept                                  |
+| `/settings`                 | Local configuration information                                   |
+
+Legacy Workspace and visual laboratory routes are retained for historical and development purposes. They are not part of the primary recruiter demonstration.
+
+## Architecture
+
+Lintel separates analysis, verification and decision authority.
+
+```text
+Pull request or diff
+        ↓
+Deterministic analysis
+        ↓
+Optional model assisted synthesis
+        ↓
+Structured output validation
+        ↓
+Normalisation and guardrails
+        ↓
+Findings, evidence and missing proof
+        ↓
+Requirements and readiness
+        ↓
+Accountable Human Decision
+```
+
+### Analysis layer
+
+Deterministic checks provide a consistent baseline. Model assisted analysis is optional and can improve synthesis when configured.
+
+### Verification layer
+
+Reports are normalised into a typed structure. Findings remain connected to evidence, provenance, uncertainty, missing proof and requirements.
+
+### Decision layer
+
+The Workspace presents the current recommendation and readiness state. It does not silently convert a recommendation into an engineer decision.
+
+### Local product state
+
+The main web workflow stores review state and decision history in the browser. Raw pull request diffs are not required for the canonical fixture.
+
+### GitHub App prototype
+
+The repository includes an environment configured GitHub App implementation with:
+
+1. GitHub App JWT authentication
+2. Installation token exchange
+3. HMAC SHA256 webhook verification
+4. Delivery deduplication
+5. Duplicate analysis protection for the same commit
+6. Pull request analysis persistence
+7. Readiness Delta and Review Diff generation
+8. Pull request comment creation and updates
+
+The current prototype uses local filesystem persistence. The repository does not claim a hosted production service, shared team database or active customer deployment.
+
+## Engineering decisions
+
+### Deterministic analysis provides a reliability floor
+
+Model access is not required for the core report path. When model configuration is absent or model analysis fails, Lintel can return deterministic output instead of failing silently.
+
+### Model output is constrained
+
+Model responses use a strict structured schema before they enter the report workflow. Normalisation and guardrails reduce internal inconsistencies.
+
+### Evidence and uncertainty remain visible
+
+Lintel distinguishes confirmed evidence from missing, stale, inferred or unverified proof. This prevents a confident summary from hiding weak support.
+
+### Recommendation and authority remain separate
+
+Lintel can recommend `APPROVE`, `REVIEW_REQUIRED` or `TESTS_REQUIRED`. The final decision remains an explicit human action.
+
+### GitHub processing is designed to be idempotent
+
+Webhook delivery identifiers and pull request commit state are used to avoid processing the same event or commit repeatedly.
+
+### The canonical demonstration cannot alter product truth
+
+The sample Workspace is fixed and read only. It cannot clear requirements or create a false completed decision.
+
+### Security boundaries are stated directly
+
+Model assisted analysis may send submitted content to the configured provider. Users should not submit credentials, secrets or sensitive production source code without understanding those provider and deployment boundaries.
+
+## Technology
+
+| Area                        | Technology                                       |
+| --------------------------- | ------------------------------------------------ |
+| Application framework       | Next.js App Router                               |
+| Language                    | TypeScript                                       |
+| Interface                   | React, CSS and CSS Modules                       |
+| Model integration           | OpenAI Responses API                             |
+| GitHub integration          | GitHub App authentication, REST API and webhooks |
+| Local state                 | Browser storage                                  |
+| Prototype integration state | Local filesystem persistence                     |
+| Package management          | npm                                              |
+
+This repository does not currently contain a Python or FastAPI backend, PostgreSQL database, SQLAlchemy models, Pydantic models, Docker configuration or Tailwind CSS setup.
+
+## Run locally
+
+### Requirements
+
+A supported Node.js version is required. The repository does not currently declare an exact Node version.
+
+### Install dependencies
+
+```bash
+npm ci
+```
+
+### Start development
+
+```bash
 npm run dev
 ```
 
@@ -229,95 +313,214 @@ Open:
 http://localhost:3000
 ```
 
-Run a production build:
+### Open the canonical demonstration
 
 ```text
+http://localhost:3000/workspace?source=fixture
+```
+
+### Create a production build
+
+```bash
 npm run build
 ```
 
-## Optional model configuration
+### Start the production build
 
-Model-assisted report generation is optional.
+```bash
+npm run start
+```
 
-Copy `.env.example` to `.env.local` and provide evaluator-owned values:
+## Optional environment configuration
+
+Copy `.env.example` to `.env.local`.
+
+```bash
+cp .env.example .env.local
+```
+
+On Windows PowerShell:
+
+```powershell
+Copy-Item .env.example .env.local
+```
+
+### Model analysis
 
 ```text
 OPENAI_API_KEY=
 OPENAI_MODEL=
 ```
 
-Leave both values empty to exercise deterministic fallback.
+Leave these values empty to use deterministic analysis without model access.
 
-Never commit `.env.local` or real credentials.
+### Public GitHub access
 
-## Project structure
+```text
+GITHUB_TOKEN=
+```
+
+This can be used for authenticated GitHub API access where supported.
+
+### GitHub App prototype
+
+```text
+GITHUB_APP_ID=
+GITHUB_APP_PRIVATE_KEY=
+GITHUB_WEBHOOK_SECRET=
+```
+
+Never commit `.env.local`, private keys, tokens or credentials.
+
+## Repository structure
 
 ```text
 app/
   api/
     fetch-pr-diff/
     generate-report/
+    github-app/
   new/
   report/
   workspace/
+  _public-r5/
+
 lib/
+  workspace-v2/
   report-generator.ts
   report-normalizer.ts
   report-quality.ts
-  report-history.ts
-  report-markdown.ts
-  stack-inference.ts
-  sample-pr-input.ts
+  readiness-delta.ts
+  evidence-hierarchy.ts
+  human-decision-ledger.ts
+  github-app-auth.ts
+  github-app-webhook.ts
+  github-app-store.ts
+  github-app-comments.ts
+
+public/
+  r5/
+    scenes/
+
 docs/
   case-study.md
-  demo-script.md
-  distribution-assets.md
   evaluation.md
   evaluation-results.md
-  cli-github-action-blueprint.md
-  github-action-plan.md
-  manual-evaluation.md
-  public-pilot.md
-  screenshot-checklist.md
   security-model.md
+  cli-github-action-blueprint.md
 ```
 
-## Documentation
+## Project status
 
-- [Design documentation and LVOS governance](docs/design/README.md)
-- [Case study](docs/case-study.md)
-- [Demo script](docs/demo-script.md)
-- [Evaluation workflow](docs/evaluation.md)
-- [Evaluation results](docs/evaluation-results.md)
-- [Manual evaluation](docs/manual-evaluation.md)
-- [Public pilot package](docs/public-pilot.md)
-- [Security model](docs/security-model.md)
-- [Distribution assets](docs/distribution-assets.md)
-- [GitHub Action plan](docs/github-action-plan.md)
-- [CLI and GitHub Action blueprint](docs/cli-github-action-blueprint.md)
-- [Screenshot checklist](docs/screenshot-checklist.md)
+Lintel is an actively developed portfolio product.
 
-## Roadmap
+### Complete and stable
 
-**Current visual-convergence update — 18 July 2026:** LVOS v1.0 and VC-1 through VC-4 are complete and closed foundations. **V8A through V8D — Experience and Motion** is complete on `v8-experience-and-motion` and is ready for external approval. The programme preserved the completed visual architecture while finalising landing choreography, Workspace interaction motion, bounded Case File interactions, reduced-motion behaviour, interruption handling and runtime QA. See the [V8 final experience audit](docs/design/V8_FINAL_EXPERIENCE_AUDIT.md). The next recommended programme is explicitly authorised, capability-led product work rather than another visual-direction pass. This update supersedes the historical sequencing statements below.
+1. Main verification Workspace
+2. Canonical PR #482 fixture
+3. Deterministic report generation
+4. Optional model assisted analysis
+5. Report normalisation and fallback
+6. Evidence, missing proof and requirement model
+7. Human Decision workflow
+8. Browser based review and decision history
 
-**Current visual-convergence update — 17 July 2026:** VC-1, VC-2 and VC-3 are APPROVED AND COMPLETE. VC-3 Landing-page Final Art Direction has no blocking corrections remaining. The next programme is VC-4 — Product Workbench Final Art Direction, beginning with VC-4A — Workspace Three-Pane Workbench Composition. This update supersedes the historical sequencing statement below; LVOS v1.0 remains APPROVED AND CLOSED.
+### Implemented as prototypes
 
-The LVOS v1.0 programme remains APPROVED AND CLOSED. VC-1 Workspace and Command-Centre Refinement is APPROVED AND COMPLETE after final VC-1C review. VC-2 — Case File and Cross-Route Refinement is next; subsequent visual work continues as refinement within LVOS rather than an architectural reset.
+1. GitHub App authentication
+2. Verified webhook handling
+3. Idempotent pull request analysis
+4. Pull request decision comments
+5. Local GitHub App persistence
+6. Readiness Delta
+7. Structured Review Diff
 
-The current consolidation programme is:
+### Active development
 
-1. Typography Proof and Core Type System
-2. Application Shell and Navigation
-3. Workspace Command Centre
-4. Administrative Surfaces
-5. Case File Convergence
-6. Website and Product Continuity
-7. Cross-Surface Visual QA and Migration Lock
-8. Motion Constitution, Foundation and Tuning
+1. Consistency across public product routes
+2. Recruiter presentation and documentation
+3. Product screenshots and recorded walkthrough
+4. Further integration and reliability validation
 
-The LVOS-1 through LVOS-7 static consolidation sequence is complete and approved as of 17 July 2026. LVOS v1.0 is APPROVED AND CLOSED. See the [LVOS final system audit](docs/design/LVOS_FINAL_SYSTEM_AUDIT.md) for the final route matrix, corrections, removal log and migration-lock decision.
+### Planned
 
-The next programme is Visual Convergence, beginning with VC-1 Workspace and Command-Centre Refinement. Major Phase 4 and Phase 5 capability expansion may resume after the completed static migration lock unless an explicit bounded exception or later governance decision changes that order. Subsequent visual and motion work refines LVOS v1.0; it does not reopen the architecture.
+1. Reusable command line interface
+2. Thin GitHub Action wrapper
+3. Hosted persistence
+4. Shared team workflows
+5. Private repository support
+6. Production access control
 
-See the [LVOS implementation roadmap](docs/design/LVOS_IMPLEMENTATION_ROADMAP.md) for scope, dependencies and acceptance criteria.
+## Current limitations
+
+1. Lintel can miss or misclassify engineering risk.
+
+2. Reports support engineering judgment. They do not prove that a pull request is safe.
+
+3. The product does not replace tests, continuous integration, static analysis, security review or human code review.
+
+4. Private repository import is not available through the public web flow.
+
+5. The repository does not include end user authentication, team accounts or a hosted shared database.
+
+6. The GitHub App implementation is a prototype and uses local filesystem persistence.
+
+7. No GitHub Actions workflow or command line package is currently committed.
+
+8. The product does not execute test suites or perform full static analysis.
+
+9. A dedicated automated test and lint script is not currently exposed through `package.json`.
+
+10. Model assisted analysis depends on the configured provider and may send submitted content outside the local application.
+
+## What I designed and built
+
+I designed and built Lintel as a long running product and engineering project focused on verification, reliability and accountable software delivery.
+
+My work includes:
+
+1. Defining the product problem, positioning and verification model
+
+2. Designing the relationship between changes, findings, evidence, missing proof, requirements, readiness and Human Decision
+
+3. Building the Next.js and TypeScript application
+
+4. Implementing deterministic pull request analysis
+
+5. Integrating optional structured model analysis
+
+6. Building normalisation, guardrails and deterministic fallback behaviour
+
+7. Designing and implementing the verification Workspace and Case File surfaces
+
+8. Building evidence provenance and explicit uncertainty states
+
+9. Implementing browser based review history and Human Decision records
+
+10. Prototyping GitHub App authentication, verified webhooks, idempotent analysis and decision comments
+
+11. Implementing Readiness Delta and structured Review Diff generation
+
+12. Developing responsive, accessible and reduced motion product behaviour
+
+13. Maintaining clear boundaries between recommendations, evidence and accountable human authority
+
+The project demonstrates my ability to combine product judgment, interface design, backend integration, reliability engineering and long term technical execution.
+
+## Further reading
+
+1. [Case study](docs/case-study.md)
+
+2. [Security model](docs/security-model.md)
+
+3. [Evaluation workflow](docs/evaluation.md)
+
+4. [Evaluation results](docs/evaluation-results.md)
+
+5. [Command line and GitHub Action blueprint](docs/cli-github-action-blueprint.md)
+
+## Author
+
+Built by [Denis Kapesa](https://github.com/dkapesa).
+
+[LinkedIn](https://www.linkedin.com/in/denis-kapesa) · [GitHub](https://github.com/dkapesa)

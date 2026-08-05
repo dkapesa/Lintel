@@ -2225,3 +2225,117 @@ button.evidenceRecordTab:hover:not([data-selected="true"]) {
     width: 100%;
   }
 }
+
+/* R5E.1E.5E — accepted extended-neutral Hero presentation. The existing
+   .scenePlate remains the smallest owning boundary: its direct .sceneFrame
+   child is unchanged, while this route-scoped modifier paints the larger
+   opaque neutral band behind it and reserves the same fixed top/bottom space
+   in normal flow. The default remains the historical 26px laboratory control
+   because the private Phase 7.1C routes reuse this component unchanged. */
+.extendedNeutralHierarchy {
+  --hero-band-top-delta: 62px;
+  --hero-band-side-delta: 30px;
+  --hero-band-bottom-delta: 38px;
+}
+
+.extendedNeutralHierarchy .heroSceneSection {
+  padding-top: calc(40px + var(--hero-band-top-delta));
+}
+
+.extendedNeutralHierarchy .heroSceneSection .sceneCaption {
+  margin-top: calc(18px + var(--hero-band-bottom-delta));
+}
+
+.extendedNeutralHierarchy .heroSceneSection .scenePlate {
+  position: relative;
+  isolation: isolate;
+  background: transparent;
+  border-color: transparent;
+}
+
+.extendedNeutralHierarchy .heroSceneSection .sceneFrame {
+  position: relative;
+  z-index: 1;
+}
+
+.extendedNeutralHierarchy .heroSceneSection .scenePlate::before {
+  position: absolute;
+  z-index: 0;
+  inset:
+    calc(-1 * var(--hero-band-top-delta))
+    calc(-1 * var(--hero-band-side-delta))
+    calc(-1 * var(--hero-band-bottom-delta));
+  border: 1px solid var(--pub-border);
+  border-radius: 20px;
+  background: var(--pub-surface-2);
+  content: "";
+  pointer-events: none;
+}
+
+@media (max-width: 1439px) and (min-width: 1280px) {
+  .extendedNeutralHierarchy {
+    --hero-band-top-delta: 54px;
+    --hero-band-side-delta: 22px;
+    --hero-band-bottom-delta: 30px;
+  }
+}
+
+@media (max-width: 1279px) and (min-width: 1025px) {
+  .extendedNeutralHierarchy {
+    --hero-band-top-delta: 52px;
+    --hero-band-side-delta: 20px;
+    --hero-band-bottom-delta: 28px;
+  }
+}
+
+@media (max-width: 1024px) and (min-width: 768px) {
+  .extendedNeutralHierarchy {
+    --hero-band-top-delta: 46px;
+    --hero-band-side-delta: 14px;
+    --hero-band-bottom-delta: 22px;
+  }
+}
+
+@media (max-width: 767px) and (min-width: 360px) {
+  .extendedNeutralHierarchy {
+    --hero-band-top-delta: 44px;
+    --hero-band-side-delta: 8px;
+    --hero-band-bottom-delta: 28px;
+  }
+
+  .extendedNeutralHierarchy .heroSceneSection {
+    padding-top: calc(28px + var(--hero-band-top-delta));
+  }
+}
+
+@media (max-width: 359px) {
+  .extendedNeutralHierarchy {
+    --hero-band-top-delta: 0px;
+    --hero-band-side-delta: 0px;
+    --hero-band-bottom-delta: 0px;
+  }
+
+  .extendedNeutralHierarchy .heroSceneSection {
+    padding-top: 28px;
+  }
+
+  .extendedNeutralHierarchy .heroSceneSection .sceneCaption {
+    margin-top: 18px;
+  }
+
+  .extendedNeutralHierarchy .heroSceneSection .scenePlate {
+    background: var(--pub-surface-2);
+    border-color: var(--pub-border);
+  }
+
+  .extendedNeutralHierarchy .heroSceneSection .scenePlate::before {
+    display: none;
+  }
+}
+
+@media (forced-colors: active) {
+  .extendedNeutralHierarchy .heroSceneSection .scenePlate::before {
+    border-color: CanvasText;
+    background: Canvas;
+  }
+}

@@ -8,7 +8,17 @@ Lintel helps engineering teams determine whether a change is genuinely ready to 
 
 Lintel is not a generic AI code review chatbot. It creates a structured verification record that helps reviewers understand what is known, what remains uncertain and what must be resolved before a pull request can merge.
 
-![Lintel Workspace showing the canonical pull request review](docs/assets/readme/lintel-workspace-overview.png)
+![Lintel Workspace showing pull request 482 with a tests required recommendation, medium risk, open blocking requirements, and a pending Human Decision.](docs/assets/readme/lintel-workspace-overview.png)
+
+*A read only sample Workspace keeps the pull request, risk, open proof, requirements and accountable decision in one review surface.*
+
+![Lintel evidence view showing a duplicate redemption finding, supporting evidence provenance, missing proof, and an open idempotency requirement.](docs/assets/readme/lintel-evidence-and-missing-proof.jpg)
+
+*Findings, provenance, missing proof and merge requirements remain connected and inspectable.*
+
+![Lintel Human Decision dialog for pull request 482 showing tests required, medium risk, open blockers, and no outcome selected.](docs/assets/readme/lintel-readiness-human-decision.png)
+
+*Lintel recommends. The accountable engineer decides. The sample remains read only and unresolved.*
 
 ## Product overview
 

@@ -33,9 +33,17 @@ import {
    and Evidence, Missing Proof and Requirement, Readiness and Human Decision,
    Trust, unresolved-case handoff, footer. Every section is an independent
    sibling; none reads another section's scroll state. */
-export function R5ReferenceReconstruction() {
+export function R5ReferenceReconstruction({
+  heroPresentation = "historical-control",
+}: {
+  heroPresentation?: "historical-control" | "extended-neutral";
+} = {}) {
   return (
-    <div className={styles.page}>
+    <div
+      className={`${styles.page} ${
+        heroPresentation === "extended-neutral" ? styles.extendedNeutralHierarchy : ""
+      }`}
+    >
       <a className={styles.skip} href="#main">
         Skip to content
       </a>

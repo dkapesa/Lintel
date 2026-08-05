@@ -186,6 +186,18 @@ R5E.1A is documentation only. Its five documents are read in this order:
     the laboratory and human-evaluation frameworks, the R5E.1E.5B–5F sequence
     and early Phase 8 continuity. Governs presentation surface only; where the
     R5E.1A locks speak, they win.
+28. [`R5E1E5E_ACCEPTED_SURFACE_HIERARCHY_PROPAGATION.md`](./R5E1E5E_ACCEPTED_SURFACE_HIERARCHY_PROPAGATION.md) —
+    the bounded Phase 7.1E implementation record. Propagates the Phase 7.1D
+    Extended Neutral decision to the accepted private reference reconstruction
+    only, using its existing Hero scene boundary, the unchanged provisional
+    laboratory matrix and a below-360px compact fallback. Records genuine
+    responsive, reduced-motion, no-JavaScript, forced-colours, keyboard,
+    200%-equivalent, accessibility, performance, layout-stability, product-truth
+    and private-laboratory evidence. Production `/`, downstream surfaces,
+    interaction behaviour and the private comparison laboratory remain
+    unchanged. Accepted and complete; no bounded correction was required, the
+    matrix carries unchanged into Phase 7.1F, and final dimensional freeze
+    remains outstanding.
 
 No earlier R5 or R4 document was edited to produce R5E.1A. Where R5E.1A
 deliberately changes an earlier public visual decision, the change is
@@ -521,6 +533,16 @@ Frozen R4 product truth always outranks public visual preference.
   scale, not literal imagery. R5E.1E.5E — Accepted Surface Hierarchy
   Propagation — is next. Described in
   [`R5E1E5D_HUMAN_AND_CLAUDE_VISUAL_EVALUATION.md`](./R5E1E5D_HUMAN_AND_CLAUDE_VISUAL_EVALUATION.md).
+- R5E.1E.5E — accepted surface hierarchy propagation: **accepted and
+  complete**. The Extended Neutral treatment propagated successfully to
+  `/visual-lab/public-r5-reference-reconstruction`, preserves the accepted
+  frame, first-viewport rhythm, interaction, downstream neutral hierarchy,
+  product truth, production `/`, and private laboratory, and passes the
+  required responsive and special-state gates. Human review requires no
+  bounded correction. The provisional presentation-band matrix carries
+  unchanged into Phase 7.1F; final dimensional freeze remains outstanding.
+  Phase 7.1F is next. Described in
+  [`R5E1E5E_ACCEPTED_SURFACE_HIERARCHY_PROPAGATION.md`](./R5E1E5E_ACCEPTED_SURFACE_HIERARCHY_PROPAGATION.md).
 - R5E.1F — not started. Scope, boundaries and acceptance gates are in
   [`R5E1A_IMPLEMENTATION_HANDOFF.md`](./R5E1A_IMPLEMENTATION_HANDOFF.md).
   The production homepage at `/` and the private laboratory at

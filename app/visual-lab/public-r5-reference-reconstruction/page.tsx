@@ -24,5 +24,5 @@ export const metadata: Metadata = {
 };
 
 export default function PublicR5ReferenceReconstructionLabPage() {
-  return <R5ReferenceReconstruction />;
+  return <R5ReferenceReconstruction heroPresentation="extended-neutral" />;
 }

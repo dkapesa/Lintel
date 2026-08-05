@@ -501,6 +501,26 @@ Frozen R4 product truth always outranks public visual preference.
   to final live comparison of neutral 26 px, extended neutral, existing wide
   B2 and existing wide C2. No surface is implemented. Described in
   [`R5E1E5B_CANDIDATE_ASSET_CREATION.md`](./R5E1E5B_CANDIDATE_ASSET_CREATION.md).
+- R5E.1E.5C — private surface comparison laboratory: **accepted and complete**.
+  Its unlinked index and four isolated live routes completed implementation,
+  desktop live evaluation and responsive comparison of Neutral 26, extended
+  neutral, B2 and C2 while preserving identical accepted Hero interaction and
+  frame behaviour. Live motion did not reverse Gate 1. Extended neutral is
+  selected; Neutral 26 remains a historical control; B2 and C2 are retired as
+  diagnostic evidence; and no image surface, derivative or Readiness companion
+  proceeds. Presentation-band dimensions remain provisional, with bounded
+  tuning assigned to Phase 7.1E. Described in
+  [`R5E1E5C_PRIVATE_SURFACE_COMPARISON_LABORATORY.md`](./R5E1E5C_PRIVATE_SURFACE_COMPARISON_LABORATORY.md).
+- R5E.1E.5D — human and Claude visual evaluation: **accepted and complete**.
+  Cowork independently evaluated the four full live compositions and scored
+  extended neutral 72/75, ahead of Neutral 26 at 63/75, C2 at 50/75 and B2 at
+  46/75. The human owner's evaluation converged on extended neutral and is the
+  final product decision; Cowork supplied decision support only. No further
+  candidate generation, image derivative or Readiness companion is justified.
+  The transferable Cursor lesson is generous product staging, spacing and
+  scale, not literal imagery. R5E.1E.5E — Accepted Surface Hierarchy
+  Propagation — is next. Described in
+  [`R5E1E5D_HUMAN_AND_CLAUDE_VISUAL_EVALUATION.md`](./R5E1E5D_HUMAN_AND_CLAUDE_VISUAL_EVALUATION.md).
 - R5E.1F — not started. Scope, boundaries and acceptance gates are in
   [`R5E1A_IMPLEMENTATION_HANDOFF.md`](./R5E1A_IMPLEMENTATION_HANDOFF.md).
   The production homepage at `/` and the private laboratory at

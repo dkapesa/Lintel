@@ -35,22 +35,29 @@ import {
    sibling; none reads another section's scroll state. */
 export function R5ReferenceReconstruction({
   heroPresentation = "historical-control",
+  shell = "local",
 }: {
   heroPresentation?: "historical-control" | "extended-neutral";
+  shell?: "local" | "shared";
 } = {}) {
+  const ContentElement: "main" | "div" = shell === "local" ? "main" : "div";
+
   return (
     <div
       className={`${styles.page} ${
         heroPresentation === "extended-neutral" ? styles.extendedNeutralHierarchy : ""
       }`}
     >
-      <a className={styles.skip} href="#main">
-        Skip to content
-      </a>
+      {shell === "local" ? (
+        <>
+          <a className={styles.skip} href="#main">
+            Skip to content
+          </a>
+          <PublicHeader />
+        </>
+      ) : null}
 
-      <PublicHeader />
-
-      <main id="main" className={styles.main}>
+      <ContentElement id={shell === "local" ? "main" : undefined} className={styles.main}>
         <section className={styles.hero} aria-labelledby="hero-heading">
           <div className={styles.wrap}>
             <div className={styles.heroCopy}>
@@ -169,9 +176,9 @@ export function R5ReferenceReconstruction({
 
         <TrustSection />
         <HandoffSection />
-      </main>
+      </ContentElement>
 
-      <PublicFooter />
+      {shell === "local" ? <PublicFooter /> : null}
     </div>
   );
 }

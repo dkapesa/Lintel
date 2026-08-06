@@ -92,6 +92,7 @@
   background: var(--pub-canvas);
   color: var(--pub-text);
   font-family: var(--font-geist), -apple-system, sans-serif;
+  line-height: normal;
   -webkit-font-smoothing: antialiased;
 }
 

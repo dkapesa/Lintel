@@ -209,6 +209,23 @@ R5E.1A is documentation only. Its five documents are read in this order:
     frozen, B2 and C2 are retired diagnostic evidence, and the zero-image Hero
     policy is binding. Phase 8 — Cross-route Public Design-System Contract — is
     next; no Phase 8 implementation has begun.
+30. [`R5E2A_CROSS_ROUTE_PUBLIC_DESIGN_SYSTEM_CONTRACT.md`](./R5E2A_CROSS_ROUTE_PUBLIC_DESIGN_SYSTEM_CONTRACT.md) —
+    the Phase 8A cross-route public design-system contract. Documentation only.
+    Carries the frozen Phase 7.1 inputs, the current-state public inventory,
+    the information architecture, the global shell, and the grid, typography,
+    spacing, colour, action, technical-metadata, product-scene,
+    route-composition, motion, accessibility, responsive, performance,
+    asset-governance, content-and-voice, product-truth and
+    implementation-architecture contracts, plus protected scope, deferred work
+    and the human acceptance gate.
+31. [`R5E2A_PUBLIC_ROUTE_ARCHITECTURE.md`](./R5E2A_PUBLIC_ROUTE_ARCHITECTURE.md) —
+    the complete public route-purpose matrix: six approved routes, the routes
+    evaluated and not created, the Models decision, and the pricing and legal
+    deferrals with their named triggers.
+32. [`R5E2A_PUBLIC_SYSTEM_IMPLEMENTATION_SEQUENCE.md`](./R5E2A_PUBLIC_SYSTEM_IMPLEMENTATION_SEQUENCE.md) —
+    Phase 8B through Phase 8H, each with objective, authorised scope, protected
+    scope, dependencies, expected implementation tool, required evidence,
+    human gate and exit criteria.
 
 No earlier R5 or R4 document was edited to produce R5E.1A. Where R5E.1A
 deliberately changes an earlier public visual decision, the change is
@@ -562,11 +579,52 @@ Frozen R4 product truth always outranks public visual preference.
   matrix is final. Phase 8 — Cross-route Public Design-System Contract — is
   next, and no Phase 8 implementation has begun. Described in
   [`R5E1E5F_FINAL_SURFACE_PUBLIC_VISUAL_FREEZE.md`](./R5E1E5F_FINAL_SURFACE_PUBLIC_VISUAL_FREEZE.md).
+- R5E.2A — cross-route public design-system contract (Phase 8A):
+  **ACCEPTED AND COMPLETE**. Final human acceptance closed Phase 8A on 6 August
+  2026. Phase 7.1 is closed. Phase 8A was a
+  contract and architecture milestone only: **no Phase 8 implementation has
+  begun**, no public route was created, no navigation or production homepage
+  was modified, and **the frozen Hero remains unchanged** — its hierarchy,
+  exact 88/56/64 through 12/12/12 matrix, zero-image and
+  zero-background-animation policy, interaction model and accessibility,
+  fallback and performance freezes all carry forward binding. The contract
+  approves six public routes (`/`, `/product`, `/how-it-works`, `/trust`,
+  `/resources`, `/docs/[slug]`), records model-assisted analysis as a Trust
+  subsection rather than an independent route, creates no `/pricing` route and
+  places a truthful availability statement on Trust instead, and defines
+  Phase 8B–8H with an added **8B.1 production homepage transfer** — because
+  production `/` still renders the superseded `app/_public-r5/` build while the
+  accepted direction exists only at the private reference-reconstruction route.
+  **Phase 8B — the shared public shell — is authorised next. Phase 8B.1, the
+  accepted homepage transfer, follows immediately after the Phase 8B gate
+  closes.** No Phase 8 implementation has begun. Described in
+  [`R5E2A_CROSS_ROUTE_PUBLIC_DESIGN_SYSTEM_CONTRACT.md`](./R5E2A_CROSS_ROUTE_PUBLIC_DESIGN_SYSTEM_CONTRACT.md),
+  [`R5E2A_PUBLIC_ROUTE_ARCHITECTURE.md`](./R5E2A_PUBLIC_ROUTE_ARCHITECTURE.md)
+  and
+  [`R5E2A_PUBLIC_SYSTEM_IMPLEMENTATION_SEQUENCE.md`](./R5E2A_PUBLIC_SYSTEM_IMPLEMENTATION_SEQUENCE.md).
 - R5E.1F — not started. Scope, boundaries and acceptance gates are in
   [`R5E1A_IMPLEMENTATION_HANDOFF.md`](./R5E1A_IMPLEMENTATION_HANDOFF.md).
   The production homepage at `/` and the private laboratory at
   `/visual-lab/public-r5` continue to render the accepted R5E experience
   until R5E.1F authorises a transfer.
+
+## Phase 8 — cross-route public system
+
+- Phase 8A — Cross-route Public Design-System Contract: accepted and complete
+  in the preserved `R5E2A_CROSS_ROUTE_PUBLIC_DESIGN_SYSTEM_CONTRACT_PACKAGE/`.
+  Repository-history reconciliation verifies that commit `62275d5` and the
+  three named tracked Phase 8A documents are present; `62275d5` is an ancestor
+  of the current Phase 8B branch. The former history discrepancy is resolved.
+- Phase 8B — Shared Public Shell: **ACCEPTED AND COMPLETE**. The shared shell
+  is implemented with the viable `app/(public)/` route group, typed route
+  activation, truthful draft-route navigation/footer states, private noindex
+  shell lab, public metadata helpers, canonical-origin gating, robots policy
+  and curated sitemap contract. Final human acceptance closed the visual,
+  responsive, accessibility and special-state gates on 6 August 2026. No
+  homepage transfer has yet occurred: production `/` remains on the superseded
+  R5 build and Phase 8B.1 has not been implemented. **Phase 8B.1 is authorised
+  next. Phase 8C remains blocked until Phase 8B.1 passes.** Described in
+  [`R5E2B_SHARED_PUBLIC_SHELL.md`](./R5E2B_SHARED_PUBLIC_SHELL.md).
 
 See `R5E_PUBLIC_MOTION_SYSTEM.md`'s deferred-work sections and
 `R5E1A_IMPLEMENTATION_HANDOFF.md` §8 for what remains open beyond these

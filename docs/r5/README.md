@@ -226,6 +226,14 @@ R5E.1A is documentation only. Its five documents are read in this order:
     Phase 8B through Phase 8H, each with objective, authorised scope, protected
     scope, dependencies, expected implementation tool, required evidence,
     human gate and exit criteria.
+33. [`R5E2B_SHARED_PUBLIC_SHELL.md`](./R5E2B_SHARED_PUBLIC_SHELL.md) — the
+    accepted Phase 8B shared-shell implementation, typed public-route registry,
+    metadata helpers, origin-gated canonical/sitemap policy and private shell
+    laboratory.
+34. [`R5E2B1_PRODUCTION_HOMEPAGE_TRANSFER.md`](./R5E2B1_PRODUCTION_HOMEPAGE_TRANSFER.md) —
+    the Phase 8B.1 migration of production `/` to the accepted Phase 7.1
+    reconstruction inside the Phase 8B shell. Accepted and complete; Phase 8C
+    Shared Public Primitives is authorised next and has not begun.
 
 No earlier R5 or R4 document was edited to produce R5E.1A. Where R5E.1A
 deliberately changes an earlier public visual decision, the change is
@@ -621,10 +629,19 @@ Frozen R4 product truth always outranks public visual preference.
   shell lab, public metadata helpers, canonical-origin gating, robots policy
   and curated sitemap contract. Final human acceptance closed the visual,
   responsive, accessibility and special-state gates on 6 August 2026. No
-  homepage transfer has yet occurred: production `/` remains on the superseded
-  R5 build and Phase 8B.1 has not been implemented. **Phase 8B.1 is authorised
-  next. Phase 8C remains blocked until Phase 8B.1 passes.** Described in
+  homepage transfer had occurred at the Phase 8B acceptance point: production
+  `/` still remained on the superseded R5 build. Phase 8B.1 was therefore the
+  authorised next milestone, and Phase 8C remained blocked. Described in
   [`R5E2B_SHARED_PUBLIC_SHELL.md`](./R5E2B_SHARED_PUBLIC_SHELL.md).
+- Phase 8B.1 — Production Homepage Transfer: **ACCEPTED AND COMPLETE**.
+  Production `/` now uses the accepted reconstruction and shared shell, with
+  truthful Home current-page semantics and accepted metadata/indexing
+  behaviour. The frozen Hero remains unchanged, including its hierarchy,
+  dimension matrix, interaction and special-state behaviour. The superseded
+  screenshot-led homepage and its assets remain preserved for later archival
+  but are no longer production-facing. **Phase 8C — Shared Public Primitives —
+  is authorised next and has not begun.** Described in
+  [`R5E2B1_PRODUCTION_HOMEPAGE_TRANSFER.md`](./R5E2B1_PRODUCTION_HOMEPAGE_TRANSFER.md).
 
 See `R5E_PUBLIC_MOTION_SYSTEM.md`'s deferred-work sections and
 `R5E1A_IMPLEMENTATION_HANDOFF.md` §8 for what remains open beyond these

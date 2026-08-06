@@ -608,6 +608,24 @@ Frozen R4 product truth always outranks public visual preference.
   `/visual-lab/public-r5` continue to render the accepted R5E experience
   until R5E.1F authorises a transfer.
 
+## Phase 8 — cross-route public system
+
+- Phase 8A — Cross-route Public Design-System Contract: accepted and complete
+  in the preserved `R5E2A_CROSS_ROUTE_PUBLIC_DESIGN_SYSTEM_CONTRACT_PACKAGE/`.
+  Repository-history reconciliation verifies that commit `62275d5` and the
+  three named tracked Phase 8A documents are present; `62275d5` is an ancestor
+  of the current Phase 8B branch. The former history discrepancy is resolved.
+- Phase 8B — Shared Public Shell: **ACCEPTED AND COMPLETE**. The shared shell
+  is implemented with the viable `app/(public)/` route group, typed route
+  activation, truthful draft-route navigation/footer states, private noindex
+  shell lab, public metadata helpers, canonical-origin gating, robots policy
+  and curated sitemap contract. Final human acceptance closed the visual,
+  responsive, accessibility and special-state gates on 6 August 2026. No
+  homepage transfer has yet occurred: production `/` remains on the superseded
+  R5 build and Phase 8B.1 has not been implemented. **Phase 8B.1 is authorised
+  next. Phase 8C remains blocked until Phase 8B.1 passes.** Described in
+  [`R5E2B_SHARED_PUBLIC_SHELL.md`](./R5E2B_SHARED_PUBLIC_SHELL.md).
+
 See `R5E_PUBLIC_MOTION_SYSTEM.md`'s deferred-work sections and
 `R5E1A_IMPLEMENTATION_HANDOFF.md` §8 for what remains open beyond these
 milestones.

@@ -57,9 +57,9 @@ export const PUBLIC_ROUTE_REGISTRY: readonly PublicRouteRecord[] = [
     id: "trust",
     label: "Trust",
     pathname: "/trust",
-    state: "draft",
+    state: "live",
     placement: "primary",
-    sitemapEligible: false,
+    sitemapEligible: true,
     description: "Verification boundaries, models, provenance and availability.",
   },
   {

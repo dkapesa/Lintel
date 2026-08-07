@@ -47,6 +47,10 @@ export const ANALYSIS_SOURCE_CONTENT = {
     { label: "Deterministic", detail: "Baseline analysis; model access is not required." },
     { label: "Model-assisted", detail: "Optional, configured and explicitly identified." },
   ],
+  trustPointer: {
+    label: "Model provenance and boundaries",
+    href: "/trust#model-provenance",
+  },
 } as const;
 
 /* Provenance: app/_public-r5-recalibrated/canonical-review.ts:26-43. */
@@ -275,8 +279,10 @@ export const AVAILABILITY_CONTENT = {
     "Lintel runs locally from this repository.",
     "There is no hosted service and no account.",
   ],
-  trustPointer:
-    "The complete availability and provenance statement is owned by the Trust route, which is not yet available.",
+  trustPointer: {
+    label: "Complete availability and provenance",
+    href: "/trust",
+  },
 } as const;
 
 /* Provenance: app/_public-r5-recalibrated/canonical-review.ts:26-43;

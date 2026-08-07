@@ -670,6 +670,22 @@ Frozen R4 product truth always outranks public visual preference.
   the frozen Hero remain unchanged. Phase 8E Trust is authorised next but has
   not begun. Described in
   [`R5E2D_PRODUCT_AND_HOW_IT_WORKS.md`](./R5E2D_PRODUCT_AND_HOW_IT_WORKS.md).
+- Phase 8E — Trust: **ACCEPTED AND COMPLETE**. `/trust` is the
+  fourth genuine primary public route and the static, server-rendered source for
+  availability, local/external boundaries, deterministic and model provenance,
+  run provenance, submitted-content persistence, GitHub App boundaries,
+  integration vocabulary, Agent Change Passport provenance, Human Decision
+  authority and current limitations. Final human acceptance promoted Trust to
+  `sitemapEligible: true`; it now emits `index, follow` and joins sitemap output
+  only when a valid production HTTPS origin is configured. Product's two
+  accepted quiet Trust pointers are genuine links, and
+  the unchanged shared shell now derives four desktop, mobile-disclosure and
+  no-JavaScript destinations. Home, How it works, the frozen Hero, shared shell,
+  shared primitives, `lib/**`, `public/**` and the root README remain unchanged.
+  Final human acceptance closed the visual, composition, product-truth,
+  responsive, accessibility, keyboard and special-state gates on 7 August
+  2026. Phase 8F is authorised next but has not begun. Described in
+  [`R5E2E_TRUST.md`](./R5E2E_TRUST.md).
 
 See `R5E_PUBLIC_MOTION_SYSTEM.md`'s deferred-work sections and
 `R5E1A_IMPLEMENTATION_HANDOFF.md` §8 for what remains open beyond these

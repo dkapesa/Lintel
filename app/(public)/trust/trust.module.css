@@ -1,0 +1,177 @@
+.sectionStack,
+.recordGrid,
+.threeColumnRecords,
+.boundaryStack,
+.statusPair,
+.sceneStack,
+.githubDetails,
+.passportStates,
+.handoff {
+  display: grid;
+}
+
+.sectionStack,
+.sceneStack,
+.handoff {
+  gap: 32px;
+}
+
+.availabilityCopy,
+.boundaryStack,
+.statementList,
+.limitationsList,
+.handoff {
+  max-width: 62ch;
+}
+
+.availabilityCopy > :first-child {
+  margin-top: 0;
+  color: var(--pub-text);
+  font-weight: 600;
+}
+
+.recordGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 32px 40px;
+}
+
+.threeColumnRecords {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-items: start;
+  gap: 32px;
+}
+
+.boundaryStack {
+  gap: 12px;
+}
+
+.boundaryStack > * {
+  margin-top: 0;
+}
+
+.statusPair {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.statementList,
+.limitationsList {
+  margin-block: 0;
+  padding-left: 24px;
+  color: var(--pub-text);
+}
+
+.statementList {
+  display: grid;
+  gap: 12px;
+}
+
+.statementList li,
+.limitationsList li {
+  padding-left: 8px;
+  line-height: 1.6;
+}
+
+.statementList li::marker,
+.limitationsList li::marker {
+  color: var(--pub-text-2);
+  font-family: var(--font-geist-mono), monospace;
+}
+
+.limitationsList {
+  display: grid;
+  gap: 0;
+  border-top: 1px solid var(--pub-border);
+}
+
+.limitationsList li {
+  padding-block: 14px;
+  border-bottom: 1px solid var(--pub-border-subtle);
+}
+
+.githubDetails {
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.7fr);
+  align-items: start;
+  gap: 40px;
+}
+
+.passportStates {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.decisionState {
+  width: fit-content;
+  padding: 8px 12px;
+  border-top: 1px solid var(--pub-border);
+  border-bottom: 1px solid var(--pub-border);
+  color: var(--pub-text);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 1279px) {
+  .threeColumnRecords {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1024px) {
+  .threeColumnRecords,
+  .githubDetails {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .passportStates {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .sectionStack,
+  .sceneStack,
+  .handoff {
+    gap: 24px;
+  }
+
+  .recordGrid,
+  .statusPair,
+  .passportStates {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 24px;
+  }
+
+  .statementList,
+  .limitationsList {
+    padding-left: 20px;
+  }
+}
+
+@media (max-width: 359px) {
+  .sectionStack,
+  .sceneStack,
+  .handoff {
+    gap: 20px;
+  }
+
+  .recordGrid {
+    gap: 20px;
+  }
+}
+
+@media (forced-colors: active) {
+  .limitationsList,
+  .limitationsList li,
+  .decisionState {
+    border-color: ButtonText;
+  }
+
+  .statementList li::marker,
+  .limitationsList li::marker {
+    color: CanvasText;
+  }
+}

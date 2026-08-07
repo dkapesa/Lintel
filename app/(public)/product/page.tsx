@@ -85,6 +85,11 @@ export default function ProductPage() {
             />
             <Copy>{ANALYSIS_SOURCE_CONTENT.body}</Copy>
             <Copy variant="technical">{ANALYSIS_SOURCE_CONTENT.limitation}</Copy>
+            <ActionGroup>
+              <Action href={ANALYSIS_SOURCE_CONTENT.trustPointer.href} variant="quiet">
+                {ANALYSIS_SOURCE_CONTENT.trustPointer.label}
+              </Action>
+            </ActionGroup>
           </ProseColumn>
           <div className={styles.analysisSources} aria-label="Analysis source vocabulary">
             <SemanticStatus
@@ -321,7 +326,11 @@ export default function ProductPage() {
               <p key={sentence}>{sentence}</p>
             ))}
           </div>
-          <Copy variant="technical">{AVAILABILITY_CONTENT.trustPointer}</Copy>
+          <ActionGroup>
+            <Action href={AVAILABILITY_CONTENT.trustPointer.href} variant="quiet">
+              {AVAILABILITY_CONTENT.trustPointer.label}
+            </Action>
+          </ActionGroup>
         </ProseColumn>
       </EditorialSection>
 

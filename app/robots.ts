@@ -9,7 +9,15 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/visual-lab/", "/lvos/", ...draftPublicPaths()],
+      /* public/docs/cli-github-action-blueprint.md is retained as a static
+         file for the existing /github-action link but never passed the 8F
+         curation gate, so it is explicitly kept out of the index. */
+      disallow: [
+        "/visual-lab/",
+        "/lvos/",
+        "/docs/cli-github-action-blueprint.md",
+        ...draftPublicPaths(),
+      ],
     },
     sitemap: sitemap?.toString(),
     host: canonicalPublicUrl("/")?.origin,

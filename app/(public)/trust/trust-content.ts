@@ -437,4 +437,9 @@ export const TRUST_HANDOFF = {
   ],
   boundary: "The sample is read-only. It makes no network request and records no Human Decision.",
   action: { label: "Open the sample review", href: "/workspace?source=fixture" },
+  /* Phase 8F: the field-level pointer Phase 8E deliberately withheld while
+     public/docs/security-model.md was stale (R5E2E_TRUST.md carried gate 1).
+     data-boundaries is the strict field-level detail behind this route's own
+     claims; Trust remains canonical for wording and scope. */
+  secondaryAction: { label: "Read data boundaries", href: "/docs/data-boundaries" },
 } as const;

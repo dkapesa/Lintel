@@ -642,6 +642,18 @@ Frozen R4 product truth always outranks public visual preference.
   but are no longer production-facing. **Phase 8C — Shared Public Primitives —
   is authorised next and has not begun.** Described in
   [`R5E2B1_PRODUCTION_HOMEPAGE_TRANSFER.md`](./R5E2B1_PRODUCTION_HOMEPAGE_TRANSFER.md).
+- Phase 8C — Shared Public Primitives: **ACCEPTED AND COMPLETE**. A bounded
+  server-rendered primitive layer now owns the
+  cross-route editorial layout, heading and copy hierarchy, action grammar,
+  technical metadata, semantic statuses, neutral/product framing, compact
+  excerpts, structured records, relationship groupings and responsive
+  simplification. The private noindex laboratory is available at
+  `/visual-lab/public-r5-shared-primitives`. Production `/` and its frozen Hero
+  remain unchanged. Final human acceptance closed the visual, responsive,
+  accessibility, special-state, product-truth, performance and homepage-
+  regression gates. Phase 8D — Product and How it works — is authorised next
+  and has not begun. Described in
+  [`R5E2C_SHARED_PUBLIC_PRIMITIVES.md`](./R5E2C_SHARED_PUBLIC_PRIMITIVES.md).
 
 See `R5E_PUBLIC_MOTION_SYSTEM.md`'s deferred-work sections and
 `R5E1A_IMPLEMENTATION_HANDOFF.md` §8 for what remains open beyond these

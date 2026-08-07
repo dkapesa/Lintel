@@ -686,6 +686,33 @@ Frozen R4 product truth always outranks public visual preference.
   responsive, accessibility, keyboard and special-state gates on 7 August
   2026. Phase 8F is authorised next but has not begun. Described in
   [`R5E2E_TRUST.md`](./R5E2E_TRUST.md).
+- Phase 8F — Resources and curated public documentation: **ACCEPTED AND
+  COMPLETE**. `/resources` and `/docs/[slug]` are the fifth and sixth genuine
+  public destinations — a curated index and three published curated documents
+  (`/docs/run-lintel-locally`, `/docs/data-boundaries`,
+  `/docs/github-app-prototype`) driven entirely by an explicit registry in
+  `app/_public/routes.ts`, never by filesystem scanning. `public/docs/security-model.md`
+  is retired and superseded by the authored `/docs/data-boundaries`, with a
+  permanent redirect from `/docs/security-model.md` preserving every existing
+  logged-in-route link; `public/docs/evaluation-results.md` is withdrawn;
+  `public/docs/cli-github-action-blueprint.md` is retained and explicitly
+  robots-disallowed. Final human acceptance promoted both `resources` and
+  `documentation` to `state: "live"`, `sitemapEligible: true`; the accepted
+  result is **five public page routes, three curated public documents, and
+  one live documentation namespace with deliberately no `/docs` index route**
+  — `sitemapPublicPaths()` excludes the `documentation` namespace id from its
+  own generic pathname list for exactly that reason, so no dead `/docs` entry
+  ever appears in the sitemap. The footer's *Trust and resources* group is
+  `Trust`, `Resources` only, a human-approved deviation, with no Documentation
+  item. Resources uses grouped headings rather than a kind filter, an accepted
+  deviation with a named trigger (8+ documents across 3+ genuine kinds). Home,
+  Product, How it works, Trust, the frozen Hero, shared shell, shared
+  primitives, `lib/**` and the root README remain unchanged, apart from one
+  quiet Trust → `/docs/data-boundaries` handoff pointer. Final human
+  acceptance closed the curation, product-truth, composition, responsive,
+  accessibility, keyboard and special-state gates on 7 August 2026. Phase 8G
+  is authorised next but has not begun. Described in
+  [`R5E2F_RESOURCES_AND_CURATED_DOCUMENTATION.md`](./R5E2F_RESOURCES_AND_CURATED_DOCUMENTATION.md).
 
 See `R5E_PUBLIC_MOTION_SYSTEM.md`'s deferred-work sections and
 `R5E1A_IMPLEMENTATION_HANDOFF.md` §8 for what remains open beyond these

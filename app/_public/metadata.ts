@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { getPublicRoute, type PublicRouteId } from "./routes";
+import { getPublicRoute, type CuratedPublicDocument, type PublicRouteId } from "./routes";
 
 export const PUBLIC_SITE_NAME = "Lintel";
 export const PUBLIC_SITE_TITLE = "Lintel | Engineering verification for pull requests";
@@ -69,6 +69,34 @@ export function buildPublicMetadata(
       description: options?.description ?? route.description,
       siteName: PUBLIC_SITE_NAME,
       type: "website",
+      url: canonical,
+    },
+  };
+}
+
+/* Individual curated documents use this rather than buildPublicMetadata("documentation", …),
+   because that route's own canonical resolves to /docs, not to a document
+   slug. Indexability is gated on the documentation route's own live state,
+   not on publicationStatus alone, matching sitemapPublicPaths in ./routes. */
+export function buildPublicDocumentMetadata(document: CuratedPublicDocument): Metadata {
+  const documentationRoute = getPublicRoute("documentation");
+  const indexable =
+    documentationRoute.state === "live" &&
+    documentationRoute.sitemapEligible &&
+    document.publicationStatus === "published";
+  const pathname = `/docs/${document.slug}`;
+  const canonical = indexable ? canonicalPublicUrl(pathname) : undefined;
+
+  return {
+    title: document.title,
+    description: document.description,
+    robots: publicRobots(indexable),
+    alternates: canonical ? { canonical } : undefined,
+    openGraph: {
+      title: document.title,
+      description: document.description,
+      siteName: PUBLIC_SITE_NAME,
+      type: "article",
       url: canonical,
     },
   };

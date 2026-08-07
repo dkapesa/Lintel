@@ -313,6 +313,9 @@ export default function TrustPage() {
           <Copy variant="technical">{TRUST_HANDOFF.boundary}</Copy>
           <ActionGroup>
             <Action href={TRUST_HANDOFF.action.href}>{TRUST_HANDOFF.action.label}</Action>
+            <Action href={TRUST_HANDOFF.secondaryAction.href} variant="quiet">
+              {TRUST_HANDOFF.secondaryAction.label}
+            </Action>
           </ActionGroup>
         </div>
       </EditorialSection>

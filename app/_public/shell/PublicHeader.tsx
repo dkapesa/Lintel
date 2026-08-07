@@ -171,7 +171,6 @@ export function PublicHeader() {
                 </nav>
               ) : null}
               <noscript>
-                <style>{"[data-public-desktop-nav]{display:none!important}"}</style>
                 <nav className={styles.noScriptNavigation} aria-label="Primary navigation">
                   {livePrimaryPublicRoutes.map((route) => (
                     <a key={route.id} href={route.pathname}>

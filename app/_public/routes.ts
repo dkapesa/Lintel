@@ -37,19 +37,21 @@ export const PUBLIC_ROUTE_REGISTRY: readonly PublicRouteRecord[] = [
     id: "product",
     label: "Product",
     pathname: "/product",
-    state: "draft",
+    state: "live",
     placement: "primary",
-    sitemapEligible: false,
-    description: "Product capabilities and their evidence boundaries.",
+    sitemapEligible: true,
+    description:
+      "What Lintel presents across a complete verification record: findings with provenance, missing proof, merge requirements, readiness movement and the boundary between a recommendation and a Human Decision.",
   },
   {
     id: "how-it-works",
     label: "How it works",
     pathname: "/how-it-works",
-    state: "draft",
+    state: "live",
     placement: "primary",
-    sitemapEligible: false,
-    description: "How Lintel connects a change to evidence and requirements.",
+    sitemapEligible: true,
+    description:
+      "How a change becomes an accountable merge decision: deterministic analysis, findings connected to evidence, missing proof, requirements, readiness across commits, and the engineer's decision.",
   },
   {
     id: "trust",

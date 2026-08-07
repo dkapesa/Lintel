@@ -1,0 +1,227 @@
+.sectionStack,
+.sceneStack,
+.boundaryStack,
+.queueRows,
+.recordStack {
+  display: grid;
+}
+
+.sectionStack,
+.sceneStack,
+.recordStack {
+  gap: 32px;
+}
+
+.boundaryStack {
+  gap: 16px;
+}
+
+.boundaryStack p,
+.caption,
+.passportAbsent p,
+.passportState span,
+.passportStateReview span,
+.explanatoryLabel {
+  margin: 0;
+  color: var(--pub-text-2);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.analysisSources {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 32px;
+  gap: 12px;
+}
+
+.summaryGrid {
+  margin-top: 0;
+}
+
+.queueRows {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.evidenceFrameBody {
+  display: grid;
+  gap: 24px;
+}
+
+.evidenceClassList,
+.workflowList,
+.passportAbsent ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.evidenceClassList {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-top: 1px solid var(--pub-border);
+  border-left: 1px solid var(--pub-border);
+}
+
+.evidenceClassList li {
+  padding: 12px;
+  border-right: 1px solid var(--pub-border);
+  border-bottom: 1px solid var(--pub-border);
+  color: var(--pub-text);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.diffVocabulary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+
+.passportAbsent,
+.passportExplanation {
+  display: grid;
+  gap: 16px;
+}
+
+.passportAbsent ul {
+  display: grid;
+  gap: 8px;
+}
+
+.passportAbsent li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--pub-border-subtle);
+  gap: 8px 16px;
+}
+
+.reviewState {
+  color: #b43d0b;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.passportExplanation {
+  padding-top: 24px;
+  border-top: 1px solid var(--pub-border);
+}
+
+.explanatoryLabel {
+  font-weight: 600;
+}
+
+.passportStates {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.passportState,
+.passportStateReview {
+  display: grid;
+  padding: 12px;
+  border: 1px solid var(--pub-border);
+  gap: 4px;
+}
+
+.passportState strong,
+.passportStateReview strong {
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.passportStateReview {
+  border-color: #b43d0b;
+}
+
+.passportStateReview strong {
+  color: #b43d0b;
+}
+
+.workflowList {
+  counter-reset: workflow;
+  border-top: 1px solid var(--pub-border);
+}
+
+.workflowList li {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  padding: 12px 0;
+  border-bottom: 1px solid var(--pub-border-subtle);
+  gap: 12px;
+  color: var(--pub-text);
+  font-size: 13px;
+  line-height: 1.55;
+  counter-increment: workflow;
+}
+
+.workflowList li::before {
+  color: var(--pub-text-2);
+  content: counter(workflow, decimal-leading-zero);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 12.5px;
+}
+
+.availabilitySentences {
+  display: grid;
+  margin-top: 24px;
+  gap: 8px;
+}
+
+.availabilitySentences p {
+  margin: 0;
+  color: var(--pub-text);
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.pathShort {
+  display: none;
+}
+
+@media (max-width: 1024px) {
+  .evidenceClassList {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .analysisSources,
+  .queueRows,
+  .passportStates,
+  .evidenceClassList {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .passportAbsent li {
+    display: grid;
+  }
+}
+
+@media (max-width: 359px) {
+  .pathFull {
+    display: none;
+  }
+
+  .pathShort {
+    display: inline;
+  }
+}
+
+@media (forced-colors: active) {
+  .passportState,
+  .passportStateReview,
+  .evidenceClassList,
+  .evidenceClassList li {
+    border-color: ButtonText;
+  }
+
+  .reviewState,
+  .passportStateReview strong {
+    color: Highlight;
+  }
+}

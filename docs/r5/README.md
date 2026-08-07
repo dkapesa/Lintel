@@ -234,6 +234,12 @@ R5E.1A is documentation only. Its five documents are read in this order:
     the Phase 8B.1 migration of production `/` to the accepted Phase 7.1
     reconstruction inside the Phase 8B shell. Accepted and complete; Phase 8C
     Shared Public Primitives is authorised next and has not begun.
+35. [`R5E2D_PRODUCT_AND_HOW_IT_WORKS.md`](./R5E2D_PRODUCT_AND_HOW_IT_WORKS.md) —
+    the Phase 8D static Product and How it works implementation, product-truth
+    traceability, absent-led Change Passport boundary, bounded no-JavaScript
+    navigation correction, validation record and post-acceptance sitemap
+    action and final human acceptance. Accepted and complete; Phase 8E Trust is
+    authorised next but has not begun.
 
 No earlier R5 or R4 document was edited to produce R5E.1A. Where R5E.1A
 deliberately changes an earlier public visual decision, the change is
@@ -651,9 +657,19 @@ Frozen R4 product truth always outranks public visual preference.
   `/visual-lab/public-r5-shared-primitives`. Production `/` and its frozen Hero
   remain unchanged. Final human acceptance closed the visual, responsive,
   accessibility, special-state, product-truth, performance and homepage-
-  regression gates. Phase 8D — Product and How it works — is authorised next
-  and has not begun. Described in
+  regression gates. At the Phase 8C acceptance point, Phase 8D — Product and
+  How it works — was authorised next. Described in
   [`R5E2C_SHARED_PUBLIC_PRIMITIVES.md`](./R5E2C_SHARED_PUBLIC_PRIMITIVES.md).
+- Phase 8D — Product and How it works: **ACCEPTED AND COMPLETE**. The two public
+  routes are complete static server-rendered
+  compositions of the accepted primitives. Product and How it works are live
+  in navigation and sitemap eligible. Final human acceptance closed the visual,
+  responsive, accessibility, keyboard, reduced-motion, forced-colours,
+  no-JavaScript, product-truth and Home-regression gates. The authorised
+  no-JavaScript navigation correction is included; production Home content and
+  the frozen Hero remain unchanged. Phase 8E Trust is authorised next but has
+  not begun. Described in
+  [`R5E2D_PRODUCT_AND_HOW_IT_WORKS.md`](./R5E2D_PRODUCT_AND_HOW_IT_WORKS.md).
 
 See `R5E_PUBLIC_MOTION_SYSTEM.md`'s deferred-work sections and
 `R5E1A_IMPLEMENTATION_HANDOFF.md` §8 for what remains open beyond these

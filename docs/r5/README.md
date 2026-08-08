@@ -713,6 +713,31 @@ Frozen R4 product truth always outranks public visual preference.
   accessibility, keyboard and special-state gates on 7 August 2026. Phase 8G
   is authorised next but has not begun. Described in
   [`R5E2F_RESOURCES_AND_CURATED_DOCUMENTATION.md`](./R5E2F_RESOURCES_AND_CURATED_DOCUMENTATION.md).
+- Phase 8G — Cross-route public review: **ACCEPTED AND COMPLETE**. An
+  adversarial review of the accepted public system — five public page
+  routes, three curated public documents, and the `/docs` namespace with
+  deliberately no index route — across responsive behaviour, accessibility,
+  cross-route composition, product truth, navigation, metadata/indexing,
+  accidental publication, performance and resilience. Found **zero bounded
+  (Category C) defects** and **zero architectural conflicts**; no
+  application, style, content or configuration file was modified.
+  Re-evaluated and reclassified the six gates carried from 8B–8F
+  (logged-in-route `noindex`, production origin/canonical, missing favicon,
+  root README passport omission, the retained uncurated CLI/GitHub Action
+  blueprint, the Resources kind-filter trigger) without resolving any of
+  them — the two deployment-blocking gates (logged-in-route `noindex` and
+  production origin/canonical) remain open, binding on Phase 8H's
+  launch-readiness language. Verified the sitemap and `robots.txt` contract
+  with a bounded temporary test origin (exactly the eight accepted canonical
+  paths, no dead `/docs` entry) and restored the unconfigured state
+  afterward. Home, the frozen Hero, shared shell, shared primitives, every
+  existing route, `lib/**`, `public/**` and the root README remain
+  unchanged. Final human acceptance closed the visual, responsive,
+  navigation, accessibility, keyboard, no-JavaScript, reduced-motion,
+  forced-colours, product-truth, indexing and performance gates. Described
+  in
+  [`R5E2G_CROSS_ROUTE_PUBLIC_REVIEW.md`](./R5E2G_CROSS_ROUTE_PUBLIC_REVIEW.md).
+  Phase 8H is authorised next but has not begun.
 
 See `R5E_PUBLIC_MOTION_SYSTEM.md`'s deferred-work sections and
 `R5E1A_IMPLEMENTATION_HANDOFF.md` §8 for what remains open beyond these

@@ -738,6 +738,27 @@ Frozen R4 product truth always outranks public visual preference.
   in
   [`R5E2G_CROSS_ROUTE_PUBLIC_REVIEW.md`](./R5E2G_CROSS_ROUTE_PUBLIC_REVIEW.md).
   Phase 8H is authorised next but has not begun.
+- Phase 8H — Final public design-system freeze: **ACCEPTED AND COMPLETE.**
+  The Phase 8 public-system programme is closed, and the public experience is
+  frozen under change control. Records as frozen: the eight accepted public
+  surfaces (five page routes, three curated documents, the deliberately
+  index-less `/docs` namespace), the accepted cross-route visual and
+  interaction system, the Home/Product/How it works/Trust primary
+  navigation with Resources supporting-only, the product-truth authority
+  boundaries, and the post-freeze change-control contract requiring a
+  deliberately scoped revision for any future public visual, structural,
+  navigation or interaction change. The frozen Hero remains untouched. Two
+  deployment blockers (logged-in-route `noindex`; production
+  origin/canonical configuration) and three lower-severity items (missing
+  favicon, root README passport omission, the Resources kind-filter future
+  trigger) are carried forward explicitly, unresolved. Does not describe the
+  public system as launch-ready, production-ready or deployment-ready while
+  those deployment blockers remain separate and unresolved. **R6 — Workspace
+  Experience Refinement is authorised next** as a separate programme,
+  beginning with research and friction analysis rather than implementation;
+  it must protect existing logged-in behaviour and data contracts and must
+  not silently reopen the frozen public system. Described in
+  [`R5E2H_FINAL_PUBLIC_SYSTEM_FREEZE.md`](./R5E2H_FINAL_PUBLIC_SYSTEM_FREEZE.md).
 
 See `R5E_PUBLIC_MOTION_SYSTEM.md`'s deferred-work sections and
 `R5E1A_IMPLEMENTATION_HANDOFF.md` §8 for what remains open beyond these

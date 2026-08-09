@@ -10,15 +10,15 @@ Lintel is not a generic AI code review chatbot. It creates a structured verifica
 
 ![Lintel Workspace showing pull request 482 with a tests required recommendation, medium risk, open blocking requirements, and a pending Human Decision.](docs/assets/readme/lintel-workspace-overview.png)
 
-*The canonical sample keeps the pull request, risk, open proof, requirements and accountable decision in one verification surface.*
+**The canonical sample keeps the pull request, risk, open proof, requirements and accountable decision in one verification surface.**
 
 ![Lintel evidence view showing a duplicate redemption finding, supporting evidence provenance, missing proof, and an open idempotency requirement.](docs/assets/readme/lintel-evidence-and-missing-proof.jpg)
 
-*Findings, provenance, missing proof and merge requirements remain connected and inspectable.*
+**Findings, provenance, missing proof and merge requirements remain connected and inspectable.**
 
 ![Lintel Human Decision dialog for pull request 482 showing tests required, medium risk, open blockers, and no outcome selected.](docs/assets/readme/lintel-readiness-human-decision.png)
 
-*Lintel recommends. The accountable engineer decides.*
+**Lintel recommends. The accountable engineer decides.**
 
 ## Verification model
 
@@ -30,13 +30,13 @@ The recommendation is advisory. `APPROVE`, `REVIEW_REQUIRED` and `TESTS_REQUIRED
 
 The canonical product demonstration uses pull request `#482` in `example/b2b-redemption-api`:
 
-| Field | Value |
-| --- | --- |
-| Title | Add fallback handling for failed discount code retrieval |
-| Recommendation | `TESTS_REQUIRED` |
-| Risk | `46/100`, `MEDIUM` |
-| Requirements | `4 open`, `2 blocking` |
-| Human Decision | `PENDING` |
+| Field          | Value                                                    |
+| -------------- | -------------------------------------------------------- |
+| Title          | Add fallback handling for failed discount code retrieval |
+| Recommendation | `TESTS_REQUIRED`                                         |
+| Risk           | `46/100`, `MEDIUM`                                       |
+| Requirements   | `4 open`, `2 blocking`                                   |
+| Human Decision | `PENDING`                                                |
 
 The sample intentionally remains unresolved so the evidence, missing proof and decision boundary stay truthful and repeatable.
 
@@ -76,23 +76,29 @@ Declarations remain claims until independently supported by evidence. Lintel can
 
 * Explicit Human Decision authority.
 * Local decision history and review history.
-* Read only canonical demonstration.
 * Markdown and summary handoff.
 * Recommendation and engineer authority remain separate throughout the product.
 
+### Public product system
+
+* Shared Next.js and TypeScript public shell across Product, How it works, Trust, Resources and curated documentation routes.
+* Responsive, accessible interaction with keyboard support, reduced motion behaviour and deliberate product derived presentation.
+* Shared navigation, grid, typography and editorial structure across the public product experience.
+* Curated technical documentation and product truth surfaces that distinguish implemented behaviour, limitations and future work.
+
 ## Product surfaces
 
-| Surface | Purpose |
-| --- | --- |
-| `/workspace?source=fixture` | Canonical read only verification sample |
-| `/new` | Create a review from a sample, public pull request or pasted diff |
-| `/workspace` | Main verification Workspace |
-| `/report` | Secondary Case File surface |
-| `/` | Public product overview |
-| `/product` | Product explanation |
-| `/how-it-works` | Verification workflow |
-| `/trust` | Product truth, boundaries and limitations |
-| `/resources` | Curated resources and documentation |
+| Surface                     | Purpose                                                           |
+| --------------------------- | ----------------------------------------------------------------- |
+| `/workspace?source=fixture` | Canonical read only verification sample                           |
+| `/new`                      | Create a review from a sample, public pull request or pasted diff |
+| `/workspace`                | Main verification Workspace                                       |
+| `/report`                   | Secondary Case File surface                                       |
+| `/`                         | Public product overview                                           |
+| `/product`                  | Product explanation                                               |
+| `/how-it-works`             | Verification workflow                                             |
+| `/trust`                    | Product truth, boundaries and limitations                         |
+| `/resources`                | Curated resources and documentation                               |
 
 The public product system is complete and frozen for the current milestone sequence. The next major programme is focused on the logged in application.
 
@@ -100,7 +106,9 @@ The public product system is complete and frozen for the current milestone seque
 
 R6 is a controlled redesign and engineering migration of the logged in product. The goal is not to make the existing Workspace merely prettier. It is to turn Lintel into a calmer, faster and more deliberate **engineering verification workstation**.
 
-A six part Cursor and Mobbin reference study covered Agents, Cloud Agents, Bugbot, Integrations, Settings and Automations. The work focused on spatial hierarchy, pane behaviour, progressive disclosure, object lifecycle, technical density, commands, responsive workstation states and interaction smoothness.
+The six part Cursor and Mobbin reference study, target application architecture and migration programme are complete. Implementation now begins with a private R6 interaction laboratory before production migration.
+
+The reference study covered Agents, Cloud Agents, Bugbot, Integrations, Settings and Automations. It focused on spatial hierarchy, pane behaviour, progressive disclosure, object lifecycle, technical density, commands, responsive workstation states and interaction smoothness.
 
 The central R6 principle is:
 
@@ -123,13 +131,11 @@ The selected Review keeps five focused modes:
 
 R6 is designed to introduce:
 
-* One coherent left application region instead of a permanent global rail beside a separate Review Queue.
-* A Review Queue that can collapse and resize continuously within sensible bounds.
-* A contextual Inspector that opens only when evidence, requirements, findings, history or decision context needs additional space.
-* Task specific geometry, including a wider Change mode for code and diff inspection.
-* A global Commands layer for fast navigation and expert actions without permanent shortcut clutter.
-* Per Review state restoration so engineers can move between modes and return to meaningful context.
-* Responsive workstation classes designed for full screen use and companion use beside Cursor, Claude, Codex, terminals or documentation.
+* One coherent left application region with a collapsible, continuously resizable Review Queue.
+* A contextual Inspector that opens only when selected evidence, requirements, findings, history or decision context needs additional space.
+* Task specific Workspace geometry, including a wider Change mode for code and diff inspection.
+* A global Commands layer for navigation and expert actions without permanent shortcut clutter.
+* Per Review state restoration and responsive workstation behaviour for full screen use or companion use beside Cursor, Claude, Codex, terminals or documentation.
 * A Human Decision draft model that remains local and explicitly unrecorded until persistence succeeds, and becomes stale if canonical verification changes.
 * A restrained typography system using Geist Sans for interface language, Geist Mono for genuine technical identifiers, and tabular numerals for comparable engineering data.
 
@@ -142,7 +148,7 @@ R6 is being delivered incrementally:
 1. Freeze product truth, UI state ownership, fixtures and no regression contracts.
 2. Build a private interactive visual laboratory before changing production Workspace composition.
 3. Establish durable navigation, workspace state, action and typography foundations.
-4. Migrate the production shell, Reviews, Overview, Evidence, Requirements, Change, History and Human Decision mode by mode.
+4. Migrate the production shell and Review modes incrementally.
 5. Add Commands, keyboard behaviour, continuous resizing, responsive restoration and accessibility hardening.
 6. Migrate Policies, Integrations and Settings into the accepted application system.
 7. Complete performance, scale and adversarial validation before production cutover and removal of the obsolete shell.
@@ -183,7 +189,7 @@ Accountable Human Decision
 
 ### Security and trust boundaries
 
-Credentials, installation tokens and webhook secrets stay outside browser state. Raw diffs, raw webhook payloads, authorisation headers and credentials are excluded from persisted review records where the current product contract requires it.
+Credentials, installation tokens and webhook secrets stay outside browser state. Raw diffs, raw webhook payloads, authorisation headers and credentials are excluded from persisted review records.
 
 Model assisted analysis may send submitted content to the configured provider. The repository does not claim that model assisted review is local or exactly reproducible.
 
@@ -191,17 +197,17 @@ The GitHub App path is a prototype using local filesystem persistence. Lintel do
 
 ## Technology
 
-| Area | Technology |
-| --- | --- |
-| Application | Next.js App Router |
-| Language | TypeScript |
-| Interface | React, CSS, CSS Modules |
-| Typography | Geist Sans, Geist Mono |
-| Model integration | OpenAI Responses API |
-| GitHub integration | GitHub App authentication, REST API, webhooks |
-| Local application state | Browser storage |
-| Prototype integration state | Local filesystem persistence |
-| Package management | npm |
+| Area                        | Technology                                    |
+| --------------------------- | --------------------------------------------- |
+| Application                 | Next.js App Router                            |
+| Language                    | TypeScript                                    |
+| Interface                   | React, CSS, CSS Modules                       |
+| Typography                  | Geist Sans, Geist Mono                        |
+| Model integration           | OpenAI Responses API                          |
+| GitHub integration          | GitHub App authentication, REST API, webhooks |
+| Local application state     | Browser storage                               |
+| Prototype integration state | Local filesystem persistence                  |
+| Package management          | npm                                           |
 
 ## Run the canonical sample locally
 

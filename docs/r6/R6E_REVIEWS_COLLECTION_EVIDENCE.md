@@ -111,4 +111,3 @@ occurred.
    verified.
 6. Any previously frozen R6C/R6D non-blocking follow-ups remain deferred unless
    superseded by accepted R6E work.
-

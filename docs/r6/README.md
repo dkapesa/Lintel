@@ -15,6 +15,10 @@ separate from, and must not reopen, the frozen R5 public product system.
   FOLLOW-UPS**, resolution of blockers A–D, frozen decisions Q1B/Q2A/Q3B,
   measured evidence and later non-blocking follow-ups. It is not production
   authority and does not begin R6C.
+- [R6E — Reviews Collection evidence](./R6E_REVIEWS_COLLECTION_EVIDENCE.md)
+  records the accepted production Reviews Collection and its final independent
+  verdict **ACCEPT R6E WITH NON-BLOCKING FOLLOW-UPS**. It does not claim that
+  the R6E freeze commit has occurred.
 - [R5 public-system freeze](../r5/R5E2H_FINAL_PUBLIC_SYSTEM_FREEZE.md) remains
   authoritative for every frozen public route and public design decision.
 

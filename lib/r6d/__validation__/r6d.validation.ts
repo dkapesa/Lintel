@@ -42,6 +42,7 @@ import {
   supportingLeftWidth,
 } from "../layout-policy";
 import { WORKSTATION_DESTINATIONS, destinationForPathname } from "../navigation";
+import { WORKSTATION_BOUND_ACTION_IDS } from "../../r6e/action-registry";
 
 type Test = Readonly<{ name: string; run: () => void }>;
 const tests: Test[] = [];
@@ -349,12 +350,12 @@ function sourceFiles(directory: string): string[] {
   });
 }
 
-test("production-bound source binds no action beyond the frozen four", () => {
+test("production-bound source binds exactly the current composed action set", () => {
   const source = sourceFiles(workstationRoot)
     .map((file) => readFileSync(file, "utf8"))
     .join("\n");
   const actionIds = [...source.matchAll(/id:\s*"([a-z-]+\/[a-z-]+)"/g)].map((match) => match[1]);
-  deepEqual([...new Set(actionIds)].sort(), [...R6D_BOUND_ACTION_IDS].sort(), "bound action source set");
+  deepEqual([...new Set(actionIds)].sort(), [...WORKSTATION_BOUND_ACTION_IDS].sort(), "bound action source set");
 });
 
 test("rendered workstation copy excludes programme vocabulary", () => {

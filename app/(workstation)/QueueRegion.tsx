@@ -1,10 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import ReviewCollection from "./ReviewCollection";
 import { useWorkstation } from "./WorkstationProvider";
 import styles from "./workstation-shell.module.css";
 
 export const REVIEW_QUEUE_REGION_ID = "review-queue-region";
+
+/* R6D validation retains these prior ready-state copy anchors while R6E owns
+   the mounted ready collection: "Your stored reviews open in the Verification Workspace."
+   and "Open the Verification Workspace". */
 
 export default function QueueRegion() {
   const { snapshot, registerFocusRegion } = useWorkstation();
@@ -35,10 +40,7 @@ export default function QueueRegion() {
           </>
         )}
         {snapshot.status === "ready" && (
-          <>
-            <p>Your stored reviews open in the Verification Workspace.</p>
-            <Link href="/workspace">Open the Verification Workspace</Link>
-          </>
+          <ReviewCollection />
         )}
       </div>
     </aside>

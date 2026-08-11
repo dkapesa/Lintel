@@ -27,7 +27,6 @@ import {
   writeReviewContext,
   writeWorkstationPersistence,
   type ActionResult,
-  type ApplicationAction,
   type DecisionSubjectResolver,
   type EffectiveLayout,
   type LayoutBand,
@@ -35,6 +34,13 @@ import {
   type StorageLike,
   type WorkstationState,
 } from "../../lib/r6c/index";
+import {
+  DEFAULT_REVIEW_COLLECTION_PREFERENCES,
+  readReviewCollectionPreferences,
+  writeReviewCollectionPreferences,
+  type ReviewCollectionPreferences,
+} from "../../lib/r6e/collection-preferences";
+import type { WorkstationBoundAction } from "../../lib/r6e/action-registry";
 import { createRealWorkspaceAdapter } from "../../lib/workspace-v2/real-adapter";
 import type {
   CaseDetail,
@@ -51,7 +57,6 @@ import {
   semanticRestorationStep,
   shouldApplyParsedPathname,
   type PendingRouteGate,
-  type R6DBoundActionId,
   type SemanticRestorationGate,
 } from "../../lib/r6d/controller-contract";
 import {
@@ -99,8 +104,6 @@ const decisionSubjectResolver: DecisionSubjectResolver = (_reviewId, currentCase
   };
 };
 
-type R6DBoundAction = Extract<ApplicationAction, { id: R6DBoundActionId }>;
-
 type WorkstationContextValue = Readonly<{
   state: WorkstationState;
   snapshot: WorkspaceSnapshot;
@@ -111,8 +114,10 @@ type WorkstationContextValue = Readonly<{
   layout: EffectiveLayout;
   leftPresentation: SupportingLeftPresentation;
   announcement: string;
-  dispatchBound: (action: R6DBoundAction, source: "visible-ui" | "system" | "browser") => ActionResult;
-  onDestinationClick: (event: MouseEvent<HTMLAnchorElement>, destination: R6DBoundAction & { id: "route/navigate" }) => void;
+  collectionPreferences: ReviewCollectionPreferences;
+  setCollectionPreferences: (preferences: ReviewCollectionPreferences) => void;
+  dispatchBound: (action: WorkstationBoundAction, source: "visible-ui" | "system" | "browser") => ActionResult;
+  onDestinationClick: (event: MouseEvent<HTMLAnchorElement>, destination: Extract<WorkstationBoundAction, { id: "route/navigate" }>) => void;
   registerFocusRegion: (region: R6DRegisteredFocusRegion, element: HTMLElement | null) => void;
 }>;
 
@@ -152,6 +157,7 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
   const [snapshot, setSnapshot] = useState<WorkspaceSnapshot>(LOADING_SNAPSHOT);
   const [band, setBand] = useState<LayoutBand>("standard");
   const [announcement, setAnnouncement] = useState("");
+  const [collectionPreferences, setCollectionPreferencesState] = useState<ReviewCollectionPreferences>(DEFAULT_REVIEW_COLLECTION_PREFERENCES);
   const stateRef = useRef(state);
   const snapshotRef = useRef(snapshot);
   const bandRef = useRef(band);
@@ -246,6 +252,12 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
     return { ...result, state: nextState };
   }, [actionContext, applyRouteEffect, commitState, persistManualPreference]);
 
+  const setCollectionPreferences = useCallback((preferences: ReviewCollectionPreferences) => {
+    setCollectionPreferencesState(preferences);
+    const storage = browserStorage.current;
+    if (storage) writeReviewCollectionPreferences(storage, preferences, new Date().toISOString());
+  }, []);
+
   const applyBrowserIntent = useCallback((intent: Parameters<typeof receiveRouteIntent>[1]) => {
     const received = receiveRouteIntent(routeGate.current, intent, snapshotRef.current.status);
     routeGate.current = received.gate;
@@ -262,6 +274,9 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
       browserStorage.current = window.localStorage;
     } catch {
       browserStorage.current = null;
+    }
+    if (browserStorage.current) {
+      setCollectionPreferencesState(readReviewCollectionPreferences(browserStorage.current).preferences);
     }
     const restored = restoreInitialState({
       pathname,
@@ -452,6 +467,8 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
     layout,
     leftPresentation,
     announcement,
+    collectionPreferences,
+    setCollectionPreferences,
     dispatchBound,
     onDestinationClick,
     registerFocusRegion,
@@ -465,6 +482,8 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
     layout,
     leftPresentation,
     announcement,
+    collectionPreferences,
+    setCollectionPreferences,
     dispatchBound,
     onDestinationClick,
     registerFocusRegion,

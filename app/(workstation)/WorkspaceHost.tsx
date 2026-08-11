@@ -2,27 +2,30 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { projectSelectedReview } from "../../lib/r6f/index";
+import SelectedReviewFoundation from "./SelectedReviewFoundation";
 import { useWorkstation } from "./WorkstationProvider";
+import selectedStyles from "./selected-review.module.css";
 import styles from "./workstation-shell.module.css";
 
-const MODE_LABEL = {
-  overview: "Overview",
-  change: "Change",
-  evidence: "Evidence",
-  requirements: "Requirements",
-  history: "History",
-} as const;
+const OVERVIEW_SECTION_LABELS = [
+  "Lintel recommendation",
+  "Human Decision",
+  "Verification standing",
+  "Next step",
+  "Analysis basis",
+] as const;
 
 function ReviewWorkspace() {
   const {
     state,
     snapshot,
-    selectedCase,
-    selectedCaseTitle,
+    reviewIndex,
     band,
     dispatchBound,
   } = useWorkstation();
-  const requestedReview = state.selectedReview.status !== "none";
+  const selectedReview = projectSelectedReview(state, snapshot, reviewIndex);
+  const requestedReview = selectedReview.status !== "none";
   const showQueueReturn = band === "narrow" && requestedReview && state.narrowSurface === "workspace";
 
   return (
@@ -38,7 +41,7 @@ function ReviewWorkspace() {
         </button>
       )}
 
-      {!requestedReview && (
+      {selectedReview.status === "none" && (
         <section className={styles.idleWorkspace}>
           <h1>Select a review to begin</h1>
           <p>Reviews you have checked are stored in this browser.</p>
@@ -49,41 +52,41 @@ function ReviewWorkspace() {
         </section>
       )}
 
-      {requestedReview && snapshot.status === "loading" && (
-        <section className={styles.reviewMessage} aria-live="polite">
-          <p>Resolving this review.</p>
+      {selectedReview.status === "resolving" && (
+        <section className={selectedStyles.resolving}>
+          <h1>Resolving this review</h1>
+          <div className={selectedStyles.resolvingLabels}>
+            {OVERVIEW_SECTION_LABELS.map((label) => (
+              <section className={selectedStyles.resolvingSection} key={label}>
+                <h2>{label}</h2>
+                <div className={selectedStyles.skeleton} aria-hidden="true" />
+                <div className={`${selectedStyles.skeleton} ${selectedStyles.skeletonShort}`} aria-hidden="true" />
+              </section>
+            ))}
+          </div>
         </section>
       )}
 
-      {requestedReview && snapshot.status === "unavailable" && (
-        <section className={styles.reviewMessage}>
+      {selectedReview.status === "store-unavailable" && (
+        <section className={selectedStyles.stateMessage}>
           <h1>Reviews stored in this browser could not be read.</h1>
-          <p>{snapshot.reason}</p>
+          <p>{selectedReview.reason}</p>
         </section>
       )}
 
-      {requestedReview && (snapshot.status === "ready" || snapshot.status === "empty") && !selectedCase && (
-        <section className={styles.reviewMessage}>
+      {selectedReview.status === "review-unavailable" && (
+        <section className={selectedStyles.stateMessage}>
           <h1>This review is no longer stored in this browser</h1>
-          <p>No other review was selected in its place.</p>
+          <p>No replacement Review was silently selected. The Review Queue remains available.</p>
           <Link href="/reviews">Back to Reviews</Link>
         </section>
       )}
 
-      {requestedReview && snapshot.status === "ready" && selectedCase && (
-        <article className={styles.selectedReview}>
-          <header>
-            <p className={styles.eyebrow}>Selected review</p>
-            <p className={styles.reviewIdentity}>
-              {selectedCase.github.repository} · PR #{selectedCase.github.pullRequestNumber}
-            </p>
-            <h1>{selectedCaseTitle ?? selectedCase.github.branch}</h1>
-            <p className={styles.committedMode}>{MODE_LABEL[state.mode]}</p>
-          </header>
-          <Link href={`/workspace?reportId=${encodeURIComponent(selectedCase.caseId)}`}>
-            Open in the Verification Workspace
-          </Link>
-        </article>
+      {selectedReview.status === "ready" && (
+        <SelectedReviewFoundation
+          review={selectedReview}
+          onModeActivate={(mode) => dispatchBound({ id: "mode/activate", mode }, "visible-ui")}
+        />
       )}
     </div>
   );

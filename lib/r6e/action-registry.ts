@@ -5,6 +5,7 @@ import { R6D_BOUND_ACTION_IDS } from "../r6d/controller-contract";
 export const WORKSTATION_BOUND_ACTION_IDS = [
   ...R6D_BOUND_ACTION_IDS,
   "review/select",
+  "mode/activate",
 ] as const satisfies readonly ApplicationAction["id"][];
 
 export type WorkstationBoundActionId = (typeof WORKSTATION_BOUND_ACTION_IDS)[number];

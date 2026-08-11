@@ -1,0 +1,268 @@
+.selectedReview,
+.stateMessage,
+.resolving {
+  width: min(720px, 100%);
+}
+
+.identityHeader {
+  display: grid;
+  gap: 10px;
+}
+
+.eyebrow,
+.overviewSection h2 {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.4;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.identityHeader h1,
+.stateMessage h1,
+.resolving h1 {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: clamp(26px, 3vw, 38px);
+  font-weight: 560;
+  line-height: 1.12;
+  letter-spacing: -.025em;
+  overflow-wrap: anywhere;
+}
+
+.identityContext {
+  max-width: 66ch;
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.modeNav {
+  margin-top: 30px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.modeNav ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.modeLink,
+.modeLinkCurrent {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: var(--radius-control);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 540;
+  line-height: 1.25;
+  text-decoration: none;
+}
+
+.modeLink:hover,
+.modeLinkCurrent:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+
+.modeLinkCurrent {
+  background: var(--color-surface-selected);
+  color: var(--color-text-primary);
+  font-weight: 650;
+}
+
+.modeLink:focus-visible,
+.modeLinkCurrent:focus-visible,
+.nextStepLink:focus-visible,
+.stateMessage a:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.modeOutlet {
+  min-width: 0;
+}
+
+.overviewSection {
+  padding: 30px 0 34px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.overviewSection:last-child {
+  border-bottom: 0;
+}
+
+.prominentStatement {
+  max-width: 66ch;
+  margin: 12px 0 0;
+  color: var(--color-text-primary);
+  font-size: 20px;
+  font-weight: 560;
+  line-height: 1.45;
+  letter-spacing: -.012em;
+}
+
+.prose,
+.stateMessage p,
+.unavailableMode p {
+  max-width: 66ch;
+  margin: 12px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.supportList,
+.limitations {
+  max-width: 66ch;
+  padding: 0;
+  margin: 16px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1.55;
+  list-style: none;
+}
+
+.supportList li + li,
+.limitations li + li {
+  margin-top: 5px;
+}
+
+.standing,
+.basisList {
+  padding: 0;
+  margin: 16px 0 0;
+}
+
+.standing > div,
+.basisList > div {
+  display: flex;
+  gap: 18px;
+  padding: 9px 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.standing dt,
+.basisList dt {
+  flex: 1 1 42%;
+  color: var(--color-text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.standing dd,
+.basisList dd {
+  flex: 1 1 58%;
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.nextStepLink,
+.stateMessage a {
+  width: fit-content;
+  display: inline-flex;
+  margin-top: 16px;
+  color: var(--color-accent-strong);
+  font-size: 14px;
+  line-height: 1.5;
+  text-underline-offset: 3px;
+}
+
+.analysisBasis {
+  color: var(--color-text-muted);
+}
+
+.analysisBasis p {
+  max-width: 66ch;
+  margin: 12px 0 0;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.unavailableMode {
+  padding-top: 34px;
+}
+
+.unavailableMode h2 {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 20px;
+  font-weight: 560;
+  line-height: 1.35;
+}
+
+.resolvingLabels {
+  display: grid;
+  gap: 0;
+  margin-top: 32px;
+}
+
+.resolvingSection {
+  padding: 24px 0 28px;
+  border-top: 1px solid var(--color-border);
+}
+
+.resolvingSection h2 {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.4;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.skeleton {
+  width: min(440px, 74%);
+  height: 10px;
+  margin-top: 16px;
+  border-radius: var(--radius-control);
+  background: var(--color-border);
+}
+
+.skeletonShort {
+  width: min(280px, 48%);
+}
+
+@media (max-width: 899.98px) {
+  .modeLink,
+  .modeLinkCurrent {
+    min-height: 44px;
+  }
+
+  .standing > div,
+  .basisList > div {
+    display: block;
+  }
+
+  .standing dd,
+  .basisList dd {
+    margin-top: 3px;
+  }
+}
+
+@media (forced-colors: active) {
+  .modeLinkCurrent {
+    outline: 1px solid Highlight;
+  }
+
+  .modeLink:focus-visible,
+  .modeLinkCurrent:focus-visible,
+  .nextStepLink:focus-visible,
+  .stateMessage a:focus-visible {
+    outline-color: Highlight;
+  }
+}

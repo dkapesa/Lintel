@@ -19,6 +19,10 @@ separate from, and must not reopen, the frozen R5 public product system.
   records the accepted production Reviews Collection and its final independent
   verdict **ACCEPT R6E WITH NON-BLOCKING FOLLOW-UPS**. It does not claim that
   the R6E freeze commit has occurred.
+- [R6F Selected Review foundation and Overview evidence](./R6F_SELECTED_REVIEW_FOUNDATION_OVERVIEW_EVIDENCE.md)
+  records the accepted selected Review foundation and Overview, with the final
+  independent verdict **ACCEPT R6F WITH NON-BLOCKING FOLLOW-UPS**. It does not
+  claim that the R6F freeze commit has occurred.
 - [R5 public-system freeze](../r5/R5E2H_FINAL_PUBLIC_SYSTEM_FREEZE.md) remains
   authoritative for every frozen public route and public design decision.
 

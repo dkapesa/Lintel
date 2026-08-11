@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import AppShell from "../app-shell";
-import styles from "../r4f4-administration.module.css";
+import styles from "../../r4f4-administration.module.css";
 
 type CapabilityState =
   | "Connected"
@@ -530,8 +529,7 @@ export default function IntegrationsPage() {
         : "Status unavailable";
 
   return (
-    <AppShell>
-      <div className={styles.page}>
+    <div className={styles.page}>
         <div className={styles.document}>
           <header className={styles.pageHeader}>
             <span className={styles.eyebrow}>Capability management</span>
@@ -645,6 +643,5 @@ export default function IntegrationsPage() {
           </p>
         </div>
       </div>
-    </AppShell>
   );
 }

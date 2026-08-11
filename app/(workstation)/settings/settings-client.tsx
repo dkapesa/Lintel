@@ -2,17 +2,16 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import AppShell from "../app-shell";
-import ConsequentialDialog from "../consequential-dialog";
-import styles from "../r4f4-administration.module.css";
+import ConsequentialDialog from "../../consequential-dialog";
+import styles from "../../r4f4-administration.module.css";
 import {
   MAX_REPORT_HISTORY,
   REPORT_HISTORY_STORAGE_KEY,
   clearReportHistory,
   readReportHistory,
-} from "../../lib/report-history";
-import { HUMAN_DECISION_LEDGER_ENTRY_LIMIT } from "../../lib/human-decision-ledger";
-import { REVIEW_PROFILES } from "../../lib/review-profiles";
+} from "../../../lib/report-history";
+import { HUMAN_DECISION_LEDGER_ENTRY_LIMIT } from "../../../lib/human-decision-ledger";
+import { REVIEW_PROFILES } from "../../../lib/review-profiles";
 
 type ProviderState = {
   status: "checking" | "current" | "unavailable";
@@ -179,7 +178,7 @@ export default function SettingsClient() {
   }
 
   return (
-    <AppShell>
+    <>
       <div className={styles.page}>
         <div className={styles.document}>
           <header className={styles.pageHeader}>
@@ -581,6 +580,6 @@ export default function SettingsClient() {
           setClearError(null);
         }}
       />
-    </AppShell>
+    </>
   );
 }

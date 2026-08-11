@@ -444,7 +444,7 @@ const ADMINISTRATIVE_ROUTES = SHELL_ROUTE_CONTEXTS.filter(
 
 function ProductIdentity({ compact = false }: { compact?: boolean }) {
   return (
-    <Link className={compact ? "r4-product-identity r4-product-identity--compact" : "r4-product-identity"} href="/workspace" aria-label="Lintel Reviews">
+    <Link className={compact ? "r4-product-identity r4-product-identity--compact" : "r4-product-identity"} href="/reviews" aria-label="Lintel Reviews">
       <span className="r4-product-mark" aria-hidden="true">L</span>
       <span className="r4-product-name">Lintel</span>
     </Link>
@@ -494,7 +494,7 @@ function WorkspaceReturnLink({
   const supportId = useId();
   const support = context
     ? "Prior review, mode and investigation context will be validated before restoration."
-    : "No prior Workspace context is stored in this tab. Reviews will open at the truthful default state.";
+    : "No prior Verification Workspace context is stored in this tab.";
   return (
     <Link
       className={compact ? "r4-return-link r4-return-link--compact" : "r4-return-link"}
@@ -503,7 +503,7 @@ function WorkspaceReturnLink({
       onClick={onNavigate}
     >
       <span aria-hidden="true">←</span>
-      <span>{context ? "Back to Reviews" : "Open Reviews"}</span>
+      <span>{context ? "Back to Verification Workspace" : "Open Verification Workspace"}</span>
       <span className="r4-sr-only" id={supportId}>{support}</span>
     </Link>
   );

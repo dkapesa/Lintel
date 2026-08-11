@@ -11,9 +11,9 @@ import {
   type PolicyCategory,
   type PolicyExecutionType,
   type ReviewPolicyProfile,
-} from "../../lib/review-policies";
-import { reviewProfileLabel } from "../../lib/review-profiles";
-import styles from "../r4f5-governance.module.css";
+} from "../../../lib/review-policies";
+import { reviewProfileLabel } from "../../../lib/review-profiles";
+import styles from "../../r4f5-governance.module.css";
 
 type CategoryFilter = "all" | PolicyCategory;
 type ExecutionFilter = "all" | PolicyExecutionType;

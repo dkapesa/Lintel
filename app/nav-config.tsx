@@ -87,11 +87,10 @@ const NO_COMMAND_ACTIONS: ShellCommandActionConfig = {
 };
 
 export const SHELL_GLOBAL_AREAS: ShellGlobalArea[] = [
-  { id: "review", label: "Reviews", href: "/workspace", icon: "review" },
-  { id: "operations", label: "Operations", href: "/home", icon: "operations" },
-  { id: "governance", label: "Governance", href: "/review-policies", icon: "governance" },
+  { id: "review", label: "Reviews", href: "/reviews", icon: "review" },
+  { id: "governance", label: "Policies", href: "/policies", icon: "governance" },
   { id: "integrations", label: "Integrations", href: "/integrations", icon: "integrations" },
-  { id: "system", label: "System", href: "/settings", icon: "system" },
+  { id: "system", label: "Settings", href: "/settings", icon: "system" },
 ];
 
 export const SHELL_CONTEXT_DESTINATIONS: Record<ShellGlobalAreaId, ShellContextDestination[]> = {
@@ -99,6 +98,8 @@ export const SHELL_CONTEXT_DESTINATIONS: Record<ShellGlobalAreaId, ShellContextD
     { id: "workspace", label: "Verification Workspace", href: "/workspace", pathname: "/workspace", icon: "workspace" },
     { id: "new-review", label: "New review", href: "/new", pathname: "/new", icon: "new-review" },
     { id: "case-file", label: "Case File", href: "/report", pathname: "/report", icon: "case-file", contextual: true },
+    { id: "operational-home", label: "Operational Home", href: "/home", pathname: "/home", icon: "operational-home" },
+    { id: "review-operations", label: "Review Operations", href: "/review-operations", pathname: "/review-operations", icon: "review-operations" },
   ],
   operations: [
     { id: "operational-home", label: "Operational Home", href: "/home", pathname: "/home", icon: "operational-home" },
@@ -106,7 +107,7 @@ export const SHELL_CONTEXT_DESTINATIONS: Record<ShellGlobalAreaId, ShellContextD
     { id: "team", label: "Team boundaries", href: "/team", pathname: "/team", icon: "team" },
   ],
   governance: [
-    { id: "review-policies", label: "Review policies", href: "/review-policies", pathname: "/review-policies", icon: "review-policies" },
+    { id: "review-policies", label: "Review policies", href: "/policies", pathname: "/review-policies", icon: "review-policies" },
   ],
   integrations: [
     { id: "integrations", label: "Capability overview", href: "/integrations", pathname: "/integrations", icon: "integrations" },
@@ -115,6 +116,7 @@ export const SHELL_CONTEXT_DESTINATIONS: Record<ShellGlobalAreaId, ShellContextD
   ],
   system: [
     { id: "system", label: "System settings", href: "/settings", pathname: "/settings", icon: "system" },
+    { id: "team", label: "Team boundaries", href: "/team", pathname: "/team", icon: "team" },
   ],
 };
 
@@ -177,7 +179,7 @@ export const SHELL_ROUTE_CONTEXTS: ShellRouteContext[] = [
   },
   {
     pathname: "/home",
-    area: "operations",
+    area: "review",
     family: "operational",
     currentItemPathname: "/home",
     contextLabel: "Operational Home",
@@ -191,7 +193,7 @@ export const SHELL_ROUTE_CONTEXTS: ShellRouteContext[] = [
   },
   {
     pathname: "/review-operations",
-    area: "operations",
+    area: "review",
     family: "operational",
     currentItemPathname: "/review-operations",
     contextLabel: "Review Operations",
@@ -205,7 +207,7 @@ export const SHELL_ROUTE_CONTEXTS: ShellRouteContext[] = [
   },
   {
     pathname: "/team",
-    area: "operations",
+    area: "system",
     family: "administrative",
     currentItemPathname: "/team",
     contextLabel: "Team boundaries",

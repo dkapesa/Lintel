@@ -37,6 +37,8 @@ export const metadata: Metadata = {
    light at first paint, while only the explicit rollback route stays dark.
    The public preference is never read as product authority or overwritten. */
 const PRODUCT_LIGHT_PATHS = [
+  "/reviews",
+  "/policies",
   "/workspace",
   "/home",
   "/new",

@@ -2,7 +2,7 @@ import { modeLabel } from "../../lib/r6f/index";
 import type { ReviewMode } from "../../lib/r6c/index";
 import styles from "./selected-review.module.css";
 
-export default function ReviewModeUnavailable({ mode }: { mode: Exclude<ReviewMode, "overview" | "evidence" | "requirements"> }) {
+export default function ReviewModeUnavailable({ mode }: { mode: Exclude<ReviewMode, "overview" | "evidence" | "requirements" | "change"> }) {
   const label = modeLabel(mode);
   return (
     <section className={styles.unavailableMode} aria-labelledby={`review-mode-${mode}`}>

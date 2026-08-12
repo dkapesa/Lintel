@@ -207,8 +207,9 @@ export type ConditionProgressCapability =
 /* --- Artifact view models --------------------------------------------- */
 
 export type ChangedFileView = {
-  /* Stable case-local identity so a changed file is a focusable artifact.
-     Cross-domain links resolve by exact path, never by this positional id. */
+  /* Semantic identity from exact path plus duplicate occurrence, stable across
+     Cases when the same path occurrence remains present. Cross-domain links
+     still resolve by exact path, never by this opaque UI/state identity. */
   artifactId: string;
   path: string;
   /* Line counts and per-file risk are optional on the canonical Report and

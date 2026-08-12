@@ -167,12 +167,16 @@ export function assembleCaseArtifacts(seeds: CaseArtifactSeeds): CaseArtifacts {
   const { changedFiles, findings, evidence, requirements, requirementLinkage } = seeds;
 
   /* Changed-file identities and a path → artifact-id index for exact matching.
-     First occurrence wins if a path repeats; positional ids never cross domains. */
+     First occurrence wins for path-based relationships; exact-path occurrences
+     receive distinct semantic identities. */
   const changeIdByPath = new Map<string, string>();
   const changeArtifactById = new Map<string, RelatedArtifact>();
   const changedFileArtifactIds: string[] = [];
-  changedFiles.forEach((file, index) => {
-    const artifactId = `change-${index}`;
+  const changeOccurrenceByPath = new Map<string, number>();
+  changedFiles.forEach((file) => {
+    const occurrence = changeOccurrenceByPath.get(file.path) ?? 0;
+    changeOccurrenceByPath.set(file.path, occurrence + 1);
+    const artifactId = `change:${occurrence}:${file.path.length}:${file.path}`;
     changedFileArtifactIds.push(artifactId);
     if (!changeIdByPath.has(file.path)) changeIdByPath.set(file.path, artifactId);
     changeArtifactById.set(artifactId, {

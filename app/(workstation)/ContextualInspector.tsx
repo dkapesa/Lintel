@@ -4,6 +4,7 @@ import { modeLabel } from "../../lib/r6f/index";
 import { projectEvidenceContext } from "../../lib/r6g/evidence-context";
 import { projectFindingContext } from "../../lib/r6h/finding-context";
 import { projectRequirementContext } from "../../lib/r6h/requirement-context";
+import { projectChangeContext } from "../../lib/r6i/change-context";
 import {
   relationshipTraversalAccessibleName,
   relationshipVisibleText,
@@ -24,7 +25,7 @@ function RelationshipValue({ value }: { value: RelationshipPresentation }) {
       <ul>
         {value.items.map((item, index) => (
           <li key={`${item.label}-${index}`}>
-            {item.target.kind === "evidence" || item.target.kind === "requirement" || item.target.kind === "finding" ? (
+            {item.target.kind === "evidence" || item.target.kind === "requirement" || item.target.kind === "finding" || item.target.kind === "change" ? (
               <button
                 className={styles.relationshipButton}
                 type="button"
@@ -48,11 +49,15 @@ export default function ContextualInspector({ selectedCase }: { selectedCase: Ca
     ? projectRequirementContext(selectedCase, state.inspector.context)
     : state.inspector.context?.kind === "finding"
       ? projectFindingContext(selectedCase, state.inspector.context)
-      : projectEvidenceContext(selectedCase, state.inspector.context);
+      : state.inspector.context?.kind === "change"
+        ? projectChangeContext(selectedCase, state.inspector.context)
+        : projectEvidenceContext(selectedCase, state.inspector.context);
   const eyebrow = state.inspector.context?.kind === "requirement"
     ? "Requirement"
     : state.inspector.context?.kind === "finding"
       ? "Finding"
+      : state.inspector.context?.kind === "change"
+        ? "Change"
       : state.inspector.context?.kind === "evidence"
         ? "Evidence"
         : "Inspector";

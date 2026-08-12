@@ -2,6 +2,7 @@
 
 import type { ReviewMode } from "../../lib/r6c/index";
 import type { ReadySelectedReview } from "../../lib/r6f/index";
+import ChangeMode from "./ChangeMode";
 import EvidenceMode from "./EvidenceMode";
 import RequirementsMode from "./RequirementsMode";
 import ReviewModeNav from "./ReviewModeNav";
@@ -33,6 +34,8 @@ export default function SelectedReviewFoundation({
             ? <EvidenceMode review={review} />
             : review.mode === "requirements"
               ? <RequirementsMode review={review} />
+              : review.mode === "change"
+                ? <ChangeMode review={review} />
             : <ReviewModeUnavailable mode={review.mode} />}
       </div>
     </article>

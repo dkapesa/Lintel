@@ -1,0 +1,237 @@
+.changeMode {
+  padding-top: 34px;
+}
+
+.orientation {
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.orientation h2 {
+  margin: 0;
+  color: var(--color-text-primary);
+  font-size: 20px;
+  font-weight: 560;
+  line-height: 1.35;
+}
+
+.orientation p,
+.empty {
+  max-width: 66ch;
+  margin: 10px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.empty {
+  margin-top: 22px;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.register {
+  padding: 0;
+  margin: 28px 0 0;
+  border-top: 1px solid var(--color-border);
+  list-style: none;
+}
+
+.record,
+.selectedRecord {
+  border-bottom: 1px solid var(--color-border);
+}
+
+.selectedRecord {
+  background: var(--color-surface-selected);
+}
+
+.rowButton {
+  width: 100%;
+  min-height: 56px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 11px 10px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.rowButton:hover,
+.inspectButton:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+
+.path,
+.fullPath {
+  min-width: 0;
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-weight: 620;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.metadata {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.inspectorMarker {
+  color: var(--color-text-secondary);
+  font-weight: 650;
+}
+
+.detail {
+  padding: 4px 10px 18px;
+}
+
+.fullPath {
+  margin: 0;
+}
+
+.unavailableStatement {
+  max-width: 66ch;
+  margin: 10px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.locations {
+  max-width: 66ch;
+  margin-top: 18px;
+}
+
+.locations h3 {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.4;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.locations > p {
+  margin: 8px 0 0;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.locations ul {
+  padding: 0;
+  margin: 8px 0 0;
+  border-top: 1px solid var(--color-border);
+  list-style: none;
+}
+
+.locations li {
+  display: grid;
+  grid-template-columns: minmax(92px, auto) minmax(0, 1fr);
+  gap: 14px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.locations li span:first-child {
+  color: var(--color-text-muted);
+}
+
+.locations li span:last-child {
+  overflow-wrap: anywhere;
+}
+
+.detail dl {
+  max-width: 66ch;
+  margin: 14px 0 0;
+}
+
+.detail dl > div {
+  display: grid;
+  grid-template-columns: minmax(96px, 38%) minmax(0, 1fr);
+  gap: 14px;
+  padding: 7px 0;
+  border-top: 1px solid var(--color-border);
+}
+
+.detail dt,
+.detail dd {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.detail dt {
+  color: var(--color-text-muted);
+}
+
+.detail dd {
+  margin: 0;
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.inspectButton {
+  min-height: 36px;
+  margin-top: 16px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.rowButton:focus-visible,
+.inspectButton:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+@media (max-width: 899.98px) {
+  .rowButton {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .metadata {
+    align-items: flex-start;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    white-space: normal;
+  }
+
+  .inspectButton {
+    min-height: 44px;
+  }
+}
+
+@media (forced-colors: active) {
+  .selectedRecord {
+    outline: 1px solid Highlight;
+    outline-offset: -1px;
+  }
+
+  .rowButton:focus-visible,
+  .inspectButton:focus-visible {
+    outline-color: Highlight;
+  }
+}

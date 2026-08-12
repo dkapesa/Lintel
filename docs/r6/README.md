@@ -23,6 +23,11 @@ separate from, and must not reopen, the frozen R5 public product system.
   records the accepted selected Review foundation and Overview, with the final
   independent verdict **ACCEPT R6F WITH NON-BLOCKING FOLLOW-UPS**. It does not
   claim that the R6F freeze commit has occurred.
+- [R6G Evidence and Contextual Inspector evidence](./R6G_EVIDENCE_CONTEXTUAL_INSPECTOR_EVIDENCE.md)
+  records the independently accepted Evidence register and contextual
+  Inspector, with the verdict **ACCEPT R6G WITH NON-BLOCKING FOLLOW-UPS**. It
+  records readiness for controlled freeze without claiming that the freeze
+  commit has occurred.
 - [R5 public-system freeze](../r5/R5E2H_FINAL_PUBLIC_SYSTEM_FREEZE.md) remains
   authoritative for every frozen public route and public design decision.
 

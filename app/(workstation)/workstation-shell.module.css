@@ -1,7 +1,7 @@
 .workstation {
   --supporting-left-width: 300px;
   display: grid;
-  grid-template-columns: var(--supporting-left-width) minmax(0, 1fr);
+  grid-template-columns: var(--supporting-left-width) minmax(0, 1fr) 0;
   width: 100%;
   min-width: 0;
   height: 100dvh;
@@ -10,6 +10,10 @@
   background: var(--color-canvas);
   color: var(--color-text-primary);
   font-family: var(--type-family-application);
+}
+
+.workstation[data-inspector="pane"] {
+  grid-template-columns: var(--supporting-left-width) minmax(0, 1fr) 336px;
 }
 
 :global(html[data-queue="compact"]) .workstation {
@@ -257,6 +261,19 @@
   overscroll-behavior: contain;
 }
 
+.workstation > [data-region="inspector"] {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.workstation[data-inspector="sheet"] > [data-region="inspector"] {
+  z-index: 5;
+  width: min(336px, 100%);
+  justify-self: end;
+  grid-column: 2;
+  background: var(--color-surface);
+}
+
 .workspaceDocument {
   min-height: 100%;
   padding: clamp(42px, 7vw, 96px) clamp(28px, 7vw, 104px);
@@ -352,11 +369,15 @@
 
 @media (max-width: 899.98px) {
   .workstation[data-destination="reviews"] {
-    grid-template-columns: minmax(0, 1fr) 0;
+    grid-template-columns: minmax(0, 1fr) 0 0;
   }
 
   :global(html[data-narrow-surface="workspace"]) .workstation[data-destination="reviews"] {
-    grid-template-columns: 0 minmax(0, 1fr);
+    grid-template-columns: 0 minmax(0, 1fr) 0;
+  }
+
+  :global(html[data-narrow-surface="inspector"]) .workstation[data-destination="reviews"] {
+    grid-template-columns: 0 0 minmax(0, 1fr);
   }
 
   :global(html[data-narrow-surface="queue"]) .workstation[data-destination="reviews"] .workspace {
@@ -370,6 +391,20 @@
     border-right: 0;
     opacity: 0;
     pointer-events: none;
+  }
+
+  :global(html[data-narrow-surface="inspector"]) .workstation[data-destination="reviews"] .supportingLeft,
+  :global(html[data-narrow-surface="inspector"]) .workstation[data-destination="reviews"] .workspace {
+    visibility: hidden;
+    overflow: hidden;
+    border: 0;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .workstation[data-inspector="sequential"] > [data-region="inspector"] {
+    grid-column: 3;
+    width: auto;
   }
 
   .workstation[data-destination="reviews"] .queueControlRegion {

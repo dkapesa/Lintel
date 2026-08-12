@@ -136,8 +136,8 @@ test("a dense production-shaped collection remains fully projected", () => {
   equal(project(dense, "collection-42").rows.length, 11, "dense substring search stays deterministic");
 });
 
-test("current action registry is exactly six actions", () => {
-  deepEqual(WORKSTATION_BOUND_ACTION_IDS, ["route/navigate", "route/apply", "queue/set-manual-preference", "queue/show-narrow-surface", "review/select", "mode/activate"], "six actions");
+test("current action registry is exactly nine actions", () => {
+  deepEqual(WORKSTATION_BOUND_ACTION_IDS, ["route/navigate", "route/apply", "queue/set-manual-preference", "queue/show-narrow-surface", "review/select", "mode/activate", "selection/set", "inspector/open", "inspector/close"], "nine actions");
 });
 
 let passed = 0;

@@ -369,14 +369,11 @@ test("rendered workstation copy excludes programme vocabulary", () => {
   assert(!/\bR6[A-P]?\b|\bmilestone\b|\bmigration\b|\bphase\b|not yet implemented/i.test(renderedCopy), "programme vocabulary is absent from rendered copy");
 });
 
-test("Inspector seam emits no DOM contract and Workspace owns the sole main", () => {
+test("Workspace owns the sole main and the InspectorHost seam has one invocation", () => {
   const files = sourceFiles(workstationRoot);
   const source = files.map((file) => readFileSync(file, "utf8")).join("\n");
-  const inspectorHost = readFileSync(join(workstationRoot, "InspectorHost.tsx"), "utf8");
   equal((source.match(/<main\b/g) ?? []).length, 1, "one main source owner");
-  equal((source.match(/<InspectorHost\s*\/>/g) ?? []).length, 1, "one null seam invocation");
-  assert(/return null;/.test(inspectorHost), "Inspector seam returns null");
-  assert(!/data-region="inspector"|aria-label="[^"]*Inspector/i.test(source), "no Inspector DOM contract");
+  equal((source.match(/<InspectorHost\s*\/>/g) ?? []).length, 1, "one InspectorHost seam invocation");
 });
 
 test("route-group first child is the workstation-only pre-paint script", () => {

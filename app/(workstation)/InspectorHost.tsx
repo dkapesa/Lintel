@@ -1,4 +1,10 @@
-/** Reserved contextual seam. It deliberately emits no node in this shell. */
-export default function InspectorHost(): null {
-  return null;
+"use client";
+
+import ContextualInspector from "./ContextualInspector";
+import { useWorkstation } from "./WorkstationProvider";
+
+export default function InspectorHost() {
+  const { inspectorActive, selectedCase } = useWorkstation();
+  if (!inspectorActive || !selectedCase) return null;
+  return <ContextualInspector selectedCase={selectedCase} />;
 }

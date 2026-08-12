@@ -6,6 +6,9 @@ export const WORKSTATION_BOUND_ACTION_IDS = [
   ...R6D_BOUND_ACTION_IDS,
   "review/select",
   "mode/activate",
+  "selection/set",
+  "inspector/open",
+  "inspector/close",
 ] as const satisfies readonly ApplicationAction["id"][];
 
 export type WorkstationBoundActionId = (typeof WORKSTATION_BOUND_ACTION_IDS)[number];

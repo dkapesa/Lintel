@@ -23,6 +23,7 @@ import {
   readWorkstationPersistence,
   reconcile,
   removeReviewContext,
+  resolveFocusReturn,
   restoreInitialState,
   writeReviewContext,
   writeWorkstationPersistence,
@@ -34,6 +35,8 @@ import {
   type StorageLike,
   type WorkstationState,
 } from "../../lib/r6c/index";
+import { projectSelectedReview } from "../../lib/r6f/index";
+import { effectiveNarrowSurfaceForInspector, inspectorIsActive } from "../../lib/r6g/index";
 import {
   DEFAULT_REVIEW_COLLECTION_PREFERENCES,
   readReviewCollectionPreferences,
@@ -65,7 +68,7 @@ import {
   supportingLeftPresentation,
   type SupportingLeftPresentation,
 } from "../../lib/r6d/layout-policy";
-import { FocusRegistry, type R6DRegisteredFocusRegion } from "./FocusRegistry";
+import { FocusRegistry, type RegisteredFocusRegion } from "./FocusRegistry";
 
 const BOOTSTRAP_IDENTITY: WorkspaceIdentity = {
   workspaceId: "local-report",
@@ -112,13 +115,14 @@ type WorkstationContextValue = Readonly<{
   selectedCaseTitle: string | null;
   band: LayoutBand;
   layout: EffectiveLayout;
+  inspectorActive: boolean;
   leftPresentation: SupportingLeftPresentation;
   announcement: string;
   collectionPreferences: ReviewCollectionPreferences;
   setCollectionPreferences: (preferences: ReviewCollectionPreferences) => void;
   dispatchBound: (action: WorkstationBoundAction, source: "visible-ui" | "system" | "browser") => ActionResult;
   onDestinationClick: (event: MouseEvent<HTMLAnchorElement>, destination: Extract<WorkstationBoundAction, { id: "route/navigate" }>) => void;
-  registerFocusRegion: (region: R6DRegisteredFocusRegion, element: HTMLElement | null) => void;
+  registerFocusRegion: (region: RegisteredFocusRegion, element: HTMLElement | null) => void;
 }>;
 
 const WorkstationContext = createContext<WorkstationContextValue | null>(null);
@@ -224,6 +228,7 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
   }), []);
 
   const dispatchBound = useCallback<WorkstationContextValue["dispatchBound"]>((action, source) => {
+    const previousInspectorOrigin = stateRef.current.inspector.focusOrigin;
     const result = dispatchAction(stateRef.current, action, actionContext(), { source });
     let nextState = result.state;
 
@@ -245,9 +250,24 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
     if (result.announcement) setAnnouncement(result.announcement);
     applyRouteEffect(result.routeEffect);
 
-    if (result.focusEffect.kind === "region" && result.focusEffect.region !== "inspector") {
+    if (result.focusEffect.kind === "region") {
       const region = result.focusEffect.region;
       requestAnimationFrame(() => focusRegistry.current.focusRegion(region));
+    } else if (action.id === "inspector/open") {
+      requestAnimationFrame(() => focusRegistry.current.focusRegion("inspector"));
+    } else if (result.focusEffect.kind === "return-from-inspector") {
+      const recordedOrigin = previousInspectorOrigin?.handle instanceof HTMLElement
+        ? { ...previousInspectorOrigin, handle: previousInspectorOrigin.handle }
+        : null;
+      const target = resolveFocusReturn(
+        recordedOrigin,
+        previousInspectorOrigin?.region ?? null,
+        focusRegistry.current,
+      );
+      requestAnimationFrame(() => {
+        if (target.kind === "recorded-origin") target.handle.focus();
+        if (target.kind === "region") focusRegistry.current.focusRegion(target.region);
+      });
     }
     return { ...result, state: nextState };
   }, [actionContext, applyRouteEffect, commitState, persistManualPreference]);
@@ -411,27 +431,39 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
     return () => window.removeEventListener("resize", updateBand);
   }, []);
 
+  const selectedReviewProjection = useMemo(
+    () => projectSelectedReview(state, snapshot, reviewIndex),
+    [reviewIndex, snapshot, state],
+  );
+  const inspectorActive = inspectorIsActive(
+    state.inspector.open,
+    selectedReviewProjection.status === "ready",
+  );
+  const effectiveNarrowSurface = effectiveNarrowSurfaceForInspector(
+    state.narrowSurface,
+    inspectorActive,
+  );
   const layout = useMemo(() => effectiveLayout({
     band,
     policy: R6D_LAYOUT_POLICY,
     manualPreference: state.queue.manualPreference,
     focusActive: state.focus.active,
-    inspectorOpen: state.inspector.open,
-    narrowSurface: state.narrowSurface,
-  }), [band, state]);
+    inspectorOpen: inspectorActive,
+    narrowSurface: effectiveNarrowSurface,
+  }), [band, effectiveNarrowSurface, inspectorActive, state.focus.active, state.queue.manualPreference]);
   const leftPresentation = supportingLeftPresentation(state.destination, layout.queue);
 
   useIsomorphicLayoutEffect(() => {
     const root = document.documentElement;
     root.setAttribute("data-band", band);
     root.setAttribute("data-queue", leftPresentation);
-    root.setAttribute("data-narrow-surface", state.narrowSurface);
+    root.setAttribute("data-narrow-surface", effectiveNarrowSurface);
     return () => {
       root.removeAttribute("data-band");
       root.removeAttribute("data-queue");
       root.removeAttribute("data-narrow-surface");
     };
-  }, [band, leftPresentation, state.narrowSurface]);
+  }, [band, effectiveNarrowSurface, leftPresentation]);
 
   const selectedCase = useMemo(() => {
     if (state.selectedReview.status !== "available" || snapshot.status !== "ready") return null;
@@ -453,7 +485,7 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
     dispatchBound(action, "visible-ui");
   }, [dispatchBound]);
 
-  const registerFocusRegion = useCallback((region: R6DRegisteredFocusRegion, element: HTMLElement | null) => {
+  const registerFocusRegion = useCallback((region: RegisteredFocusRegion, element: HTMLElement | null) => {
     focusRegistry.current.register(region, element);
   }, []);
 
@@ -465,6 +497,7 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
     selectedCaseTitle,
     band,
     layout,
+    inspectorActive,
     leftPresentation,
     announcement,
     collectionPreferences,
@@ -480,6 +513,7 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
     selectedCaseTitle,
     band,
     layout,
+    inspectorActive,
     leftPresentation,
     announcement,
     collectionPreferences,

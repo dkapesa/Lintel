@@ -295,7 +295,7 @@ test("valid refresh restoration survives and invalid refs are discarded without 
   equal(projectEvidenceContext(refreshed, invalid.inspector.context).status, "unavailable", "no replacement selected");
 });
 
-test("all RelationshipState variants become inert, id-free presentation", () => {
+test("all RelationshipState variants retain user-facing non-disclosure while carrying exact targets internally", () => {
   const linked: RelationshipState = {
     status: "linked",
     related: [{ kind: "finding", id: "raw-finding-id", label: "Finding label", detail: "HIGH" }],
@@ -306,10 +306,15 @@ test("all RelationshipState variants become inert, id-free presentation", () => 
   const unresolved: RelationshipState = { status: "unresolved", unresolved: ["raw-a", "raw-b"] };
   const projected = [linked, none, unavailable, unresolved].map(projectRelationship);
   deepEqual(projected.map((item) => item.status), ["linked", "none", "unavailable", "unresolved"], "four relationship states");
-  const text = JSON.stringify(projected);
+  const text = JSON.stringify(projected.map((item) => item.status === "linked"
+    ? { status: item.status, items: item.items.map(({ label, detail }) => ({ label, detail })), unresolvedCount: item.unresolvedCount }
+    : item));
   assert(text.includes("Finding label") && text.includes("HIGH"), "safe labels and details retained");
   assert(!text.includes("raw-finding-id") && !text.includes("raw-unresolved-id") && !text.includes("raw-a"), "raw ids omitted");
-  assert(!text.includes("href") && !text.includes("context"), "relationships are inert");
+  const linkedPresentation = projected[0];
+  assert(linkedPresentation.status === "linked", "linked presentation required");
+  equal(linkedPresentation.items[0]?.target.id, "raw-finding-id", "target retains exact internal identity");
+  assert(!text.includes("href") && !text.includes("context"), "presentation has no route object");
 
   const detail = cloneCase(baseCase, {
     evidence: [evidence(61, { supportsFindings: linked, supportsRequirements: unavailable, relatedChanges: unresolved })],
@@ -340,13 +345,13 @@ test("effective Inspector activity gates renderability and layout pressure", () 
 test("current and historical action registries preserve the exact boundary", () => {
   deepEqual(WORKSTATION_BOUND_ACTION_IDS, [
     "route/navigate", "route/apply", "queue/set-manual-preference", "queue/show-narrow-surface",
-    "review/select", "mode/activate", "selection/set", "inspector/open", "inspector/close",
-  ], "current registry exactly nine");
+    "review/select", "mode/activate", "selection/set", "inspector/open", "inspector/close", "inspector/traverse-relationship",
+  ], "current registry exactly ten");
   deepEqual(R6D_BOUND_ACTION_IDS, [
     "route/navigate", "route/apply", "queue/set-manual-preference", "queue/show-narrow-surface",
   ], "historical R6D registry exactly four");
   assert(!WORKSTATION_BOUND_ACTION_IDS.includes("inspector/replace-context" as never), "replace remains unbound");
-  assert(!WORKSTATION_BOUND_ACTION_IDS.includes("inspector/traverse-relationship" as never), "traverse remains unbound");
+  assert(WORKSTATION_BOUND_ACTION_IDS.includes("inspector/traverse-relationship" as never), "traverse is bound");
 });
 
 test("Narrow Inspector remains an explicit sequential surface with no route mutation", () => {

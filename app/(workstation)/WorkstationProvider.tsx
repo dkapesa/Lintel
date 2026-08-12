@@ -255,6 +255,8 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
       requestAnimationFrame(() => focusRegistry.current.focusRegion(region));
     } else if (action.id === "inspector/open") {
       requestAnimationFrame(() => focusRegistry.current.focusRegion("inspector"));
+    } else if (action.id === "inspector/traverse-relationship" && result.status === "applied") {
+      requestAnimationFrame(() => focusRegistry.current.focusRegion("inspector"));
     } else if (result.focusEffect.kind === "return-from-inspector") {
       const recordedOrigin = previousInspectorOrigin?.handle instanceof HTMLElement
         ? { ...previousInspectorOrigin, handle: previousInspectorOrigin.handle }

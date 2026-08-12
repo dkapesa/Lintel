@@ -1,12 +1,12 @@
 import { resolveContext, type ContextRef, type NarrowSurface } from "../r6c/index";
 import type { CaseDetail, RelationshipState } from "../workspace-v2/view-model";
 import { EVIDENCE_CLASS_LABELS, evidenceStatusLabel } from "./labels";
+import {
+  projectRelationship as projectRelationshipPresentation,
+  type RelationshipPresentation,
+} from "../r6h/relationship-presentation";
 
-export type EvidenceRelationshipPresentation =
-  | Readonly<{ status: "linked"; items: readonly Readonly<{ label: string; detail: string | null }>[]; unresolvedCount: number }>
-  | Readonly<{ status: "none" }>
-  | Readonly<{ status: "unavailable"; reason: string }>
-  | Readonly<{ status: "unresolved"; unresolvedCount: number }>;
+export type EvidenceRelationshipPresentation = RelationshipPresentation;
 
 export type EvidenceContextProjection =
   | Readonly<{ status: "unavailable" }>
@@ -25,16 +25,7 @@ export type EvidenceContextProjection =
     }>;
 
 export function projectRelationship(state: RelationshipState): EvidenceRelationshipPresentation {
-  if (state.status === "linked") {
-    return {
-      status: "linked",
-      items: state.related.map((item) => ({ label: item.label, detail: item.detail })),
-      unresolvedCount: state.unresolved.length,
-    };
-  }
-  if (state.status === "unavailable") return { status: "unavailable", reason: state.reason };
-  if (state.status === "unresolved") return { status: "unresolved", unresolvedCount: state.unresolved.length };
-  return { status: "none" };
+  return projectRelationshipPresentation(state);
 }
 
 export function projectEvidenceContext(detail: CaseDetail, context: ContextRef | null): EvidenceContextProjection {

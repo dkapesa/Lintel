@@ -146,6 +146,30 @@
   color: var(--color-text-muted);
 }
 
+.relationshipButton {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.relationshipButton:hover {
+  color: var(--color-text-primary);
+}
+
+.relationshipButton:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
 .unavailable {
   max-width: 66ch;
   margin: 24px;
@@ -167,7 +191,8 @@
 
 @media (forced-colors: active) {
   .inspector:focus-visible,
-  .header button:focus-visible {
+  .header button:focus-visible,
+  .relationshipButton:focus-visible {
     outline-color: Highlight;
   }
 }

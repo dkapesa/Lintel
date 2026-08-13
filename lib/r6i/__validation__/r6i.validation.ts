@@ -372,8 +372,8 @@ test("10. reconciliation re-proves Change objects and discards removed refs with
 test("11. production action registry and one-main/one-Inspector composition remain bounded", () => {
   deepEqual(WORKSTATION_BOUND_ACTION_IDS, [
     "route/navigate", "route/apply", "queue/set-manual-preference", "queue/show-narrow-surface",
-    "review/select", "mode/activate", "selection/set", "inspector/open", "inspector/close", "inspector/traverse-relationship", "history/set-comparison",
-  ], "production registry exactly eleven");
+    "review/select", "mode/activate", "selection/set", "inspector/open", "inspector/close", "inspector/traverse-relationship", "history/set-comparison", "overlay/open", "overlay/close",
+  ], "production registry exactly thirteen");
   equal(R6D_BOUND_ACTION_IDS.length, 4, "historical R6D registry remains four");
   assert(!WORKSTATION_BOUND_ACTION_IDS.includes("inspector/replace-context" as never), "replace context remains unbound");
   const workspace = readFileSync(join(process.cwd(), "app", "(workstation)", "WorkspaceHost.tsx"), "utf8");

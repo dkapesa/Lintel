@@ -45,6 +45,7 @@ export function projectHumanDecision(detail: CaseDetail): HumanDecisionOrientati
   ];
   if (decision.needsReaffirmation) details.push("Reaffirmation is needed for the current head.");
   if (decision.divergence) details.push(`Relationship to Lintel: ${DIVERGENCE_LABEL[decision.divergence]}.`);
+  if (decision.rationale) details.push(`Rationale: ${decision.rationale}`);
   if (decision.isSample) details.push("Sample data.");
 
   return {

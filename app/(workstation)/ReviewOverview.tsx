@@ -33,7 +33,7 @@ export default function ReviewOverview({
         <h2 id="r6f-human-decision">Human Decision</h2>
         <p className={styles.prominentStatement}>{overview.humanDecision.statement}</p>
         {overview.humanDecision.details.length > 0 && (
-          <ul className={styles.supportList}>
+          <ul className={styles.supportList} aria-label="Recorded Human Decision details">
             {overview.humanDecision.details.map((detail) => <li key={detail}>{detail}</li>)}
           </ul>
         )}

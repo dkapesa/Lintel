@@ -40,6 +40,81 @@
   line-height: 1.55;
 }
 
+.decisionChrome {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 11px 0;
+  border-top: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.decisionStanding {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 5px 12px;
+}
+
+.decisionStanding p,
+.decisionStanding span,
+.refreshFailure p {
+  margin: 0;
+}
+
+.decisionStanding p {
+  color: var(--color-text-primary);
+  font-size: 13px;
+  font-weight: 560;
+  line-height: 1.45;
+}
+
+.decisionStanding span {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.decisionAction,
+.refreshFailure button {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.decisionAction:hover,
+.refreshFailure button:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text-primary);
+}
+
+.decisionAction:focus-visible,
+.refreshFailure button:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+.refreshFailure {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .modeNav {
   margin-top: 30px;
   padding-bottom: 12px;
@@ -238,6 +313,14 @@
 }
 
 @media (max-width: 899.98px) {
+  .decisionChrome {
+    align-items: flex-start;
+  }
+
+  .decisionAction {
+    min-height: 44px;
+  }
+
   .modeLink,
   .modeLinkCurrent {
     min-height: 44px;

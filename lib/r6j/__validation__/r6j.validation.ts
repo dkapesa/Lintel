@@ -123,10 +123,11 @@ test("4. reducer preserves comparison through mode changes and resets on Review 
 });
 
 test("5. action registries remain deliberately bounded", () => {
-  equal(WORKSTATION_BOUND_ACTION_IDS.length, 11, "production registry exactly eleven");
-  equal(WORKSTATION_BOUND_ACTION_IDS.at(-1), "history/set-comparison", "history action is last");
+  equal(WORKSTATION_BOUND_ACTION_IDS.length, 13, "production registry exactly thirteen");
+  equal(WORKSTATION_BOUND_ACTION_IDS.at(-1), "overlay/close", "overlay close is last");
   equal(R6D_BOUND_ACTION_IDS.length, 4, "R6D registry remains four");
-  for (const id of ["inspector/replace-context", "focus/set", "overlay/open", "overlay/close", "escape/unwind"]) assert(!WORKSTATION_BOUND_ACTION_IDS.includes(id as never), `${id} stays unbound`);
+  for (const id of ["inspector/replace-context", "focus/set", "escape/unwind"]) assert(!WORKSTATION_BOUND_ACTION_IDS.includes(id as never), `${id} stays unbound`);
+  for (const id of ["overlay/open", "overlay/close"]) assert(WORKSTATION_BOUND_ACTION_IDS.includes(id as never), `${id} is bound`);
 });
 
 test("6. UI has no temporal inspector, raw ids, Human Decision or unsupported controls", () => {

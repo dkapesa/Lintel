@@ -15,6 +15,7 @@ import {
 } from "react";
 import {
   R6C_SCHEMA_VERSION,
+  decisionDraftContextFor,
   decisionSubjectIdFromCapability,
   dispatchAction,
   effectiveLayout,
@@ -31,6 +32,7 @@ import {
   type DecisionSubjectResolver,
   type EffectiveLayout,
   type LayoutBand,
+  type ReviewId,
   type ReviewIndex,
   type StorageLike,
   type WorkstationState,
@@ -68,7 +70,26 @@ import {
   supportingLeftPresentation,
   type SupportingLeftPresentation,
 } from "../../lib/r6d/layout-policy";
+import {
+  HumanDecisionDraftStore,
+  acknowledgeDecisionDraftReconciliation,
+  createEmptyHumanDecisionDraft,
+  currentEffectiveEntryId,
+  isHumanDecisionDraftDirty,
+  type DecisionBasisSnapshot,
+  type DraftDurability,
+  type DraftRemovalResult,
+  type DraftWriteResult,
+  type HumanDecisionDraftRecord,
+} from "../../lib/r6k/index";
+import {
+  createWorkspaceDecisionService,
+  type DecisionMutationCommand,
+  type DecisionMutationResult,
+  type WorkspaceDecisionService,
+} from "../../lib/workspace-v2/decision-mutations";
 import { FocusRegistry, type RegisteredFocusRegion } from "./FocusRegistry";
+import HumanDecisionComposer from "./HumanDecisionComposer";
 
 const BOOTSTRAP_IDENTITY: WorkspaceIdentity = {
   workspaceId: "local-report",
@@ -92,6 +113,8 @@ const STRUCTURAL_STORAGE = {
   removeItem: () => undefined,
 } satisfies StorageLike;
 
+export const HUMAN_DECISION_OVERLAY_ID = "human-decision-composer";
+
 const decisionSubjectResolver: DecisionSubjectResolver = (_reviewId, currentCase) => {
   if (currentCase.decisionMutation.kind !== "available") {
     return {
@@ -107,6 +130,25 @@ const decisionSubjectResolver: DecisionSubjectResolver = (_reviewId, currentCase
   };
 };
 
+export type HumanDecisionController = Readonly<{
+  open: (trigger: HTMLButtonElement) => void;
+  close: () => void;
+  draft: HumanDecisionDraftRecord | null;
+  durability: DraftDurability | null;
+  draftDirty: boolean;
+  recordQuarantined: boolean;
+  updateDraft: (draft: HumanDecisionDraftRecord) => void;
+  flush: () => DraftWriteResult | null;
+  discardDraft: () => DraftRemovalResult;
+  discardUnreadableDraft: () => DraftWriteResult;
+  acknowledgeReconcile: (
+    reviewedBasis: DecisionBasisSnapshot,
+  ) => ReturnType<typeof acknowledgeDecisionDraftReconciliation>;
+  submit: (command: DecisionMutationCommand) => Promise<DecisionMutationResult>;
+  refreshFailure: string | null;
+  retryRefresh: () => Promise<void>;
+}>;
+
 type WorkstationContextValue = Readonly<{
   state: WorkstationState;
   snapshot: WorkspaceSnapshot;
@@ -119,6 +161,7 @@ type WorkstationContextValue = Readonly<{
   leftPresentation: SupportingLeftPresentation;
   announcement: string;
   collectionPreferences: ReviewCollectionPreferences;
+  humanDecision: HumanDecisionController;
   setCollectionPreferences: (preferences: ReviewCollectionPreferences) => void;
   dispatchBound: (action: WorkstationBoundAction, source: "visible-ui" | "system" | "browser") => ActionResult;
   onDestinationClick: (event: MouseEvent<HTMLAnchorElement>, destination: Extract<WorkstationBoundAction, { id: "route/navigate" }>) => void;
@@ -162,6 +205,8 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
   const [band, setBand] = useState<LayoutBand>("standard");
   const [announcement, setAnnouncement] = useState("");
   const [collectionPreferences, setCollectionPreferencesState] = useState<ReviewCollectionPreferences>(DEFAULT_REVIEW_COLLECTION_PREFERENCES);
+  const [, setDraftVersion] = useState(0);
+  const [decisionRefreshFailure, setDecisionRefreshFailure] = useState<string | null>(null);
   const stateRef = useRef(state);
   const snapshotRef = useRef(snapshot);
   const bandRef = useRef(band);
@@ -170,6 +215,14 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
   const routeGate = useRef<PendingRouteGate>({ pending: null });
   const focusRegistry = useRef(new FocusRegistry());
   const browserStorage = useRef<Storage | null>(null);
+  const decisionService = useRef<WorkspaceDecisionService | null>(null);
+  const draftStore = useRef<HumanDecisionDraftStore | null>(null);
+  const draftCache = useRef(new Map<ReviewId, HumanDecisionDraftRecord>());
+  const draftDurability = useRef(new Map<ReviewId, DraftDurability>());
+  const quarantinedDrafts = useRef(new Set<ReviewId>());
+  const draftWriteTimers = useRef(new Map<ReviewId, ReturnType<typeof setTimeout>>());
+  const decisionInvocation = useRef<HTMLButtonElement | null>(null);
+  const flushDraftRef = useRef<() => DraftWriteResult | null>(() => null);
 
   useIsomorphicLayoutEffect(() => {
     setForcedTheme("light");
@@ -229,7 +282,21 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
 
   const dispatchBound = useCallback<WorkstationContextValue["dispatchBound"]>((action, source) => {
     const previousInspectorOrigin = stateRef.current.inspector.focusOrigin;
-    const result = dispatchAction(stateRef.current, action, actionContext(), { source });
+    let startingState = stateRef.current;
+    if (
+      action.id !== "overlay/close"
+      && startingState.overlayStack.at(-1) === HUMAN_DECISION_OVERLAY_ID
+      && ["route/navigate", "route/apply", "review/select", "mode/activate"].includes(action.id)
+    ) {
+      flushDraftRef.current();
+      startingState = dispatchAction(
+        startingState,
+        { id: "overlay/close", overlayId: HUMAN_DECISION_OVERLAY_ID },
+        actionContext(),
+        { source: "system" },
+      ).state;
+    }
+    const result = dispatchAction(startingState, action, actionContext(), { source });
     let nextState = result.state;
 
     if (action.id === "route/navigate" || action.id === "route/apply") {
@@ -297,6 +364,10 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
     } catch {
       browserStorage.current = null;
     }
+    draftStore.current = new HumanDecisionDraftStore(browserStorage.current);
+    decisionService.current = browserStorage.current
+      ? createWorkspaceDecisionService(browserStorage.current)
+      : null;
     if (browserStorage.current) {
       setCollectionPreferencesState(readReviewCollectionPreferences(browserStorage.current).preferences);
     }
@@ -317,32 +388,41 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
     applyRouteEffect(restored.routeEffect);
   }, []); // One structural restoration at controller mount.
 
-  useEffect(() => {
-    let active = true;
-    async function load(): Promise<void> {
-      try {
-        const storage = browserStorage.current;
-        if (!storage) throw new Error("Browser storage is unavailable.");
-        const adapter = createRealWorkspaceAdapter(storage);
-        const next = await adapter.loadSnapshot({ scenario: "default", reportId: null });
-        if (active) {
-          snapshotRef.current = next;
-          setSnapshot(next);
-        }
-      } catch (error) {
-        if (!active) return;
+  const loadSnapshot = useCallback(async (preserveOnFailure = false): Promise<Readonly<{
+    ok: boolean;
+    reason?: string;
+  }>> => {
+    try {
+      const storage = browserStorage.current;
+      if (!storage) throw new Error("Browser storage is unavailable.");
+      const adapter = createRealWorkspaceAdapter(storage);
+      const next = await adapter.loadSnapshot({ scenario: "default", reportId: null });
+      snapshotRef.current = next;
+      setSnapshot(next);
+      return { ok: true };
+    } catch (error) {
+      const reason = error instanceof Error
+        ? `Local report storage could not be read: ${error.message}`
+        : "Local report storage could not be read.";
+      if (!preserveOnFailure) {
         const next: WorkspaceSnapshot = {
           status: "unavailable",
           identity: BOOTSTRAP_IDENTITY,
           provenance: provenance("unavailable"),
-          reason: error instanceof Error
-            ? `Local report storage could not be read: ${error.message}`
-            : "Local report storage could not be read.",
+          reason,
         };
         snapshotRef.current = next;
         setSnapshot(next);
       }
+      return { ok: false, reason };
     }
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      if (active) await loadSnapshot();
+    };
     void load();
     const refresh = () => void load();
     window.addEventListener("storage", refresh);
@@ -350,7 +430,7 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
       active = false;
       window.removeEventListener("storage", refresh);
     };
-  }, []);
+  }, [loadSnapshot]);
 
   useEffect(() => {
     if (!phaseAComplete.current) return;
@@ -481,6 +561,252 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
     return selectedCase.github.branch;
   }, [selectedCase, snapshot]);
 
+  const selectedReviewId = state.selectedReview.status === "available"
+    ? state.selectedReview.reviewId
+    : null;
+
+  const hydrateDraft = useCallback((reviewId: ReviewId, detail: CaseDetail): HumanDecisionDraftRecord => {
+    const cached = draftCache.current.get(reviewId);
+    if (cached) return cached;
+    const context = decisionDraftContextFor(reviewId, detail, decisionSubjectResolver);
+    const stored = draftStore.current?.read(reviewId) ?? { status: "absent" as const };
+    let draft: HumanDecisionDraftRecord;
+    if (stored.status === "valid") {
+      draft = stored.draft;
+      draftDurability.current.set(reviewId, { category: "saved", label: "Draft saved" });
+      quarantinedDrafts.current.delete(reviewId);
+    } else {
+      const now = new Date().toISOString();
+      draft = createEmptyHumanDecisionDraft(
+        reviewId,
+        context,
+        currentEffectiveEntryId(detail),
+        now,
+      );
+      if (stored.status === "quarantined") {
+        quarantinedDrafts.current.add(reviewId);
+        draftDurability.current.set(reviewId, {
+          category: "not-saved",
+          label: "Draft not saved on this device",
+          reason: "unreadable-review-draft",
+        });
+      } else {
+        quarantinedDrafts.current.delete(reviewId);
+        const storeStatus = draftStore.current?.storeDurability();
+        if (storeStatus) draftDurability.current.set(reviewId, storeStatus);
+        else draftDurability.current.delete(reviewId);
+      }
+    }
+    draftCache.current.set(reviewId, draft);
+    setDraftVersion((version) => version + 1);
+    return draft;
+  }, []);
+
+  useEffect(() => {
+    if (selectedReviewId && selectedCase) hydrateDraft(selectedReviewId, selectedCase);
+  }, [hydrateDraft, selectedCase, selectedReviewId]);
+
+  const persistDraft = useCallback((reviewId: ReviewId): DraftWriteResult | null => {
+    const timer = draftWriteTimers.current.get(reviewId);
+    if (timer) clearTimeout(timer);
+    draftWriteTimers.current.delete(reviewId);
+    const draft = draftCache.current.get(reviewId);
+    if (!draft || !isHumanDecisionDraftDirty(draft)) return null;
+    const store = draftStore.current;
+    const result = store
+      ? store.write(reviewId, draft)
+      : {
+          persisted: false,
+          durability: {
+            category: "unavailable" as const,
+            label: "Drafts unavailable on this device" as const,
+            reason: "storage-unavailable" as const,
+          },
+        };
+    draftDurability.current.set(reviewId, result.durability);
+    setDraftVersion((version) => version + 1);
+    return result;
+  }, []);
+
+  flushDraftRef.current = () => {
+    const selection = stateRef.current.selectedReview;
+    return selection.status === "available" ? persistDraft(selection.reviewId) : null;
+  };
+
+  const focusDecisionInvocation = useCallback(() => {
+    requestAnimationFrame(() => {
+      const trigger = decisionInvocation.current;
+      if (trigger?.isConnected) trigger.focus();
+    });
+  }, []);
+
+  const closeDecisionOverlay = useCallback((flush: boolean, returnFocus: boolean) => {
+    if (flush) flushDraftRef.current();
+    if (stateRef.current.overlayStack.at(-1) === HUMAN_DECISION_OVERLAY_ID) {
+      dispatchBound({ id: "overlay/close", overlayId: HUMAN_DECISION_OVERLAY_ID }, "visible-ui");
+    }
+    if (returnFocus) focusDecisionInvocation();
+  }, [dispatchBound, focusDecisionInvocation]);
+
+  const openHumanDecision = useCallback((trigger: HTMLButtonElement) => {
+    const selection = stateRef.current.selectedReview;
+    const currentSnapshot = snapshotRef.current;
+    if (selection.status !== "available" || currentSnapshot.status !== "ready") return;
+    const detail = currentSnapshot.cases.find((item) => item.caseId === selection.currentCaseId);
+    if (!detail) return;
+    decisionInvocation.current = trigger;
+    hydrateDraft(selection.reviewId, detail);
+    dispatchBound({ id: "overlay/open", overlayId: HUMAN_DECISION_OVERLAY_ID }, "visible-ui");
+  }, [dispatchBound, hydrateDraft]);
+
+  const updateHumanDecisionDraft = useCallback((draft: HumanDecisionDraftRecord) => {
+    const reviewId = draft.binding.reviewId;
+    draftCache.current.set(reviewId, draft);
+    draftDurability.current.delete(reviewId);
+    const existing = draftWriteTimers.current.get(reviewId);
+    if (existing) clearTimeout(existing);
+    draftWriteTimers.current.set(reviewId, setTimeout(() => persistDraft(reviewId), 150));
+    setDraftVersion((version) => version + 1);
+  }, [persistDraft]);
+
+  const discardSelectedDraft = useCallback((): DraftRemovalResult => {
+    const selection = stateRef.current.selectedReview;
+    if (selection.status !== "available") {
+      return {
+        removed: false,
+        durability: {
+          category: "unavailable",
+          label: "Drafts unavailable on this device",
+          reason: "storage-unavailable",
+        },
+      };
+    }
+    const result = draftStore.current?.removeValid(selection.reviewId) ?? {
+      removed: false,
+      durability: {
+        category: "unavailable" as const,
+        label: "Drafts unavailable on this device" as const,
+        reason: "storage-unavailable" as const,
+      },
+    };
+    draftDurability.current.set(selection.reviewId, result.durability);
+    if (result.removed) {
+      draftCache.current.delete(selection.reviewId);
+      draftDurability.current.delete(selection.reviewId);
+      quarantinedDrafts.current.delete(selection.reviewId);
+      const currentSnapshot = snapshotRef.current;
+      const detail = currentSnapshot.status === "ready"
+        ? currentSnapshot.cases.find((item) => item.caseId === selection.currentCaseId)
+        : null;
+      if (detail) hydrateDraft(selection.reviewId, detail);
+    }
+    setDraftVersion((version) => version + 1);
+    return result;
+  }, [hydrateDraft]);
+
+  const discardUnreadableSelectedDraft = useCallback((): DraftWriteResult => {
+    const selection = stateRef.current.selectedReview;
+    const unavailable: DraftWriteResult = {
+      persisted: false,
+      durability: {
+        category: "unavailable",
+        label: "Drafts unavailable on this device",
+        reason: "storage-unavailable",
+      },
+    };
+    if (selection.status !== "available") return unavailable;
+    const draft = draftCache.current.get(selection.reviewId);
+    if (!draft) return unavailable;
+    const result = draftStore.current?.replaceUnreadable(selection.reviewId, draft) ?? unavailable;
+    draftDurability.current.set(selection.reviewId, result.durability);
+    if (result.persisted) quarantinedDrafts.current.delete(selection.reviewId);
+    setDraftVersion((version) => version + 1);
+    return result;
+  }, []);
+
+  const acknowledgeSelectedReconcile = useCallback((reviewedBasis: DecisionBasisSnapshot) => {
+    const selection = stateRef.current.selectedReview;
+    const currentSnapshot = snapshotRef.current;
+    if (selection.status !== "available" || currentSnapshot.status !== "ready") {
+      return { status: "moved-again" as const };
+    }
+    const detail = currentSnapshot.cases.find((item) => item.caseId === selection.currentCaseId);
+    const draft = draftCache.current.get(selection.reviewId);
+    if (!detail || !draft) return { status: "moved-again" as const };
+    const currentBasis: DecisionBasisSnapshot = {
+      context: decisionDraftContextFor(selection.reviewId, detail, decisionSubjectResolver),
+      recordedEntryId: currentEffectiveEntryId(detail),
+    };
+    const result = acknowledgeDecisionDraftReconciliation(
+      draft,
+      reviewedBasis,
+      currentBasis,
+      new Date().toISOString(),
+    );
+    if (result.status === "rebound") updateHumanDecisionDraft(result.draft);
+    return result;
+  }, [updateHumanDecisionDraft]);
+
+  const submitHumanDecision = useCallback(async (
+    command: DecisionMutationCommand,
+  ): Promise<DecisionMutationResult> => {
+    const selection = stateRef.current.selectedReview;
+    const service = decisionService.current;
+    if (selection.status !== "available" || !service) {
+      return {
+        outcome: "unavailable",
+        message: "Human Decision storage is unavailable in this browser.",
+      };
+    }
+    const result = command.kind === "record"
+      ? service.recordDecision(command)
+      : command.kind === "reaffirm"
+        ? service.reaffirmDecision(command)
+        : command.kind === "supersede"
+          ? service.supersedeDecision(command)
+          : service.withdrawDecision(command);
+    if (result.outcome === "stale-command") {
+      await loadSnapshot(true);
+      return result;
+    }
+    if (result.outcome !== "persisted") return result;
+
+    const reviewId = selection.reviewId;
+    const timer = draftWriteTimers.current.get(reviewId);
+    if (timer) clearTimeout(timer);
+    draftWriteTimers.current.delete(reviewId);
+    draftCache.current.delete(reviewId);
+    draftDurability.current.delete(reviewId);
+    const durableClear = draftStore.current?.removeValid(reviewId);
+    if (durableClear?.removed) quarantinedDrafts.current.delete(reviewId);
+    else if (durableClear?.reason === "record-quarantined") quarantinedDrafts.current.add(reviewId);
+    setDraftVersion((version) => version + 1);
+    closeDecisionOverlay(false, false);
+
+    const refreshed = await loadSnapshot(true);
+    if (!refreshed.ok) {
+      const message = `Decision recorded, but the workspace could not be refreshed. ${refreshed.reason ?? "Reload the workspace."}`;
+      setDecisionRefreshFailure(message);
+      setAnnouncement(message);
+      focusDecisionInvocation();
+      return { ...result, outcome: "persisted-refresh-failed", message };
+    }
+    setDecisionRefreshFailure(null);
+    setAnnouncement(result.message);
+    focusDecisionInvocation();
+    return result;
+  }, [closeDecisionOverlay, focusDecisionInvocation, loadSnapshot]);
+
+  const retryDecisionRefresh = useCallback(async () => {
+    const result = await loadSnapshot(true);
+    if (result.ok) {
+      setDecisionRefreshFailure(null);
+      setAnnouncement("Workspace refreshed.");
+    } else {
+      setDecisionRefreshFailure(`Decision recorded, but the workspace could not be refreshed. ${result.reason ?? "Reload the workspace."}`);
+    }
+  }, [loadSnapshot]);
+
   const onDestinationClick = useCallback<WorkstationContextValue["onDestinationClick"]>((event, action) => {
     if (!isPlainPrimaryClick(event)) return;
     event.preventDefault();
@@ -490,6 +816,45 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
   const registerFocusRegion = useCallback((region: RegisteredFocusRegion, element: HTMLElement | null) => {
     focusRegistry.current.register(region, element);
   }, []);
+
+  const activeDraft = selectedReviewId ? draftCache.current.get(selectedReviewId) ?? null : null;
+  const activeDurability = selectedReviewId
+    ? draftDurability.current.get(selectedReviewId) ?? draftStore.current?.storeDurability() ?? null
+    : null;
+  const activeDraftDirty = activeDraft ? isHumanDecisionDraftDirty(activeDraft) : false;
+  const activeRecordQuarantined = selectedReviewId ? quarantinedDrafts.current.has(selectedReviewId) : false;
+  const humanDecision = useMemo<HumanDecisionController>(() => ({
+    open: openHumanDecision,
+    close: () => closeDecisionOverlay(true, true),
+    draft: activeDraft,
+    durability: activeDurability,
+    draftDirty: activeDraftDirty,
+    recordQuarantined: activeRecordQuarantined,
+    updateDraft: updateHumanDecisionDraft,
+    flush: () => selectedReviewId ? persistDraft(selectedReviewId) : null,
+    discardDraft: discardSelectedDraft,
+    discardUnreadableDraft: discardUnreadableSelectedDraft,
+    acknowledgeReconcile: acknowledgeSelectedReconcile,
+    submit: submitHumanDecision,
+    refreshFailure: decisionRefreshFailure,
+    retryRefresh: retryDecisionRefresh,
+  }), [
+    acknowledgeSelectedReconcile,
+    activeDraft,
+    activeDraftDirty,
+    activeDurability,
+    activeRecordQuarantined,
+    closeDecisionOverlay,
+    decisionRefreshFailure,
+    discardSelectedDraft,
+    discardUnreadableSelectedDraft,
+    openHumanDecision,
+    persistDraft,
+    retryDecisionRefresh,
+    selectedReviewId,
+    submitHumanDecision,
+    updateHumanDecisionDraft,
+  ]);
 
   const value = useMemo<WorkstationContextValue>(() => ({
     state,
@@ -503,6 +868,7 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
     leftPresentation,
     announcement,
     collectionPreferences,
+    humanDecision,
     setCollectionPreferences,
     dispatchBound,
     onDestinationClick,
@@ -519,11 +885,32 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
     leftPresentation,
     announcement,
     collectionPreferences,
+    humanDecision,
     setCollectionPreferences,
     dispatchBound,
     onDestinationClick,
     registerFocusRegion,
   ]);
 
-  return <WorkstationContext.Provider value={value}>{children}</WorkstationContext.Provider>;
+  const composerOpen = state.overlayStack.at(-1) === HUMAN_DECISION_OVERLAY_ID;
+
+  return (
+    <WorkstationContext.Provider value={value}>
+      {children}
+      <HumanDecisionComposer
+        open={composerOpen}
+        reviewId={selectedReviewId}
+        detail={selectedCase}
+        draft={activeDraft}
+        durability={activeDurability}
+        recordQuarantined={activeRecordQuarantined}
+        onClose={humanDecision.close}
+        onUpdateDraft={humanDecision.updateDraft}
+        onDiscardDraft={humanDecision.discardDraft}
+        onDiscardUnreadableDraft={humanDecision.discardUnreadableDraft}
+        onAcknowledgeReconcile={humanDecision.acknowledgeReconcile}
+        onSubmit={humanDecision.submit}
+      />
+    </WorkstationContext.Provider>
+  );
 }

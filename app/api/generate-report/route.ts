@@ -70,7 +70,7 @@ function responseWithReport(
   analysisSource: CanonicalAnalysisSource,
   provider?: string,
   model?: string,
-  metadata?: { sourceUrl?: string; pullRequestNumber?: number },
+  metadata?: { sourceUrl?: string; pullRequestNumber?: number; baseSha?: string; headSha?: string },
 ) {
   const manifest = createCanonicalReviewRunManifest({
     input,
@@ -80,6 +80,8 @@ function responseWithReport(
     model,
     sourceUrl: metadata?.sourceUrl,
     pullRequestNumber: metadata?.pullRequestNumber,
+    baseSha: metadata?.baseSha,
+    headSha: metadata?.headSha,
   });
   const evidenceHierarchy = buildEvidenceHierarchy(report, input.changePassport, { runId: manifest.runId, headSha: manifest.headSha });
   const builderVerifier = buildBuilderVerifierAssessment({
@@ -298,6 +300,12 @@ export async function POST(request: Request) {
   const pullRequestNumber = typeof body.pullRequestNumber === "number" && Number.isInteger(body.pullRequestNumber) && body.pullRequestNumber > 0
     ? body.pullRequestNumber
     : undefined;
+  const baseSha = inputSource === "github-pr" && pullRequestNumber
+    ? requiredString(body.baseSha, 128) ?? undefined
+    : undefined;
+  const headSha = inputSource === "github-pr" && pullRequestNumber
+    ? requiredString(body.headSha, 128) ?? undefined
+    : undefined;
   const changePassport = normalizeChangePassport(body.changePassport, changePassportSource(body.changePassport, inputSource)) ?? undefined;
 
   if (!title || !repository || !technology || !diff?.trim()) {
@@ -307,26 +315,26 @@ export async function POST(request: Request) {
     return Response.json({ error: "The submitted diff is too large." }, { status: 413 });
   }
 
-  const input: ReportInput = { title, repository, technology, diff, inputSource, reviewProfile, changePassport };
+  const input: ReportInput = { title, repository, technology, diff, inputSource, reviewProfile, changePassport, pullRequestNumber };
   const baseline = generateReport(input);
   const apiKey = process.env.OPENAI_API_KEY?.trim();
   const model = process.env.OPENAI_MODEL?.trim();
 
   if (analysisMode === "deterministic-only") {
-    return responseWithReport(baseline, "deterministic", input, "deterministic", undefined, undefined, { sourceUrl, pullRequestNumber });
+    return responseWithReport(baseline, "deterministic", input, "deterministic", undefined, undefined, { sourceUrl, pullRequestNumber, baseSha, headSha });
   }
 
   if (!apiKey || !model) {
     return analysisMode === "model-assisted"
-      ? responseWithReport(baseline, "deterministic", input, "fallback", "openai", model, { sourceUrl, pullRequestNumber })
-      : responseWithReport(baseline, "deterministic", input, "deterministic", undefined, undefined, { sourceUrl, pullRequestNumber });
+      ? responseWithReport(baseline, "deterministic", input, "fallback", "openai", model, { sourceUrl, pullRequestNumber, baseSha, headSha })
+      : responseWithReport(baseline, "deterministic", input, "deterministic", undefined, undefined, { sourceUrl, pullRequestNumber, baseSha, headSha });
   }
 
   const generated = await generateWithOpenAI(input, baseline, apiKey, model);
-  if (!generated) return responseWithReport(baseline, "deterministic", input, "fallback", "openai", model, { sourceUrl, pullRequestNumber });
+  if (!generated) return responseWithReport(baseline, "deterministic", input, "fallback", "openai", model, { sourceUrl, pullRequestNumber, baseSha, headSha });
 
   const report = normaliseReport(generated, baseline);
   return report
-    ? responseWithReport(report, "ai", input, "model", "openai", model, { sourceUrl, pullRequestNumber })
-    : responseWithReport(baseline, "deterministic", input, "fallback", "openai", model, { sourceUrl, pullRequestNumber });
+    ? responseWithReport(report, "ai", input, "model", "openai", model, { sourceUrl, pullRequestNumber, baseSha, headSha })
+    : responseWithReport(baseline, "deterministic", input, "fallback", "openai", model, { sourceUrl, pullRequestNumber, baseSha, headSha });
 }

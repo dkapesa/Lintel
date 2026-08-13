@@ -315,7 +315,7 @@ test("verification standing uses canonical projections and bounded labels", () =
   assert(!JSON.stringify(standing).includes(String(baseCase.riskScore)), "risk score withheld");
 });
 
-test("production registry is ten while the R6D historical registry remains four", () => {
+test("production registry is eleven while the R6D historical registry remains four", () => {
   deepEqual(WORKSTATION_BOUND_ACTION_IDS, [
     "route/navigate",
     "route/apply",
@@ -327,7 +327,8 @@ test("production registry is ten while the R6D historical registry remains four"
     "inspector/open",
     "inspector/close",
     "inspector/traverse-relationship",
-  ], "current ten");
+    "history/set-comparison",
+  ], "current eleven");
   deepEqual(R6D_BOUND_ACTION_IDS, [
     "route/navigate",
     "route/apply",

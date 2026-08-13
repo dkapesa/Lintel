@@ -197,6 +197,20 @@ export function dispatchAction(
     return resultFor(state, { type: "overlay-close" });
   }
 
+  if (action.id === "history/set-comparison") {
+    const selectedCase = currentCase(state, context);
+    const available = new Set<string>();
+    if (selectedCase?.history?.status === "comparison") {
+      available.add(selectedCase.history.previous.runId);
+      for (const comparison of selectedCase.history.comparisons ?? []) available.add(comparison.target.runId);
+    }
+    if (action.runId !== null && !available.has(action.runId)) {
+      return unavailable(state, "The requested comparison analysis is no longer available.");
+    }
+    if (state.comparisonRunId === action.runId) return noop(state);
+    return resultFor(state, { type: "comparison", runId: action.runId });
+  }
+
   const hadOverlay = state.overlayStack.length > 0;
   const hadInspector = state.inspector.open;
   const result = resultFor(

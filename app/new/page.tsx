@@ -69,6 +69,8 @@ type ImportedPullRequest = {
   publicRepository?: boolean;
   baseBranch?: string;
   headBranch?: string;
+  baseSha?: string;
+  headSha?: string;
   changedFiles?: number;
   additions?: number;
   deletions?: number;
@@ -557,6 +559,7 @@ export default function NewReviewPage() {
       inputSource: sourceInputType(source),
       reviewProfile,
       changePassport: selectedSample?.input.changePassport,
+      pullRequestNumber: importedPullRequest?.number,
     };
     setRunPhase("analysis");
     setRunMessage(null);
@@ -573,6 +576,8 @@ export default function NewReviewPage() {
             analysisMode,
             sourceUrl: importedPullRequest?.url,
             pullRequestNumber: importedPullRequest?.number,
+            baseSha: importedPullRequest?.baseSha,
+            headSha: importedPullRequest?.headSha,
           }),
         });
         const value: unknown = await response.json();
@@ -590,6 +595,8 @@ export default function NewReviewPage() {
           analysisSource: "fallback",
           sourceUrl: importedPullRequest?.url,
           pullRequestNumber: importedPullRequest?.number,
+          baseSha: importedPullRequest?.baseSha,
+          headSha: importedPullRequest?.headSha,
           provider: analysisMode === "model-assisted" ? provider.provider : undefined,
           model: analysisMode === "model-assisted" ? provider.model : undefined,
         });

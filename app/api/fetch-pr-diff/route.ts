@@ -28,6 +28,8 @@ type PullRequestMetadata = {
   state?: string;
   baseBranch?: string;
   headBranch?: string;
+  baseSha?: string;
+  headSha?: string;
   changedFiles?: number;
   additions?: number;
   deletions?: number;
@@ -133,6 +135,8 @@ async function fetchPullRequestMetadata(metadataUrl: string, signal: AbortSignal
       state: stringValue(record.state)?.slice(0, 40),
       baseBranch: stringValue(base?.ref)?.slice(0, 250),
       headBranch: stringValue(head?.ref)?.slice(0, 250),
+      baseSha: stringValue(base?.sha)?.slice(0, 128),
+      headSha: stringValue(head?.sha)?.slice(0, 128),
       changedFiles: numberValue(record.changed_files),
       additions: numberValue(record.additions),
       deletions: numberValue(record.deletions),

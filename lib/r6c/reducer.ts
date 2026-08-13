@@ -18,7 +18,8 @@ export type WorkstationTransition =
   | { type: "focus"; active: boolean }
   | { type: "overlay-open"; overlayId: string }
   | { type: "overlay-close" }
-  | { type: "escape" };
+  | { type: "escape" }
+  | { type: "comparison"; runId: string | null };
 
 function closedInspector(state: WorkstationState): WorkstationState["inspector"] {
   return {
@@ -127,5 +128,7 @@ export function reduceWorkstationState(
       if (state.inspector.open) return { ...state, inspector: closedInspector(state) };
       if (state.primarySelection) return { ...state, primarySelection: null };
       return state;
+    case "comparison":
+      return { ...state, comparisonRunId: transition.runId };
   }
 }

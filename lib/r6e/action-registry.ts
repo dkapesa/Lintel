@@ -10,6 +10,7 @@ export const WORKSTATION_BOUND_ACTION_IDS = [
   "inspector/open",
   "inspector/close",
   "inspector/traverse-relationship",
+  "history/set-comparison",
 ] as const satisfies readonly ApplicationAction["id"][];
 
 export type WorkstationBoundActionId = (typeof WORKSTATION_BOUND_ACTION_IDS)[number];

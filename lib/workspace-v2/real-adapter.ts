@@ -1038,6 +1038,8 @@ function analysisRun(entry: ReportHistoryEntry): AnalysisRunSnapshot | null {
 
 function sameReview(left: ReportHistoryEntry, right: ReportHistoryEntry): boolean {
   return (
+    left.report.pr.number > 0 &&
+    right.report.pr.number > 0 &&
     left.report.pr.repository === right.report.pr.repository &&
     left.report.pr.number === right.report.pr.number
   );

@@ -115,7 +115,7 @@ test("relationship presentation deduplicates targets and never discloses raw ids
 });
 
 test("action registry stays bounded with historical R6D frozen", () => {
-  equal(WORKSTATION_BOUND_ACTION_IDS.length, 10, "exactly ten bound actions");
+  equal(WORKSTATION_BOUND_ACTION_IDS.length, 11, "exactly eleven bound actions");
   assert(WORKSTATION_BOUND_ACTION_IDS.includes("inspector/traverse-relationship"), "traverse bound");
   assert(!WORKSTATION_BOUND_ACTION_IDS.includes("inspector/replace-context" as never), "replace unbound");
   equal(R6D_BOUND_ACTION_IDS.length, 4, "historical four");

@@ -22,6 +22,7 @@ export const ACTION_IDS = [
   "overlay/open",
   "overlay/close",
   "escape/unwind",
+  "history/set-comparison",
 ] as const;
 
 export type ActionId = (typeof ACTION_IDS)[number];
@@ -41,7 +42,8 @@ export type ApplicationAction =
   | { id: "focus/set"; active: boolean }
   | { id: "overlay/open"; overlayId: string }
   | { id: "overlay/close"; overlayId: string }
-  | { id: "escape/unwind" };
+  | { id: "escape/unwind" }
+  | { id: "history/set-comparison"; runId: string | null };
 
 export type InvocationSource = "visible-ui" | "keyboard" | "commands" | "browser" | "system";
 export type ActionInvocation = Readonly<{ source: InvocationSource }>;
@@ -68,6 +70,7 @@ const DEFINITIONS: Record<ActionId, ActionDefinition> = {
   "overlay/open": { id: "overlay/open", description: "Open one transient overlay", durableNavigation: false },
   "overlay/close": { id: "overlay/close", description: "Close the exact top transient overlay", durableNavigation: false },
   "escape/unwind": { id: "escape/unwind", description: "Unwind one applicable transient layer", durableNavigation: false },
+  "history/set-comparison": { id: "history/set-comparison", description: "Select a stored analysis for comparison", durableNavigation: false },
 };
 
 export function actionDefinition(actionId: ActionId): ActionDefinition {

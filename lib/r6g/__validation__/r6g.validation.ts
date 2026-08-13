@@ -345,8 +345,8 @@ test("effective Inspector activity gates renderability and layout pressure", () 
 test("current and historical action registries preserve the exact boundary", () => {
   deepEqual(WORKSTATION_BOUND_ACTION_IDS, [
     "route/navigate", "route/apply", "queue/set-manual-preference", "queue/show-narrow-surface",
-    "review/select", "mode/activate", "selection/set", "inspector/open", "inspector/close", "inspector/traverse-relationship",
-  ], "current registry exactly ten");
+    "review/select", "mode/activate", "selection/set", "inspector/open", "inspector/close", "inspector/traverse-relationship", "history/set-comparison",
+  ], "current registry exactly eleven");
   deepEqual(R6D_BOUND_ACTION_IDS, [
     "route/navigate", "route/apply", "queue/set-manual-preference", "queue/show-narrow-surface",
   ], "historical R6D registry exactly four");

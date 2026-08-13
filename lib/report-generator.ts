@@ -15,6 +15,7 @@ export type ReportInput = {
   inputSource?: ReportInputSource;
   reviewProfile?: ReviewProfile;
   changePassport?: ChangePassport;
+  pullRequestNumber?: number;
 };
 
 type RiskSignal = {
@@ -893,7 +894,7 @@ export function generateReport(input: ReportInput): Report {
 
   const generatedReport: Report = {
     pr: {
-      number: 1,
+      number: input.pullRequestNumber ?? 0,
       title: input.title.trim(),
       repository: input.repository.trim(),
       project: input.repository.trim(),

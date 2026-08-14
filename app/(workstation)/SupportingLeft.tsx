@@ -7,7 +7,7 @@ import { useWorkstation } from "./WorkstationProvider";
 import styles from "./workstation-shell.module.css";
 
 export default function SupportingLeft() {
-  const { state, onDestinationClick, dispatchBound, leftPresentation } = useWorkstation();
+  const { state, onDestinationClick, dispatchBound, leftPresentation, commands } = useWorkstation();
   const reviews = state.destination === "reviews";
   const expanded = leftPresentation === "expanded" || leftPresentation === "narrow-queue";
   const compact = state.queue.manualPreference === "compact";
@@ -23,6 +23,17 @@ export default function SupportingLeft() {
           <span className={styles.productMark} aria-hidden="true">L</span>
           <span className={styles.productName}>Lintel</span>
         </Link>
+        <button
+          className={styles.commandsTrigger}
+          type="button"
+          aria-label="Open Commands"
+          aria-keyshortcuts="Meta+K Control+K"
+          title="Open Commands (⌘K / Ctrl+K)"
+          onClick={() => commands.open()}
+        >
+          <span aria-hidden="true">⌕</span>
+          <span className={styles.commandsHint} aria-hidden="true">⌘K</span>
+        </button>
         <DestinationNav />
       </div>
 

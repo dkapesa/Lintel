@@ -23,14 +23,15 @@ import {
   parseRoute,
   readWorkstationPersistence,
   reconcile,
-  removeReviewContext,
   resolveFocusReturn,
+  removeReviewContext,
   restoreInitialState,
   writeReviewContext,
   writeWorkstationPersistence,
   type ActionResult,
   type DecisionSubjectResolver,
   type EffectiveLayout,
+  type InvocationSource,
   type LayoutBand,
   type ReviewId,
   type ReviewIndex,
@@ -45,7 +46,8 @@ import {
   writeReviewCollectionPreferences,
   type ReviewCollectionPreferences,
 } from "../../lib/r6e/collection-preferences";
-import type { WorkstationBoundAction } from "../../lib/r6e/action-registry";
+import type { R6LBoundAction } from "../../lib/r6l/action-registry";
+import { resolveCommandsFocusReturn, type CommandsFocusOrigin } from "../../lib/r6l/command-focus";
 import { createRealWorkspaceAdapter } from "../../lib/workspace-v2/real-adapter";
 import type {
   CaseDetail,
@@ -114,6 +116,13 @@ const STRUCTURAL_STORAGE = {
 } satisfies StorageLike;
 
 export const HUMAN_DECISION_OVERLAY_ID = "human-decision-composer";
+export const COMMANDS_OVERLAY_ID = "commands-palette";
+
+export type CommandCloseReason = "escape" | "execution" | "navigation" | "tab" | "outside-pointer" | "external-transition";
+export type CommandsController = Readonly<{
+  open: () => void;
+  close: (reason: CommandCloseReason) => void;
+}>;
 
 const decisionSubjectResolver: DecisionSubjectResolver = (_reviewId, currentCase) => {
   if (currentCase.decisionMutation.kind !== "available") {
@@ -162,9 +171,10 @@ type WorkstationContextValue = Readonly<{
   announcement: string;
   collectionPreferences: ReviewCollectionPreferences;
   humanDecision: HumanDecisionController;
+  commands: CommandsController;
   setCollectionPreferences: (preferences: ReviewCollectionPreferences) => void;
-  dispatchBound: (action: WorkstationBoundAction, source: "visible-ui" | "system" | "browser") => ActionResult;
-  onDestinationClick: (event: MouseEvent<HTMLAnchorElement>, destination: Extract<WorkstationBoundAction, { id: "route/navigate" }>) => void;
+  dispatchBound: (action: R6LBoundAction, source: InvocationSource) => ActionResult;
+  onDestinationClick: (event: MouseEvent<HTMLAnchorElement>, destination: Extract<R6LBoundAction, { id: "route/navigate" }>) => void;
   registerFocusRegion: (region: RegisteredFocusRegion, element: HTMLElement | null) => void;
 }>;
 
@@ -222,6 +232,7 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
   const quarantinedDrafts = useRef(new Set<ReviewId>());
   const draftWriteTimers = useRef(new Map<ReviewId, ReturnType<typeof setTimeout>>());
   const decisionInvocation = useRef<HTMLButtonElement | null>(null);
+  const commandOrigin = useRef<CommandsFocusOrigin | null>(null);
   const flushDraftRef = useRef<() => DraftWriteResult | null>(() => null);
 
   useIsomorphicLayoutEffect(() => {
@@ -296,6 +307,19 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
         { source: "system" },
       ).state;
     }
+    if (
+      action.id !== "overlay/close"
+      && startingState.overlayStack.at(-1) === COMMANDS_OVERLAY_ID
+      && ["route/navigate", "route/apply", "review/select", "mode/activate"].includes(action.id)
+    ) {
+      commandOrigin.current = null;
+      startingState = dispatchAction(
+        startingState,
+        { id: "overlay/close", overlayId: COMMANDS_OVERLAY_ID },
+        actionContext(),
+        { source: "system" },
+      ).state;
+    }
     const result = dispatchAction(startingState, action, actionContext(), { source });
     let nextState = result.state;
 
@@ -320,6 +344,8 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
     if (result.focusEffect.kind === "region") {
       const region = result.focusEffect.region;
       requestAnimationFrame(() => focusRegistry.current.focusRegion(region));
+    } else if (action.id === "focus/set" && action.active && result.status === "applied") {
+      requestAnimationFrame(() => focusRegistry.current.focusRegion("workspacePrimary"));
     } else if (action.id === "inspector/open") {
       requestAnimationFrame(() => focusRegistry.current.focusRegion("inspector"));
     } else if (action.id === "inspector/traverse-relationship" && result.status === "applied") {
@@ -817,6 +843,40 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
     focusRegistry.current.register(region, element);
   }, []);
 
+  const closeCommands = useCallback((reason: CommandCloseReason) => {
+    const origin = commandOrigin.current;
+    if (stateRef.current.overlayStack.at(-1) === COMMANDS_OVERLAY_ID) {
+      dispatchBound({ id: "overlay/close", overlayId: COMMANDS_OVERLAY_ID }, "commands");
+    }
+    commandOrigin.current = null;
+    if (reason !== "escape" && reason !== "execution") return;
+    const target = resolveCommandsFocusReturn(origin, focusRegistry.current);
+    requestAnimationFrame(() => {
+      if (target.kind === "outside-origin") target.element.focus();
+      if (target.kind === "recorded-origin") target.handle.focus();
+      if (target.kind === "region") focusRegistry.current.focusRegion(target.region);
+    });
+  }, [dispatchBound]);
+
+  const openCommands = useCallback(() => {
+    if (stateRef.current.overlayStack.at(-1) === HUMAN_DECISION_OVERLAY_ID) return;
+    if (stateRef.current.overlayStack.at(-1) === COMMANDS_OVERLAY_ID) {
+      document.getElementById("lintel-commands-input")?.focus();
+      return;
+    }
+    const element = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const region = focusRegistry.current.regionContaining(element);
+    commandOrigin.current = element ? {
+      element,
+      region,
+      scope: {
+        destination: stateRef.current.destination,
+        reviewId: stateRef.current.selectedReview.status === "none" ? null : stateRef.current.selectedReview.reviewId,
+      },
+    } : null;
+    dispatchBound({ id: "overlay/open", overlayId: COMMANDS_OVERLAY_ID }, "commands");
+  }, [dispatchBound]);
+
   const activeDraft = selectedReviewId ? draftCache.current.get(selectedReviewId) ?? null : null;
   const activeDurability = selectedReviewId
     ? draftDurability.current.get(selectedReviewId) ?? draftStore.current?.storeDurability() ?? null
@@ -856,6 +916,8 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
     updateHumanDecisionDraft,
   ]);
 
+  const commands = useMemo<CommandsController>(() => ({ open: openCommands, close: closeCommands }), [closeCommands, openCommands]);
+
   const value = useMemo<WorkstationContextValue>(() => ({
     state,
     snapshot,
@@ -869,6 +931,7 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
     announcement,
     collectionPreferences,
     humanDecision,
+    commands,
     setCollectionPreferences,
     dispatchBound,
     onDestinationClick,
@@ -886,6 +949,7 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
     announcement,
     collectionPreferences,
     humanDecision,
+    commands,
     setCollectionPreferences,
     dispatchBound,
     onDestinationClick,

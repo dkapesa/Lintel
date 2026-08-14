@@ -62,11 +62,19 @@ function rowFor(
   };
 }
 
-function matchesView(row: ReviewRowViewModel, view: ReviewCollectionView): boolean {
-  if (view.filter !== "all" && row.groupId !== view.filter) return false;
-  const query = view.search.trim().toLocaleLowerCase();
+/** The canonical R6E title/repository matcher, exposed for visibility-only consumers. */
+export function reviewMatchesQuery(
+  row: Pick<ReviewRowViewModel, "title" | "repository">,
+  search: string,
+): boolean {
+  const query = search.trim().toLocaleLowerCase();
   return query.length === 0 || row.title.toLocaleLowerCase().includes(query) ||
     row.repository.toLocaleLowerCase().includes(query);
+}
+
+function matchesView(row: ReviewRowViewModel, view: ReviewCollectionView): boolean {
+  if (view.filter !== "all" && row.groupId !== view.filter) return false;
+  return reviewMatchesQuery(row, view.search);
 }
 
 /**

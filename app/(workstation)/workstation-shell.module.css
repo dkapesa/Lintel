@@ -114,6 +114,27 @@
   letter-spacing: -.01em;
 }
 
+.commandsTrigger {
+  width: 100%;
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 0 8px;
+  border: 1px solid var(--color-border);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.commandsTrigger:hover { background: var(--color-surface-hover); color: var(--color-text-secondary); }
+.commandsHint { font-size: 10px; }
+
 .destinationNav {
   display: grid;
   gap: 3px;
@@ -353,6 +374,15 @@
   font-size: 11px;
 }
 
+:global(html[data-queue="navigation-only"]) .commandsTrigger {
+  width: 32px;
+  justify-content: center;
+  margin: 10px auto 0;
+  padding: 0;
+}
+
+:global(html[data-queue="navigation-only"]) .commandsHint { display: none; }
+
 :global(html[data-queue="navigation-only"]) .destinationLink {
   min-height: 48px;
   grid-template-columns: 1fr;
@@ -446,6 +476,7 @@
 
 .destinationLink:focus-visible,
 .productIdentity:focus-visible,
+.commandsTrigger:focus-visible,
 .queueControl:focus-visible,
 .queueReturn:focus-visible,
 .workspace a:focus-visible,

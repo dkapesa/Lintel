@@ -22,8 +22,21 @@ export class FocusRegistry implements FocusValidity<HTMLElement> {
     return region === element || region?.contains(element) === true;
   }
 
+  /** Exact connectedness is deliberately separate from region-backed R6C origin validation. */
+  isElementConnected(element: HTMLElement): boolean {
+    return element.isConnected;
+  }
+
   isRegionRegistered(region: FocusRegionId): boolean {
     return this.regions.get(region)?.isConnected === true;
+  }
+
+  regionContaining(element: Element | null): FocusRegionId | null {
+    if (!element) return null;
+    for (const [region, registered] of this.regions) {
+      if (registered.isConnected && (registered === element || registered.contains(element))) return region;
+    }
+    return null;
   }
 
   focusRegion(region: RegisteredFocusRegion): boolean {

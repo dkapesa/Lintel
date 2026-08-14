@@ -2,13 +2,16 @@
 
 import type { ReactNode } from "react";
 import InspectorHost from "./InspectorHost";
+import CommandsPalette from "./CommandsPalette";
 import SupportingLeft from "./SupportingLeft";
+import { useWorkstationKeyboard } from "./useWorkstationKeyboard";
 import WorkspaceHost from "./WorkspaceHost";
 import { useWorkstation } from "./WorkstationProvider";
 import styles from "./workstation-shell.module.css";
 
 export default function WorkstationShell({ children }: { children: ReactNode }) {
-  const { state, announcement, leftPresentation, layout, inspectorActive } = useWorkstation();
+  const { state, announcement, leftPresentation, layout, inspectorActive, band, dispatchBound, commands } = useWorkstation();
+  useWorkstationKeyboard({ state, band, dispatchBound, commands });
   return (
     <div
       className={styles.workstation}
@@ -21,6 +24,7 @@ export default function WorkstationShell({ children }: { children: ReactNode }) 
       <SupportingLeft />
       <WorkspaceHost>{children}</WorkspaceHost>
       <InspectorHost />
+      <CommandsPalette />
     </div>
   );
 }

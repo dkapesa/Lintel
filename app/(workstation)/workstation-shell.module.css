@@ -1,7 +1,25 @@
+@property --queue-track {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 280px;
+}
+
+@property --inspector-track {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
+@property --inspector-size {
+  syntax: "<length>";
+  inherits: true;
+  initial-value: 0px;
+}
+
 .workstation {
-  --supporting-left-width: 300px;
+  position: relative;
   display: grid;
-  grid-template-columns: var(--supporting-left-width) minmax(0, 1fr) 0;
+  grid-template-columns: var(--queue-track, 280px) minmax(0, 1fr) var(--inspector-track, 0px);
   width: 100%;
   min-width: 0;
   height: 100dvh;
@@ -10,24 +28,24 @@
   background: var(--color-canvas);
   color: var(--color-text-primary);
   font-family: var(--type-family-application);
+  transition: grid-template-columns 150ms ease;
 }
 
-.workstation[data-inspector="pane"] {
-  grid-template-columns: var(--supporting-left-width) minmax(0, 1fr) 336px;
+:global(html[data-resizing]) .workstation,
+:global(html[data-viewport-resizing]) .workstation {
+  cursor: col-resize;
+  user-select: none;
+  transition: none;
 }
 
-:global(html[data-queue="compact"]) .workstation {
-  --supporting-left-width: 232px;
+:global(html[data-resizing]) .supportingLeft,
+:global(html[data-viewport-resizing]) .supportingLeft {
+  transition: none;
 }
 
-:global(html[data-queue="navigation-only"]) .workstation {
-  --supporting-left-width: 88px;
-}
-
-:global(html[data-queue="yielded-context"]) .workstation,
-:global(html[data-queue="hidden-focus"]) .workstation,
-:global(html[data-queue="hidden-narrow"]) .workstation {
-  --supporting-left-width: 0px;
+:global(html[data-viewport-resizing]) .workstation {
+  cursor: inherit;
+  user-select: auto;
 }
 
 .skipLink {
@@ -87,13 +105,52 @@
   padding: 18px 16px 14px;
 }
 
+.globalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .productIdentity {
+  min-width: 0;
+  flex: 1 1 auto;
   min-height: 36px;
   display: flex;
   align-items: center;
   gap: 10px;
   color: var(--color-text-primary);
   text-decoration: none;
+}
+
+.queueCollapseControl,
+.focusExitAffordance {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.queueCollapseControl:hover,
+.focusExitAffordance:hover {
+  color: var(--color-text-primary);
+}
+
+.focusExitAffordance {
+  position: absolute;
+  z-index: 8;
+  top: 14px;
+  left: 14px;
 }
 
 .productMark {
@@ -193,6 +250,7 @@
   padding: 20px 16px;
   overflow: auto;
   outline: none;
+  container: review-queue / inline-size;
 }
 
 .queueHeader {
@@ -280,6 +338,7 @@
   background: var(--color-canvas);
   outline: none;
   overscroll-behavior: contain;
+  container: workspace-pane / inline-size;
 }
 
 .workstation > [data-region="inspector"] {
@@ -289,21 +348,23 @@
 
 .workstation[data-inspector="sheet"] > [data-region="inspector"] {
   z-index: 5;
-  width: min(336px, 100%);
+  width: min(var(--inspector-size, 0px), 100%);
   justify-self: end;
   grid-column: 2;
   background: var(--color-surface);
+  box-shadow: -12px 0 32px color-mix(in srgb, var(--color-text-primary) 7%, transparent);
 }
 
 .workspaceDocument {
   min-height: 100%;
-  padding: clamp(42px, 7vw, 96px) clamp(28px, 7vw, 104px);
+  padding: clamp(48px, 7cqw, 88px) clamp(28px, 6cqw, 72px);
 }
 
 .idleWorkspace,
 .reviewMessage,
 .selectedReview {
   width: min(720px, 100%);
+  margin-inline: auto;
 }
 
 .idleWorkspace h1,
@@ -364,6 +425,12 @@
   padding-inline: 8px;
 }
 
+:global(html[data-queue="navigation-only"]) .globalHeader {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+}
+
 :global(html[data-queue="navigation-only"]) .productIdentity {
   flex-direction: column;
   gap: 5px;
@@ -395,6 +462,75 @@
 :global(html[data-queue="navigation-only"]) .destinationLabel {
   font-size: 10px;
   line-height: 1.15;
+}
+
+:global(html[data-queue="navigation-only"]) .insetDivider,
+:global(html[data-queue="navigation-only"]) .queueRegion,
+:global(html[data-queue="navigation-only"]) .queueControlRegion {
+  display: none;
+}
+
+.paneSeparator {
+  position: absolute;
+  z-index: 7;
+  top: 0;
+  bottom: 0;
+  width: 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: transparent;
+  cursor: col-resize;
+  touch-action: none;
+  transform: translateX(-50%);
+}
+
+.paneSeparator::after {
+  position: absolute;
+  inset-block: 0;
+  left: 50%;
+  width: 1px;
+  background: transparent;
+  content: "";
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.paneSeparator:hover::after {
+  background: var(--color-border-strong);
+}
+
+.paneSeparator:active::after,
+:global(html[data-resizing="queue"]) .queueSeparator::after,
+:global(html[data-resizing="inspector"]) .inspectorSeparator::after {
+  width: 2px;
+  background: var(--color-border-strong);
+}
+
+.queueSeparator { left: var(--queue-track, 280px); }
+.inspectorSeparator { left: calc(100% - var(--inspector-track, 0px)); }
+
+.paneSeparator:focus-visible,
+.queueCollapseControl:focus-visible,
+.focusExitAffordance:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: -2px;
+}
+
+@media (pointer: coarse) {
+  .paneSeparator { width: 24px; }
+}
+
+@container workspace-pane (max-width: 760px) {
+  .workspaceDocument {
+    padding: 48px 32px 64px;
+  }
+}
+
+@container workspace-pane (max-width: 680px) {
+  .workspaceDocument {
+    padding: 32px 24px 56px;
+  }
 }
 
 @media (max-width: 899.98px) {
@@ -441,10 +577,6 @@
     display: none;
   }
 
-  .workspaceDocument {
-    padding: 32px 24px 56px;
-  }
-
   .queueControl,
   .queueReturn,
   .destinationLink {
@@ -454,7 +586,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .skipLink,
-  .supportingLeft {
+  .supportingLeft,
+  .workstation {
     transition-duration: .01ms;
   }
 }
@@ -466,6 +599,9 @@
 
   .destinationLink:focus-visible,
   .productIdentity:focus-visible,
+  .queueCollapseControl:focus-visible,
+  .focusExitAffordance:focus-visible,
+  .paneSeparator:focus-visible,
   .queueControl:focus-visible,
   .queueReturn:focus-visible,
   .workspace a:focus-visible,
@@ -477,6 +613,8 @@
 .destinationLink:focus-visible,
 .productIdentity:focus-visible,
 .commandsTrigger:focus-visible,
+.queueCollapseControl:focus-visible,
+.focusExitAffordance:focus-visible,
 .queueControl:focus-visible,
 .queueReturn:focus-visible,
 .workspace a:focus-visible,

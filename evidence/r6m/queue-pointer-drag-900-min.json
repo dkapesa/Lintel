@@ -1,0 +1,142 @@
+{
+  "path": [
+    {
+      "x": 260,
+      "y": 397
+    },
+    {
+      "x": 255,
+      "y": 397
+    },
+    {
+      "x": 250,
+      "y": 397
+    },
+    {
+      "x": 245,
+      "y": 397
+    },
+    {
+      "x": 240,
+      "y": 397
+    }
+  ],
+  "samples": [
+    {
+      "t": 0,
+      "state": {
+        "activeLabel": "synthetic/r4f2-correctionR4F.2 focused correction validationpasted-diff · Local ",
+        "band": "constrained",
+        "inspector": null,
+        "inspectorPresentation": "closed",
+        "inspectorSize": "0px",
+        "inspectorTrack": "0px",
+        "queue": {
+          "width": 260,
+          "x": 0
+        },
+        "queuePresentation": "expanded",
+        "queueTrack": "260px",
+        "selected": {
+          "width": 576.7999877929688,
+          "x": 284
+        },
+        "viewport": {
+          "height": 794,
+          "width": 900
+        },
+        "workspace": {
+          "width": 640,
+          "x": 260
+        }
+      }
+    },
+    {
+      "t": 146,
+      "state": {
+        "activeLabel": "synthetic/r4f2-correctionR4F.2 focused correction validationpasted-diff · Local ",
+        "band": "constrained",
+        "inspector": null,
+        "inspectorPresentation": "closed",
+        "inspectorSize": "0px",
+        "inspectorTrack": "0px",
+        "queue": {
+          "width": 255,
+          "x": 0
+        },
+        "queuePresentation": "expanded",
+        "queueTrack": "255px",
+        "selected": {
+          "width": 581.7999877929688,
+          "x": 279
+        },
+        "viewport": {
+          "height": 794,
+          "width": 900
+        },
+        "workspace": {
+          "width": 645,
+          "x": 255
+        }
+      }
+    },
+    {
+      "t": 457,
+      "state": {
+        "activeLabel": "synthetic/r4f2-correctionR4F.2 focused correction validationpasted-diff · Local ",
+        "band": "constrained",
+        "inspector": null,
+        "inspectorPresentation": "closed",
+        "inspectorSize": "0px",
+        "inspectorTrack": "0px",
+        "queue": {
+          "width": 240,
+          "x": 0
+        },
+        "queuePresentation": "expanded",
+        "queueTrack": "240px",
+        "selected": {
+          "width": 596.7999877929688,
+          "x": 264
+        },
+        "viewport": {
+          "height": 794,
+          "width": 900
+        },
+        "workspace": {
+          "width": 660,
+          "x": 240
+        }
+      }
+    },
+    {
+      "t": 640,
+      "state": {
+        "activeLabel": "synthetic/r4f2-correctionR4F.2 focused correction validationpasted-diff · Local ",
+        "band": "constrained",
+        "inspector": null,
+        "inspectorPresentation": "closed",
+        "inspectorSize": "0px",
+        "inspectorTrack": "0px",
+        "queue": {
+          "width": 240,
+          "x": 0
+        },
+        "queuePresentation": "expanded",
+        "queueTrack": "240px",
+        "selected": {
+          "width": 596.7999877929688,
+          "x": 264
+        },
+        "viewport": {
+          "height": 794,
+          "width": 900
+        },
+        "workspace": {
+          "width": 660,
+          "x": 240
+        }
+      }
+    }
+  ]
+}

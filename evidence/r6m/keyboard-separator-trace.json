@@ -1,0 +1,152 @@
+[
+  {
+    "key": "initial",
+    "aria": "240",
+    "state": {
+      "activeLabel": "(() => {\n  var width = Math.max(document.documentElement.clientWidth || 0, windo",
+      "band": "standard",
+      "inspector": null,
+      "inspectorPresentation": "closed",
+      "inspectorSize": "0px",
+      "inspectorTrack": "0px",
+      "queue": {
+        "width": 240,
+        "x": 0
+      },
+      "queuePresentation": "expanded",
+      "queueTrack": "240px",
+      "selected": {
+        "width": 720,
+        "x": 472.3999938964844
+      },
+      "viewport": {
+        "height": 900,
+        "width": 1440
+      },
+      "workspace": {
+        "width": 1200,
+        "x": 240
+      }
+    }
+  },
+  {
+    "key": "ArrowRight",
+    "aria": "256",
+    "state": {
+      "activeLabel": "Resize Review Queue",
+      "band": "standard",
+      "inspector": null,
+      "inspectorPresentation": "closed",
+      "inspectorSize": "0px",
+      "inspectorTrack": "0px",
+      "queue": {
+        "width": 256,
+        "x": 0
+      },
+      "queuePresentation": "expanded",
+      "queueTrack": "256px",
+      "selected": {
+        "width": 720,
+        "x": 480.3999938964844
+      },
+      "viewport": {
+        "height": 900,
+        "width": 1440
+      },
+      "workspace": {
+        "width": 1184,
+        "x": 256
+      }
+    }
+  },
+  {
+    "key": "Shift+ArrowRight",
+    "aria": "320",
+    "state": {
+      "activeLabel": "Resize Review Queue",
+      "band": "standard",
+      "inspector": null,
+      "inspectorPresentation": "closed",
+      "inspectorSize": "0px",
+      "inspectorTrack": "0px",
+      "queue": {
+        "width": 320,
+        "x": 0
+      },
+      "queuePresentation": "expanded",
+      "queueTrack": "320px",
+      "selected": {
+        "width": 720,
+        "x": 520
+      },
+      "viewport": {
+        "height": 900,
+        "width": 1440
+      },
+      "workspace": {
+        "width": 1120,
+        "x": 320
+      }
+    }
+  },
+  {
+    "key": "Home",
+    "aria": "240",
+    "state": {
+      "activeLabel": "Resize Review Queue",
+      "band": "standard",
+      "inspector": null,
+      "inspectorPresentation": "closed",
+      "inspectorSize": "0px",
+      "inspectorTrack": "0px",
+      "queue": {
+        "width": 240,
+        "x": 0
+      },
+      "queuePresentation": "expanded",
+      "queueTrack": "240px",
+      "selected": {
+        "width": 720,
+        "x": 472.3999938964844
+      },
+      "viewport": {
+        "height": 900,
+        "width": 1440
+      },
+      "workspace": {
+        "width": 1200,
+        "x": 240
+      }
+    }
+  },
+  {
+    "key": "End",
+    "aria": "400",
+    "state": {
+      "activeLabel": "Resize Review Queue",
+      "band": "standard",
+      "inspector": null,
+      "inspectorPresentation": "closed",
+      "inspectorSize": "0px",
+      "inspectorTrack": "0px",
+      "queue": {
+        "width": 400,
+        "x": 0
+      },
+      "queuePresentation": "expanded",
+      "queueTrack": "400px",
+      "selected": {
+        "width": 720,
+        "x": 560
+      },
+      "viewport": {
+        "height": 900,
+        "width": 1440
+      },
+      "workspace": {
+        "width": 1040,
+        "x": 400
+      }
+    }
+  }
+]

@@ -1,0 +1,98 @@
+[
+  {
+    "step": "420",
+    "state": {
+      "activeLabel": "Resize Contextual Inspector",
+      "band": "compact",
+      "inspector": {
+        "width": 420,
+        "x": 880
+      },
+      "inspectorPresentation": "pane",
+      "inspectorSize": "420px",
+      "inspectorTrack": "420px",
+      "queue": {
+        "width": 240,
+        "x": 0
+      },
+      "queuePresentation": "expanded",
+      "queueTrack": "240px",
+      "selected": {
+        "width": 576.7999877929688,
+        "x": 264
+      },
+      "viewport": {
+        "height": 900,
+        "width": 1300
+      },
+      "workspace": {
+        "width": 640,
+        "x": 240
+      }
+    }
+  },
+  {
+    "step": "421",
+    "state": {
+      "activeLabel": "Contextual Inspector",
+      "band": "compact",
+      "inspector": {
+        "width": 421,
+        "x": 879
+      },
+      "inspectorPresentation": "pane",
+      "inspectorSize": "421px",
+      "inspectorTrack": "421px",
+      "queue": {
+        "width": 0,
+        "x": 0
+      },
+      "queuePresentation": "yielded-context",
+      "queueTrack": "0px",
+      "selected": {
+        "width": 720,
+        "x": 71.9000015258789
+      },
+      "viewport": {
+        "height": 900,
+        "width": 1300
+      },
+      "workspace": {
+        "width": 879,
+        "x": 0
+      }
+    }
+  },
+  {
+    "step": "420-return",
+    "state": {
+      "activeLabel": "Contextual Inspector",
+      "band": "compact",
+      "inspector": {
+        "width": 420,
+        "x": 880
+      },
+      "inspectorPresentation": "pane",
+      "inspectorSize": "420px",
+      "inspectorTrack": "420px",
+      "queue": {
+        "width": 240,
+        "x": 0
+      },
+      "queuePresentation": "expanded",
+      "queueTrack": "240px",
+      "selected": {
+        "width": 576.7999877929688,
+        "x": 264
+      },
+      "viewport": {
+        "height": 900,
+        "width": 1300
+      },
+      "workspace": {
+        "width": 640,
+        "x": 240
+      }
+    }
+  }
+]

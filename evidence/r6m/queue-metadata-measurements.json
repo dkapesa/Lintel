@@ -1,0 +1,15 @@
+{
+  "containerQuery": "@container review-queue (max-width: 220px)",
+  "queue280": {
+    "outerPane": 280,
+    "queueRegionBorderBox": 279.2,
+    "containerInlineSize": 247.2,
+    "metadataDisplay": "flex"
+  },
+  "queue240": {
+    "outerPane": 240,
+    "queueRegionBorderBox": 239.2,
+    "containerInlineSize": 207.2,
+    "metadataDisplay": "none"
+  }
+}

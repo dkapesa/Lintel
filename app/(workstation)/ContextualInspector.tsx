@@ -70,6 +70,7 @@ export default function ContextualInspector({ selectedCase }: { selectedCase: Ca
 
   return (
     <aside
+      id="contextual-inspector"
       className={styles.inspector}
       data-region="inspector"
       aria-label="Contextual Inspector"

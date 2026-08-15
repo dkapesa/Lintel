@@ -1,0 +1,10 @@
+{
+  "nativeDrag": true,
+  "dataResizing": "queue",
+  "pseudoElementWidth": "2px",
+  "pseudoElementBackground": "rgb(188, 184, 175)",
+  "gridTemplateColumnsDuringSample": "282.5px 1017.5px 0px",
+  "workstationWidth": 1300,
+  "layoutCost": 0,
+  "pointerTargetAtRest": "12px transparent hit target"
+}

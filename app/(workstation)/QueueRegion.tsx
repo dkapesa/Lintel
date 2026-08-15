@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useLayoutEffect, useRef } from "react";
 import ReviewCollection from "./ReviewCollection";
 import { useWorkstation } from "./WorkstationProvider";
 import styles from "./workstation-shell.module.css";
@@ -12,14 +13,32 @@ export const REVIEW_QUEUE_REGION_ID = "review-queue-region";
    and "Open the Verification Workspace". */
 
 export default function QueueRegion() {
-  const { snapshot, registerFocusRegion } = useWorkstation();
+  const { snapshot, registerFocusRegion, geometry } = useWorkstation();
+  const regionRef = useRef<HTMLElement | null>(null);
+  const previousVisible = useRef(geometry.queueVisible);
+  const yieldedScrollTop = useRef(0);
+
+  useLayoutEffect(() => {
+    const element = regionRef.current;
+    if (!element) return;
+    if (previousVisible.current && !geometry.queueVisible) {
+      yieldedScrollTop.current = element.scrollTop;
+    } else if (!previousVisible.current && geometry.queueVisible) {
+      element.scrollTop = yieldedScrollTop.current;
+    }
+    previousVisible.current = geometry.queueVisible;
+  }, [geometry.queueVisible]);
+
   return (
     <aside
       id={REVIEW_QUEUE_REGION_ID}
       className={styles.queueRegion}
       aria-label="Review Queue"
       tabIndex={-1}
-      ref={(element) => registerFocusRegion("queue", element)}
+      ref={(element) => {
+        regionRef.current = element;
+        registerFocusRegion("queue", element);
+      }}
     >
       <div className={styles.queueHeader}>
         <p className={styles.sectionLabel}>Reviews</p>

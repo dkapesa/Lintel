@@ -1,0 +1,24 @@
+{
+  "viewport": 1800,
+  "beforeEscape": {
+    "focusActive": true,
+    "inspectorOpen": true,
+    "queuePresentation": "hidden-focus",
+    "queueTrack": 0,
+    "inspectorTrack": 420
+  },
+  "afterFirstEscape": {
+    "focusActive": true,
+    "inspectorOpen": false,
+    "queuePresentation": "hidden-focus",
+    "queueTrack": 0,
+    "inspectorTrack": 0
+  },
+  "afterSecondEscape": {
+    "focusActive": true,
+    "inspectorOpen": false,
+    "queuePresentation": "hidden-focus",
+    "queueTrack": 0,
+    "inspectorTrack": 0
+  }
+}

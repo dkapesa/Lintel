@@ -1,0 +1,137 @@
+[
+  {
+    "key": "initial",
+    "aria": "384",
+    "state": {
+      "activeLabel": "Contextual Inspector",
+      "band": "compact",
+      "inspector": {
+        "width": 384,
+        "x": 916
+      },
+      "inspectorPresentation": "pane",
+      "inspectorSize": "384px",
+      "inspectorTrack": "384px",
+      "queue": {
+        "width": 276,
+        "x": 0
+      },
+      "queuePresentation": "expanded",
+      "queueTrack": "276px",
+      "selected": {
+        "width": 576.7999877929688,
+        "x": 300
+      },
+      "viewport": {
+        "height": 900,
+        "width": 1300
+      },
+      "workspace": {
+        "width": 640,
+        "x": 276
+      }
+    }
+  },
+  {
+    "key": "Home",
+    "aria": "320",
+    "state": {
+      "activeLabel": "Resize Contextual Inspector",
+      "band": "compact",
+      "inspector": {
+        "width": 320,
+        "x": 980
+      },
+      "inspectorPresentation": "pane",
+      "inspectorSize": "320px",
+      "inspectorTrack": "320px",
+      "queue": {
+        "width": 340,
+        "x": 0
+      },
+      "queuePresentation": "expanded",
+      "queueTrack": "340px",
+      "selected": {
+        "width": 576.7999877929688,
+        "x": 364
+      },
+      "viewport": {
+        "height": 900,
+        "width": 1300
+      },
+      "workspace": {
+        "width": 640,
+        "x": 340
+      }
+    },
+    "path": "C:/Users/dkape/Documents/Codex/2026-06-23/r6m-responsive-resize-restore/evidence/r6m/1300-inspector-min.png"
+  },
+  {
+    "key": "End",
+    "aria": "480",
+    "state": {
+      "activeLabel": "Resize Contextual Inspector",
+      "band": "compact",
+      "inspector": {
+        "width": 480,
+        "x": 820
+      },
+      "inspectorPresentation": "pane",
+      "inspectorSize": "480px",
+      "inspectorTrack": "480px",
+      "queue": {
+        "width": 0,
+        "x": 0
+      },
+      "queuePresentation": "yielded-context",
+      "queueTrack": "0px",
+      "selected": {
+        "width": 706.4000244140625,
+        "x": 49.20000076293945
+      },
+      "viewport": {
+        "height": 900,
+        "width": 1300
+      },
+      "workspace": {
+        "width": 820,
+        "x": 0
+      }
+    },
+    "path": "C:/Users/dkape/Documents/Codex/2026-06-23/r6m-responsive-resize-restore/evidence/r6m/1300-inspector-max.png"
+  },
+  {
+    "key": "Home + 6 ArrowRight",
+    "aria": "416",
+    "state": {
+      "activeLabel": "Resize Contextual Inspector",
+      "band": "compact",
+      "inspector": {
+        "width": 416,
+        "x": 884
+      },
+      "inspectorPresentation": "pane",
+      "inspectorSize": "416px",
+      "inspectorTrack": "416px",
+      "queue": {
+        "width": 244,
+        "x": 0
+      },
+      "queuePresentation": "expanded",
+      "queueTrack": "244px",
+      "selected": {
+        "width": 576.7999877929688,
+        "x": 268
+      },
+      "viewport": {
+        "height": 900,
+        "width": 1300
+      },
+      "workspace": {
+        "width": 640,
+        "x": 244
+      }
+    },
+    "path": "C:/Users/dkape/Documents/Codex/2026-06-23/r6m-responsive-resize-restore/evidence/r6m/1300-inspector-416.png"
+  }
+]

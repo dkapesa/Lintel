@@ -1,0 +1,33 @@
+{
+  "geometry": {
+    "activeLabel": "synthetic/r4f2-correctionR4F.2 focused correction validationpasted-diff · Local ",
+    "band": "standard",
+    "inspector": null,
+    "inspectorPresentation": "closed",
+    "inspectorSize": "0px",
+    "inspectorTrack": "0px",
+    "queue": {
+      "width": 0,
+      "x": 0
+    },
+    "queuePresentation": "hidden-focus",
+    "queueTrack": "0px",
+    "selected": {
+      "width": 720,
+      "x": 352.3999938964844
+    },
+    "viewport": {
+      "height": 900,
+      "width": 1440
+    },
+    "workspace": {
+      "width": 1440,
+      "x": 0
+    }
+  },
+  "active": {
+    "label": "synthetic/r4f2-correctionR4F.2 focused correction validationpasted-diff · Local prototype · Updated ",
+    "main": true,
+    "tag": "MAIN"
+  }
+}

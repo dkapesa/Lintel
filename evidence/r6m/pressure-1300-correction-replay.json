@@ -1,0 +1,20 @@
+{
+  "viewport": 1300,
+  "nativeCommittedSequence": [
+    {
+      "inspector": 420,
+      "queue": 240,
+      "inspectorAria": { "minimum": 320, "maximum": 480, "now": 420 }
+    },
+    {
+      "inspector": 421,
+      "queue": 0,
+      "inspectorAria": { "minimum": 320, "maximum": 480, "now": 421 }
+    },
+    {
+      "inspector": 420,
+      "queue": 240,
+      "inspectorAria": { "minimum": 320, "maximum": 480, "now": 420 }
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "queueAt1300WithInspector420": {
+    "ariaValueMin": 240,
+    "ariaValueMax": 240,
+    "ariaValueNow": 240,
+    "endResult": 240,
+    "geometry": {
+      "queueTrack": 240,
+      "workspaceTrack": 640,
+      "inspectorTrack": 420
+    }
+  },
+  "queueAt1800WithInspectorClosed": {
+    "ariaValueMin": 240,
+    "ariaValueMax": 400,
+    "ariaValueNow": 240
+  },
+  "sharedSource": "resizeBoundsForGeometry() supplies rendered ARIA, pointer session and keyboard candidates."
+}

@@ -18,19 +18,16 @@ import {
   decisionDraftContextFor,
   decisionSubjectIdFromCapability,
   dispatchAction,
-  effectiveLayout,
   indexReviews,
   parseRoute,
   readWorkstationPersistence,
   reconcile,
-  resolveFocusReturn,
   removeReviewContext,
   restoreInitialState,
   writeReviewContext,
   writeWorkstationPersistence,
   type ActionResult,
   type DecisionSubjectResolver,
-  type EffectiveLayout,
   type InvocationSource,
   type LayoutBand,
   type ReviewId,
@@ -47,7 +44,7 @@ import {
   type ReviewCollectionPreferences,
 } from "../../lib/r6e/collection-preferences";
 import type { R6LBoundAction } from "../../lib/r6l/action-registry";
-import { resolveCommandsFocusReturn, type CommandsFocusOrigin } from "../../lib/r6l/command-focus";
+import type { CommandsFocusOrigin } from "../../lib/r6l/command-focus";
 import { createRealWorkspaceAdapter } from "../../lib/workspace-v2/real-adapter";
 import type {
   CaseDetail,
@@ -67,11 +64,26 @@ import {
   type SemanticRestorationGate,
 } from "../../lib/r6d/controller-contract";
 import {
-  R6D_LAYOUT_POLICY,
   layoutBandForWidth,
-  supportingLeftPresentation,
   type SupportingLeftPresentation,
 } from "../../lib/r6d/layout-policy";
+import {
+  INSPECTOR_DEFAULT,
+  QUEUE_DEFAULT,
+  applyResolvedGeometry,
+  createR6MLayoutPolicy,
+  readR6MLayoutPreference,
+  readR6MPreferredWidths,
+  resizeBoundsForGeometry,
+  resolveWorkstationGeometry,
+  writePreferredInspectorWidth,
+  writePreferredQueueWidth,
+  writeR6MLayoutPreference,
+  type ResizablePane,
+  type ResizeBounds,
+  type ResolvedGeometry,
+  type WorkstationGeometryInput,
+} from "../../lib/r6m/index";
 import {
   HumanDecisionDraftStore,
   acknowledgeDecisionDraftReconciliation,
@@ -92,6 +104,11 @@ import {
 } from "../../lib/workspace-v2/decision-mutations";
 import { FocusRegistry, type RegisteredFocusRegion } from "./FocusRegistry";
 import HumanDecisionComposer from "./HumanDecisionComposer";
+import {
+  RenderedFocusValidity,
+  restoreRenderedCommandsFocus,
+  restoreRenderedFocus,
+} from "./renderedFocusValidity";
 
 const BOOTSTRAP_IDENTITY: WorkspaceIdentity = {
   workspaceId: "local-report",
@@ -158,6 +175,15 @@ export type HumanDecisionController = Readonly<{
   retryRefresh: () => Promise<void>;
 }>;
 
+export type ActivePaneResize = Readonly<{
+  startX: number;
+  startWidth: number;
+  bounds: ResizeBounds;
+  preview: (candidate: number) => void;
+  commit: (candidate: number) => void;
+  cancel: () => void;
+}>;
+
 type WorkstationContextValue = Readonly<{
   state: WorkstationState;
   snapshot: WorkspaceSnapshot;
@@ -165,9 +191,11 @@ type WorkstationContextValue = Readonly<{
   selectedCase: CaseDetail | null;
   selectedCaseTitle: string | null;
   band: LayoutBand;
-  layout: EffectiveLayout;
+  geometry: ResolvedGeometry;
+  resizeBounds: Readonly<Record<ResizablePane, ResizeBounds | null>>;
   inspectorActive: boolean;
   leftPresentation: SupportingLeftPresentation;
+  queueCollapsed: boolean;
   announcement: string;
   collectionPreferences: ReviewCollectionPreferences;
   humanDecision: HumanDecisionController;
@@ -176,18 +204,35 @@ type WorkstationContextValue = Readonly<{
   dispatchBound: (action: R6LBoundAction, source: InvocationSource) => ActionResult;
   onDestinationClick: (event: MouseEvent<HTMLAnchorElement>, destination: Extract<R6LBoundAction, { id: "route/navigate" }>) => void;
   registerFocusRegion: (region: RegisteredFocusRegion, element: HTMLElement | null) => void;
+  setQueueCollapsed: (collapsed: boolean) => void;
+  beginPaneResize: (pane: ResizablePane, startX: number) => ActivePaneResize | null;
+  commitKeyboardPaneWidth: (pane: ResizablePane, width: number) => void;
 }>;
 
 const WorkstationContext = createContext<WorkstationContextValue | null>(null);
 const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
-function structuralState(pathname: string): WorkstationState {
+function policyDestination(pathname: string): WorkstationState["destination"] {
+  const parsed = parseRoute(pathname);
+  return parsed.status === "valid" ? parsed.intent.destination : "reviews";
+}
+
+function structuralState(pathname: string, viewportWidth: number): WorkstationState {
   const restored = restoreInitialState({
     pathname,
     storage: STRUCTURAL_STORAGE,
     authoritativeSnapshot: LOADING_SNAPSHOT,
     capturedAt: new Date(0).toISOString(),
-    layout: { band: "standard" as const, policy: R6D_LAYOUT_POLICY },
+    layout: {
+      band: layoutBandForWidth(viewportWidth),
+      policy: createR6MLayoutPolicy({
+        viewportWidth,
+        destination: policyDestination(pathname),
+        preferredQueueWidth: QUEUE_DEFAULT,
+        preferredInspectorWidth: INSPECTOR_DEFAULT,
+        queueCollapsed: false,
+      }),
+    },
     decisionSubjectResolver,
   });
   return reconcileRestoredNarrowPresentation(
@@ -210,20 +255,31 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
   const pathname = usePathname();
   const router = useRouter();
   const { setForcedTheme } = useTheme();
-  const [state, setState] = useState<WorkstationState>(() => structuralState(pathname));
+  const initialViewportWidth = 1440;
+  const [viewportWidth, setViewportWidth] = useState(initialViewportWidth);
+  const [state, setState] = useState<WorkstationState>(() => structuralState(pathname, initialViewportWidth));
   const [snapshot, setSnapshot] = useState<WorkspaceSnapshot>(LOADING_SNAPSHOT);
-  const [band, setBand] = useState<LayoutBand>("standard");
+  const [preferredWidths, setPreferredWidths] = useState({
+    queue: QUEUE_DEFAULT,
+    inspector: INSPECTOR_DEFAULT,
+  });
+  const [queueCollapsed, setQueueCollapsedState] = useState(false);
   const [announcement, setAnnouncement] = useState("");
   const [collectionPreferences, setCollectionPreferencesState] = useState<ReviewCollectionPreferences>(DEFAULT_REVIEW_COLLECTION_PREFERENCES);
   const [, setDraftVersion] = useState(0);
   const [decisionRefreshFailure, setDecisionRefreshFailure] = useState<string | null>(null);
   const stateRef = useRef(state);
   const snapshotRef = useRef(snapshot);
+  const viewportWidthRef = useRef(viewportWidth);
+  const preferredWidthsRef = useRef(preferredWidths);
+  const queueCollapsedRef = useRef(queueCollapsed);
+  const band = layoutBandForWidth(viewportWidth);
   const bandRef = useRef(band);
   const phaseAComplete = useRef(false);
   const semanticGate = useRef<SemanticRestorationGate>(INITIAL_SEMANTIC_RESTORATION_GATE);
   const routeGate = useRef<PendingRouteGate>({ pending: null });
   const focusRegistry = useRef(new FocusRegistry());
+  const renderedFocusValidity = useRef(new RenderedFocusValidity(focusRegistry.current));
   const browserStorage = useRef<Storage | null>(null);
   const decisionService = useRef<WorkspaceDecisionService | null>(null);
   const draftStore = useRef<HumanDecisionDraftStore | null>(null);
@@ -234,6 +290,17 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
   const decisionInvocation = useRef<HTMLButtonElement | null>(null);
   const commandOrigin = useRef<CommandsFocusOrigin | null>(null);
   const flushDraftRef = useRef<() => DraftWriteResult | null>(() => null);
+  const geometryInputRef = useRef<WorkstationGeometryInput | null>(null);
+  const geometryRef = useRef<ResolvedGeometry | null>(null);
+  const resizeSessionToken = useRef<symbol | null>(null);
+  const viewportTransitionTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const keyboardWriteTimers = useRef<Partial<Record<ResizablePane, ReturnType<typeof setTimeout>>>>({});
+  const pendingKeyboardWidths = useRef<Partial<Record<ResizablePane, number>>>({});
+
+  viewportWidthRef.current = viewportWidth;
+  preferredWidthsRef.current = preferredWidths;
+  queueCollapsedRef.current = queueCollapsed;
+  bandRef.current = band;
 
   useIsomorphicLayoutEffect(() => {
     setForcedTheme("light");
@@ -251,6 +318,14 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
     stateRef.current = next;
     setState(next);
   }, []);
+
+  const currentLayoutPolicy = useCallback((path = pathname) => createR6MLayoutPolicy({
+    viewportWidth: viewportWidthRef.current,
+    destination: policyDestination(path),
+    preferredQueueWidth: preferredWidthsRef.current.queue,
+    preferredInspectorWidth: preferredWidthsRef.current.inspector,
+    queueCollapsed: queueCollapsedRef.current,
+  }), [pathname]);
 
   const applyRouteEffect = useCallback((effect: ActionResult["routeEffect"]) => {
     if (effect.kind === "push") router.push(effect.path);
@@ -343,25 +418,23 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
 
     if (result.focusEffect.kind === "region") {
       const region = result.focusEffect.region;
-      requestAnimationFrame(() => focusRegistry.current.focusRegion(region));
+      requestAnimationFrame(() => renderedFocusValidity.current.focusRegion(region));
     } else if (action.id === "focus/set" && action.active && result.status === "applied") {
-      requestAnimationFrame(() => focusRegistry.current.focusRegion("workspacePrimary"));
+      requestAnimationFrame(() => renderedFocusValidity.current.focusRegion("workspacePrimary"));
     } else if (action.id === "inspector/open") {
-      requestAnimationFrame(() => focusRegistry.current.focusRegion("inspector"));
+      requestAnimationFrame(() => renderedFocusValidity.current.focusRegion("inspector"));
     } else if (action.id === "inspector/traverse-relationship" && result.status === "applied") {
-      requestAnimationFrame(() => focusRegistry.current.focusRegion("inspector"));
+      requestAnimationFrame(() => renderedFocusValidity.current.focusRegion("inspector"));
     } else if (result.focusEffect.kind === "return-from-inspector") {
       const recordedOrigin = previousInspectorOrigin?.handle instanceof HTMLElement
         ? { ...previousInspectorOrigin, handle: previousInspectorOrigin.handle }
         : null;
-      const target = resolveFocusReturn(
-        recordedOrigin,
-        previousInspectorOrigin?.region ?? null,
-        focusRegistry.current,
-      );
       requestAnimationFrame(() => {
-        if (target.kind === "recorded-origin") target.handle.focus();
-        if (target.kind === "region") focusRegistry.current.focusRegion(target.region);
+        restoreRenderedFocus(
+          recordedOrigin,
+          previousInspectorOrigin?.region ?? null,
+          renderedFocusValidity.current,
+        );
       });
     }
     return { ...result, state: nextState };
@@ -382,9 +455,10 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
   }, [dispatchBound]);
 
   useIsomorphicLayoutEffect(() => {
-    const nextBand = layoutBandForWidth(window.innerWidth);
-    bandRef.current = nextBand;
-    setBand(nextBand);
+    const nextViewportWidth = window.innerWidth;
+    viewportWidthRef.current = nextViewportWidth;
+    bandRef.current = layoutBandForWidth(nextViewportWidth);
+    setViewportWidth(nextViewportWidth);
     try {
       browserStorage.current = window.localStorage;
     } catch {
@@ -395,6 +469,12 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
       ? createWorkspaceDecisionService(browserStorage.current)
       : null;
     if (browserStorage.current) {
+      const restoredWidths = readR6MPreferredWidths(browserStorage.current);
+      const restoredLayout = readR6MLayoutPreference(browserStorage.current);
+      preferredWidthsRef.current = restoredWidths;
+      queueCollapsedRef.current = restoredLayout.queueCollapsed;
+      setPreferredWidths(restoredWidths);
+      setQueueCollapsedState(restoredLayout.queueCollapsed);
       setCollectionPreferencesState(readReviewCollectionPreferences(browserStorage.current).preferences);
     }
     const restored = restoreInitialState({
@@ -402,7 +482,16 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
       storage: browserStorage.current ?? STRUCTURAL_STORAGE,
       authoritativeSnapshot: LOADING_SNAPSHOT,
       capturedAt: new Date().toISOString(),
-      layout: { band: nextBand, policy: R6D_LAYOUT_POLICY },
+      layout: {
+        band: bandRef.current,
+        policy: createR6MLayoutPolicy({
+          viewportWidth: nextViewportWidth,
+          destination: policyDestination(pathname),
+          preferredQueueWidth: preferredWidthsRef.current.queue,
+          preferredInspectorWidth: preferredWidthsRef.current.inspector,
+          queueCollapsed: queueCollapsedRef.current,
+        }),
+      },
       decisionSubjectResolver,
     });
     const surfaceResult = reconcileRestoredNarrowPresentation(
@@ -468,7 +557,7 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
         storage: browserStorage.current ?? STRUCTURAL_STORAGE,
         authoritativeSnapshot: snapshot,
         capturedAt: new Date().toISOString(),
-        layout: { band: bandRef.current, policy: R6D_LAYOUT_POLICY },
+        layout: { band: bandRef.current, policy: currentLayoutPolicy(pathname) },
         decisionSubjectResolver,
       });
       const surfaceResult = reconcileRestoredNarrowPresentation(
@@ -519,7 +608,7 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
         storage: browserStorage.current ?? STRUCTURAL_STORAGE,
         authoritativeSnapshot: snapshotRef.current,
         capturedAt: new Date().toISOString(),
-        layout: { band: bandRef.current, policy: R6D_LAYOUT_POLICY },
+        layout: { band: bandRef.current, policy: currentLayoutPolicy(pathname) },
         decisionSubjectResolver,
       });
       const surfaceResult = reconcileRestoredNarrowPresentation(restored, actionContext());
@@ -530,14 +619,41 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
   }, [pathname, actionContext, applyBrowserIntent, applyRouteEffect, commitState, persistRestoration]);
 
   useEffect(() => {
-    const updateBand = () => {
-      const next = layoutBandForWidth(window.innerWidth);
-      bandRef.current = next;
-      setBand(next);
+    const updateViewport = () => {
+      const root = document.documentElement;
+      const next = window.innerWidth;
+      const previousBand = bandRef.current;
+      const nextBand = layoutBandForWidth(next);
+      root.setAttribute("data-viewport-resizing", "");
+      if (viewportTransitionTimer.current !== null) {
+        clearTimeout(viewportTransitionTimer.current);
+      }
+      viewportTransitionTimer.current = setTimeout(() => {
+        viewportTransitionTimer.current = null;
+        root.removeAttribute("data-viewport-resizing");
+      }, 120);
+      viewportWidthRef.current = next;
+      bandRef.current = nextBand;
+      if (
+        previousBand !== "narrow"
+        && nextBand === "narrow"
+        && stateRef.current.inspector.open
+        && stateRef.current.narrowSurface !== "inspector"
+      ) {
+        dispatchBound({ id: "queue/show-narrow-surface", surface: "inspector" }, "system");
+      }
+      setViewportWidth(next);
     };
-    window.addEventListener("resize", updateBand, { passive: true });
-    return () => window.removeEventListener("resize", updateBand);
-  }, []);
+    window.addEventListener("resize", updateViewport, { passive: true });
+    return () => {
+      window.removeEventListener("resize", updateViewport);
+      if (viewportTransitionTimer.current !== null) {
+        clearTimeout(viewportTransitionTimer.current);
+        viewportTransitionTimer.current = null;
+      }
+      document.documentElement.removeAttribute("data-viewport-resizing");
+    };
+  }, [dispatchBound]);
 
   const selectedReviewProjection = useMemo(
     () => projectSelectedReview(state, snapshot, reviewIndex),
@@ -551,27 +667,175 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
     state.narrowSurface,
     inspectorActive,
   );
-  const layout = useMemo(() => effectiveLayout({
-    band,
-    policy: R6D_LAYOUT_POLICY,
-    manualPreference: state.queue.manualPreference,
+  const geometryInput = useMemo<WorkstationGeometryInput>(() => ({
+    viewportWidth,
+    destination: state.destination,
+    queueDensity: state.queue.manualPreference,
+    preferredQueueWidth: preferredWidths.queue,
+    preferredInspectorWidth: preferredWidths.inspector,
+    queueCollapsed,
     focusActive: state.focus.active,
     inspectorOpen: inspectorActive,
     narrowSurface: effectiveNarrowSurface,
-  }), [band, effectiveNarrowSurface, inspectorActive, state.focus.active, state.queue.manualPreference]);
-  const leftPresentation = supportingLeftPresentation(state.destination, layout.queue);
+  }), [
+    effectiveNarrowSurface,
+    inspectorActive,
+    preferredWidths.inspector,
+    preferredWidths.queue,
+    queueCollapsed,
+    state.destination,
+    state.focus.active,
+    state.queue.manualPreference,
+    viewportWidth,
+  ]);
+  const geometry = useMemo(
+    () => resolveWorkstationGeometry(geometryInput),
+    [geometryInput],
+  );
+  const resizeBounds = useMemo<Readonly<Record<ResizablePane, ResizeBounds | null>>>(() => ({
+    queue: resizeBoundsForGeometry(geometryInput, geometry, "queue"),
+    inspector: resizeBoundsForGeometry(geometryInput, geometry, "inspector"),
+  }), [geometry, geometryInput]);
+  geometryInputRef.current = geometryInput;
+  geometryRef.current = geometry;
+  const leftPresentation = geometry.queuePresentation;
 
   useIsomorphicLayoutEffect(() => {
+    if (resizeSessionToken.current) return;
+    applyResolvedGeometry(geometry);
+    document.documentElement.setAttribute("data-narrow-surface", effectiveNarrowSurface);
+  }, [effectiveNarrowSurface, geometry]);
+
+  useEffect(() => () => {
     const root = document.documentElement;
-    root.setAttribute("data-band", band);
-    root.setAttribute("data-queue", leftPresentation);
-    root.setAttribute("data-narrow-surface", effectiveNarrowSurface);
-    return () => {
-      root.removeAttribute("data-band");
-      root.removeAttribute("data-queue");
-      root.removeAttribute("data-narrow-surface");
+    root.removeAttribute("data-band");
+    root.removeAttribute("data-queue");
+    root.removeAttribute("data-narrow-surface");
+    root.removeAttribute("data-resizing");
+    root.removeAttribute("data-viewport-resizing");
+    root.style.removeProperty("--queue-track");
+    root.style.removeProperty("--inspector-track");
+    root.style.removeProperty("--inspector-size");
+  }, []);
+
+  const persistPaneWidth = useCallback((pane: ResizablePane, width: number) => {
+    const storage = browserStorage.current;
+    if (!storage) return;
+    if (pane === "queue") writePreferredQueueWidth(storage, width);
+    else writePreferredInspectorWidth(storage, width);
+  }, []);
+
+  const commitPreferredPaneWidth = useCallback((pane: ResizablePane, width: number, bounds: ResizeBounds) => {
+    const normalized = Math.min(Math.max(width, bounds.minimum), bounds.maximum);
+    const next = pane === "queue"
+      ? { ...preferredWidthsRef.current, queue: normalized }
+      : { ...preferredWidthsRef.current, inspector: normalized };
+    preferredWidthsRef.current = next;
+    setPreferredWidths(next);
+    return normalized;
+  }, []);
+
+  const setQueueCollapsed = useCallback((collapsed: boolean) => {
+    queueCollapsedRef.current = collapsed;
+    setQueueCollapsedState(collapsed);
+    const storage = browserStorage.current;
+    if (storage) writeR6MLayoutPreference(storage, { queueCollapsed: collapsed });
+  }, []);
+
+  const beginPaneResize = useCallback((pane: ResizablePane, startX: number): ActivePaneResize | null => {
+    if (resizeSessionToken.current) return null;
+    const baseInput = geometryInputRef.current;
+    const baseGeometry = geometryRef.current;
+    if (!baseInput || !baseGeometry) return null;
+    const bounds = resizeBoundsForGeometry(baseInput, baseGeometry, pane);
+    if (!bounds) return null;
+
+    const token = Symbol(pane);
+    resizeSessionToken.current = token;
+    document.documentElement.setAttribute("data-resizing", pane);
+    const startWidth = pane === "queue" ? baseGeometry.queueTrack : baseGeometry.inspectorTrack;
+    const resolveCandidate = (candidate: number) => {
+      const nextInput: WorkstationGeometryInput = pane === "queue"
+        ? { ...baseInput, preferredQueueWidth: candidate }
+        : { ...baseInput, preferredInspectorWidth: candidate };
+      return { nextInput, resolved: resolveWorkstationGeometry(nextInput) };
     };
-  }, [band, effectiveNarrowSurface, leftPresentation]);
+    const finish = () => {
+      if (resizeSessionToken.current !== token) return false;
+      resizeSessionToken.current = null;
+      document.documentElement.removeAttribute("data-resizing");
+      return true;
+    };
+
+    return {
+      startX,
+      startWidth,
+      bounds,
+      preview: (candidate) => {
+        if (resizeSessionToken.current !== token) return;
+        applyResolvedGeometry(resolveCandidate(candidate).resolved);
+      },
+      commit: (candidate) => {
+        if (resizeSessionToken.current !== token) return;
+        const normalized = commitPreferredPaneWidth(pane, candidate, bounds);
+        const next = resolveCandidate(normalized);
+        geometryInputRef.current = next.nextInput;
+        geometryRef.current = next.resolved;
+        if (!finish()) return;
+        applyResolvedGeometry(next.resolved);
+        persistPaneWidth(pane, normalized);
+      },
+      cancel: () => {
+        if (!finish()) return;
+        geometryInputRef.current = baseInput;
+        geometryRef.current = baseGeometry;
+        applyResolvedGeometry(baseGeometry);
+      },
+    };
+  }, [commitPreferredPaneWidth, persistPaneWidth]);
+
+  const commitKeyboardPaneWidth = useCallback((pane: ResizablePane, width: number) => {
+    if (resizeSessionToken.current) return;
+    const currentInput = geometryInputRef.current;
+    const currentGeometry = geometryRef.current;
+    if (!currentInput || !currentGeometry) return;
+    const bounds = resizeBoundsForGeometry(currentInput, currentGeometry, pane);
+    if (!bounds) return;
+    const normalized = commitPreferredPaneWidth(pane, width, bounds);
+    const nextInput: WorkstationGeometryInput = pane === "queue"
+      ? { ...currentInput, preferredQueueWidth: normalized }
+      : { ...currentInput, preferredInspectorWidth: normalized };
+    const resolved = resolveWorkstationGeometry(nextInput);
+    geometryInputRef.current = nextInput;
+    geometryRef.current = resolved;
+    const root = document.documentElement;
+    root.setAttribute("data-resizing", "keyboard");
+    applyResolvedGeometry(resolved);
+    requestAnimationFrame(() => {
+      if (!resizeSessionToken.current && root.getAttribute("data-resizing") === "keyboard") {
+        root.removeAttribute("data-resizing");
+      }
+    });
+
+    pendingKeyboardWidths.current[pane] = normalized;
+    const existing = keyboardWriteTimers.current[pane];
+    if (existing) clearTimeout(existing);
+    keyboardWriteTimers.current[pane] = setTimeout(() => {
+      const pending = pendingKeyboardWidths.current[pane];
+      if (pending !== undefined) persistPaneWidth(pane, pending);
+      delete pendingKeyboardWidths.current[pane];
+      delete keyboardWriteTimers.current[pane];
+    }, 150);
+  }, [commitPreferredPaneWidth, persistPaneWidth]);
+
+  useEffect(() => () => {
+    for (const pane of ["queue", "inspector"] as const) {
+      const timer = keyboardWriteTimers.current[pane];
+      if (timer) clearTimeout(timer);
+      const pending = pendingKeyboardWidths.current[pane];
+      if (pending !== undefined) persistPaneWidth(pane, pending);
+    }
+  }, [persistPaneWidth]);
 
   const selectedCase = useMemo(() => {
     if (state.selectedReview.status !== "available" || snapshot.status !== "ready") return null;
@@ -840,7 +1104,7 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
   }, [dispatchBound]);
 
   const registerFocusRegion = useCallback((region: RegisteredFocusRegion, element: HTMLElement | null) => {
-    focusRegistry.current.register(region, element);
+    renderedFocusValidity.current.register(region, element);
   }, []);
 
   const closeCommands = useCallback((reason: CommandCloseReason) => {
@@ -850,11 +1114,8 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
     }
     commandOrigin.current = null;
     if (reason !== "escape" && reason !== "execution") return;
-    const target = resolveCommandsFocusReturn(origin, focusRegistry.current);
     requestAnimationFrame(() => {
-      if (target.kind === "outside-origin") target.element.focus();
-      if (target.kind === "recorded-origin") target.handle.focus();
-      if (target.kind === "region") focusRegistry.current.focusRegion(target.region);
+      restoreRenderedCommandsFocus(origin, renderedFocusValidity.current);
     });
   }, [dispatchBound]);
 
@@ -925,9 +1186,11 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
     selectedCase,
     selectedCaseTitle,
     band,
-    layout,
+    geometry,
+    resizeBounds,
     inspectorActive,
     leftPresentation,
+    queueCollapsed,
     announcement,
     collectionPreferences,
     humanDecision,
@@ -936,6 +1199,9 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
     dispatchBound,
     onDestinationClick,
     registerFocusRegion,
+    setQueueCollapsed,
+    beginPaneResize,
+    commitKeyboardPaneWidth,
   }), [
     state,
     snapshot,
@@ -943,9 +1209,11 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
     selectedCase,
     selectedCaseTitle,
     band,
-    layout,
+    geometry,
+    resizeBounds,
     inspectorActive,
     leftPresentation,
+    queueCollapsed,
     announcement,
     collectionPreferences,
     humanDecision,
@@ -954,6 +1222,9 @@ export default function WorkstationProvider({ children }: { children: ReactNode 
     dispatchBound,
     onDestinationClick,
     registerFocusRegion,
+    setQueueCollapsed,
+    beginPaneResize,
+    commitKeyboardPaneWidth,
   ]);
 
   const composerOpen = state.overlayStack.at(-1) === HUMAN_DECISION_OVERLAY_ID;

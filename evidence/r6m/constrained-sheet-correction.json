@@ -1,0 +1,39 @@
+{
+  "nativeViewportStates": [
+    {
+      "viewport": 1099,
+      "queuePresentation": "yielded-context",
+      "queueTrack": 0,
+      "inspectorPresentation": "sheet",
+      "inspectorTrack": 0,
+      "inspectorSize": 420,
+      "workspaceGrid": 1099
+    },
+    {
+      "viewport": 1000,
+      "queuePresentation": "yielded-context",
+      "queueTrack": 0,
+      "inspectorPresentation": "sheet",
+      "inspectorTrack": 0,
+      "inspectorSize": 420,
+      "workspaceGrid": 1000
+    },
+    {
+      "viewport": 900,
+      "queuePresentation": "yielded-context",
+      "queueTrack": 0,
+      "inspectorPresentation": "sheet",
+      "inspectorTrack": 0,
+      "inspectorSize": 420,
+      "workspaceGrid": 900
+    }
+  ],
+  "manualCollapseAt900": {
+    "queuePresentation": "navigation-only",
+    "queueTrack": 88,
+    "inspectorTrack": 0,
+    "inspectorSize": 420,
+    "workspaceGrid": 812
+  },
+  "note": "Inspector 420 is the deliberately persisted native preference; deterministic default-preference checks assert 384."
+}

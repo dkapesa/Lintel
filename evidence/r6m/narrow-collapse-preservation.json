@@ -1,0 +1,80 @@
+{
+  "desktopCollapsed": {
+    "activeLabel": "Show Review Queue",
+    "band": "standard",
+    "inspector": null,
+    "inspectorPresentation": "closed",
+    "inspectorSize": "0px",
+    "inspectorTrack": "0px",
+    "queue": {
+      "width": 88,
+      "x": 0
+    },
+    "queuePresentation": "navigation-only",
+    "queueTrack": "88px",
+    "selected": {
+      "width": 720,
+      "x": 396.3999938964844
+    },
+    "viewport": {
+      "height": 900,
+      "width": 1440
+    },
+    "workspace": {
+      "width": 1352,
+      "x": 88
+    }
+  },
+  "narrow": {
+    "activeLabel": "(() => {\n  var width = Math.max(document.documentElement.clientWidth || 0, windo",
+    "band": "narrow",
+    "inspector": null,
+    "inspectorPresentation": "closed",
+    "inspectorSize": "0px",
+    "inspectorTrack": "0px",
+    "queue": {
+      "width": 0,
+      "x": 0
+    },
+    "queuePresentation": "hidden-narrow",
+    "queueTrack": "0px",
+    "selected": {
+      "width": 720,
+      "x": 82
+    },
+    "viewport": {
+      "height": 900,
+      "width": 899
+    },
+    "workspace": {
+      "width": 899.2000122070312,
+      "x": 0
+    }
+  },
+  "returned": {
+    "activeLabel": "(() => {\n  var width = Math.max(document.documentElement.clientWidth || 0, windo",
+    "band": "standard",
+    "inspector": null,
+    "inspectorPresentation": "closed",
+    "inspectorSize": "0px",
+    "inspectorTrack": "0px",
+    "queue": {
+      "width": 88,
+      "x": 0
+    },
+    "queuePresentation": "navigation-only",
+    "queueTrack": "88px",
+    "selected": {
+      "width": 720,
+      "x": 396.3999938964844
+    },
+    "viewport": {
+      "height": 900,
+      "width": 1440
+    },
+    "workspace": {
+      "width": 1352,
+      "x": 88
+    }
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "viewport": 1180,
+  "steps": [
+    {
+      "event": "before open",
+      "state": {
+        "band": "compact",
+        "inspector": null,
+        "inspectorPresentation": "closed",
+        "inspectorSize": "0px",
+        "inspectorTrack": "0px",
+        "queue": {
+          "width": 400,
+          "x": 0
+        },
+        "queuePresentation": "expanded",
+        "queueTrack": "400px",
+        "viewport": {
+          "height": 900,
+          "width": 1180
+        },
+        "workspace": {
+          "width": 780,
+          "x": 400
+        }
+      }
+    },
+    {
+      "event": "Inspector open settled",
+      "state": {
+        "band": "compact",
+        "inspector": {
+          "width": 420,
+          "x": 760
+        },
+        "inspectorPresentation": "pane",
+        "inspectorSize": "420px",
+        "inspectorTrack": "420px",
+        "queue": {
+          "width": 0,
+          "x": 0
+        },
+        "queuePresentation": "yielded-context",
+        "queueTrack": "0px",
+        "viewport": {
+          "height": 900,
+          "width": 1180
+        },
+        "workspace": {
+          "width": 760,
+          "x": 0
+        }
+      }
+    },
+    {
+      "event": "Inspector close settled",
+      "state": {
+        "band": "compact",
+        "inspector": null,
+        "inspectorPresentation": "closed",
+        "inspectorSize": "0px",
+        "inspectorTrack": "0px",
+        "queue": {
+          "width": 400,
+          "x": 0
+        },
+        "queuePresentation": "expanded",
+        "queueTrack": "400px",
+        "viewport": {
+          "height": 900,
+          "width": 1180
+        },
+        "workspace": {
+          "width": 780,
+          "x": 400
+        }
+      }
+    }
+  ]
+}

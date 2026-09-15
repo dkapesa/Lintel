@@ -1,4 +1,4 @@
-/** BS0.11: evidence synthesis only. No production imports or behavior discovery.
+/** BS0.11 / BS0.12-C2: evidence synthesis only. No production imports or behavior discovery.
  * Run: node --import ./lib/r6c/__validation__/node-hooks.mjs ./lib/bs0/__validation__/migration-risk-ledger.validation.ts
  * EXECUTABLE describes prior accepted evidence, not behavior invoked here.
  * Ranking and future-slice exposure are migration judgments, not new product facts.
@@ -17,6 +17,12 @@ const corpus = {
   "BS0.8": { file: "lib/bs0/__validation__/github-app.validation.ts", commit: "5933cfac59dfc4a8d36f60baf7dd4c3d5b4a90b5" },
   "BS0.9": { file: "lib/bs0/__validation__/route-authority.validation.ts", commit: "17f10632c842d781cc1424aa247901a792fc0569" },
   "BS0.10": { file: "lib/bs0/__validation__/failure-state.validation.ts", commit: "68c60dab7e67e1465d11eb211892a0b57fbecb78" },
+  "BS0.12-C1": {
+    file: "lib/bs0/__validation__/migration-boundary-corrections.validation.ts",
+    commit: "ec11aeda95d27c4ab3f7dfb062c4559018e00912",
+    blob: "78a102e4122e9130af50e9d6322e134728910b9f",
+    requiredTokens: ["riskScore", "legacy improved", "Manifest reproducibility exact", "replay was executed", "complete historical verification-basis reproduction", "production behavior conditional on supplied Storage behavior", "native browser window.localStorage", "structured returned failure", "a C1 pass cannot close IR-F04"],
+  },
 } as const;
 type AcceptedSlice = keyof typeof corpus;
 type AcceptedFile = typeof corpus[AcceptedSlice]["file"];
@@ -30,7 +36,7 @@ const futureSlices = ["BS1", "BS2", "BS3", "BS4", "BS5", "BS6", "BS7", "BS8", "B
 type FutureSlice = typeof futureSlices[number];
 const domains = ["canonical Review identity", "Human Decision authority", "temporal/evidence truth", "GitHub App provenance", "replay", "retention/orphans", "route cutover", "failure semantics", "analysis/model provenance"] as const;
 type Domain = typeof domains[number];
-const criticalNames = ["distinct-PR Human Decision collision", "App real PR versus Report PR 0", "mixed HEAD_A/HEAD_B completion provenance", "disappearing finding", "replay current-code limitation", "orphan reattachment", "failed does not mean rollback", "destructive Report-history cleanup", "comment publishing/report_generation_failure mismatch"] as const;
+const criticalNames = ["distinct-PR Human Decision collision", "App real PR versus Report PR 0", "mixed HEAD_A/HEAD_B completion provenance", "disappearing finding", "replay current-code limitation", "orphan reattachment", "failed does not mean rollback", "destructive Report-history cleanup", "comment publishing/report_generation_failure mismatch", "risk-score polarity under legacy improved", "manifest exact versus replay execution", "replay exact versus complete historical verification basis", "injected Storage evidence is conditional"] as const;
 type Critical = typeof criticalNames[number];
 type EvidenceRef = { slice: AcceptedSlice; file: AcceptedFile; token: string; evidence: EvidenceType };
 type MigrationRisk = {
@@ -88,11 +94,11 @@ export const migrationRiskLedger: readonly MigrationRisk[] = [
   },
   {
     id: "MR-06", title: "Temporal clearance and movement can become false resolution claims", severity: "BLOCKER", riskClass: "TEMPORAL", evidenceStrength: E,
-    currentBehavior: "Finding disappearance produces cleared/improved output with no independent resolution proof. Equivalent evidence on a changed head gets new IDs and added/stronger-added counts, without proposition continuity. Readiness Delta and Review Diff can disagree on suggested-test movement. Current temporal outputs lack Verification Delta truth fields and retain separate concepts.",
-    migrationHazard: "Cleared, improved or stronger-added labels can become proof of resolution or new support, and existing delta/diff/pack evolution can be renamed as future Verification Delta with false certainty.",
-    acceptanceConstraint: "Disappearance and revision-sensitive evidence movement must not establish resolution or additional semantic support. Existing temporal comparison outputs must not be equated with Verification Delta truth without an explicit semantic boundary.",
-    evidenceRefs: [ref("BS0.4", "T3 - disappearance is surfaced as cleared", E), ref("BS0.4", "T4 - Evidence identity changes", E), ref("BS0.4", "T5 - proposition continuity", E), ref("BS0.4", "T8 - Readiness Delta collapses", E), ref("BS0.4", "T10 - current temporal outputs are not a Verification Delta", E)],
-    affectedSlices: ["BS1", "BS6", "BS7", "BS11"], coverageDomains: ["temporal/evidence truth"], criticalEvidence: ["disappearing finding"],
+    currentBehavior: "Finding or condition disappearance can contribute to cleared/improved output with no independent resolution proof. Equivalent evidence on a changed head gets new IDs and added/stronger-added counts, without proposition continuity. Accepted C1 executable evidence shows the real Workspace projection maps Report.verdict.riskScore 10 -> 20 into readinessScore and returns classification improved, previousScore 10, currentScore 20, scoreChange 10, clearedCount 0 and openedCount 0, with other Report dimensions fixed and no comparison diff rows. Risk is not the only classification contributor; this does not mean every improved result is incorrect. Readiness Delta and Review Diff can disagree on suggested-test movement. Current temporal outputs lack Verification Delta truth fields and retain separate concepts.",
+    migrationHazard: "Cleared or stronger-added labels can become proof of resolution or new support, while legacy improved can become verification-improvement truth despite directionally adverse Report risk-score movement. Existing delta/diff/pack evolution can be renamed as future Verification Delta with false certainty.",
+    acceptanceConstraint: "Disappearance and revision-sensitive evidence movement must not establish resolution or additional semantic support. Legacy improved must not be promoted as verification-improvement truth unless its contributing dimensions and their polarity are explicitly understood. Existing temporal comparison outputs must not be equated with Verification Delta truth without an explicit semantic boundary.",
+    evidenceRefs: [ref("BS0.4", "T3 - disappearance is surfaced as cleared", E), ref("BS0.4", "T4 - Evidence identity changes", E), ref("BS0.4", "T5 - proposition continuity", E), ref("BS0.4", "T8 - Readiness Delta collapses", E), ref("BS0.4", "T10 - current temporal outputs are not a Verification Delta", E), ref("BS0.12-C1", "C1 — IR-F01 risk-score polarity through real Workspace adapter", E)],
+    affectedSlices: ["BS1", "BS6", "BS7", "BS11"], coverageDomains: ["temporal/evidence truth"], criticalEvidence: ["disappearing finding", "risk-score polarity under legacy improved"],
   },
   {
     id: "MR-07", title: "Legacy recheck satisfaction can manufacture proposition support", severity: "BLOCKER", riskClass: "TEMPORAL", evidenceStrength: E,
@@ -112,11 +118,11 @@ export const migrationRiskLedger: readonly MigrationRisk[] = [
   },
   {
     id: "MR-09", title: "Exact replay is a bounded current-code comparison", severity: "BLOCKER", riskClass: "REPLAY", evidenceStrength: "MIXED",
-    currentBehavior: "Verify-run calls current builders without archived-version dispatch. Declared configuration fingerprints do not hash implementation/prompt source. Exact replay checks current/stored head, configuration and Report result, not complete input/run/Passport/evidence/contract equality. Persisted replay records retain bounded outcomes rather than reconstructed artifacts; source URL omission changes input identity without changing Report result.",
-    migrationHazard: "Exact can be promoted into proof of historical implementation reproduction or complete verification-basis equivalence that the accepted replay comparisons never establish.",
-    acceptanceConstraint: "Replay exactness must remain bounded to its actual comparisons and current-code execution; it cannot establish historical implementation dispatch, complete input identity or downstream verification equivalence.",
-    evidenceRefs: [ref("BS0.3", "R3 - source URL contributes only", E), ref("BS0.3", "R5 - configuration fingerprint covers declared configuration", S), ref("BS0.3", "R6 - verify-run invokes current builders", S), ref("BS0.3", "R7 - verify-run compares head applicability", S), ref("BS0.3", "R8 - persisted replay provenance", S), ref("BS0.3", "R9 - current exact replay", S)],
-    affectedSlices: ["BS1", "BS7", "BS11"], coverageDomains: ["replay", "temporal/evidence truth"], criticalEvidence: ["replay current-code limitation"], relatedRisks: ["MR-08"],
+    currentBehavior: "Accepted C1 executable evidence shows createCanonicalReviewRunManifest can assign generation-time manifest reproducibility exact without executed replay verification. Separately, verify-run starts from an existing run, checks current head and declared configuration fingerprint, invokes current Report/manifest builders, compares Report-result fingerprint and persists a separate verification record. Verify-run calls current builders without archived-version dispatch. Declared configuration fingerprints do not hash implementation/prompt source. Executed replay exact does not establish complete historical verification-basis reproduction or complete input/run/Passport/evidence/contract equality. Persisted replay records retain bounded outcomes rather than reconstructed artifacts; source URL omission changes input identity without changing Report result.",
+    migrationHazard: "Generation-time manifest exact can be imported as if successful replay was executed. Executed replay exact can be promoted into proof of historical implementation reproduction or complete verification-basis equivalence that the accepted replay comparisons never establish.",
+    acceptanceConstraint: "Manifest exact, executed replay result and historical verification basis must remain separate authorities. Manifest exact must not imply replay was executed. Executed replay exact must remain bounded to its actual comparisons and current-code execution; it cannot establish historical implementation dispatch, complete input identity or downstream verification equivalence.",
+    evidenceRefs: [ref("BS0.3", "R3 - source URL contributes only", E), ref("BS0.3", "R5 - configuration fingerprint covers declared configuration", S), ref("BS0.3", "R6 - verify-run invokes current builders", S), ref("BS0.3", "R7 - verify-run compares head applicability", S), ref("BS0.3", "R8 - persisted replay provenance", S), ref("BS0.3", "R9 - current exact replay", S), ref("BS0.12-C1", "C2A — IR-F02 generation-time manifest exact", E), ref("BS0.12-C1", "C2B — IR-F02 separate executed replay authority and bounded comparisons", S)],
+    affectedSlices: ["BS1", "BS7", "BS11"], coverageDomains: ["replay", "temporal/evidence truth"], criticalEvidence: ["replay current-code limitation", "manifest exact versus replay execution", "replay exact versus complete historical verification basis"], relatedRisks: ["MR-08"],
   },
   {
     id: "MR-10", title: "Empty defaults can erase unavailable evidence and authority", severity: "BLOCKER", riskClass: "FAILURE_SEMANTICS", evidenceStrength: E,
@@ -128,11 +134,11 @@ export const migrationRiskLedger: readonly MigrationRisk[] = [
   },
   {
     id: "MR-11", title: "Reported failure does not determine authoritative persistence", severity: "BLOCKER", riskClass: "PERSISTENCE", evidenceStrength: "MIXED",
-    currentBehavior: "Workflow/condition and ledger/decision mutations can fail after authoritative write-then-throw; pre-write rejecting storage can instead preserve prior bytes and dropped writes produce mismatch. App updater returns success only after destination persistence; failed rename can leave serialized temp state with no authoritative destination success or cached success. Saved writes and refresh failure are separately represented on selected browser paths.",
-    migrationHazard: "Failure can be assumed to mean rollback and trigger duplicate authority or discard persisted state; conversely local/temp serialization or a successful reload call can be assumed to mean authoritative persistence.",
-    acceptanceConstraint: "Failed does not mean rollback, and serialized temp state does not mean authoritative persistence. Mutation, destination durability, read-back mismatch and refresh outcomes must remain distinguishable without an inferred uniform transaction guarantee.",
-    evidenceRefs: [ref("BS0.10", "FS5 - workflow and condition failures", E), ref("BS0.10", "FS6 - ledger helper versus decision service", E), ref("BS0.10", "FS12 - App store safe filesystem failures", E), ref("BS0.10", "FS14 - current browser error/degraded branches", S), ref("BS0.10", "non-authoritative temp files do not establish preservation", S)],
-    affectedSlices: ["BS2", "BS7", "BS8", "BS11", "BS12"], coverageDomains: ["failure semantics", "Human Decision authority", "GitHub App provenance"], criticalEvidence: ["failed does not mean rollback"],
+    currentBehavior: "Adversarial injected Storage evidence for production workflow/condition and ledger/decision logic is conditional on supplied Storage behavior: ignored writes yield verification mismatch, reject-before-write yields failure with prior bytes preserved, and authoritative write-then-throw can yield reported failure after stored mutation. C1 executes the review-status service/read-back/real-projection case; it does not observe native browser window.localStorage exhibiting those modes or establish any failure frequency. Independently accepted App evidence establishes that the updater returns success only after destination persistence; failed rename can leave serialized temp state with no authoritative destination success or cached success. Saved writes and refresh failure are separately represented on selected browser source-contract paths. Comment-publishing/persistence mismatch is independently established and also retained in MR-19.",
+    migrationHazard: "Failure can be assumed to mean rollback and trigger duplicate authority or discard persisted state; conversely local/temp serialization or a successful reload call can be assumed to mean authoritative persistence. Conditional injected-Storage observations can be inflated into observed native-browser behavior or failure frequency.",
+    acceptanceConstraint: "Failed does not mean rollback (FAILED != ROLLED BACK), and serialized temp state does not mean authoritative persistence. Reported outcome, attempted mutation, authoritative destination durability, read-back state and refresh/projected state must remain distinguishable without an inferred uniform transaction guarantee. Injected Storage evidence must remain conditional on supplied Storage behavior; it must not establish observed native-browser failure modes or frequency, nor displace independent App, read-back, refresh or publishing evidence.",
+    evidenceRefs: [ref("BS0.10", "FS5 - workflow and condition failures", E), ref("BS0.10", "FS6 - ledger helper versus decision service", E), ref("BS0.10", "FS12 - App store safe filesystem failures", E), ref("BS0.10", "FS14 - current browser error/degraded branches", S), ref("BS0.10", "non-authoritative temp files do not establish preservation", S), ref("BS0.10", "FS13 - decision-comment failure transitions", E), ref("BS0.10", "leave publishing plus report_generation_failure if failure persistence succeeds", S), ref("BS0.12-C1", "C3 — IR-F03 injected Storage conditional service behavior", E), ref("BS0.12-C1", "production behavior conditional on supplied Storage behavior", E)],
+    affectedSlices: ["BS2", "BS7", "BS8", "BS11", "BS12"], coverageDomains: ["failure semantics", "Human Decision authority", "GitHub App provenance"], criticalEvidence: ["failed does not mean rollback", "injected Storage evidence is conditional"],
   },
   {
     id: "MR-12", title: "Normalized model assistance must not become verification evidence", severity: "BLOCKER", riskClass: "ANALYSIS", evidenceStrength: "MIXED",
@@ -222,18 +228,21 @@ function covered(domain: Domain, slice: AcceptedSlice, token: string): void {
 }
 
 test("MR1 - Evidence corpus integrity", () => {
-  equal(Object.keys(corpus), ["BS0.2", "BS0.3", "BS0.4", "BS0.5", "BS0.6", "BS0.7", "BS0.8", "BS0.9", "BS0.10"], "accepted slices only");
-  equal(new Set(Object.values(corpus).map(item => item.file)).size, 9, "nine distinct accepted files");
+  equal(Object.keys(corpus), ["BS0.2", "BS0.3", "BS0.4", "BS0.5", "BS0.6", "BS0.7", "BS0.8", "BS0.9", "BS0.10", "BS0.12-C1"], "historical slices plus separately accepted correction slice");
+  equal(new Set(Object.values(corpus).map(item => item.file)).size, 10, "ten distinct accepted evidence files");
   for (const [slice, item] of Object.entries(corpus)) {
     assert(tracked.has(item.file), `${slice} evidence must be tracked: ${item.file}`);
+    execFileSync("git", ["cat-file", "-e", `${item.commit}^{commit}`]);
     const bytes = readFileSync(join(process.cwd(), item.file));
     assert(bytes.length > 0, `${slice} evidence must exist and be nonempty`);
     // Git applies repository clean filters/line-ending policy to worktree bytes.
     const actualBlob = execFileSync("git", ["hash-object", "--path", item.file, "--stdin"], { input: bytes, encoding: "utf8" }).trim();
     const acceptedBlob = execFileSync("git", ["rev-parse", `${item.commit}:${item.file}`], { encoding: "utf8" }).trim();
+    if ("blob" in item) equal(acceptedBlob, item.blob, `${slice} accepted checkpoint has the reviewed blob`);
     equal(actualBlob, acceptedBlob, `${slice} file equals its accepted checkpoint`);
     equal(execFileSync("git", ["rev-parse", `HEAD:${item.file}`], { encoding: "utf8" }).trim(), acceptedBlob, `${slice} HEAD evidence remains accepted`);
     evidenceText.set(item.file, bytes.toString("utf8"));
+    if ("requiredTokens" in item) for (const token of item.requiredTokens) assert(bytes.toString("utf8").toLowerCase().includes(token.toLowerCase()), `${slice} required correction evidence exists: ${token}`);
   }
 });
 
@@ -297,6 +306,9 @@ test("MR7 - Temporal/replay coverage", () => {
   covered("replay", "BS0.3", "R6 - verify-run invokes current builders");
   covered("replay", "BS0.3", "R7 - verify-run compares head applicability");
   covered("replay", "BS0.3", "R9 - current exact replay");
+  covered("temporal/evidence truth", "BS0.12-C1", "C1 — IR-F01 risk-score polarity through real Workspace adapter");
+  covered("replay", "BS0.12-C1", "C2A — IR-F02 generation-time manifest exact");
+  covered("replay", "BS0.12-C1", "C2B — IR-F02 separate executed replay authority and bounded comparisons");
 });
 test("MR8 - GitHub App/provenance coverage", () => {
   for (const token of ["G7 - App completion preserves external PR identity", "G11 - completion after a head update", "G14 - GitHub App persistence does not write browser review authorities", "G12 - two same-head analyses can be admitted"]) covered("GitHub App provenance", "BS0.8", token);
@@ -309,6 +321,7 @@ test("MR10 - Route/cutover coverage", () => {
 });
 test("MR11 - Failure-semantics coverage", () => {
   for (const token of ["FS2 - report-history parsing", "FS3 - real adapter unavailable versus empty", "FS5 - workflow and condition failures", "FS6 - ledger helper versus decision service", "FS7 - draft envelope durability", "FS12 - App store safe filesystem failures", "FS16 - bounded current cross-product failure boundary"]) covered("failure semantics", "BS0.10", token);
+  covered("failure semantics", "BS0.12-C1", "C3 — IR-F03 injected Storage conditional service behavior");
 });
 test("MR12 - Analysis/model provenance coverage", () => {
   covered("analysis/model provenance", "BS0.2", "D5 - equivalent Reports");
@@ -319,7 +332,7 @@ test("MR12 - Analysis/model provenance coverage", () => {
 
 // Independent requirements bind critical tags to exact accepted evidence and
 // semantic wording; tags alone cannot make an over-merged risk pass coverage.
-const criticalRequirements: readonly { name: Critical; slice: AcceptedSlice; token: string; behaviorToken: string; constraintToken: string }[] = [
+const criticalRequirements: readonly { name: Critical; slice: AcceptedSlice; token: string; behaviorToken: string; constraintToken: string; evidence?: EvidenceType }[] = [
   { name: "distinct-PR Human Decision collision", slice: "BS0.5", token: "H3 - distinct PRs collide", behaviorToken: "intrinsic", constraintToken: "Distinct pull requests" },
   { name: "App real PR versus Report PR 0", slice: "BS0.8", token: "G7 - App completion preserves external PR identity", behaviorToken: "PR 0", constraintToken: "sentinel" },
   { name: "mixed HEAD_A/HEAD_B completion provenance", slice: "BS0.8", token: "G11 - completion after a head update", behaviorToken: "HEAD_A/HEAD_B", constraintToken: "coherent revision" },
@@ -329,12 +342,16 @@ const criticalRequirements: readonly { name: Critical; slice: AcceptedSlice; tok
   { name: "failed does not mean rollback", slice: "BS0.10", token: "FS5 - workflow and condition failures", behaviorToken: "authoritative write-then-throw", constraintToken: "Failed does not mean rollback" },
   { name: "destructive Report-history cleanup", slice: "BS0.10", token: "read failure removes previously valid bytes", behaviorToken: "useful persisted bytes", constraintToken: "destructive cleanup" },
   { name: "comment publishing/report_generation_failure mismatch", slice: "BS0.10", token: "leave publishing plus report_generation_failure if failure persistence succeeds", behaviorToken: "conditional on failure persistence succeeding", constraintToken: "comment publishing outcome" },
+  { name: "risk-score polarity under legacy improved", slice: "BS0.12-C1", token: "C1 — IR-F01 risk-score polarity through real Workspace adapter", behaviorToken: "Report.verdict.riskScore 10 -> 20", constraintToken: "contributing dimensions and their polarity", evidence: E },
+  { name: "manifest exact versus replay execution", slice: "BS0.12-C1", token: "C2A — IR-F02 generation-time manifest exact", behaviorToken: "generation-time manifest reproducibility exact without executed replay verification", constraintToken: "Manifest exact must not imply replay was executed", evidence: E },
+  { name: "replay exact versus complete historical verification basis", slice: "BS0.12-C1", token: "C2B — IR-F02 separate executed replay authority and bounded comparisons", behaviorToken: "Executed replay exact does not establish complete historical verification-basis reproduction", constraintToken: "Manifest exact, executed replay result and historical verification basis must remain separate authorities", evidence: S },
+  { name: "injected Storage evidence is conditional", slice: "BS0.12-C1", token: "C3 — IR-F03 injected Storage conditional service behavior", behaviorToken: "conditional on supplied Storage behavior", constraintToken: "Injected Storage evidence must remain conditional on supplied Storage behavior", evidence: E },
 ];
 test("MR13 - Critical evidence coverage", () => {
   equal(criticalRequirements.map(item => item.name), criticalNames, "all independently required critical boundaries");
   for (const required of criticalRequirements) assert(migrationRiskLedger.some(risk =>
     risk.criticalEvidence?.includes(required.name) && risk.currentBehavior.includes(required.behaviorToken) && risk.acceptanceConstraint.includes(required.constraintToken) &&
-    risk.evidenceRefs.some(item => item.slice === required.slice && item.token === required.token)), `critical evidence represented with behavior, constraint and binding: ${required.name}`);
+    risk.evidenceRefs.some(item => item.slice === required.slice && item.token === required.token && (required.evidence === undefined || item.evidence === required.evidence))), `critical evidence represented with behavior, constraint and binding: ${required.name}`);
   for (const slice of Object.keys(corpus) as AcceptedSlice[]) assert(refs.some(item => item.slice === slice), `${slice} accepted behavioral slice consumed`);
   for (const domain of domains) assert(migrationRiskLedger.some(risk => risk.coverageDomains.includes(domain)), `${domain} covered`);
 });
@@ -381,7 +398,7 @@ function summary() {
 }
 function renderLedger(): string {
   const data = summary();
-  const lines = ["BS0.11 Migration-risk ledger (accepted evidence synthesis)", `Total risks: ${data.totalRisks}`, `Severity counts: ${JSON.stringify(data.severityCounts)}`, `Risk-class counts: ${JSON.stringify(data.riskClassCounts)}`, ""];
+  const lines = ["BS0.11 / BS0.12-C2 Migration-risk ledger (accepted historical and correction evidence synthesis)", `Total risks: ${data.totalRisks}`, `Severity counts: ${JSON.stringify(data.severityCounts)}`, `Risk-class counts: ${JSON.stringify(data.riskClassCounts)}`, ""];
   for (const risk of migrationRiskLedger) {
     lines.push(`${risk.id} | ${risk.severity} | ${risk.riskClass} | ${risk.evidenceStrength} | ${risk.title}`,
       `Current established behavior: ${risk.currentBehavior}`, `Migration hazard: ${risk.migrationHazard}`, `Acceptance constraint: ${risk.acceptanceConstraint}`,
@@ -410,10 +427,20 @@ test("MR16 - Ledger output / summary integrity", () => {
   }
 });
 
+test("MR17 - Correction risk and authority invariants", () => {
+  equal(summary().totalRisks, 20, "C2 preserves total risk count");
+  equal(summary().severityCounts, { BLOCKER: 12, MAJOR: 7, MINOR: 1 }, "C2 preserves severity counts");
+  for (const id of ["MR-06", "MR-09", "MR-11"]) equal(migrationRiskLedger.find(risk => risk.id === id)?.severity, "BLOCKER", `${id} correction keeps severity`);
+  equal(migrationRiskLedger.filter(risk => risk.evidenceRefs.some(item => item.slice === "BS0.12-C1")).map(risk => risk.id), ["MR-06", "MR-09", "MR-11"], "correction evidence extends existing adjudicated risks only");
+  const correction = evidenceText.get(corpus["BS0.12-C1"].file)!;
+  assert(correction.includes("Thrown/rejected failure signals differ from structured returned failure results"), "accepted matrix interpretation distinguishes failure signals and returned results");
+  assert(correction.includes("a C1 pass cannot close IR-F04"), "correction acceptance does not close external App execution evidence");
+});
+
 let passed = 0;
 for (const check of checks) {
   try { check.run(); passed++; process.stdout.write(`PASS ${check.name}\n`); }
   catch (error) { process.stderr.write(`FAIL ${check.name}: ${error instanceof Error ? error.stack : String(error)}\n`); process.exitCode = 1; break; }
 }
-process.stdout.write(`BS0.11 migration-risk ledger: ${passed}/${checks.length} grouped checks passed\n`);
+process.stdout.write(`BS0.11 / BS0.12-C2 migration-risk ledger: ${passed}/${checks.length} grouped checks passed\n`);
 if (passed === checks.length) process.stdout.write(renderLedger());
